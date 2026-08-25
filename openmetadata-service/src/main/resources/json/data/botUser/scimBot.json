@@ -1,0 +1,9 @@
+{
+  "name": "scim-bot",
+  "roles": [
+    {
+      "name": "ScimBotRole",
+      "type": "role"
+    }
+  ]
+}

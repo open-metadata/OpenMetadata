@@ -1,0 +1,116 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../variables.less';
+
+.reference-edit-form {
+  .ant-form-item {
+    margin-bottom: var(--om-space-8);
+  }
+}
+
+.glossary-synonym-tag {
+  border: 1px solid @border-color !important;
+}
+
+.term-reference-tag {
+  height: 24px;
+
+  .ant-tag-close-icon {
+    padding-left: var(--om-space-8);
+    padding-right: var(--om-space-8);
+    color: @primary-color;
+  }
+
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.tag-button-container {
+  height: 24px;
+
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-select {
+  width: calc(100% - 64px);
+}
+
+.tags-input-container {
+  .tags-item {
+    margin-top: var(--om-space-8);
+    margin-right: var(--om-space-8);
+  }
+
+  .tags-component-container {
+    margin-top: var(--om-space-8);
+  }
+}
+
+.glossary-form-label {
+  width: 125px;
+  height: 32px;
+  line-height: 32px !important;
+}
+
+.glossary-form-antd-label label {
+  width: 125px;
+  margin-right: var(--om-space-12);
+}
+
+.glossary-form .ant-form-item {
+  margin-bottom: var(--om-space-12);
+}
+
+.edit-glossary-modal {
+  .ant-form-item {
+    margin-bottom: var(--om-space-12);
+  }
+
+  .form-item-horizontal {
+    margin-bottom: var(--om-space-8);
+  }
+}
+
+.edit-glossary-modal .ant-form-item {
+  &.m-b-xss {
+    margin-bottom: var(--om-space-4);
+  }
+}
+
+.glossary-overview-tab .schema-heading,
+.glossary-details .schema-heading {
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
+  color: @text-grey-muted;
+}
+
+.glossary-richtext-editor,
+.edit-glossary-modal {
+  .block-editor-wrapper {
+    min-height: 150px;
+
+    .tiptap.ProseMirror {
+      min-height: 150px;
+    }
+  }
+}

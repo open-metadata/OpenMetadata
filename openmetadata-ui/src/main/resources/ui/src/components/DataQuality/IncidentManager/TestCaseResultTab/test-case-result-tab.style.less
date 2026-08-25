@@ -1,0 +1,135 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.test-case-result-tooltip.ant-tooltip .ant-tooltip-inner {
+  background-color: var(--tw-color-bg-primary);
+  color: @black;
+  border-radius: @border-rad-sm;
+  font-size: @size-sm;
+  font-weight: @font-medium;
+}
+
+// Parameter label and value text styles (global for reuse)
+.parameter-label {
+  color: @grey-700;
+  font-size: @font-size-base;
+  font-weight: @font-medium;
+  min-width: 200px;
+  display: inline-block;
+}
+
+.parameter-value-text {
+  color: @grey-900;
+  font-size: @font-size-base;
+  font-weight: @font-medium;
+}
+
+.test-case-result-tab {
+  .test-case-result-tab-graph {
+    border: 1px solid @grey-200;
+    border-radius: var(--om-radius-10);
+    padding: @size-md;
+  }
+  .CodeMirror-gutters {
+    background-color: @grey-5;
+  }
+  .parameter-value {
+    background-color: @grey-5;
+  }
+
+  // Parameter section styles
+  .parameter-container {
+    border-radius: var(--om-radius-10);
+    border: 1px solid @grey-200;
+    background: var(--tw-color-bg-primary);
+    padding: @size-md;
+  }
+
+  .parameter-title {
+    color: @grey-900;
+    font-size: @font-size-base;
+    font-weight: @font-semibold;
+  }
+
+  .parameter-rows-container {
+    width: 100%;
+  }
+
+  .parameter-row {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: @size-sm;
+    padding: @size-xs 0;
+    width: 100%;
+  }
+
+  .parameter-row-cell {
+    &--full {
+      grid-column: span 8;
+    }
+    &--half {
+      grid-column: span 6;
+    }
+  }
+
+  .parameter-row-cell-content {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: @size-xs;
+    width: 100%;
+  }
+
+  .parameter-value-text-flex {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+  }
+
+  .parameter-row-divider {
+    margin: @size-xs 0;
+    border-top: 1px dashed @grey-300;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .sql-expression-container {
+    padding: @size-md;
+    width: 100%;
+    border-radius: var(--om-radius-10);
+    border: 1px solid @grey-200;
+    background: var(--tw-color-bg-primary);
+
+    .custom-code-mirror-theme {
+      .CodeMirror {
+        background: var(--tw-color-bg-primary);
+      }
+      .CodeMirror-gutters {
+        background-color: @grey-25;
+      }
+    }
+  }
+}
+.version-sql-expression-container {
+  background-color: @grey-100;
+  padding: @size-sm;
+  border-radius: @border-rad-base;
+  white-space: pre-wrap;
+  // to add query editor look and feel
+  font-family: monospace;
+}

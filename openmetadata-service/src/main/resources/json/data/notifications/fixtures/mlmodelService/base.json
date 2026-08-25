@@ -1,0 +1,28 @@
+{
+  "id": "6b5a4f3e-2d1c-0b9a-8f7e-6d5c4b3a2f1e",
+  "name": "sample-mlmodel-service",
+  "displayName": "Sample ML Model Service",
+  "fullyQualifiedName": "sample-mlmodel-service",
+  "description": "Mock ML model service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/mlmodelServices/6b5a4f3e-2d1c-0b9a-8f7e-6d5c4b3a2f1e",
+  "serviceType": "Mlflow",
+  "connection": {
+    "config": {
+      "type": "Mlflow",
+      "trackingUri": "http://localhost:5000"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

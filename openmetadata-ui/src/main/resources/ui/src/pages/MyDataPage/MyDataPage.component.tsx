@@ -1,0 +1,337 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
+import type { ReactNode } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactGridLayoutProps } from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
+import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
+import type { Page } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
+import type { PersonaPreferences } from '../../generated/type/personaPreferences';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
+import { useWelcomeStore } from '../../hooks/useWelcomeStore';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../rest/announcementsAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
+} from '../../rest/queries/docStoreQuery';
+import { updateUserDetail } from '../../rest/userAPI';
+import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
+import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import type { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
+import './my-data.less';
+import MyDataPageSkeleton from './MyDataPageSkeleton.component';
+
+const WelcomeScreen = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/MyData/WelcomeScreen/WelcomeScreen.component')
+  )
+);
+
+const LandingPageWidgetRenderer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer'
+      )
+  )
+);
+
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayoutProps & { children?: ReactNode }
+>;
+
+const getDefaultLandingPageLayout = () =>
+  customizeMyDataPageClassBase.defaultLayout;
+
+const MyDataPage = () => {
+  const { t } = useTranslation();
+  const { currentUser, selectedPersona, setCurrentUser } =
+    useApplicationStore();
+  const { isWelcomeVisible } = useWelcomeStore();
+
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] =
+    useState<boolean>(true);
+  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
+
+  const personaFqn = personaDocFqn(selectedPersona);
+
+  const { data: docData, isPending: isDocPending } = useQuery({
+    queryKey: docStoreQueryKey(personaFqn ?? ''),
+    queryFn: docStoreQueryFn(personaFqn ?? ''),
+    enabled: !!personaFqn,
+    retry: false,
+    staleTime: PERSONA_DOC_STALE_TIME,
+  });
+
+  // hasMounted flips once after the first paint so the skeleton always shows on
+  // first render, deferring widget loaders until after that paint.  Without this
+  // guard a user with no persona gets isLoading=false immediately, exposing
+  // widget loaders to Playwright's waitForAllLoadersToDisappear too early.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+  const isLoading = !hasMounted || (!!personaFqn && isDocPending);
+
+  const personaPreferences = useMemo<PersonaPreferences[]>(
+    () => docData?.data?.personPreferences ?? [],
+    [docData]
+  );
+
+  const layout = useMemo<Array<WidgetConfig>>(() => {
+    if (!docData || !selectedPersona) {
+      return getDefaultLandingPageLayout();
+    }
+    const pageData = docData.data?.pages?.find(
+      (p: Page) => p.pageType === PageType.LandingPage
+    ) ?? { layout: [], pageType: PageType.LandingPage };
+    const filteredLayout = (pageData.layout as WidgetConfig[])
+      .filter(
+        (widget: WidgetConfig) =>
+          !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+          !isEmpty(widget.config)
+      )
+      .map((widget: WidgetConfig) => ({
+        ...widget,
+        w: getConstrainedWidgetWidth(widget.w),
+        h: 3,
+      }));
+
+    return isEmpty(filteredLayout)
+      ? getDefaultLandingPageLayout()
+      : filteredLayout;
+  }, [docData, selectedPersona]);
+  const storageData = useMemo(
+    () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
+    []
+  );
+
+  const loggedInUserName = useMemo(() => {
+    return currentUser?.name ?? '';
+  }, [currentUser]);
+
+  const usernameExistsInCookie = useMemo(() => {
+    return storageData
+      ? storageData.split(',').includes(loggedInUserName)
+      : false;
+  }, [storageData, loggedInUserName]);
+
+  const userPersonaBackgroundColor = useMemo(() => {
+    return currentUser?.personaPreferences?.find(
+      (persona) => persona.personaId === selectedPersona?.id
+    )?.landingPageSettings?.headerColor;
+  }, [currentUser, selectedPersona]);
+
+  const adminPersonaBackgroundColor = useMemo(() => {
+    return personaPreferences?.find(
+      (persona) => persona.personaId === selectedPersona?.id
+    )?.landingPageSettings?.headerColor;
+  }, [personaPreferences, selectedPersona]);
+
+  const backgroundColor = useMemo(() => {
+    return userPersonaBackgroundColor ?? adminPersonaBackgroundColor;
+  }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
+
+  const updateWelcomeScreen = (show: boolean) => {
+    if (loggedInUserName) {
+      const arr = storageData ? storageData.split(',') : [];
+      if (!arr.includes(loggedInUserName)) {
+        arr.push(loggedInUserName);
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
+      }
+    }
+    setShowWelcomeScreen(show);
+  };
+
+  useEffect(() => {
+    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
+
+    return () => updateWelcomeScreen(false);
+  }, []);
+
+  const widgets = useMemo(
+    () =>
+      layout.map((widget) => {
+        const reservedHeight =
+          widget.h * customizeMyDataPageClassBase.landingPageRowHeight;
+
+        return (
+          <div data-grid={widget} key={widget.i}>
+            <DeferredWidget
+              data-testid={`deferred-widget-${widget.i}`}
+              minHeight={reservedHeight}>
+              <LandingPageWidgetRenderer
+                currentLayout={layout}
+                widgetConfig={widget}
+              />
+            </DeferredWidget>
+          </div>
+        );
+      }),
+    [layout]
+  );
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncements();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
+  const handleBackgroundColorUpdate = async (color: string) => {
+    try {
+      if (!currentUser?.id) {
+        return;
+      }
+
+      //   Find the persona preference for the selected persona
+      const hasPersonaPreference = currentUser.personaPreferences?.find(
+        (persona) => persona.personaId === selectedPersona?.id
+      );
+
+      //   If the persona preference is found, update the landing page settings else add a new persona preference
+      const updatedPersonaPreferences = hasPersonaPreference
+        ? currentUser.personaPreferences?.map((persona) =>
+            persona.personaId === selectedPersona?.id
+              ? {
+                  ...persona,
+                  landingPageSettings: {
+                    ...persona.landingPageSettings,
+                    headerColor: color,
+                  },
+                }
+              : persona
+          )
+        : [
+            ...(currentUser.personaPreferences ?? []),
+            {
+              personaName: selectedPersona?.name,
+              personaId: selectedPersona?.id,
+              landingPageSettings: {
+                headerColor: color,
+              },
+            },
+          ];
+
+      //   Compare the current user with the updated user to get the json patch
+      const jsonPatch = compare(currentUser, {
+        ...currentUser,
+        personaPreferences: updatedPersonaPreferences,
+      });
+
+      const response = await updateUserDetail(currentUser.id, jsonPatch);
+
+      //   Update the current user with the updated persona preferences
+      if (response) {
+        setCurrentUser({
+          ...currentUser,
+          personaPreferences: updatedPersonaPreferences as PersonaPreferences[],
+        });
+        showSuccessToast(t('message.persona-preference-updated'));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection(isLoading);
+
+  if (showWelcomeScreen) {
+    return (
+      <PageLayoutV1 pageTitle={t('label.my-data')}>
+        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+      </PageLayoutV1>
+    );
+  }
+
+  return (
+    <PageLayoutV1
+      className="p-b-lg"
+      mainContainerClassName="p-t-0 my-data-page-main-container"
+      pageTitle={t('label.my-data')}>
+      {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
+      {/*
+          ReactGridLayout has known issues with RTL layouts,
+          setting dir="ltr" on the container ensures correct behavior
+          without affecting the overall RTL layout of the page
+      */}
+      <div className="grid-wrapper" dir="ltr">
+        <CustomiseLandingPageHeader
+          overlappedContainer
+          announcements={announcements}
+          backgroundColor={backgroundColor}
+          dataTestId="landing-page-header"
+          hideCustomiseButton={!selectedPersona}
+          isAnnouncementLoading={isAnnouncementLoading}
+          onHomePage
+          onBackgroundColorUpdate={handleBackgroundColorUpdate}
+        />
+        {isLoading ? (
+          <MyDataPageSkeleton />
+        ) : (
+          <ReactGridLayout
+            className="grid-container p-x-box"
+            cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
+            containerPadding={[0, 0]}
+            isDraggable={false}
+            isResizable={false}
+            margin={[
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}>
+            {widgets}
+          </ReactGridLayout>
+        )}
+      </div>
+      <LimitWrapper resource="dataAssets">
+        <br />
+      </LimitWrapper>
+    </PageLayoutV1>
+  );
+};
+
+export default MyDataPage;

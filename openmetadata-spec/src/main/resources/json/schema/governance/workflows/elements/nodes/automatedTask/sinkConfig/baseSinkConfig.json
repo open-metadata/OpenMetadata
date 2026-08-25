@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/sinkConfig/baseSinkConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BaseSinkConfig",
+  "description": "Base configuration shared by all sink types.",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.BaseSinkConfig",
+  "type": "object",
+  "properties": {
+    "retryConfig": {
+      "title": "Retry Configuration",
+      "description": "Configuration for retry behavior on failure.",
+      "type": "object",
+      "properties": {
+        "maxRetries": {
+          "title": "Max Retries",
+          "description": "Maximum number of retry attempts.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10
+        },
+        "retryDelaySeconds": {
+          "title": "Retry Delay Seconds",
+          "description": "Delay between retry attempts in seconds.",
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 300
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Timeout in seconds for sink operations.",
+      "type": "integer",
+      "default": 300,
+      "minimum": 30,
+      "maximum": 3600
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,28 @@
+{
+    "name": "Airflow",
+    "displayName": "Airflow Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description":  "Check if the database is reachable to fetch the DAG details.",
+            "errorMessage": "Failed to connect to airflow, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true,
+            "category": "ConnectionGate"
+        },
+        {
+            "name": "PipelineDetailsAccess",
+            "description": "Check if pipeline details can be fetched.",
+            "errorMessage": "Failed to fetch Pipeine details.",
+            "mandatory": true
+        },
+        {
+            "name": "TaskDetailAccess",
+            "description": "Check if task details can be fetched.",
+            "errorMessage": "Failed to fetch Task details.",
+            "mandatory": true
+        }
+
+    ]
+}

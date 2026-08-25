@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/bulkColumnUpdatePreview.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkColumnUpdatePreview",
+  "description": "Preview response for bulk column update showing what will change for each column.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BulkColumnUpdatePreview",
+  "properties": {
+    "totalColumns": {
+      "description": "Total number of columns that will be updated.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "columnPreviews": {
+      "description": "List of column update previews showing current vs new values.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/columnUpdatePreview"
+      }
+    }
+  },
+  "required": ["totalColumns", "columnPreviews"],
+  "definitions": {
+    "columnUpdatePreview": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnUpdatePreview",
+      "description": "Preview of changes for a single column showing diff between current and new values.",
+      "type": "object",
+      "properties": {
+        "columnFQN": {
+          "description": "Fully qualified name of the column.",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "Type of entity containing the column (table, dashboardDataModel, etc.).",
+          "type": "string"
+        },
+        "entityFQN": {
+          "description": "Fully qualified name of the parent entity.",
+          "type": "string"
+        },
+        "entityDisplayName": {
+          "description": "Display name of the parent entity.",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Name of the service.",
+          "type": "string"
+        },
+        "databaseName": {
+          "description": "Name of the database (if applicable).",
+          "type": "string"
+        },
+        "schemaName": {
+          "description": "Name of the schema (if applicable).",
+          "type": "string"
+        },
+        "currentValues": {
+          "description": "Current column metadata values.",
+          "$ref": "#/definitions/columnMetadata"
+        },
+        "newValues": {
+          "description": "New column metadata values that will be applied.",
+          "$ref": "#/definitions/columnMetadata"
+        },
+        "hasChanges": {
+          "description": "True if there are actual changes between current and new values.",
+          "type": "boolean"
+        }
+      },
+      "required": ["columnFQN", "entityType", "entityFQN", "currentValues", "newValues", "hasChanges"],
+      "additionalProperties": false
+    },
+    "columnMetadata": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnMetadata",
+      "description": "Column metadata including display name, description, tags, and glossary terms.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "description": "Display name of the column.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the column.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Tags and glossary terms associated with the column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

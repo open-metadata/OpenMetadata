@@ -1,0 +1,371 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import React, { act } from 'react';
+import * as reactRouterDom from 'react-router-dom';
+import type { TestCase } from '../../../../generated/tests/testCase';
+import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  MOCK_TASK_DATA,
+  MOCK_TEST_CASE_DATA,
+  MOCK_TEST_CASE_INCIDENT,
+  MOCK_TEST_CASE_RESOLUTION_STATUS,
+} from '../../../../mocks/TestCase.mock';
+import {
+  getIncidentTaskByStateId,
+  getListTestCaseIncidentByStateId,
+  updateTestCaseIncidentById,
+} from '../../../../rest/incidentManagerAPI';
+import IncidentManagerPageHeaderView from './IncidentManagerPageHeader.component';
+import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
+import { useTestCaseIncidentHeader } from './useTestCaseIncidentHeader';
+
+const mockEntityPermissions = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  ViewBasic: true,
+  EditAll: true,
+  EditTags: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
+const mockUseActivityFeedProviderValue = {
+  postFeed: jest.fn(),
+  testCaseResolutionStatus: MOCK_TEST_CASE_RESOLUTION_STATUS,
+  updateTestCaseIncidentStatus: jest.fn(),
+};
+
+const mockOnOwnerUpdate = jest.fn();
+const mockFetchTaskCount = jest.fn();
+const INCIDENT_ID = '123';
+const OWNER_COMPONENT_TEST_ID = 'owner-component';
+const SEVERITY_COMPONENT_TEST_ID = 'severity-component';
+const INCIDENT_STATUS_COMPONENT_TEST_ID = 'incident-status-component';
+
+type IncidentManagerPageHeaderHarnessProps = Omit<
+  IncidentManagerPageHeaderProps,
+  'incidentHeaderData'
+> & {
+  fetchTaskCount: () => void;
+  testCaseData?: TestCase;
+};
+
+const mockProps: IncidentManagerPageHeaderHarnessProps = {
+  onOwnerUpdate: mockOnOwnerUpdate,
+  fetchTaskCount: mockFetchTaskCount,
+};
+
+const IncidentManagerPageHeader = ({
+  fetchTaskCount,
+  isVersionPage = false,
+  onOwnerUpdate,
+}: IncidentManagerPageHeaderHarnessProps) => {
+  const incidentHeaderData = useTestCaseIncidentHeader({
+    fetchTaskCount,
+    isVersionPage,
+  });
+
+  return (
+    <IncidentManagerPageHeaderView
+      incidentHeaderData={incidentHeaderData}
+      isVersionPage={isVersionPage}
+      onOwnerUpdate={onOwnerUpdate}
+    />
+  );
+};
+
+jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  getIncidentTaskByStateId: jest.fn().mockResolvedValue({
+    ...MOCK_TASK_DATA[1],
+    payload: {
+      testCaseResolutionStatusId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
+    },
+  }),
+  getListTestCaseIncidentByStateId: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE_INCIDENT)),
+  updateTestCaseIncidentById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock(
+  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest
+      .fn()
+      .mockImplementation(() => mockUseActivityFeedProviderValue),
+    __esModule: true,
+    default: 'ActivityFeedProvider',
+  })
+);
+
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <p data-testid="link">{children}</p>
+    )),
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: 'fqn',
+  })),
+}));
+
+jest.mock('.../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest
+      .fn()
+      .mockImplementation(() => mockEntityPermissions),
+  })),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../../utils/FqnUtils'),
+  getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
+}));
+
+jest.mock('../../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
+jest.mock('../../../../utils/EntityPureUtils', () => ({
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockReturnValue('getColumnNameFromEntityLink'),
+}));
+
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
+  getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
+}));
+
+jest.mock('../../../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  getTaskDisplayId: jest.fn().mockReturnValue(9),
+  getTaskDetailPath: jest.fn().mockReturnValue('/'),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
+      <button
+        {...rest}
+        data-testid={OWNER_COMPONENT_TEST_ID}
+        type="button"
+        onClick={onUpdate}>
+        <div data-testid="placeholder">{placeHolder}</div>
+        {children}
+      </button>
+    )),
+}));
+
+jest.mock('../Severity/Severity.component', () => {
+  return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
+    <div>
+      <div data-testid="severity-header">{headerName}</div>
+      <div data-testid={SEVERITY_COMPONENT_TEST_ID} />
+      <button
+        aria-label={headerName}
+        data-testid="update-severity"
+        type="button"
+        onClick={() => onSubmit(Severities.Severity4)}
+      />
+    </div>
+  ));
+});
+
+jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
+  return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
+    <div>
+      <div data-testid="status-header">{headerName}</div>
+      <div data-testid={INCIDENT_STATUS_COMPONENT_TEST_ID} />
+      <button
+        aria-label={headerName}
+        data-testid="test-case-incident-manager-status"
+        type="button"
+        onClick={() => onSubmit(MOCK_TEST_CASE_RESOLUTION_STATUS[1])}
+      />
+    </div>
+  ));
+});
+
+const mockUseTestCaseStore = {
+  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID },
+};
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
+  })
+);
+
+jest.mock(
+  '../../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
+describe('Incident Manager Page Header component', () => {
+  it('getIncidentTaskByStateId should be call on mount', async () => {
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(getIncidentTaskByStateId).toHaveBeenCalledWith(INCIDENT_ID);
+  });
+
+  it('getListTestCaseIncidentByStateId should be call on mount', async () => {
+    render(
+      <IncidentManagerPageHeader
+        {...mockProps}
+        testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID }}
+      />
+    );
+
+    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith(INCIDENT_ID);
+  });
+
+  it('should trigger onOwnerUpdate', async () => {
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId(OWNER_COMPONENT_TEST_ID));
+
+    expect(mockOnOwnerUpdate).toHaveBeenCalled();
+  });
+
+  it('should call updateTestCaseIncidentById & updateTestCaseIncidentStatus', async () => {
+    await act(async () => {
+      render(
+        <IncidentManagerPageHeader
+          {...mockProps}
+          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID }}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('update-severity'));
+    });
+
+    expect(updateTestCaseIncidentById).toHaveBeenCalled();
+
+    expect(
+      mockUseActivityFeedProviderValue.updateTestCaseIncidentStatus
+    ).toHaveBeenCalled();
+  });
+
+  it('should call updateTestCaseIncidentStatus onClick of onIncidentStatusUpdate', async () => {
+    await act(async () => {
+      render(
+        <IncidentManagerPageHeader
+          {...mockProps}
+          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID }}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-case-incident-manager-status'));
+    });
+
+    expect(
+      mockUseActivityFeedProviderValue.updateTestCaseIncidentStatus
+    ).toHaveBeenCalled();
+  });
+
+  it('Component should render without status details', async () => {
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(screen.getByTestId(OWNER_COMPONENT_TEST_ID)).toBeInTheDocument();
+    // If Table FQN is present
+    expect(screen.getByText('label.table')).toBeInTheDocument();
+    expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
+    // Test Type
+    expect(screen.getByText('label.test-type')).toBeInTheDocument();
+    expect(screen.getByText('getEntityName')).toBeInTheDocument();
+  });
+
+  it('Component should render with status details', async () => {
+    await act(async () => {
+      render(
+        <IncidentManagerPageHeader
+          {...mockProps}
+          testCaseData={{
+            ...MOCK_TEST_CASE_DATA,
+            incidentId: INCIDENT_ID,
+          }}
+        />
+      );
+    });
+
+    expect(screen.getAllByTestId(OWNER_COMPONENT_TEST_ID)).toHaveLength(2);
+    // Incident
+    expect(screen.getByText('label.incident')).toBeInTheDocument();
+    expect(screen.getByText('#9')).toBeInTheDocument();
+    // Incident
+    expect(screen.getByText('label.incident-status')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(INCIDENT_STATUS_COMPONENT_TEST_ID)
+    ).toBeInTheDocument();
+    // Assignee
+    expect(screen.getByTestId('assignee')).toBeInTheDocument();
+    // Severity
+    expect(screen.getByText('label.severity')).toBeInTheDocument();
+    expect(screen.getByTestId(SEVERITY_COMPONENT_TEST_ID)).toBeInTheDocument();
+    // If Table FQN is present
+    expect(screen.getByText('label.table')).toBeInTheDocument();
+    expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
+    // Test Type
+    expect(screen.getByText('label.test-type')).toBeInTheDocument();
+    expect(screen.getByText('getEntityName')).toBeInTheDocument();
+    // If Column is present
+    expect(screen.getByText('label.column')).toBeInTheDocument();
+    expect(screen.getByText('getColumnNameFromEntityLink')).toBeInTheDocument();
+  });
+
+  it('should handle FQN from URL params without double decoding', async () => {
+    const mockUseParamsWithSpecialChars = jest.fn().mockReturnValue({
+      fqn: 'database.schema.table%test',
+    });
+
+    jest
+      .spyOn(reactRouterDom, 'useParams')
+      .mockImplementation(mockUseParamsWithSpecialChars);
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(getIncidentTaskByStateId).toHaveBeenCalledWith(INCIDENT_ID);
+  });
+});

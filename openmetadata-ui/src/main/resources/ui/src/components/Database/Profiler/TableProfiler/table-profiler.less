@@ -1,0 +1,100 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../../styles/variables.less';
+
+.table-profiler-container {
+  height: 100%;
+  flex-grow: 1;
+  border-radius: @border-rad-sm;
+  border: 1px solid @grey-15;
+  display: flex;
+  padding: @padding-md;
+  background-color: var(--tw-color-bg-primary);
+
+  .overall-summery-card:not(:first-child) {
+    border-left: 1px solid var(--om-color-gray-neutral-200);
+    padding-left: var(--om-space-16);
+  }
+
+  .ant-table-row .ant-table-cell:first-child,
+  .ant-table-thead .ant-table-cell:first-child {
+    padding-left: var(--om-space-16);
+  }
+
+  .custom-menu-v1.data-quality-left-panel.ant-menu-inline {
+    flex: 0.14;
+    border: 0.5px solid @grey-200;
+    border-radius: @border-rad-sm;
+  }
+
+  .data-quality-content-panel {
+    flex: 0.86;
+    overflow-y: scroll;
+    margin-left: @margin-mlg;
+    background-color: var(--tw-color-bg-primary);
+  }
+
+  .quality-tab-container {
+    .ant-tabs.tabs-new .ant-tabs-tabpane {
+      background-color: var(--tw-color-bg-primary);
+    }
+  }
+}
+
+.include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
+  width: 18px;
+  height: 18px;
+  font-size: var(--om-font-size-8);
+}
+
+.profiler-settings-drawer {
+  .ant-drawer-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0 @padding-lg @padding-lg;
+  }
+
+  .profiler-settings-loader {
+    min-height: calc(100vh - 200px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profiler-settings-drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: @padding-lg;
+    padding-right: @padding-sm;
+    padding-bottom: @padding-lg;
+
+    .delete-btn {
+      &.ant-btn-icon-only {
+        height: 32px;
+        width: 32px;
+      }
+    }
+  }
+
+  .profiler-settings-form {
+    padding-right: @padding-sm;
+  }
+}
+
+.drawer-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}

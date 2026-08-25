@@ -1,0 +1,179 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/aiGovernanceFramework.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernanceFramework",
+  "$comment": "@om-entity-type",
+  "description": "Workspace-level AI governance framework configuration. A framework is a library of controls that drives compliance assessments. Enabling a framework auto-applies it to in-scope AI assets via the autoApply rules.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.AIGovernanceFramework",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "frameworkSource": {
+      "type": "string",
+      "description": "Where the framework definition came from",
+      "enum": ["BuiltIn", "Custom", "ForkedFrom"],
+      "javaType": "org.openmetadata.schema.entity.ai.FrameworkSource",
+      "javaEnums": [
+        {"name": "BuiltIn"},
+        {"name": "Custom"},
+        {"name": "ForkedFrom"}
+      ]
+    },
+    "assessmentCadence": {
+      "type": "string",
+      "description": "How often this framework requires reassessment of in-scope assets",
+      "enum": ["Monthly", "Quarterly", "SemiAnnual", "Annual"],
+      "javaType": "org.openmetadata.schema.entity.ai.AssessmentCadence",
+      "javaEnums": [
+        {"name": "Monthly"},
+        {"name": "Quarterly"},
+        {"name": "SemiAnnual"},
+        {"name": "Annual"}
+      ]
+    },
+    "autoApplyRules": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.FrameworkAutoApplyRules",
+      "description": "Predicate that determines which AI assets this framework automatically applies to. An asset is in-scope when its attributes match every populated rule (empty list = match any).",
+      "additionalProperties": false,
+      "properties": {
+        "assetTypes": {
+          "type": "array",
+          "description": "AI asset types this framework applies to (aiApplication, llmModel, mcpServer)",
+          "items": {"type": "string"}
+        },
+        "regions": {
+          "type": "array",
+          "description": "Deployment regions this framework applies to (EU, US, UK, APAC, CA, LATAM, MENA)",
+          "items": {"type": "string"}
+        },
+        "riskClasses": {
+          "type": "array",
+          "description": "Risk classifications this framework applies to (Unacceptable, High, Limited, Minimal)",
+          "items": {"type": "string"}
+        },
+        "deploymentStages": {
+          "type": "array",
+          "description": "Deployment stages this framework applies to (Production, Staging, Development, etc.)",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the AI Governance Framework.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this framework (e.g. eu_ai_act).",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the framework.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name (e.g. 'EU AI Act').",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what this framework covers.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "reference": {
+      "description": "External reference for the framework (e.g. 'Reg EU 2024/1689', 'AI 100-1', 'ISO/IEC 42001:2023').",
+      "type": "string"
+    },
+    "region": {
+      "description": "Geographic jurisdiction this framework covers (e.g. 'European Union', 'United States', 'Global').",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/definitions/frameworkSource",
+      "default": "Custom"
+    },
+    "forkedFrom": {
+      "description": "When source is 'ForkedFrom', the framework this was forked from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "enabled": {
+      "description": "Whether this framework is enabled in the workspace. Disabled frameworks remain in the library but do not auto-apply.",
+      "type": "boolean",
+      "default": false
+    },
+    "stewards": {
+      "description": "Users or teams responsible for this framework's assessments.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "assessmentCadence": {
+      "$ref": "#/definitions/assessmentCadence"
+    },
+    "autoApply": {
+      "$ref": "#/definitions/autoApplyRules"
+    },
+    "nextDeadline": {
+      "description": "Next certification or assessment deadline.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "owners": {
+      "description": "Owners of this framework configuration.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this framework.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Domains this framework belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "lifeCycle": {
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

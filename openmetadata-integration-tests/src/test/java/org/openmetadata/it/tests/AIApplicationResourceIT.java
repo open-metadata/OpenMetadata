@@ -1,0 +1,458 @@
+package org.openmetadata.it.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.LLMModelTestFactory;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.ai.CreateAIApplication;
+import org.openmetadata.schema.api.ai.CreateMcpServer;
+import org.openmetadata.schema.api.services.CreateMcpService;
+import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AgentExecution;
+import org.openmetadata.schema.entity.ai.ApplicationType;
+import org.openmetadata.schema.entity.ai.ExecutionStatus;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.entity.ai.McpServerType;
+import org.openmetadata.schema.entity.ai.ModelConfiguration;
+import org.openmetadata.schema.entity.ai.ModelPurpose;
+import org.openmetadata.schema.entity.services.McpService;
+import org.openmetadata.sdk.fluent.AIApplications;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+
+/**
+ * Integration tests for AIApplication entity using SDK fluent API.
+ *
+ * <p>Tests AIApplication creation, listing, retrieval by name, and update operations using the
+ * fluent API pattern from org.openmetadata.sdk.fluent.AIApplications.
+ */
+@Execution(ExecutionMode.CONCURRENT)
+@ExtendWith(TestNamespaceExtension.class)
+public class AIApplicationResourceIT {
+
+  @BeforeAll
+  static void setup() {
+    AIApplications.setDefaultClient(SdkClients.adminClient());
+  }
+
+  @Test
+  void test_createAIApplication(TestNamespace ns) {
+    AIApplication app =
+        AIApplications.create()
+            .name(ns.prefix("testApp"))
+            .withApplicationType(ApplicationType.Chatbot)
+            .withDescription("Test AI Application")
+            .execute();
+
+    assertNotNull(app);
+    assertEquals(ns.prefix("testApp"), app.getName());
+    assertEquals("Test AI Application", app.getDescription());
+    assertNotNull(app.getId());
+    assertNotNull(app.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_createAIApplicationPreservesModelAndMcpReferences(final TestNamespace ns) {
+    final LLMModel model = LLMModelTestFactory.createGPT(ns);
+    final String mcpServiceName = ns.prefix("aiApplicationMcpService");
+    createMcpService(mcpServiceName);
+    final McpServer mcpServer = createMcpServer(ns, mcpServiceName);
+    final CreateAIApplication request = referencedApplication(ns, model, mcpServer);
+    final AIApplication created = SdkClients.adminClient().aiApplications().create(request);
+    final AIApplication fetched =
+        SdkClients.adminClient().aiApplications().get(created.getId().toString());
+
+    assertEquals(model.getId(), fetched.getModelConfigurations().getFirst().getModel().getId());
+    assertEquals(model.getId(), fetched.getPrimaryModel().getId());
+    assertEquals(mcpServer.getId(), fetched.getMcpServers().getFirst().getId());
+  }
+
+  private static void createMcpService(final String serviceName) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/mcpServices",
+            new CreateMcpService()
+                .withName(serviceName)
+                .withServiceType(CreateMcpService.McpServiceType.Mcp),
+            McpService.class);
+  }
+
+  private static McpServer createMcpServer(final TestNamespace ns, final String serviceName) {
+    return SdkClients.adminClient()
+        .mcpServers()
+        .create(
+            new CreateMcpServer()
+                .withName(ns.prefix("claimsTools"))
+                .withService(serviceName)
+                .withServerType(McpServerType.DataAccess));
+  }
+
+  private static CreateAIApplication referencedApplication(
+      final TestNamespace ns, final LLMModel model, final McpServer mcpServer) {
+    final ModelConfiguration primaryConfiguration =
+        new ModelConfiguration()
+            .withModel(model.getEntityReference())
+            .withPurpose(ModelPurpose.Primary);
+    return new CreateAIApplication()
+        .withName(ns.prefix("claimsCopilot"))
+        .withApplicationType(ApplicationType.Copilot)
+        .withModelConfigurations(List.of(primaryConfiguration))
+        .withPrimaryModel(model.getFullyQualifiedName())
+        .withMcpServers(List.of(mcpServer.getEntityReference()));
+  }
+
+  @Test
+  void test_createAIApplicationWithDisplayName(TestNamespace ns) {
+    AIApplication app =
+        AIApplications.create()
+            .name(ns.prefix("displayNameApp"))
+            .withApplicationType(ApplicationType.Agent)
+            .withDisplayName("My Display Name")
+            .withDescription("App with display name")
+            .now();
+
+    assertNotNull(app);
+    assertEquals("My Display Name", app.getDisplayName());
+  }
+
+  @Test
+  void test_getAIApplicationById(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("getByIdApp"))
+            .withApplicationType(ApplicationType.Copilot)
+            .withDescription("App for get by id test")
+            .execute();
+
+    AIApplication fetched = AIApplications.get(created.getId().toString());
+
+    assertNotNull(fetched);
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getName(), fetched.getName());
+  }
+
+  @Test
+  void test_getAIApplicationByName(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("getByNameApp"))
+            .withApplicationType(ApplicationType.Assistant)
+            .withDescription("App for get by name test")
+            .execute();
+
+    AIApplication fetched = AIApplications.getByName(created.getFullyQualifiedName());
+
+    assertNotNull(fetched);
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_findAIApplication(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("findApp"))
+            .withApplicationType(ApplicationType.RAG)
+            .withDescription("App for find test")
+            .execute();
+
+    AIApplication fetched = AIApplications.find(created.getId()).fetch().get();
+
+    assertNotNull(fetched);
+    assertEquals(created.getId(), fetched.getId());
+  }
+
+  @Test
+  void test_findAIApplicationByName(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("findByNameApp"))
+            .withApplicationType(ApplicationType.CodeGenerator)
+            .withDescription("App for find by name test")
+            .execute();
+
+    AIApplication fetched = AIApplications.findByName(created.getFullyQualifiedName()).get();
+
+    assertNotNull(fetched);
+    assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_listAIApplications(TestNamespace ns) {
+    AIApplications.create()
+        .name(ns.prefix("listApp1"))
+        .withApplicationType(ApplicationType.DataAnalyst)
+        .withDescription("First app for list test")
+        .execute();
+
+    AIApplications.create()
+        .name(ns.prefix("listApp2"))
+        .withApplicationType(ApplicationType.DataAnalyst)
+        .withDescription("Second app for list test")
+        .execute();
+
+    AIApplications.create()
+        .name(ns.prefix("listApp3"))
+        .withApplicationType(ApplicationType.DataAnalyst)
+        .withDescription("Third app for list test")
+        .execute();
+
+    List<AIApplications.FluentAIApplication> apps = AIApplications.list().limit(100).fetch();
+
+    assertNotNull(apps);
+    assertTrue(apps.size() >= 3);
+  }
+
+  @Test
+  void test_listAIApplicationsWithLimit(TestNamespace ns) {
+    AIApplications.create()
+        .name(ns.prefix("limitApp1"))
+        .withApplicationType(ApplicationType.AutomationBot)
+        .withDescription("App 1 for limit test")
+        .execute();
+
+    AIApplications.create()
+        .name(ns.prefix("limitApp2"))
+        .withApplicationType(ApplicationType.AutomationBot)
+        .withDescription("App 2 for limit test")
+        .execute();
+
+    List<AIApplications.FluentAIApplication> apps = AIApplications.list().limit(1).fetch();
+
+    assertNotNull(apps);
+    assertTrue(apps.size() >= 1);
+  }
+
+  @Test
+  void test_updateAIApplicationDescription(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("updateDescApp"))
+            .withApplicationType(ApplicationType.MultiAgent)
+            .withDescription("Initial description")
+            .execute();
+
+    AIApplication updated =
+        AIApplications.find(created.getId())
+            .fetch()
+            .withDescription("Updated description")
+            .save()
+            .get();
+
+    assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void test_updateAIApplicationDisplayName(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("updateDisplayApp"))
+            .withApplicationType(ApplicationType.Custom)
+            .withDisplayName("Initial Display")
+            .withDescription("App for display name update")
+            .execute();
+
+    AIApplication updated =
+        AIApplications.find(created.getId())
+            .fetch()
+            .withDisplayName("Updated Display")
+            .save()
+            .get();
+
+    assertEquals("Updated Display", updated.getDisplayName());
+  }
+
+  @Test
+  void test_deleteAIApplication(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("deleteApp"))
+            .withApplicationType(ApplicationType.Chatbot)
+            .withDescription("App to delete")
+            .execute();
+
+    AIApplications.find(created.getId()).delete().confirm();
+
+    assertThrows(
+        Exception.class,
+        () -> AIApplications.get(created.getId().toString()),
+        "Deleted AI application should not be retrievable");
+  }
+
+  @Test
+  void test_deleteAIApplicationPermanently(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("hardDeleteApp"))
+            .withApplicationType(ApplicationType.Agent)
+            .withDescription("App to hard delete")
+            .execute();
+
+    AIApplications.find(created.getId()).delete().permanently().confirm();
+
+    assertThrows(
+        Exception.class,
+        () -> AIApplications.get(created.getId().toString()),
+        "Hard deleted AI application should not be retrievable");
+  }
+
+  @Test
+  void test_recursiveHardDeleteCascadesPastAgentExecutionChildren(TestNamespace ns)
+      throws Exception {
+    AIApplication app =
+        AIApplications.create()
+            .name(ns.prefix("agentExecCascadeApp"))
+            .withApplicationType(ApplicationType.Chatbot)
+            .withDescription("App for agent-execution cascade delete test")
+            .execute();
+
+    // Writes an AI_APPLICATION --CONTAINS--> agentExecution row. agentExecution is a time-series
+    // entity (registered in ENTITY_TS_REPOSITORY_MAP, not ENTITY_REPOSITORY_MAP), so the bulk
+    // hard-delete cascade used to throw EntityRepositoryNotFound the moment it walked CONTAINS
+    // children of an AI Application.
+    AgentExecution execution =
+        new AgentExecution()
+            .withAgent(app.getEntityReference())
+            .withAgentId(app.getId())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(ExecutionStatus.Success)
+            .withInput("cascade-delete test")
+            .withOutput("cascade-delete test");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, "/v1/agentExecutions", execution, RequestOptions.builder().build());
+
+    String appId = app.getId().toString();
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/aiApplications/" + appId,
+            null,
+            RequestOptions.builder()
+                .queryParam("recursive", "true")
+                .queryParam("hardDelete", "true")
+                .build());
+
+    assertThrows(
+        Exception.class,
+        () -> AIApplications.get(appId),
+        "AI Application should be deleted along with its agent-execution children");
+  }
+
+  @Test
+  void test_findAIApplicationWithFields(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("fieldsApp"))
+            .withApplicationType(ApplicationType.Copilot)
+            .withDescription("App for fields test")
+            .execute();
+
+    AIApplication fetched =
+        AIApplications.find(created.getId()).includeOwners().includeTags().fetch().get();
+
+    assertNotNull(fetched);
+    assertEquals(created.getId(), fetched.getId());
+  }
+
+  @Test
+  void test_findAIApplicationIncludeAll(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("includeAllApp"))
+            .withApplicationType(ApplicationType.Assistant)
+            .withDescription("App for include all test")
+            .execute();
+
+    AIApplication fetched = AIApplications.find(created.getId()).includeAll().fetch().get();
+
+    assertNotNull(fetched);
+    assertEquals(created.getId(), fetched.getId());
+  }
+
+  @Test
+  void test_listAIApplicationsForEach(TestNamespace ns) {
+    AIApplications.create()
+        .name(ns.prefix("forEachApp1"))
+        .withApplicationType(ApplicationType.RAG)
+        .withDescription("App 1 for forEach test")
+        .execute();
+
+    AIApplications.create()
+        .name(ns.prefix("forEachApp2"))
+        .withApplicationType(ApplicationType.RAG)
+        .withDescription("App 2 for forEach test")
+        .execute();
+
+    final int[] count = {0};
+    AIApplications.list()
+        .limit(100)
+        .forEach(
+            app -> {
+              assertNotNull(app);
+              count[0]++;
+            });
+
+    assertTrue(count[0] >= 2);
+  }
+
+  @Test
+  void test_updateAIApplicationMultipleFields(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("multiUpdateApp"))
+            .withApplicationType(ApplicationType.CodeGenerator)
+            .withDescription("Initial description")
+            .withDisplayName("Initial Display")
+            .execute();
+
+    AIApplication updated =
+        AIApplications.find(created.getId())
+            .fetch()
+            .withDescription("Updated description")
+            .withDisplayName("Updated Display")
+            .save()
+            .get();
+
+    assertEquals("Updated description", updated.getDescription());
+    assertEquals("Updated Display", updated.getDisplayName());
+    assertTrue(updated.getVersion() > created.getVersion());
+  }
+
+  @Test
+  void test_AIApplicationVersioning(TestNamespace ns) {
+    AIApplication created =
+        AIApplications.create()
+            .name(ns.prefix("versionApp"))
+            .withApplicationType(ApplicationType.DataAnalyst)
+            .withDescription("Initial version")
+            .execute();
+
+    assertEquals(0.1, created.getVersion(), 0.001);
+
+    AIApplication updated =
+        AIApplications.find(created.getId())
+            .fetch()
+            .withDescription("Updated version")
+            .save()
+            .get();
+
+    assertEquals(0.2, updated.getVersion(), 0.001);
+  }
+}

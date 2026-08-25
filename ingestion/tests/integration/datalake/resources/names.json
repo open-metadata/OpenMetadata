@@ -1,0 +1,30 @@
+[
+    {
+    "id": "1",
+    "first_name": "John",
+    "last_name": "Doe",
+    "city": "Los Angeles",
+    "country": "US",
+    "birthdate": "1980-01-01",
+    "age": "40",
+    "json_data": {
+            "foo": {
+                "bar": "baz"
+            }
+        }
+    },
+    {
+    "id": "2",
+    "first_name": "James",
+    "last_name": "Doe",
+    "city": "Los Angeles",
+    "country": "US",
+    "birthdate": "1980-01-01",
+    "age": "40",
+    "json_data": {
+            "foo": {
+                "bar": "baz"
+            }
+        }
+    }
+]

@@ -1,0 +1,377 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, Route } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import { Domain } from '../../support/domain/Domain';
+import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { TableClass } from '../../support/entity/TableClass';
+import { UserClass } from '../../support/user/UserClass';
+import {
+  addTestCaseListFilterByFirstColumn,
+  addTestCaseListFilterByStatus,
+  addTestCaseListFilterByTable,
+  addTestCaseListFilterByTestType,
+  addTestCaseListResetFilters,
+  addTestCaseListToggleSelectAll,
+} from '../../utils/addTestCaseList';
+import { performAdminLogin } from '../../utils/admin';
+import {
+  assignSingleSelectDomain,
+  descriptionBox,
+  redirectToHomePage,
+  removeSingleSelectDomain,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
+import {
+  addTestCaseToLogicalTestSuite,
+  addTestSuitePipeline,
+  removeFirstNTestCasesFromLogicalTestSuite,
+} from '../../utils/dataQuality';
+import {
+  addMultiOwner,
+  removeOwnersFromList,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
+import { test } from '../fixtures/pages';
+
+const table = new TableClass();
+const user1 = new UserClass();
+const user2 = new UserClass();
+const domain1 = new Domain();
+const domain2 = new Domain();
+const bundleTestSuite = new BundleTestSuiteClass();
+
+const createDeferred = () => {
+  let resolveDeferred: () => void = () => undefined;
+  const promise = new Promise<void>((resolve) => {
+    resolveDeferred = resolve;
+  });
+
+  return { promise, resolve: resolveDeferred };
+};
+
+test.beforeAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await table.create(apiContext);
+  await user1.create(apiContext);
+  await user2.create(apiContext);
+  await table.createTestCase(apiContext);
+  await table.createTestCase(apiContext);
+  await domain1.create(apiContext);
+  await domain2.create(apiContext);
+  await bundleTestSuite.createBundleTestSuite(apiContext);
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const bundleSuiteName = bundleTestSuite.bundleTestSuiteResponseData?.name;
+
+  if (bundleSuiteName) {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await apiContext.delete(
+      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+        bundleSuiteName
+      )}?hardDelete=true&recursive=true`
+    );
+    await afterAction();
+  }
+});
+
+test.beforeEach(async ({ page }) => {
+  await redirectToHomePage(page);
+});
+
+test('Test suite tab switching keeps active bundle suite data after stale table suite response', async ({
+  page,
+}) => {
+  const bundleSuiteName =
+    bundleTestSuite.bundleTestSuiteResponseData?.name ?? '';
+  const tableFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+  const tableSuiteRequestReceived = createDeferred();
+  const tableSuiteResponseRelease = createDeferred();
+  const tableSuiteResponseFulfilled = createDeferred();
+
+  expect(bundleSuiteName).not.toBe('');
+  expect(tableFqn).not.toBe('');
+
+  await page.route(
+    '**/api/v1/dataQuality/testSuites/search/list**',
+    async (route: Route) => {
+      const requestUrl = new URL(route.request().url());
+      const testSuiteType = requestUrl.searchParams.get('testSuiteType');
+
+      if (testSuiteType === 'basic') {
+        tableSuiteRequestReceived.resolve();
+        const tableSuiteResponse = await route.fetch();
+        await tableSuiteResponseRelease.promise;
+
+        await route.fulfill({
+          response: tableSuiteResponse,
+        });
+        tableSuiteResponseFulfilled.resolve();
+
+        return;
+      }
+
+      await route.continue();
+    }
+  );
+
+  await page.goto('/data-quality/test-suites/table-suites');
+  await tableSuiteRequestReceived.promise;
+
+  await expect(page.getByTestId('test-suite-table')).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
+
+  const bundleSuiteListResponse = page.waitForResponse((response) => {
+    const responseUrl = new URL(response.url());
+
+    return (
+      responseUrl.pathname.includes(
+        '/api/v1/dataQuality/testSuites/search/list'
+      ) && responseUrl.searchParams.get('testSuiteType') === 'logical'
+    );
+  });
+
+  await page.getByTestId('bundle-suite-radio-btn').click();
+  await bundleSuiteListResponse;
+
+  const bundleSuiteSearchResponse = page.waitForResponse((response) => {
+    const responseUrl = new URL(response.url());
+
+    return (
+      responseUrl.pathname.includes(
+        '/api/v1/dataQuality/testSuites/search/list'
+      ) &&
+      responseUrl.searchParams.get('testSuiteType') === 'logical' &&
+      responseUrl.searchParams.get('q') === bundleSuiteName
+    );
+  });
+
+  await page.getByPlaceholder('Search Bundle Suites').fill(bundleSuiteName);
+  await bundleSuiteSearchResponse;
+  await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
+
+  tableSuiteResponseRelease.resolve();
+  await tableSuiteResponseFulfilled.promise;
+
+  await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
+});
+
+test(
+  'Logical TestSuite',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page, ownerPage }) => {
+    test.slow();
+
+    const NEW_TEST_SUITE = {
+      name: `mysql_matrix-${uuid()}`,
+      description: 'mysql critical matrix',
+    };
+    const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
+    const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
+    await page.goto('/data-quality/test-suites/bundle-suites');
+
+    const loggedInUserRequest = ownerPage.waitForResponse(
+      `/api/v1/users/loggedInUser*`
+    );
+    await redirectToHomePage(ownerPage);
+    const loggedInUserResponse = await loggedInUserRequest;
+    const loggedInUser = await loggedInUserResponse.json();
+
+    await test.step('Open create test suite form', async () => {
+      const initialListResponse = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list*`
+      );
+      await page.click('[data-testid="add-test-suite-btn"]');
+      await initialListResponse;
+      await page
+        .locator('[data-testid="test-suite-name"] input')
+        .fill(NEW_TEST_SUITE.name);
+      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await page.waitForSelector(
+        "[data-testid='test-case-selection-card'] [data-testid='loader']",
+        { state: 'detached' }
+      );
+    });
+
+    await test.step('Verify add test case modal filter dropdowns are visible', async () => {
+      await expect(page.getByTestId('search-dropdown-Status')).toBeVisible();
+      await expect(page.getByTestId('search-dropdown-Test Type')).toBeVisible();
+      await expect(page.getByTestId('search-dropdown-Table')).toBeVisible();
+      await expect(page.getByTestId('search-dropdown-Column')).toBeVisible();
+    });
+
+    await test.step('Filter by Test Type Table and wait for API', async () => {
+      await addTestCaseListFilterByTestType(page, 'Table');
+    });
+
+    await test.step('Filter by Status Success and wait for API', async () => {
+      await addTestCaseListFilterByStatus(page, 'Success');
+    });
+
+    await test.step('Filter by Table and wait for API', async () => {
+      await addTestCaseListFilterByTable(
+        page,
+        table.entity?.name ?? '',
+        table.entityResponseData?.fullyQualifiedName ?? ''
+      );
+    });
+
+    await test.step('Filter by Column and wait for API', async () => {
+      await addTestCaseListFilterByFirstColumn(page);
+    });
+
+    await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
+      await addTestCaseListResetFilters(
+        page,
+        table.entityResponseData?.fullyQualifiedName ?? ''
+      );
+    });
+
+    await test.step('Select all then unselect all test cases', async () => {
+      await addTestCaseListToggleSelectAll(page);
+    });
+
+    await test.step('Select test case and create suite', async () => {
+      const testCaseSelectionCard = page.getByTestId(
+        'test-case-selection-card'
+      );
+      const getTestCase = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/search/list?*`
+      );
+      await testCaseSelectionCard
+        .getByTestId('searchbar')
+        .fill(testCaseName1 ?? '');
+      await getTestCase;
+
+      await testCaseSelectionCard.getByTestId(testCaseName1 ?? '').click();
+      const createTestSuiteResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testSuites'
+      );
+      await page.click('[data-testid="submit-button"]');
+      await createTestSuiteResponse;
+      await toastNotification(page, 'Test Suite created successfully.');
+
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Domain Add, Update and Remove', async () => {
+      await assignSingleSelectDomain(page, domain1.responseData);
+      await assignSingleSelectDomain(page, domain2.responseData);
+      await removeSingleSelectDomain(page, domain2.responseData, true);
+    });
+
+    await test.step('User as Owner assign, update & delete for test suite', async () => {
+      await addMultiOwner({
+        page,
+        ownerNames: [user1.getUserDisplayName()],
+        activatorBtnDataTestId: 'edit-owner',
+        endpoint: EntityTypeEndpoint.TestSuites,
+        type: 'Users',
+      });
+      await removeOwnersFromList({
+        page,
+        ownerNames: [user1.getUserDisplayName()],
+        endpoint: EntityTypeEndpoint.TestSuites,
+      });
+      await addMultiOwner({
+        page,
+        ownerNames: [loggedInUser.displayName],
+        activatorBtnDataTestId: 'edit-owner',
+        endpoint: EntityTypeEndpoint.TestSuites,
+        type: 'Users',
+      });
+    });
+
+    await test.step('Add test case to logical test suite by owner', async () => {
+      await addTestCaseToLogicalTestSuite(
+        ownerPage,
+        NEW_TEST_SUITE.name,
+        testCaseName2 ?? ''
+      );
+    });
+
+    await test.step('Add test suite pipeline', async () => {
+      await addTestSuitePipeline(page);
+    });
+
+    await test.step('Remove test case from logical test suite by owner', async () => {
+      await removeFirstNTestCasesFromLogicalTestSuite(ownerPage, 1);
+    });
+
+    await test.step('Test suite filters', async () => {
+      const owner = loggedInUser.displayName;
+      const testSuite = page.waitForResponse(
+        '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*'
+      );
+      await page.getByRole('link', { name: 'Test Suites' }).click();
+      await testSuite;
+
+      await page.click('[data-testid="owner-select-filter"]');
+      await page.getByTestId('select-owner-tabs').waitFor({
+        state: 'visible',
+      });
+      await waitForAllLoadersToDisappear(page);
+      const getOwnerList = page.waitForResponse(
+        '/api/v1/search/query?q=&index=user&*'
+      );
+      await page.click('.ant-tabs [id*=tab-users]');
+      await getOwnerList;
+      await waitForAllLoadersToDisappear(page);
+
+      const searchOwner = page.waitForResponse(
+        'api/v1/search/query?q=*&index=user*'
+      );
+      await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
+      await searchOwner;
+
+      const testSuiteByOwner = page.waitForResponse(
+        '/api/v1/dataQuality/testSuites/search/list?*owner=*'
+      );
+      await page.click(`.ant-popover [title="${owner}"]`);
+      await testSuiteByOwner;
+      await page.getByTestId(NEW_TEST_SUITE.name).waitFor({
+        state: 'visible',
+      });
+
+      await expect(
+        page.locator(`[data-testid="${NEW_TEST_SUITE.name}"]`)
+      ).toBeVisible();
+
+      await page.click(`[data-testid="${NEW_TEST_SUITE.name}"]`);
+    });
+
+    await test.step('Delete test suite by owner', async () => {
+      await ownerPage.click('[data-testid="manage-button"]');
+      await ownerPage.click('[data-testid="delete-button"]');
+
+      const deleteResponse = ownerPage.waitForResponse(
+        '/api/v1/dataQuality/testSuites/*?hardDelete=true&recursive=true'
+      );
+      await ownerPage.click('[data-testid="confirm-button"]');
+      await deleteResponse;
+      await toastNotification(
+        ownerPage,
+        `"${NEW_TEST_SUITE.name}" deleted successfully!`
+      );
+    });
+  }
+);

@@ -1,0 +1,14 @@
+{
+    "name": "Epic",
+    "displayName": "Epic Test Connection",
+    "description": "This Test Connection validates if the metadata endpoint is reachable.",
+    "steps": [
+      {
+        "name": "CheckAccess",
+        "description": "Validate that the Epic FHIR metadata endpoint is reachable.",
+        "errorMessage": "Failed to connect to Epic FHIR server, please check the endpoint URL.",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+  }

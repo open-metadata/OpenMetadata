@@ -1,0 +1,18 @@
+{
+  "sendUsingBot": {
+    "channels": ["C04HGB0NY04"]
+  },
+  "slackLogLevel": "info",
+  "sendResults": "always",
+  "showInThread": true,
+  "meta": [
+    {
+      "key": "Title",
+      "value": "__ENV_RUN_TITLE"
+    },
+    {
+      "key": ":runner: Run URL",
+      "value": "__ENV_RUN_URL"
+    }
+  ]
+}

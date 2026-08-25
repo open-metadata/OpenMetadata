@@ -1,0 +1,84 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../variables.less';
+
+.pagination-container,
+.ant-pagination {
+  .ant-pagination-item {
+    height: 40px;
+    padding: var(--om-space-4);
+    border: none;
+    border-radius: var(--om-radius-lg);
+    margin-right: var(--om-space-4);
+  }
+  .ant-pagination-item-active {
+    background-color: @primary-button-background;
+    border: none;
+  }
+
+  .ant-pagination-options {
+    .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+      border: none;
+
+      .ant-select-selection-item {
+        font-weight: var(--om-font-weight-semibold);
+        color: @grey-500;
+      }
+    }
+    .ant-select-arrow {
+      color: @grey-500;
+      font-weight: var(--om-font-weight-semibold);
+    }
+  }
+
+  .ant-pagination-next,
+  .ant-pagination-prev {
+    margin-right: 0;
+    button {
+      border: none;
+    }
+  }
+
+  .ant-pagination-prev:hover button,
+  .ant-pagination-next:hover button {
+    border: none;
+  }
+
+  .ant-pagination-disabled {
+    .ant-btn-text[disabled] {
+      background-color: transparent;
+      border: transparent;
+      color: var(--om-legacy-color-0-0-0-0-25);
+    }
+  }
+
+  .ant-btn:disabled {
+    background-color: transparent;
+    border: transparent;
+    color: var(--om-legacy-color-0-0-0-0-25);
+  }
+  .pagination-button {
+    color: @grey-500;
+    font-weight: @font-semibold;
+    font-size: var(--om-font-size-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pagination-indicator {
+    color: @grey-700;
+    font-weight: @font-medium;
+    font-size: var(--om-font-size-sm);
+  }
+}

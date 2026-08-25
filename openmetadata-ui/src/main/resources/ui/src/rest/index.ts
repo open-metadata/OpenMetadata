@@ -1,0 +1,39 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import axios from 'axios';
+import Qs from 'qs';
+import { getBasePath } from '../utils/HistoryUtils';
+import {
+  attachEtagInterceptor,
+  DISABLE_ETAG_CONDITIONAL_READS_KEY,
+} from './etagInterceptor';
+
+const axiosClient = axios.create({
+  baseURL: `${getBasePath()}/api/v1`,
+  paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
+});
+
+// Client-side If-None-Match support paired with the server's ETagResponseFilter. Saves the
+// response body bytes + a JSON parse + a render on entity GET revisits within a session.
+// Attached here (before AuthProvider's interceptors) so it sits closest to the wire and
+// every other interceptor sees the resolved 304→200-with-cached-body translation.
+// Skipped when the session opts out (see DISABLE_ETAG_CONDITIONAL_READS_KEY).
+if (
+  typeof localStorage === 'undefined' ||
+  localStorage.getItem(DISABLE_ETAG_CONDITIONAL_READS_KEY) !== 'true'
+) {
+  attachEtagInterceptor(axiosClient);
+}
+
+export default axiosClient;

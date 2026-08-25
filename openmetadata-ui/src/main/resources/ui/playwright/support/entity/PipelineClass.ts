@@ -1,0 +1,222 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { uuid } from '../../utils/common';
+import { visitEntityPageByFqn } from '../../utils/entity';
+import {
+  EntityReference,
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
+import { EntityClass } from './EntityClass';
+
+export interface PipelineType extends ResponseDataWithServiceType {
+  tasks?: Array<EntityReference>;
+}
+export class PipelineClass extends EntityClass {
+  private pipelineName: string;
+  service: {
+    name: string;
+    serviceType: string;
+    connection: {
+      config: {
+        type: string;
+        host: string;
+        token: string;
+        timeout: number;
+        supportsMetadataExtraction: boolean;
+      };
+    };
+  };
+  children: Array<{ name: string; displayName: string }>;
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    tasks: Array<{ name: string; displayName: string }>;
+  };
+
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: PipelineType = {} as PipelineType;
+  ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
+
+  constructor(
+    name?: string,
+    tasks?: Array<{ name: string; displayName: string }>
+  ) {
+    super(EntityTypeEndpoint.Pipeline);
+    this.type = 'Pipeline';
+    this.childrenTabId = 'tasks';
+    this.serviceCategory = SERVICE_TYPE.Pipeline;
+    this.serviceType = ServiceTypes.PIPELINE_SERVICES;
+
+    const serviceName = name ?? `pw-pipeline-service-${uuid()}`;
+    this.pipelineName = `pw-pipeline-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Dagster',
+      connection: {
+        config: {
+          type: 'Dagster',
+          host: 'http://localhost:3000',
+          token: 'admin',
+          timeout: 1000,
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = tasks ?? [
+      { name: 'snowflake_task', displayName: 'Snowflake Task' },
+      { name: 'presto_task', displayName: 'Presto Task' },
+    ];
+
+    this.entity = {
+      name: this.pipelineName,
+      displayName: this.pipelineName,
+      service: this.service.name,
+      tasks: this.children,
+      description: `Description for ${this.pipelineName}`,
+    };
+
+    this.childrenSelectorId = this.children[0].name;
+  }
+
+  async create(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.post(
+      '/api/v1/services/pipelineServices',
+      {
+        data: this.service,
+      }
+    );
+    const entityResponse = await apiContext.post('/api/v1/pipelines', {
+      data: this.entity,
+    });
+
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'PipelineClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'PipelineClass.create'
+    );
+
+    return {
+      service: serviceResponse.body,
+      entity: entityResponse.body,
+    };
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    );
+
+    this.entityResponseData = await okJson(response, 'PipelineClass.patch');
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  get() {
+    return {
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
+    };
+  }
+
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
+  async createIngestionPipeline(apiContext: APIRequestContext, name?: string) {
+    const ingestionPipelineResponse = await apiContext.post(
+      '/api/v1/services/ingestionPipelines',
+      {
+        data: {
+          airflowConfig: {},
+          loggerLevel: 'INFO',
+          name: name ?? `pw-ingestion-pipeline-${uuid()}`,
+          pipelineType: 'metadata',
+          service: {
+            id: this.serviceResponseData.id,
+            type: 'pipelineService',
+          },
+          sourceConfig: {
+            config: {},
+          },
+        },
+      }
+    );
+
+    this.ingestionPipelineResponseData = await okJson(
+      ingestionPipelineResponse,
+      'PipelineClass.createIngestionPipeline'
+    );
+
+    return {
+      ingestionPipeline: await okJson(
+        ingestionPipelineResponse,
+        'PipelineClass.createIngestionPipeline'
+      ),
+    };
+  }
+
+  async visitEntityPage(page: Page) {
+    await visitEntityPageByFqn({
+      page,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
+    });
+  }
+
+  async delete(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.delete(
+      `/api/v1/services/pipelineServices/name/${encodeURIComponent(
+        this.serviceResponseData?.['fullyQualifiedName']
+      )}?recursive=true&hardDelete=true`
+    );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+}

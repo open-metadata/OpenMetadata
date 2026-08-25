@@ -1,0 +1,78 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  createContext,
+  FC,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { io, Socket } from 'socket.io-client';
+import { ROUTES } from '../../constants/constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { getBasePath } from '../../utils/HistoryUtils';
+
+export const WebSocketContext = createContext<{ socket?: Socket }>({});
+
+interface Props {
+  children: ReactNode;
+}
+
+const WebSocketProvider: FC<Props> = ({ children }: Props) => {
+  const [socket, setSocket] = useState<Socket>();
+  const { currentUser } = useApplicationStore();
+
+  // Init websocket for Feed & notification
+  const initWebSocket = useCallback(() => {
+    const basePath = getBasePath();
+    const socketPath = basePath
+      ? `${basePath}${ROUTES.ACTIVITY_PUSH_FEED}`
+      : ROUTES.ACTIVITY_PUSH_FEED;
+
+    setSocket(
+      io({
+        path: socketPath,
+        reconnectionAttempts: 3,
+        query: {
+          userId: currentUser?.id,
+        },
+        // Since we have load balancer in our application
+        // We need to enforce transports to be websocket only
+        // Refer: https://socket.io/docs/v3/using-multiple-nodes/
+        transports: ['websocket'],
+      })
+    );
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser && currentUser.id) {
+      initWebSocket();
+    }
+  }, [currentUser]);
+
+  const contextValue = useMemo(() => ({ socket }), [socket]);
+
+  return (
+    <WebSocketContext.Provider value={contextValue}>
+      {children}
+    </WebSocketContext.Provider>
+  );
+};
+
+export const useWebSocketConnector = () => useContext(WebSocketContext);
+
+export default WebSocketProvider;

@@ -1,0 +1,1082 @@
+{
+  "permissions": {
+    "canRead": true,
+    "canWrite": true
+  },
+  "processGroupFlow": {
+    "id": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+    "uri": "https://localhost:8443/nifi-api/flow/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+    "breadcrumb": {
+      "id": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+      "permissions": {
+        "canRead": true,
+        "canWrite": true
+      },
+      "breadcrumb": {
+        "id": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+        "name": "NiFi Flow"
+      }
+    },
+    "flow": {
+      "processGroups": [],
+      "remoteProcessGroups": [],
+      "processors": [
+        {
+          "revision": {
+            "version": 0
+          },
+          "id": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+          "uri": "https://localhost:8443/nifi-api/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+          "position": {
+            "x": 728,
+            "y": 672
+          },
+          "permissions": {
+            "canRead": true,
+            "canWrite": true
+          },
+          "bulletins": [],
+          "component": {
+            "id": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "versionedComponentId": "a3a99f87-7c9d-3969-b27f-b9c986fc5a37",
+            "parentGroupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "position": {
+              "x": 728,
+              "y": 672
+            },
+            "name": "FetchFile",
+            "type": "org.apache.nifi.processors.standard.FetchFile",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "1.17.0"
+            },
+            "state": "STOPPED",
+            "style": {},
+            "relationships": [
+              {
+                "name": "failure",
+                "description": "Any FlowFile that could not be fetched from the file system for any reason other than insufficient permissions or the file not existing will be transferred to this Relationship.",
+                "autoTerminate": false,
+                "retry": false
+              },
+              {
+                "name": "not.found",
+                "description": "Any FlowFile that could not be fetched from the file system because the file could not be found will be transferred to this Relationship.",
+                "autoTerminate": false,
+                "retry": false
+              },
+              {
+                "name": "permission.denied",
+                "description": "Any FlowFile that could not be fetched from the file system due to the user running NiFi not having sufficient permissions will be transferred to this Relationship.",
+                "autoTerminate": false,
+                "retry": false
+              },
+              {
+                "name": "success",
+                "description": "Any FlowFile that is successfully fetched from the file system will be transferred to this Relationship.",
+                "autoTerminate": false,
+                "retry": false
+              }
+            ],
+            "supportsParallelProcessing": true,
+            "supportsEventDriven": false,
+            "supportsBatching": false,
+            "supportsSensitiveDynamicProperties": false,
+            "persistsState": false,
+            "restricted": true,
+            "deprecated": false,
+            "executionNodeRestricted": false,
+            "multipleVersionsAvailable": false,
+            "inputRequirement": "INPUT_REQUIRED",
+            "config": {
+              "properties": {
+                "File to Fetch": "${absolute.path}/${filename}",
+                "Completion Strategy": "None",
+                "Move Destination Directory": null,
+                "Move Conflict Strategy": "Rename",
+                "Log level when file not found": "ERROR",
+                "Log level when permission denied": "ERROR"
+              },
+              "descriptors": {
+                "File to Fetch": {
+                  "name": "File to Fetch",
+                  "displayName": "File to Fetch",
+                  "description": "The fully-qualified filename of the file to fetch from the file system",
+                  "defaultValue": "${absolute.path}/${filename}",
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry and FlowFile Attributes",
+                  "dependencies": []
+                },
+                "Completion Strategy": {
+                  "name": "Completion Strategy",
+                  "displayName": "Completion Strategy",
+                  "description": "Specifies what to do with the original file on the file system once it has been pulled into NiFi",
+                  "defaultValue": "None",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "None",
+                        "value": "None",
+                        "description": "Leave the file as-is"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Move File",
+                        "value": "Move File",
+                        "description": "Moves the file to the directory specified by the <Move Destination Directory> property"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Delete File",
+                        "value": "Delete File",
+                        "description": "Deletes the original file from the file system"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Move Destination Directory": {
+                  "name": "Move Destination Directory",
+                  "displayName": "Move Destination Directory",
+                  "description": "The directory to the move the original file to once it has been fetched from the file system. This property is ignored unless the Completion Strategy is set to \"Move File\". If the directory does not exist, it will be created.",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry and FlowFile Attributes",
+                  "dependencies": []
+                },
+                "Move Conflict Strategy": {
+                  "name": "Move Conflict Strategy",
+                  "displayName": "Move Conflict Strategy",
+                  "description": "If Completion Strategy is set to Move File and a file already exists in the destination directory with the same name, this property specifies how that naming conflict should be resolved",
+                  "defaultValue": "Rename",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "Rename",
+                        "value": "Rename",
+                        "description": "The existing destination file should remain intact. The newly ingested file should be moved to the destination directory but be renamed to a random filename"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Replace File",
+                        "value": "Replace File",
+                        "description": "The newly ingested file should replace the existing file in the Destination Directory"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Keep Existing",
+                        "value": "Keep Existing",
+                        "description": "The existing file should in the Destination Directory should stay intact and the newly ingested file should be deleted"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Fail",
+                        "value": "Fail",
+                        "description": "The existing destination file should remain intact and the incoming FlowFile should be routed to failure"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Log level when file not found": {
+                  "name": "Log level when file not found",
+                  "displayName": "Log level when file not found",
+                  "description": "Log level to use in case the file does not exist when the processor is triggered",
+                  "defaultValue": "ERROR",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "TRACE",
+                        "value": "TRACE"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "DEBUG",
+                        "value": "DEBUG"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "INFO",
+                        "value": "INFO"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "WARN",
+                        "value": "WARN"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "ERROR",
+                        "value": "ERROR"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "FATAL",
+                        "value": "FATAL"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "NONE",
+                        "value": "NONE"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Log level when permission denied": {
+                  "name": "Log level when permission denied",
+                  "displayName": "Log level when permission denied",
+                  "description": "Log level to use in case user pmbrull does not have sufficient permissions to read the file",
+                  "defaultValue": "ERROR",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "TRACE",
+                        "value": "TRACE"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "DEBUG",
+                        "value": "DEBUG"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "INFO",
+                        "value": "INFO"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "WARN",
+                        "value": "WARN"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "ERROR",
+                        "value": "ERROR"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "FATAL",
+                        "value": "FATAL"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "NONE",
+                        "value": "NONE"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                }
+              },
+              "schedulingPeriod": "0 sec",
+              "schedulingStrategy": "TIMER_DRIVEN",
+              "executionNode": "ALL",
+              "penaltyDuration": "30 sec",
+              "yieldDuration": "1 sec",
+              "bulletinLevel": "WARN",
+              "runDurationMillis": 0,
+              "concurrentlySchedulableTaskCount": 1,
+              "comments": "",
+              "lossTolerant": false,
+              "defaultConcurrentTasks": {
+                "TIMER_DRIVEN": "1",
+                "EVENT_DRIVEN": "0",
+                "CRON_DRIVEN": "1"
+              },
+              "defaultSchedulingPeriod": {
+                "TIMER_DRIVEN": "0 sec",
+                "CRON_DRIVEN": "* * * * * ?"
+              },
+              "retryCount": 10,
+              "retriedRelationships": [],
+              "backoffMechanism": "PENALIZE_FLOWFILE",
+              "maxBackoffPeriod": "10 mins"
+            },
+            "validationErrors": [
+              "'Relationship success' is invalid because Relationship 'success' is not connected to any component and is not auto-terminated",
+              "'Relationship not.found' is invalid because Relationship 'not.found' is not connected to any component and is not auto-terminated",
+              "'Relationship permission.denied' is invalid because Relationship 'permission.denied' is not connected to any component and is not auto-terminated",
+              "'Relationship failure' is invalid because Relationship 'failure' is not connected to any component and is not auto-terminated"
+            ],
+            "validationStatus": "INVALID",
+            "extensionMissing": false
+          },
+          "inputRequirement": "INPUT_REQUIRED",
+          "status": {
+            "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "id": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "name": "FetchFile",
+            "runStatus": "Invalid",
+            "statsLastRefreshed": "18:21:10 CEST",
+            "aggregateSnapshot": {
+              "id": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+              "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+              "name": "FetchFile",
+              "type": "FetchFile",
+              "runStatus": "Invalid",
+              "executionNode": "ALL",
+              "bytesRead": 0,
+              "bytesWritten": 0,
+              "read": "0 bytes",
+              "written": "0 bytes",
+              "flowFilesIn": 0,
+              "bytesIn": 0,
+              "input": "0 (0 bytes)",
+              "flowFilesOut": 0,
+              "bytesOut": 0,
+              "output": "0 (0 bytes)",
+              "taskCount": 0,
+              "tasksDurationNanos": 0,
+              "tasks": "0",
+              "tasksDuration": "00:00:00.000",
+              "activeThreadCount": 0,
+              "terminatedThreadCount": 0
+            }
+          },
+          "operatePermissions": {
+            "canRead": true,
+            "canWrite": true
+          }
+        },
+        {
+          "revision": {
+            "clientId": "d59f9e9b-0182-1000-aa02-4b6360e52482",
+            "version": 1
+          },
+          "id": "d3f1304d-0182-1000-f0f5-9a6927976941",
+          "uri": "https://localhost:8443/nifi-api/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+          "position": {
+            "x": 728,
+            "y": 312
+          },
+          "permissions": {
+            "canRead": true,
+            "canWrite": true
+          },
+          "bulletins": [],
+          "component": {
+            "id": "d3f1304d-0182-1000-f0f5-9a6927976941",
+            "versionedComponentId": "0c069383-5171-30e7-a96f-1d642688b79e",
+            "parentGroupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "position": {
+              "x": 728,
+              "y": 312
+            },
+            "name": "ListFile",
+            "type": "org.apache.nifi.processors.standard.ListFile",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "1.17.0"
+            },
+            "state": "STOPPED",
+            "style": {},
+            "relationships": [
+              {
+                "name": "success",
+                "description": "All FlowFiles that are received are routed to success",
+                "autoTerminate": false,
+                "retry": false
+              }
+            ],
+            "supportsParallelProcessing": false,
+            "supportsEventDriven": false,
+            "supportsBatching": false,
+            "supportsSensitiveDynamicProperties": false,
+            "persistsState": true,
+            "restricted": false,
+            "deprecated": false,
+            "executionNodeRestricted": false,
+            "multipleVersionsAvailable": false,
+            "inputRequirement": "INPUT_FORBIDDEN",
+            "config": {
+              "properties": {
+                "Input Directory": "/Users/pmbrull/dev/hive/employee",
+                "listing-strategy": "timestamps",
+                "Recurse Subdirectories": "true",
+                "record-writer": null,
+                "Input Directory Location": "Local",
+                "File Filter": "[^\\.].*",
+                "Path Filter": null,
+                "Include File Attributes": "true",
+                "Minimum File Age": "0 sec",
+                "Maximum File Age": null,
+                "Minimum File Size": "0 B",
+                "Maximum File Size": null,
+                "Ignore Hidden Files": "true",
+                "target-system-timestamp-precision": "auto-detect",
+                "et-state-cache": null,
+                "et-time-window": "3 hours",
+                "et-initial-listing-target": "all",
+                "et-node-identifier": "${hostname()}",
+                "track-performance": "false",
+                "max-performance-metrics": "100000",
+                "max-operation-time": "10 secs",
+                "max-listing-time": "3 mins"
+              },
+              "descriptors": {
+                "Input Directory": {
+                  "name": "Input Directory",
+                  "displayName": "Input Directory",
+                  "description": "The input directory from which files to pull files",
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry Only",
+                  "dependencies": []
+                },
+                "listing-strategy": {
+                  "name": "listing-strategy",
+                  "displayName": "Listing Strategy",
+                  "description": "Specify how to determine new/updated entities. See each strategy descriptions for detail.",
+                  "defaultValue": "timestamps",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "Tracking Timestamps",
+                        "value": "timestamps",
+                        "description": "This strategy tracks the latest timestamp of listed entity to determine new/updated entities. Since it only tracks few timestamps, it can manage listing state efficiently. However, any newly added, or updated entity having timestamp older than the tracked latest timestamp can not be picked by this strategy. For example, such situation can happen in a file system if a file with old timestamp is copied or moved into the target directory without its last modified timestamp being updated. Also may miss files when multiple subdirectories are being written at the same time while listing is running."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Tracking Entities",
+                        "value": "entities",
+                        "description": "This strategy tracks information of all the listed entities within the latest 'Entity Tracking Time Window' to determine new/updated entities. This strategy can pick entities having old timestamp that can be missed with 'Tracking Timestamps'. Works even when multiple subdirectories are being written at the same time while listing is running. However additional DistributedMapCache controller service is required and more JVM heap memory is used. See the description of 'Entity Tracking Time Window' property for further details on how it works."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "No Tracking",
+                        "value": "none",
+                        "description": "This strategy lists an entity without any tracking. The same entity will be listed each time on executing this processor. It is recommended to change the default run schedule value. Any property that related to the persisting state will be disregarded."
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Recurse Subdirectories": {
+                  "name": "Recurse Subdirectories",
+                  "displayName": "Recurse Subdirectories",
+                  "description": "Indicates whether to list files from subdirectories of the directory",
+                  "defaultValue": "true",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "true",
+                        "value": "true"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "false",
+                        "value": "false"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "record-writer": {
+                  "name": "record-writer",
+                  "displayName": "Record Writer",
+                  "description": "Specifies the Record Writer to use for creating the listing. If not specified, one FlowFile will be created for each entity that is listed. If the Record Writer is specified, all entities will be written to a single FlowFile instead of adding attributes to individual FlowFiles.",
+                  "allowableValues": [],
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "identifiesControllerService": "org.apache.nifi.serialization.RecordSetWriterFactory",
+                  "identifiesControllerServiceBundle": {
+                    "group": "org.apache.nifi",
+                    "artifact": "nifi-standard-services-api-nar",
+                    "version": "1.17.0"
+                  },
+                  "dependencies": []
+                },
+                "Input Directory Location": {
+                  "name": "Input Directory Location",
+                  "displayName": "Input Directory Location",
+                  "description": "Specifies where the Input Directory is located. This is used to determine whether state should be stored locally or across the cluster.",
+                  "defaultValue": "Local",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "Local",
+                        "value": "Local",
+                        "description": "Input Directory is located on a local disk. State will be stored locally on each node in the cluster."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Remote",
+                        "value": "Remote",
+                        "description": "Input Directory is located on a remote system. State will be stored across the cluster so that the listing can be performed on Primary Node Only and another node can pick up where the last node left off, if the Primary Node changes"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "File Filter": {
+                  "name": "File Filter",
+                  "displayName": "File Filter",
+                  "description": "Only files whose names match the given regular expression will be picked up",
+                  "defaultValue": "[^\\.].*",
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Path Filter": {
+                  "name": "Path Filter",
+                  "displayName": "Path Filter",
+                  "description": "When Recurse Subdirectories is true, then only subdirectories whose path matches the given regular expression will be scanned",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Include File Attributes": {
+                  "name": "Include File Attributes",
+                  "displayName": "Include File Attributes",
+                  "description": "Whether or not to include information such as the file's Last Modified Time and Owner as FlowFile Attributes. Depending on the File System being used, gathering this information can be expensive and as a result should be disabled. This is especially true of remote file shares.",
+                  "defaultValue": "true",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "true",
+                        "value": "true"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "false",
+                        "value": "false"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Minimum File Age": {
+                  "name": "Minimum File Age",
+                  "displayName": "Minimum File Age",
+                  "description": "The minimum age that a file must be in order to be pulled; any file younger than this amount of time (according to last modification date) will be ignored",
+                  "defaultValue": "0 sec",
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Maximum File Age": {
+                  "name": "Maximum File Age",
+                  "displayName": "Maximum File Age",
+                  "description": "The maximum age that a file must be in order to be pulled; any file older than this amount of time (according to last modification date) will be ignored",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Minimum File Size": {
+                  "name": "Minimum File Size",
+                  "displayName": "Minimum File Size",
+                  "description": "The minimum size that a file must be in order to be pulled",
+                  "defaultValue": "0 B",
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Maximum File Size": {
+                  "name": "Maximum File Size",
+                  "displayName": "Maximum File Size",
+                  "description": "The maximum size that a file can be in order to be pulled",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "Ignore Hidden Files": {
+                  "name": "Ignore Hidden Files",
+                  "displayName": "Ignore Hidden Files",
+                  "description": "Indicates whether or not hidden files should be ignored",
+                  "defaultValue": "true",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "true",
+                        "value": "true"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "false",
+                        "value": "false"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "target-system-timestamp-precision": {
+                  "name": "target-system-timestamp-precision",
+                  "displayName": "Target System Timestamp Precision",
+                  "description": "Specify timestamp precision at the target system. Since this processor uses timestamp of entities to decide which should be listed, it is crucial to use the right timestamp precision.",
+                  "defaultValue": "auto-detect",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "Auto Detect",
+                        "value": "auto-detect",
+                        "description": "Automatically detect time unit deterministically based on candidate entries timestamp. Please note that this option may take longer to list entities unnecessarily, if none of entries has a precise precision timestamp. E.g. even if a target system supports millis, if all entries only have timestamps without millis, such as '2017-06-16 09:06:34.000', then its precision is determined as 'seconds'."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Milliseconds",
+                        "value": "millis",
+                        "description": "This option provides the minimum latency for an entry from being available to being listed if target system supports millis, if not, use other options."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Seconds",
+                        "value": "seconds",
+                        "description": "For a target system that does not have millis precision, but has in seconds."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "Minutes",
+                        "value": "minutes",
+                        "description": "For a target system that only supports precision in minutes."
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "et-state-cache": {
+                  "name": "et-state-cache",
+                  "displayName": "Entity Tracking State Cache",
+                  "description": "Listed entities are stored in the specified cache storage so that this processor can resume listing across NiFi restart or in case of primary node change. 'Tracking Entities' strategy require tracking information of all listed entities within the last 'Tracking Time Window'. To support large number of entities, the strategy uses DistributedMapCache instead of managed state. Cache key format is 'ListedEntities::{processorId}(::{nodeId})'. If it tracks per node listed entities, then the optional '::{nodeId}' part is added to manage state separately. E.g. cluster wide cache key = 'ListedEntities::8dda2321-0164-1000-50fa-3042fe7d6a7b', per node cache key = 'ListedEntities::8dda2321-0164-1000-50fa-3042fe7d6a7b::nifi-node3' The stored cache content is Gzipped JSON string. The cache key will be deleted when target listing configuration is changed. Used by 'Tracking Entities' strategy.",
+                  "allowableValues": [],
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "identifiesControllerService": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClient",
+                  "identifiesControllerServiceBundle": {
+                    "group": "org.apache.nifi",
+                    "artifact": "nifi-standard-services-api-nar",
+                    "version": "1.17.0"
+                  },
+                  "dependencies": []
+                },
+                "et-time-window": {
+                  "name": "et-time-window",
+                  "displayName": "Entity Tracking Time Window",
+                  "description": "Specify how long this processor should track already-listed entities. 'Tracking Entities' strategy can pick any entity whose timestamp is inside the specified time window. For example, if set to '30 minutes', any entity having timestamp in recent 30 minutes will be the listing target when this processor runs. A listed entity is considered 'new/updated' and a FlowFile is emitted if one of following condition meets: 1. does not exist in the already-listed entities, 2. has newer timestamp than the cached entity, 3. has different size than the cached entity. If a cached entity's timestamp becomes older than specified time window, that entity will be removed from the cached already-listed entities. Used by 'Tracking Entities' strategy.",
+                  "defaultValue": "3 hours",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry Only",
+                  "dependencies": []
+                },
+                "et-initial-listing-target": {
+                  "name": "et-initial-listing-target",
+                  "displayName": "Entity Tracking Initial Listing Target",
+                  "description": "Specify how initial listing should be handled. Used by 'Tracking Entities' strategy.",
+                  "defaultValue": "all",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "Tracking Time Window",
+                        "value": "window",
+                        "description": "Ignore entities having timestamp older than the specified 'Tracking Time Window' at the initial listing activity."
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "All Available",
+                        "value": "all",
+                        "description": "Regardless of entities timestamp, all existing entities will be listed at the initial listing activity."
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "et-node-identifier": {
+                  "name": "et-node-identifier",
+                  "displayName": "Entity Tracking Node Identifier",
+                  "description": "The configured value will be appended to the cache key so that listing state can be tracked per NiFi node rather than cluster wide when tracking state is scoped to LOCAL. Used by 'Tracking Entities' strategy.",
+                  "defaultValue": "${hostname()}",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry Only",
+                  "dependencies": []
+                },
+                "track-performance": {
+                  "name": "track-performance",
+                  "displayName": "Track Performance",
+                  "description": "Whether or not the Processor should track the performance of disk access operations. If true, all accesses to disk will be recorded, including the file being accessed, the information being obtained, and how long it takes. This is then logged periodically at a DEBUG level. While the amount of data will be capped, this option may still consume a significant amount of heap (controlled by the 'Maximum Number of Files to Track' property), but it can be very useful for troubleshooting purposes if performance is poor is degraded.",
+                  "defaultValue": "false",
+                  "allowableValues": [
+                    {
+                      "allowableValue": {
+                        "displayName": "true",
+                        "value": "true"
+                      },
+                      "canRead": true
+                    },
+                    {
+                      "allowableValue": {
+                        "displayName": "false",
+                        "value": "false"
+                      },
+                      "canRead": true
+                    }
+                  ],
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": false,
+                  "expressionLanguageScope": "Not Supported",
+                  "dependencies": []
+                },
+                "max-performance-metrics": {
+                  "name": "max-performance-metrics",
+                  "displayName": "Maximum Number of Files to Track",
+                  "description": "If the 'Track Performance' property is set to 'true', this property indicates the maximum number of files whose performance metrics should be held onto. A smaller value for this property will result in less heap utilization, while a larger value may provide more accurate insights into how the disk access operations are performing",
+                  "defaultValue": "100000",
+                  "required": true,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry Only",
+                  "dependencies": []
+                },
+                "max-operation-time": {
+                  "name": "max-operation-time",
+                  "displayName": "Max Disk Operation Time",
+                  "description": "The maximum amount of time that any single disk operation is expected to take. If any disk operation takes longer than this amount of time, a warning bulletin will be generated for each operation that exceeds this amount of time.",
+                  "defaultValue": "10 secs",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry Only",
+                  "dependencies": []
+                },
+                "max-listing-time": {
+                  "name": "max-listing-time",
+                  "displayName": "Max Directory Listing Time",
+                  "description": "The maximum amount of time that listing any single directory is expected to take. If the listing for the directory specified by the 'Input Directory' property, or the listing of any subdirectory (if 'Recurse' is set to true) takes longer than this amount of time, a warning bulletin will be generated for each directory listing that exceeds this amount of time.",
+                  "defaultValue": "3 mins",
+                  "required": false,
+                  "sensitive": false,
+                  "dynamic": false,
+                  "supportsEl": true,
+                  "expressionLanguageScope": "Variable Registry Only",
+                  "dependencies": []
+                }
+              },
+              "schedulingPeriod": "60 sec",
+              "schedulingStrategy": "TIMER_DRIVEN",
+              "executionNode": "ALL",
+              "penaltyDuration": "30 sec",
+              "yieldDuration": "1 sec",
+              "bulletinLevel": "WARN",
+              "runDurationMillis": 0,
+              "concurrentlySchedulableTaskCount": 1,
+              "comments": "",
+              "lossTolerant": false,
+              "defaultConcurrentTasks": {
+                "TIMER_DRIVEN": "1",
+                "EVENT_DRIVEN": "0",
+                "CRON_DRIVEN": "1"
+              },
+              "defaultSchedulingPeriod": {
+                "TIMER_DRIVEN": "0 sec",
+                "CRON_DRIVEN": "* * * * * ?"
+              },
+              "retryCount": 10,
+              "retriedRelationships": [],
+              "backoffMechanism": "PENALIZE_FLOWFILE",
+              "maxBackoffPeriod": "10 mins"
+            },
+            "validationStatus": "VALID",
+            "extensionMissing": false
+          },
+          "inputRequirement": "INPUT_FORBIDDEN",
+          "status": {
+            "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "id": "d3f1304d-0182-1000-f0f5-9a6927976941",
+            "name": "ListFile",
+            "runStatus": "Stopped",
+            "statsLastRefreshed": "18:21:10 CEST",
+            "aggregateSnapshot": {
+              "id": "d3f1304d-0182-1000-f0f5-9a6927976941",
+              "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+              "name": "ListFile",
+              "type": "ListFile",
+              "runStatus": "Stopped",
+              "executionNode": "ALL",
+              "bytesRead": 0,
+              "bytesWritten": 0,
+              "read": "0 bytes",
+              "written": "0 bytes",
+              "flowFilesIn": 0,
+              "bytesIn": 0,
+              "input": "0 (0 bytes)",
+              "flowFilesOut": 0,
+              "bytesOut": 0,
+              "output": "0 (0 bytes)",
+              "taskCount": 0,
+              "tasksDurationNanos": 0,
+              "tasks": "0",
+              "tasksDuration": "00:00:00.000",
+              "activeThreadCount": 0,
+              "terminatedThreadCount": 0
+            }
+          },
+          "operatePermissions": {
+            "canRead": true,
+            "canWrite": true
+          }
+        }
+      ],
+      "inputPorts": [],
+      "outputPorts": [],
+      "connections": [
+        {
+          "revision": {
+            "version": 0
+          },
+          "id": "d3f17ef8-0182-1000-61da-c996721cf425",
+          "uri": "https://localhost:8443/nifi-api/connections/d3f17ef8-0182-1000-61da-c996721cf425",
+          "permissions": {
+            "canRead": true,
+            "canWrite": true
+          },
+          "component": {
+            "id": "d3f17ef8-0182-1000-61da-c996721cf425",
+            "versionedComponentId": "06668b4e-6d79-3bcb-b698-d5d5c90a9414",
+            "parentGroupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "source": {
+              "id": "d3f1304d-0182-1000-f0f5-9a6927976941",
+              "versionedComponentId": "0c069383-5171-30e7-a96f-1d642688b79e",
+              "type": "PROCESSOR",
+              "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+              "name": "ListFile",
+              "running": false,
+              "comments": ""
+            },
+            "destination": {
+              "id": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+              "versionedComponentId": "a3a99f87-7c9d-3969-b27f-b9c986fc5a37",
+              "type": "PROCESSOR",
+              "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+              "name": "FetchFile",
+              "running": false,
+              "comments": ""
+            },
+            "name": "",
+            "labelIndex": 1,
+            "zIndex": 0,
+            "selectedRelationships": [
+              "success"
+            ],
+            "availableRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalancePartitionAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "loadBalanceStatus": "LOAD_BALANCE_NOT_CONFIGURED"
+          },
+          "status": {
+            "id": "d3f17ef8-0182-1000-61da-c996721cf425",
+            "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "name": "success",
+            "statsLastRefreshed": "18:21:10 CEST",
+            "sourceId": "d3f1304d-0182-1000-f0f5-9a6927976941",
+            "sourceName": "ListFile",
+            "destinationId": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "destinationName": "FetchFile",
+            "aggregateSnapshot": {
+              "id": "d3f17ef8-0182-1000-61da-c996721cf425",
+              "groupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+              "name": "success",
+              "sourceName": "ListFile",
+              "destinationName": "FetchFile",
+              "flowFilesIn": 0,
+              "bytesIn": 0,
+              "input": "0 (0 bytes)",
+              "flowFilesOut": 0,
+              "bytesOut": 0,
+              "output": "0 (0 bytes)",
+              "flowFilesQueued": 2,
+              "bytesQueued": 0,
+              "queued": "2 (0 bytes)",
+              "queuedSize": "0 bytes",
+              "queuedCount": "2",
+              "percentUseCount": 0,
+              "percentUseBytes": 0,
+              "flowFileAvailability": "FLOWFILE_AVAILABLE"
+            }
+          },
+          "bends": [],
+          "labelIndex": 1,
+          "zIndex": 0,
+          "sourceId": "d3f1304d-0182-1000-f0f5-9a6927976941",
+          "sourceGroupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+          "sourceType": "PROCESSOR",
+          "destinationId": "d3f023ac-0182-1000-8bbe-e2b00347fff8",
+          "destinationGroupId": "d3d6b945-0182-1000-d7e4-d81b8f79f310",
+          "destinationType": "PROCESSOR"
+        }
+      ],
+      "labels": [],
+      "funnels": []
+    },
+    "lastRefreshed": "18:21:10 CEST"
+  }
+}

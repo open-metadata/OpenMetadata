@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/nodeInformation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NodeInformation",
+  "javaType": "org.openmetadata.schema.type.lineage.NodeInformation",
+  "description": "A general object to hold any object.",
+  "type": "object",
+  "properties": {
+    "entity": {
+      "description": "Entity object.",
+      "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
+    },
+    "paging": {
+      "$ref": "./searchLineageResult.json#/definitions/layerPaging"
+    },
+    "nodeDepth": {
+      "description": "Depth of the node from the root entity in the lineage graph. Root entity has depth 0, its immediate upstream/downstream entities have depth 1, and so on.",
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

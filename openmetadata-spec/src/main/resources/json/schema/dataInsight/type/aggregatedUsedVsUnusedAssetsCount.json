@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/type/aggregatedUsedVsUnusedAssetsCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AggregatedUsedVsUnusedAssetsCount",
+  "description": "AggregatedUsedVsUnusedAssetsCount data blob",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsCount",
+  "properties": {
+    "timestamp": {
+      "description": "timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "UnusedPercentage": {
+      "description": "Percentage of the count of unused assets (last access >= 3 days)",
+      "type": "number"
+    },
+    "UsedPercentage": {
+      "description": "Percentage of the count of used assets (last access < 3 days)",
+      "type": "number"
+    },
+    "Unused": {
+      "description": "Count of unused assets (last access >= 3 days)",
+      "type": "number"
+    },
+    "Used": {
+      "description": "Count of used assets (last access < 3 days)",
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

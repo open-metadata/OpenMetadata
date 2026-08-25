@@ -1,0 +1,972 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Handle FQN building and splitting logic.
+Filter information has been taken from the
+ES indexes definitions
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import traceback
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union  # noqa: UP035
+
+from antlr4.CommonTokenStream import CommonTokenStream
+from antlr4.error.ErrorStrategy import BailErrorStrategy
+from antlr4.InputStream import InputStream
+from antlr4.tree.Tree import ParseTreeWalker
+from pydantic import BaseModel, Field
+
+from metadata.antlr.split_listener import FqnSplitListener
+from metadata.generated.antlr.FqnLexer import FqnLexer
+from metadata.generated.antlr.FqnParser import FqnParser
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
+from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
+from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.utils.dispatch import class_register
+from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.logger import utils_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+logger = utils_logger()
+
+T = TypeVar("T", bound=BaseModel)
+
+FQN_SEPARATOR: str = "."
+fqn_build_registry = class_register()
+
+
+class FQNBuildingException(Exception):  # noqa: N818
+    """
+    Raise for inconsistencies when building the FQN
+    """
+
+
+class SplitTestCaseFqn(BaseModel):
+    service: str
+    database: str
+    schema_: str = Field(alias="schema")
+    table: str
+    column: Optional[str] = None  # noqa: UP045
+    test_case: Optional[str] = None  # noqa: UP045
+
+
+def split(str_: str) -> List[str]:  # noqa: UP006
+    """
+    Equivalent of Java's FullyQualifiedName#split
+    """
+    lexer = FqnLexer(InputStream(str_))
+    stream = CommonTokenStream(lexer)
+    parser = FqnParser(stream)
+    parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
+    tree = parser.fqn()
+    walker = ParseTreeWalker()
+    splitter = FqnSplitListener()
+    walker.walk(splitter, tree)
+    return splitter.split()
+
+
+def split_raw_name(name: str) -> List[str]:  # noqa: UP006
+    """
+    Split a partially-qualified raw name on the FQN separator, ignoring separators
+    that sit inside a quoted identifier.
+
+    Unlike :func:`split`, this is tolerant: it never raises, and for input without
+    quotes it is byte-for-byte equivalent to ``name.split(".")``. That matters because
+    callers feed it names harvested from parsed SQL, which may be unbalanced or
+    otherwise malformed -- those must degrade gracefully rather than blow up.
+
+    A quoted segment is returned with its quotes intact, so it can be handed straight
+    back to :func:`quote_name`:
+
+        >>> split_raw_name('"folder.subfolder".my_view')
+        ['"folder.subfolder"', 'my_view']
+        >>> split_raw_name("db.schema.table")
+        ['db', 'schema', 'table']
+    """
+    parts: List[str] = []  # noqa: UP006
+    current: List[str] = []  # noqa: UP006
+    within_quotes = False
+
+    for char in name:
+        if char == '"':
+            within_quotes = not within_quotes
+            current.append(char)
+        elif char == FQN_SEPARATOR and not within_quotes:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+
+    parts.append("".join(current))
+    return parts
+
+
+def _build(*args, quote: bool = True) -> str:
+    """
+    Equivalent of Java's FullyQualifiedName#build
+    """
+    if quote:
+        quoted = [quote_name(name) for name in args]
+        return FQN_SEPARATOR.join(quoted)
+
+    return FQN_SEPARATOR.join(args)
+
+
+def unquote_name(name: str) -> str:
+    return name[1:-1] if name and name[0] == '"' and name[-1] == '"' else name
+
+
+def quote_name(name: str) -> str:
+    """
+    Equivalent of Java's FullyQualifiedName#quoteName
+    """
+    matcher = re.compile(r'^(")([^"]+)(")$|^(.*)$').match(name)
+    if not matcher or len(matcher.group(0)) != len(name):
+        raise ValueError("Invalid name " + name)
+
+    # Name matches quoted string "sss".
+    # If quoted string does not contain "." return unquoted sss, else return quoted "sss"
+    if matcher.group(1):
+        unquoted_name = matcher.group(2)
+        return name if "." in unquoted_name else unquoted_name
+
+    # Name matches unquoted string sss
+    # If unquoted string contains ".", return quoted "sss", else unquoted sss
+    unquoted_name = matcher.group(4)
+    if '"' not in unquoted_name:
+        return '"' + name + '"' if "." in unquoted_name else unquoted_name
+    raise ValueError("Invalid name " + name)
+
+
+def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> Optional[str]:  # noqa: UP006, UP045
+    """
+    Given an Entity T, build the FQN of that Entity
+    based on its required pieces. For example,
+    to build a Table FQN we need:
+        - service
+        - database
+        - schema
+        - and table names.
+
+    :param metadata: OpenMetadata Client
+    :param entity_type: Pydantic Entity model
+    :param kwargs: required to build the FQN
+    :return: FQN as a string
+    """
+    # Transform table_name and column_name if they exist and contain special characters
+    if kwargs.get("table_name") or kwargs.get("column_name"):
+        from metadata.ingestion.models.custom_basemodel_validation import (  # pylint: disable=import-outside-toplevel
+            replace_separators,
+        )
+
+        table_name = kwargs.get("table_name")
+        if table_name and isinstance(table_name, str):
+            kwargs["table_name"] = replace_separators(table_name)
+
+        column_name = kwargs.get("column_name")
+        if column_name and isinstance(column_name, str):
+            kwargs["column_name"] = replace_separators(column_name)
+
+    func = fqn_build_registry.registry.get(entity_type.__name__)
+    try:
+        if not func:
+            raise FQNBuildingException(f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented.")  # noqa: TRY301
+        return func(metadata, **kwargs)
+    except Exception as e:
+        logger.debug(traceback.format_exc())
+        raise FQNBuildingException(f"Error building FQN for {entity_type.__name__}: {e}")  # noqa: B904
+
+
+@fqn_build_registry.add(Table)
+def _(
+    metadata: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: Optional[str],  # noqa: UP045
+    database_name: Optional[str],  # noqa: UP045
+    schema_name: Optional[str],  # noqa: UP045
+    table_name: str,
+    fetch_multiple_entities: bool = False,
+    skip_es_search: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    """
+    Building logic for tables
+    :param metadata: OMeta client
+    :param service_name: Service Name to filter or None
+    :param database_name: DB name or None
+    :param schema_name: Schema name or None
+    :param table_name: Table name
+    :return:
+    """
+
+    entity: Optional[Union[Table, List[Table]]] = None  # noqa: UP006, UP007, UP045
+
+    if not skip_es_search:
+        entity = search_table_from_es(
+            metadata=metadata,
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+            service_name=service_name,
+        )
+
+    # if entity not found in ES proceed to build FQN with service_name, database_name and schema_name
+    if not entity and service_name and database_name and schema_name:
+        fqn = _build(service_name, database_name, schema_name, table_name)
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(table.fullyQualifiedName.root) for table in entity]
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+    return None
+
+
+@fqn_build_registry.add(DatabaseSchema)
+def _(
+    metadata: Optional[OpenMetadata],  # ES Search not enabled for Schemas  # noqa: UP045
+    *,
+    service_name: str,
+    database_name: Optional[str],  # noqa: UP045
+    schema_name: str,
+    skip_es_search: bool = True,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    entity: Optional[Union[DatabaseSchema, List[DatabaseSchema]]] = None  # noqa: UP006, UP007, UP045
+
+    if not skip_es_search:
+        entity = search_database_schema_from_es(
+            metadata=metadata,
+            database_name=database_name,
+            schema_name=schema_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+            service_name=service_name,
+        )
+
+    if not entity and database_name:
+        fqn = _build(service_name, database_name, schema_name)
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(table.fullyQualifiedName.root) for table in entity]
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+
+    return None
+
+
+@fqn_build_registry.add(Database)
+def _(
+    metadata: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: str,
+    database_name: str,
+    skip_es_search: bool = True,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    if not skip_es_search:
+        entity = search_database_from_es(
+            metadata,
+            database_name,
+            service_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+        )
+
+        if entity and fetch_multiple_entities:
+            return [str(database.fullyQualifiedName.root) for database in entity]
+        if entity:
+            return str(entity.fullyQualifiedName.root)
+
+    if not service_name or not database_name:
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, db=`{database_name}``")
+
+    return _build(service_name, database_name)
+
+
+@fqn_build_registry.add(Dashboard)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    dashboard_name: str,
+) -> str:
+    if not service_name or not dashboard_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, dashboard=`{dashboard_name}``"
+        )
+    return _build(service_name, dashboard_name)
+
+
+@fqn_build_registry.add(APICollection)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    api_collection_name: str,
+) -> str:
+    if not service_name or not api_collection_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, collection=`{api_collection_name}``"
+        )
+    return _build(service_name, api_collection_name)
+
+
+@fqn_build_registry.add(Chart)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    chart_name: str,
+) -> str:
+    if not service_name or not chart_name:
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, chart=`{chart_name}``")
+    return _build(service_name, chart_name)
+
+
+@fqn_build_registry.add(MlModel)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for MlModel FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    mlmodel_name: str,
+) -> str:
+    if not service_name or not mlmodel_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, mlmodel=`{mlmodel_name}``"
+        )
+    return _build(service_name, mlmodel_name)
+
+
+@fqn_build_registry.add(TestSuite)
+def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:  # noqa: UP045
+    """
+    We don't need to quote since this comes from a table FQN.
+    We're replicating the backend logic of the FQN generation in the TestSuiteRepository
+    for executable test suites.
+    """
+    return _build(table_fqn, "testSuite", quote=False)
+
+
+@fqn_build_registry.add(Topic)
+def _(
+    metadata: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: str,
+    topic_name: str,
+    skip_es_search: bool = True,
+) -> Optional[str]:  # noqa: UP045
+    entity: Optional[Topic] = None  # noqa: UP045
+
+    if not skip_es_search:
+        entity = search_topic_from_es(metadata=metadata, service_name=service_name, topic_name=topic_name)
+
+    # if entity not found in ES proceed to build FQN with database_name and schema_name
+    if not entity and service_name and topic_name:
+        fqn = _build(service_name, topic_name)
+        return fqn  # noqa: RET504
+
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+
+    if not all([service_name, topic_name]):
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``")
+
+    return None
+
+
+@fqn_build_registry.add(Container)
+def _(
+    metadata: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: str,
+    parent_container: Optional[str] = None,  # noqa: UP045
+    container_name: str,
+    skip_es_search: bool = False,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    entity: Optional[Union[Container, List[Container]]] = None  # noqa: UP006, UP007, UP045
+
+    if not skip_es_search and metadata is not None:
+        entity = search_container_from_es(
+            metadata=metadata,
+            service_name=service_name,
+            parent_container=parent_container,
+            container_name=container_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+        )
+
+    if not entity and service_name and container_name:
+        if parent_container:
+            # Check if parent_container already starts with service_name
+            if parent_container.startswith(f"{service_name}."):
+                fqn = _build(parent_container, container_name, quote=False)
+            else:
+                fqn = _build(service_name, parent_container, container_name, quote=False)
+        else:
+            fqn = _build(service_name, container_name)
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(container.fullyQualifiedName.root) for container in entity]
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+    return None
+
+
+@fqn_build_registry.add(SearchIndex)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Search Index FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    search_index_name: str,
+) -> str:
+    if not service_name or not search_index_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, search_index=`{search_index_name}``"
+        )
+    return _build(service_name, search_index_name)
+
+
+@fqn_build_registry.add(Tag)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Tag FQN building  # noqa: UP045
+    *,
+    classification_name: str,
+    tag_name: str,
+) -> str:
+    if not classification_name or not tag_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got category=`{classification_name}`, tag=`{tag_name}``"
+        )
+    return _build(classification_name, tag_name)
+
+
+@fqn_build_registry.add(DataModel)
+def _(
+    _: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    model_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, model_name)
+
+
+@fqn_build_registry.add(StoredProcedure)
+def _(
+    _: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    procedure_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, procedure_name)
+
+
+@fqn_build_registry.add(Pipeline)
+def _(
+    _: Optional[OpenMetadata],  # noqa: UP045
+    *,
+    service_name: str,
+    pipeline_name: str,
+) -> str:
+    return _build(service_name, pipeline_name)
+
+
+@fqn_build_registry.add(Column)
+def _(
+    _: Optional[OpenMetadata],  # ES Search not enabled for Columns  # noqa: UP045
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, table_name, column_name)
+
+
+@fqn_build_registry.add(User)
+def _(
+    metadata: OpenMetadata,
+    *,
+    user_name: str,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    """
+    Building logic for User
+    :param metadata: OMeta client
+    :param user_name: User name
+    :return:
+    """
+
+    fqn_search_string = _build(user_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=User,
+        fqn_search_string=fqn_search_string,
+    )
+    entity: Optional[Union[User, List[User]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+    if not entity:
+        return None
+    if fetch_multiple_entities:
+        return [str(user.fullyQualifiedName.root) for user in entity]
+    return str(entity.fullyQualifiedName.root)
+
+
+@fqn_build_registry.add(Team)
+def _(
+    metadata: OpenMetadata,
+    *,
+    team_name: str,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    """
+    Building logic for Team
+    :param metadata: OMeta client
+    :param team_name: Team name
+    :return:
+    """
+
+    fqn_search_string = _build(team_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Team,
+        fqn_search_string=fqn_search_string,
+    )
+    entity: Optional[Union[Team, List[Team]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+    if not entity:
+        return None
+    if fetch_multiple_entities:
+        return [str(user.fullyQualifiedName.root) for user in entity]
+    return str(entity.fullyQualifiedName.root)
+
+
+@fqn_build_registry.add(TestCase)
+def _(
+    _: Optional[OpenMetadata],  # ES Search not enabled for TestCase  # noqa: UP045
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: Optional[str],  # noqa: UP045
+    test_case_name: str,
+) -> str:
+    if column_name:
+        return _build(
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            column_name,
+            test_case_name,
+        )
+    return _build(
+        service_name,
+        database_name,
+        schema_name,
+        table_name,
+        test_case_name,
+    )
+
+
+@fqn_build_registry.add(DashboardDataModel)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    data_model_name: str,
+) -> str:
+    if not service_name or not data_model_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, chart=`{data_model_name}``"
+        )
+    return _build(service_name, "model", data_model_name)
+
+
+@fqn_build_registry.add(Query)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    query_checksum: str,
+) -> str:
+    if not service_name or not query_checksum:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, query_checksum=`{query_checksum}``"
+        )
+    return _build(service_name, query_checksum)
+
+
+@fqn_build_registry.add(DriveService)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+) -> str:
+    return _build(service_name)
+
+
+@fqn_build_registry.add(Directory)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for directory FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    directory_path: List[str],  # noqa: UP006
+) -> str:
+    if not service_name:
+        raise FQNBuildingException(f"Service name should be informed, but got service=`{service_name}`")
+
+    if not directory_path:
+        raise FQNBuildingException("Directory path should not be empty")
+
+    return _build(service_name, *directory_path)
+
+
+@fqn_build_registry.add(File)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for file FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    directory_path: List[str],  # noqa: UP006
+    file_name: str,
+) -> str:
+    if not service_name or not file_name:
+        raise FQNBuildingException(f"Args should be informed, but got service=`{service_name}`, file=`{file_name}`")
+    if not directory_path:
+        raise FQNBuildingException("Directory path should not be empty")
+    return _build(service_name, *directory_path, file_name)
+
+
+@fqn_build_registry.add(Worksheet)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    spreadsheet_name: str,
+    worksheet_name: str,
+) -> str:
+    if not service_name or not spreadsheet_name or not worksheet_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, "
+            f"spreadsheet=`{spreadsheet_name}`, worksheet=`{worksheet_name}``"
+        )
+    return _build(service_name, spreadsheet_name, worksheet_name)
+
+
+@fqn_build_registry.add(Spreadsheet)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
+    *,
+    service_name: str,
+    spreadsheet_name: str,
+) -> str:
+    if not service_name or not spreadsheet_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, spreadsheet=`{spreadsheet_name}``"
+        )
+    return _build(service_name, spreadsheet_name)
+
+
+def split_table_name(table_name: str) -> Dict[str, Optional[str]]:  # noqa: UP006, UP045
+    """
+    Given a table name, try to extract database, schema and
+    table info
+    :param table_name: raw table name
+    :return: dict with data
+    """
+    # Revisit: Check the antlr grammer for issue when string has double quotes
+    # Issue Link: https://github.com/open-metadata/OpenMetadata/issues/8874
+    details: List[str] = split(table_name.replace('"', ""))  # noqa: UP006
+    # Handles table names with 4+ parts (e.g., BigQuery INFORMATION_SCHEMA:
+    # `project-name.region-name.INFORMATION_SCHEMA.table_name`) by taking only
+    # the last 3 segments (database, schema, table). Pads with None if fewer than 3.
+    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[-3:]  # noqa: UP006, UP045
+
+    database, database_schema, table = full_details
+    return {"database": database, "database_schema": database_schema, "table": table}
+
+
+def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
+    """given a test case fqn split each element
+
+    Args:
+        test_case_fqn (str): test case fqn
+
+    Returns:
+        Dict[str, Optional[str]]:
+    """
+    details = split(test_case_fqn)
+    if len(details) < 5:
+        raise ValueError(f"{test_case_fqn} does not appear to be a valid test_case fqn ")
+    if len(details) != 6:
+        details.insert(4, None)  # type: ignore
+
+    (  # pylint: disable=unbalanced-tuple-unpacking
+        service,
+        database,
+        schema,
+        table,
+        column,
+        test_case,
+    ) = details
+
+    return SplitTestCaseFqn(
+        service=service,
+        database=database,
+        schema=schema,
+        table=table,
+        column=column,
+        test_case=test_case,
+    )
+
+
+def build_es_fqn_search_string(database_name: str, schema_name, service_name, table_name) -> str:
+    """
+    Builds FQN search string for ElasticSearch
+
+    Args:
+        service_name: service name to filter
+        database_name: DB name or None
+        schema_name: schema name or None
+        table_name: table name
+
+    Returns:
+        FQN search string
+    """
+    if not table_name:
+        raise FQNBuildingException(f"Table Name should be informed, but got table=`{table_name}`")
+    fqn_search_string = _build(service_name or "*", database_name or "*", schema_name or "*", table_name)
+    return fqn_search_string  # noqa: RET504
+
+
+def search_database_schema_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    schema_name: str,
+    service_name: str,
+    fetch_multiple_entities: bool = False,
+    fields: Optional[str] = None,  # noqa: UP045
+):
+    """
+    Find database schema entity in elasticsearch index.
+
+    :param metadata: OM Client
+    :param database_name: name of database in which we are searching for database schema
+    :param schema_name: name of schema we are searching for
+    :param service_name: name of service in which we are searching for database schema
+    :param fetch_multiple_entities: should single match be returned or all matches
+    :param fields: additional fields to return
+    :return: entity / entities matching search criteria
+    """
+    if not schema_name:
+        raise FQNBuildingException(f"Schema Name should be informed, but got schema_name=`{schema_name}`")
+
+    fqn_search_string = _build(service_name or "*", database_name or "*", schema_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=DatabaseSchema,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
+
+
+def search_table_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    schema_name: str,
+    service_name: str,
+    table_name: str,
+    fetch_multiple_entities: bool = False,
+    fields: Optional[str] = None,  # noqa: UP045
+):
+    fqn_search_string = build_es_fqn_search_string(database_name, schema_name, service_name, table_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Table,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
+
+
+def search_database_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    service_name: Optional[str],  # noqa: UP045
+    fetch_multiple_entities: Optional[bool] = False,  # noqa: UP045
+    fields: Optional[str] = None,  # noqa: UP045
+):
+    """
+    Search Database entity from ES
+    """
+
+    if not database_name:
+        raise FQNBuildingException(f"Database Name should be informed, but got database=`{database_name}`")
+
+    fqn_search_string = _build(service_name or "*", database_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Database,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
+
+
+def search_topic_from_es(
+    metadata: OpenMetadata,
+    topic_name: str,
+    service_name: Optional[str],  # noqa: UP045
+    fields: Optional[str] = None,  # noqa: UP045
+):
+    """
+    Search Topic entity from ES
+    """
+
+    if not topic_name:
+        raise FQNBuildingException(f"Topic Name should be informed, but got topic=`{topic_name}`")
+
+    fqn_search_string = _build(service_name or "*", topic_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Topic,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=False)
+
+
+def search_container_from_es(
+    metadata: OpenMetadata,
+    container_name: str,
+    service_name: Optional[str],  # noqa: UP045
+    parent_container: Optional[str] = None,  # noqa: UP045
+    fetch_multiple_entities: Optional[bool] = False,  # noqa: UP045
+    fields: Optional[str] = None,  # noqa: UP045
+):
+    """
+    Search Container entity from ES
+    """
+
+    if not container_name:
+        raise FQNBuildingException(f"Container Name should be informed, but got container=`{container_name}`")
+
+    if parent_container:
+        # Check if parent_container already starts with service_name
+        if service_name and parent_container.startswith(f"{service_name}."):
+            fqn_search_string = _build(parent_container, container_name, quote=False)
+        else:
+            fqn_search_string = _build(service_name or "*", parent_container, container_name, quote=False)
+    else:
+        fqn_search_string = _build(service_name or "*", container_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Container,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities)
+
+
+def get_query_checksum(query: str) -> str:
+    """
+    Prepare the query checksum from its string representation.
+    The checksum is used as the query's name.
+    """
+    return hashlib.md5(query.encode()).hexdigest()
+
+
+# Not adding container since children can have recursive slots: service.container1.container2...
+FQN_ENTITY_SLOTS = {
+    Table.__name__: 4,
+    DatabaseSchema.__name__: 3,
+    Database.__name__: 2,
+    Dashboard.__name__: 2,
+    APICollection.__name__: 2,
+    Chart.__name__: 2,
+    MlModel.__name__: 2,
+    Topic.__name__: 2,
+    SearchIndex.__name__: 2,
+    Tag.__name__: 2,
+    DataModel.__name__: 2,
+    StoredProcedure.__name__: 4,
+    Pipeline.__name__: 2,
+}
+
+
+def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:  # noqa: UP006
+    """
+    Given an entity type and an FQN, return the FQN prefixed with wildcards
+    to match any parent hierarchy leading to that entity.
+
+    For example, for a Topic with FQN "potato", return "*.potato" to match
+    the topic in any service. For a Table with FQN "schema.table", return
+    "*.*.schema.table" to match the table in any service and database.
+
+    Args:
+        entity_type: The entity type to match.
+        fqn: The FQN to prefix.
+
+    Returns:
+        The prefixed FQN with wildcards for missing parent levels.
+    """
+    slots = FQN_ENTITY_SLOTS.get(entity_type.__name__)
+    if not slots:
+        raise FQNBuildingException(f"Entity type {entity_type.__name__} not supported for wildcard search")
+
+    parts = split(fqn)
+    if len(parts) > slots:
+        raise FQNBuildingException(
+            f"FQN {fqn} has too many parts ({len(parts)})"
+            f"for entity type {entity_type.__name__} (expected {slots} or fewer)"
+        )
+
+    # Add wildcards for missing parent levels
+    wildcards_needed = slots - len(parts)
+    prefixed_parts = ["*"] * wildcards_needed + parts
+    return _build(*prefixed_parts, quote=True)

@@ -1,0 +1,128 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  > div {
+    height: 40px;
+
+    .ant-input-wrapper.ant-input-group,
+    .ant-input-affix-wrapper {
+      height: 40px;
+    }
+  }
+
+  .search-container {
+    width: 35vw;
+  }
+
+  .app-user-icon {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+
+    .username {
+      font-weight: var(--om-font-weight-medium);
+      line-height: 21px;
+    }
+  }
+
+  .navbar-title {
+    font-size: var(--om-font-size-lg);
+    line-height: 32px;
+    font-weight: var(--om-font-weight-semibold);
+    color: var(--tw-color-text-secondary);
+  }
+}
+
+.domain-dropdown-menu {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.slide-in-top {
+  animation: slide-in-top var(--om-duration-1000) cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes slide-in-top {
+  0% {
+    transform: translate(-50%, 100%);
+  }
+
+  100% {
+    transform: translate(-50%, 0);
+  }
+}
+
+.ant-btn.domain-nav-btn {
+  background-color: var(--tw-color-bg-primary);
+  border: 1px solid var(--tw-color-border-primary);
+  color: var(--tw-color-text-secondary);
+  height: 40px;
+
+  .domain-text {
+    max-width: 15vw;
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus {
+    background-color: var(--tw-color-bg-primary_hover);
+    border: 1px solid var(--tw-color-border-primary);
+    color: var(--tw-color-text-secondary);
+  }
+
+  &.domain-active {
+    color: var(--tw-color-text-brand-tertiary);
+    border: 1px solid var(--tw-color-border-brand);
+    background-color: var(--tw-color-bg-brand-primary);
+  }
+}
+
+.ant-alert.ant-alert-info.refresh-alert {
+  width: 470px;
+  bottom: 30px;
+  align-items: center;
+  z-index: var(--om-z-9999);
+  margin: 0 auto;
+  box-shadow: 0px 2px 10px var(--om-legacy-color-0-0-0-0-12);
+  border-radius: var(--om-radius-10);
+  border: 1px solid var(--tw-color-bg-primary-solid);
+  background: var(--tw-color-bg-primary-solid);
+  color: var(--tw-color-text-white);
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+
+  .ant-alert-message {
+    color: var(--tw-color-text-white);
+  }
+
+  .ant-alert-description {
+    color: var(--tw-color-gray-400);
+  }
+
+  .ant-alert-content {
+    border-right: 1px solid var(--tw-color-text-white);
+  }
+
+  .ant-btn {
+    font-weight: var(--om-font-weight-bold);
+    color: var(--tw-color-text-white);
+  }
+}

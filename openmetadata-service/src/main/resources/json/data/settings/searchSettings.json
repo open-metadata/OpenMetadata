@@ -1,0 +1,4452 @@
+{
+  "globalSettings": {
+    "enableAccessControl": false,
+    "maxAggregateSize": 10000,
+    "maxResultHits": 10000,
+    "maxAnalyzedOffset": 1000,
+    "aggregations": [
+      {
+        "name": "serviceType",
+        "type": "terms",
+        "field": "serviceType"
+      },
+      {
+        "name": "service.displayName.keyword",
+        "type": "terms",
+        "field": "service.displayName.keyword"
+      },
+      {
+        "name": "entityType",
+        "type": "terms",
+        "field": "entityType"
+      },
+      {
+        "name": "entityType.keyword",
+        "type": "terms",
+        "field": "entityType.keyword"
+      },
+      {
+        "name": "tier.tagFQN",
+        "type": "terms",
+        "field": "tier.tagFQN"
+      },
+      {
+        "name": "ownerDisplayName",
+        "type": "terms",
+        "field": "ownerDisplayName"
+      },
+      {
+        "name": "domains.displayName.keyword",
+        "type": "terms",
+        "field": "domains.displayName.keyword"
+      },
+      {
+        "name": "tags.tagFQN",
+        "type": "terms",
+        "field": "tags.tagFQN"
+      },
+      {
+        "name": "classificationTags",
+        "type": "terms",
+        "field": "classificationTags"
+      },
+      {
+        "name": "glossaryTags",
+        "type": "terms",
+        "field": "glossaryTags"
+      },
+      {
+        "name": "certification.tagLabel.tagFQN",
+        "type": "terms",
+        "field": "certification.tagLabel.tagFQN"
+      },
+      {
+        "name": "database.name.keyword",
+        "type": "terms",
+        "field": "database.name.keyword"
+      },
+      {
+        "name": "databaseSchema.name.keyword",
+        "type": "terms",
+        "field": "databaseSchema.name.keyword"
+      },
+      {
+        "name": "database.displayName",
+        "type": "terms",
+        "field": "database.displayName"
+      },
+      {
+        "name": "databaseSchema.displayName",
+        "type": "terms",
+        "field": "databaseSchema.displayName"
+      }
+    ],
+    "highlightFields": [
+      "name",
+      "displayName",
+      "description"
+    ],
+    "termBoosts": [
+      {
+        "field": "tier.tagFQN",
+        "value": "Tier.Tier1",
+        "boost": 0.5
+      },
+      {
+        "field": "tier.tagFQN",
+        "value": "Tier.Tier2",
+        "boost": 0.3
+      },
+      {
+        "field": "tier.tagFQN",
+        "value": "Tier.Tier3",
+        "boost": 0.15
+      },
+      {
+        "field": "entityStatus",
+        "value": "approved",
+        "boost": 0.12
+      },
+      {
+        "field": "entityStatus",
+        "value": "in review",
+        "boost": 0.08
+      },
+      {
+        "field": "entityStatus",
+        "value": "draft",
+        "boost": 0.05
+      },
+      {
+        "field": "entityStatus",
+        "value": "unprocessed",
+        "boost": 0.05
+      },
+      {
+        "field": "entityType",
+        "value": "table",
+        "boost": 0.3
+      },
+      {
+        "field": "entityType",
+        "value": "dashboard",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "topic",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "pipeline",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "mlmodel",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "container",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "searchIndex",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "storedProcedure",
+        "boost": 0.24
+      },
+      {
+        "field": "entityType",
+        "value": "dashboardDataModel",
+        "boost": 0.24
+      },
+      {
+        "field": "entityType",
+        "value": "glossaryTerm",
+        "boost": 0.2
+      },
+      {
+        "field": "entityType",
+        "value": "database",
+        "boost": 0.18
+      },
+      {
+        "field": "entityType",
+        "value": "databaseSchema",
+        "boost": 0.18
+      },
+      {
+        "field": "entityType",
+        "value": "tableColumn",
+        "boost": 0.05
+      }
+    ],
+    "fieldValueBoosts": [
+      {
+        "field": "usageSummary.weeklyStats.count",
+        "factor": 0.00005,
+        "modifier": "log1p",
+        "missing": 1
+      },
+      {
+        "field": "totalVotes",
+        "factor": 0.0015,
+        "modifier": "log1p",
+        "missing": 0
+      },
+      {
+        "field": "usageSummary.weeklyStats.percentileRank",
+        "factor": 0.005,
+        "modifier": "none",
+        "missing": 0
+      }
+    ]
+  },
+  "assetTypeConfigurations": [
+    {
+      "assetType": "database",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "highlightFields": [
+        "name",
+        "description",
+        "displayName"
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "databaseSchema",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      },
+      "highlightFields": [
+        "name",
+        "description",
+        "displayName"
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "table",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "columns.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "columns.displayName.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "database.displayName.keyword",
+          "type": "terms",
+          "field": "database.displayName.keyword"
+        },
+        {
+          "name": "databaseSchema.displayName.keyword",
+          "type": "terms",
+          "field": "databaseSchema.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "description",
+        "displayName"
+      ],
+      "fieldValueBoosts": [
+        {
+          "field": "usageSummary.monthlyStats.count",
+          "factor": 0.000025,
+          "modifier": "log1p",
+          "missing": 0
+        },
+        {
+          "field": "usageSummary.monthlyStats.percentileRank",
+          "factor": 0.0025,
+          "modifier": "none",
+          "missing": 0
+        }
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "tableColumn",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 7.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 6.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "dataType",
+          "boost": 3.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "table.name",
+          "boost": 5.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "table.displayName",
+          "boost": 5.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "table.name"
+      ],
+      "aggregations": [
+        {
+          "name": "dataType",
+          "type": "terms",
+          "field": "dataType"
+        },
+        {
+          "name": "table.name.keyword",
+          "type": "terms",
+          "field": "table.name.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        }
+      ],
+      "termBoosts": [],
+      "fieldValueBoosts": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "storedProcedure",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "database.displayName.keyword",
+          "type": "terms",
+          "field": "database.displayName.keyword"
+        },
+        {
+          "name": "databaseSchema.displayName.keyword",
+          "type": "terms",
+          "field": "databaseSchema.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "description",
+        "displayName"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "query",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "queryText",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "queryText.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "queryType",
+          "type": "terms",
+          "field": "queryType"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "description",
+        "displayName"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "topic",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "messageSchema.schemaFields.name.keyword",
+          "boost": 1.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "fieldNamesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "messageSchema.schemaFields.name.keyword",
+          "type": "terms",
+          "field": "messageSchema.schemaFields.name.keyword"
+        },
+        {
+          "name": "fieldNames",
+          "type": "terms",
+          "field": "fieldsNames"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "dashboard",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "charts.name",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "charts.description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "messageSchema.schemaFields.description",
+          "boost": 1.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "serviceType",
+          "type": "terms",
+          "field": "serviceType"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        },
+        {
+          "name": "tier.tagFQN",
+          "type": "terms",
+          "field": "tier.tagFQN"
+        },
+        {
+          "name": "certification.tagLabel.tagFQN",
+          "type": "terms",
+          "field": "certification.tagLabel.tagFQN"
+        },
+        {
+          "name": "owners.displayName.keyword",
+          "type": "terms",
+          "field": "ownerDisplayName"
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "type": "terms",
+          "field": "domains.displayName.keyword"
+        },
+        {
+          "name": "tags.tagFQN",
+          "type": "terms",
+          "field": "tags.tagFQN"
+        },
+        {
+          "name": "dataModels.displayName.keyword",
+          "type": "terms",
+          "field": "dataModels.displayName.keyword"
+        },
+        {
+          "name": "charts.displayName.keyword",
+          "type": "terms",
+          "field": "charts.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "charts.name"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "dashboardDataModel",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "columns.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "dataModelType",
+          "type": "terms",
+          "field": "dataModelType"
+        },
+        {
+          "name": "columns.name.keyword",
+          "type": "terms",
+          "field": "columns.name.keyword"
+        },
+        {
+          "name": "columnNames",
+          "type": "terms",
+          "field": "columnNames"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "charts.name"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "pipeline",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "tasks.name",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "tasks.description",
+          "boost": 1.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "tasks.displayName.keyword",
+          "type": "terms",
+          "field": "tasks.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "tasks.name",
+        "tasks.description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "mlmodel",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "mlFeatures.name",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "mlFeatures.description",
+          "boost": 1.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "mlFeatures.name.keyword",
+          "type": "terms",
+          "field": "mlFeatures.name.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "mlFeatures.name",
+        "mlFeatures.description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "searchIndex",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fields.name",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fields.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "fields.description",
+          "boost": 1.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "fields.name.keyword",
+          "type": "terms",
+          "field": "fields.name.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "fields.name",
+        "fields.description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "container",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "dataModel.columns.name",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "dataModel.columns.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "columnNames",
+          "type": "terms",
+          "field": "columnNames"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "dataModel.columns.name",
+        "dataModel.columns.description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "apiEndpoint",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "response_field_namesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        },
+        {
+          "field": "request_field_namesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        },
+        {
+          "field": "responseSchema.schemaFields.name.keyword",
+          "boost": 8.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "requestSchema.schemaFields.name.keyword",
+          "boost": 8.0,
+          "matchType": "exact"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "responseSchema.schemaFields.name",
+          "type": "terms",
+          "field": "responseSchema.schemaFields.name.keyword"
+        },
+        {
+          "name": "requestSchema.schemaFields.name",
+          "type": "terms",
+          "field": "requestSchema.schemaFields.name.keyword"
+        },
+        {
+          "name": "fieldNames",
+          "type": "terms",
+          "field": "fieldsNames"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "domain",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "fqnParts_agg",
+          "type": "terms",
+          "field": "fqnParts"
+        },
+        {
+          "name": "domainType.keyword",
+          "type": "terms",
+          "field": "domainType.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "dataProduct",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "tag",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "classification.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "classification.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "glossaryTerm",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "synonyms",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "synonyms.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "glossary.name",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "glossary.displayName",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "glossary.name.keyword",
+          "type": "terms",
+          "field": "glossary.name.keyword"
+        },
+        {
+          "name": "fqnParts_agg",
+          "type": "terms",
+          "field": "fqnParts"
+        },
+        {
+          "name": "status",
+          "type": "terms",
+          "field": "status"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "driveService",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "directory",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "path",
+          "boost": 3.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "type": "terms",
+          "field": "parent.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "path"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "contextFile",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 20.0, "matchType": "exact" },
+        { "field": "name", "boost": 10.0, "matchType": "phrase" },
+        { "field": "name.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "displayName", "boost": 10.0, "matchType": "phrase" },
+        { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "description", "boost": 2.0, "matchType": "standard" },
+        { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" },
+        { "field": "extractedText", "boost": 3.0, "matchType": "standard" },
+        { "field": "fileExtension", "boost": 2.0, "matchType": "standard" }
+      ],
+      "aggregations": [
+        { "name": "fileType", "type": "terms", "field": "fileType" },
+        { "name": "processingStatus", "type": "terms", "field": "processingStatus" },
+        { "name": "sourceType", "type": "terms", "field": "sourceType" }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "extractedText"],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "folder",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 20.0, "matchType": "exact" },
+        { "field": "name", "boost": 10.0, "matchType": "phrase" },
+        { "field": "name.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "displayName", "boost": 10.0, "matchType": "phrase" },
+        { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "description", "boost": 2.0, "matchType": "standard" },
+        { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "page",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 20.0, "matchType": "exact" },
+        { "field": "name", "boost": 10.0, "matchType": "phrase" },
+        { "field": "name.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "displayName", "boost": 10.0, "matchType": "phrase" },
+        { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "description", "boost": 2.0, "matchType": "standard" },
+        { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" }
+      ],
+      "aggregations": [
+        { "name": "pageType", "type": "terms", "field": "pageType" }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "file",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "path",
+          "boost": 3.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fileExtension",
+          "boost": 2.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "fileType",
+          "type": "terms",
+          "field": "fileType"
+        },
+        {
+          "name": "fileExtension",
+          "type": "terms",
+          "field": "fileExtension"
+        },
+        {
+          "name": "directory.displayName.keyword",
+          "type": "terms",
+          "field": "directory.displayName.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "path"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "spreadsheet",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "path",
+          "boost": 3.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "directory.displayName.keyword",
+          "type": "terms",
+          "field": "directory.displayName.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "path"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "worksheet",
+      "searchFields": [
+        {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "columns.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "columns.displayName.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "columnNamesFuzzy",
+          "boost": 1.5,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [
+        {
+          "name": "spreadsheet.displayName.keyword",
+          "type": "terms",
+          "field": "spreadsheet.displayName.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        },
+        {
+          "name": "columnNames",
+          "type": "terms",
+          "field": "columnNames"
+        }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "columns.name",
+        "columns.description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "metric",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    }
+  ],
+  "defaultConfiguration": {
+    "assetType": "default",
+    "searchFields": [
+      {
+        "field": "name.keyword",
+        "boost": 20.0,
+        "matchType": "exact"
+      },
+      {
+        "field": "name",
+        "boost": 10.0,
+        "matchType": "phrase"
+      },
+      {
+        "field": "name.ngram",
+        "boost": 1.0,
+        "matchType": "fuzzy"
+      },
+      {
+        "field": "displayName",
+        "boost": 10.0,
+        "matchType": "phrase"
+      },
+      {
+        "field": "displayName.ngram",
+        "boost": 1.0,
+        "matchType": "fuzzy"
+      },
+      {
+        "field": "description",
+        "boost": 2.0,
+        "matchType": "standard"
+      },
+      {
+        "field": "fullyQualifiedName",
+        "boost": 5.0,
+        "matchType": "standard"
+      },
+      {
+        "field": "fqnParts",
+        "boost": 5.0,
+        "matchType": "standard"
+      }
+    ],
+    "highlightFields": [],
+    "aggregations": [],
+    "ranking": {
+      "enabled": true,
+      "algorithm": "nameFirstLexicalThenSignals",
+      "stages": [
+        {
+          "name": "exactName",
+          "purpose": "Exact identity match on name, displayName, or fullyQualifiedName.",
+          "fields": [
+            "displayName.keyword",
+            "name.keyword",
+            "fullyQualifiedName"
+          ],
+          "matchType": "exact",
+          "weight": 100.0
+        },
+        {
+          "name": "phraseName",
+          "purpose": "Exact phrase identity match on analyzed name fields.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "phrase",
+          "weight": 70.0
+        },
+        {
+          "name": "prefixName",
+          "purpose": "Prefix match on the analyzed name fields, so a partially typed name ranks above an incidental substring hit and queries shorter than the n-gram minimum still match.",
+          "fields": [
+            "displayName",
+            "name"
+          ],
+          "matchType": "prefix",
+          "weight": 55.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "closeName",
+          "purpose": "Close identity match after removing weak query words such as 'in' or 'of'.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "tokenCoverage",
+          "weight": 40.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "fuzzyName",
+          "purpose": "Typo-tolerant identity fallback for short name searches.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "fuzzy",
+          "weight": 24.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "partialName",
+          "purpose": "Substring and prefix matches via name and displayName edge n-grams so partial-name queries still surface the entity.",
+          "fields": [
+            "displayName.ngram",
+            "name.ngram"
+          ],
+          "matchType": "standard",
+          "weight": 16.0
+        },
+        {
+          "name": "structuralContext",
+          "purpose": "Secondary asset structure such as columns, fields, parent names, and FQN parts.",
+          "fields": [
+            "fqnParts"
+          ],
+          "matchType": "standard",
+          "weight": 12.0
+        },
+        {
+          "name": "descriptionContext",
+          "purpose": "Broad descriptive text match used after identity and structural matches.",
+          "fields": [
+            "description"
+          ],
+          "matchType": "standard",
+          "weight": 4.0
+        }
+      ],
+      "stopWords": [],
+      "stopWordsByLanguage": {
+        "en": [
+          "a",
+          "an",
+          "and",
+          "are",
+          "as",
+          "at",
+          "by",
+          "for",
+          "from",
+          "in",
+          "into",
+          "is",
+          "of",
+          "on",
+          "or",
+          "the",
+          "to",
+          "with"
+        ],
+        "de": [
+          "der",
+          "die",
+          "das",
+          "den",
+          "dem",
+          "ein",
+          "eine",
+          "und",
+          "oder",
+          "in",
+          "im",
+          "am",
+          "an",
+          "auf",
+          "von",
+          "mit",
+          "zu",
+          "fur",
+          "für"
+        ],
+        "es": [
+          "el",
+          "la",
+          "los",
+          "las",
+          "un",
+          "una",
+          "y",
+          "o",
+          "en",
+          "de",
+          "del",
+          "para",
+          "por",
+          "con",
+          "a"
+        ],
+        "fr": [
+          "le",
+          "la",
+          "les",
+          "un",
+          "une",
+          "des",
+          "et",
+          "ou",
+          "en",
+          "de",
+          "du",
+          "dans",
+          "pour",
+          "par",
+          "avec",
+          "a"
+        ],
+        "pt": [
+          "o",
+          "a",
+          "os",
+          "as",
+          "um",
+          "uma",
+          "e",
+          "ou",
+          "em",
+          "de",
+          "do",
+          "da",
+          "para",
+          "por",
+          "com"
+        ],
+        "ru": [
+          "и",
+          "в",
+          "во",
+          "на",
+          "с",
+          "со",
+          "по",
+          "для",
+          "из",
+          "от",
+          "к",
+          "ко",
+          "о",
+          "об",
+          "за"
+        ],
+        "zh": [
+          "的",
+          "了",
+          "和",
+          "在",
+          "是",
+          "到",
+          "与",
+          "及"
+        ],
+        "jp": [
+          "の",
+          "に",
+          "は",
+          "を",
+          "と",
+          "で",
+          "が",
+          "へ",
+          "や"
+        ],
+        "ja": [
+          "の",
+          "に",
+          "は",
+          "を",
+          "と",
+          "で",
+          "が",
+          "へ",
+          "や"
+        ]
+      },
+      "disMaxTieBreaker": 0.05,
+      "signals": {
+        "purpose": "Use entity type, Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
+        "boostMode": "sum",
+        "scoreMode": "sum",
+        "maxBoost": 2.0,
+        "fields": [
+          "entityType",
+          "tier.tagFQN",
+          "entityStatus",
+          "usageSummary.weeklyStats.count",
+          "usageSummary.weeklyStats.percentileRank",
+          "usageSummary.monthlyStats.count",
+          "usageSummary.monthlyStats.percentileRank",
+          "totalVotes"
+        ]
+      }
+    },
+    "matchTypeBoostMultipliers": {
+      "exactMatchMultiplier": 2.0,
+      "phraseMatchMultiplier": 1.5,
+      "fuzzyMatchMultiplier": 1.0
+    }
+  },
+  "allowedFields": [
+    {
+      "entityType": "database",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on the database display name. Use this for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on database name, supporting basic tokenization and stemming for flexible matching."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on database name using n-grams. This helps users find databases when they only remember part of the name."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable database name with basic tokenization and stemming."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on displayName, enabling searches with incomplete display name information."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on database descriptions to find databases based on their documented purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the database to find specific databases within the hierarchy."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchical components."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with database."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with database."
+        }
+      ]
+    },
+    {
+      "entityType": "databaseSchema",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on the schema display name for precise name lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on schema name, supporting basic tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on schema name using n-grams. Helps find schemas with partial name information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable schema name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on displayName for flexible searching with incomplete terms."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on schema descriptions to find schemas based on their documented purpose."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the schema including the database component."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on individual parts of the fully qualified name for more flexible hierarchical matching."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with database schema."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with database schema."
+        }
+      ]
+    },
+    {
+      "entityType": "table",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on the table display name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on table name, supporting basic tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on table name using n-grams. Helps users find tables when they remember only parts of names."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable table name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on displayName for more flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on table descriptions to find tables based on their documented purpose or contents."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name including database and schema components."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on individual parts of the fully qualified name to match hierarchy components."
+        },
+        {
+          "name": "columns.name.keyword",
+          "description": "Exact match on column names within tables. Enables finding tables containing specific columns."
+        },
+        {
+          "name": "columns.displayName.keyword",
+          "description": "Exact match on column display names. Useful for finding tables with columns having specific user-friendly names."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find tables with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding tables by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified tables by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with table."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with table."
+        },
+        {
+          "name": "columns.description",
+          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+        }
+      ]
+    },
+    {
+      "entityType": "tableColumn",
+      "fields": [
+        {
+          "name": "name",
+          "description": "Column name - primary search field for finding columns by their database name."
+        },
+        {
+          "name": "name.keyword",
+          "description": "Exact match on column name for precise lookups."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Fuzzy/partial match on column name for flexible searching."
+        },
+        {
+          "name": "displayName",
+          "description": "Display name for the column."
+        },
+        {
+          "name": "description",
+          "description": "Column description text for finding columns by their documented purpose."
+        },
+        {
+          "name": "dataType",
+          "description": "Data type (VARCHAR, INT, etc.) for filtering columns by their type."
+        },
+        {
+          "name": "table.name",
+          "description": "Parent table name for finding columns within specific tables."
+        },
+        {
+          "name": "table.displayName",
+          "description": "Parent table display name."
+        },
+        {
+          "name": "tags.tagFQN",
+          "description": "Tags applied to the column for classification-based discovery."
+        },
+        {
+          "name": "service.displayName",
+          "description": "Database service name for filtering columns by their source service."
+        }
+      ]
+    },
+    {
+      "entityType": "storedProcedure",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on stored procedure display name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on stored procedure name with basic tokenization."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on stored procedure name using n-grams for flexible searches."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable stored procedure name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for finding procedures with partial name information."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on stored procedure descriptions for finding by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name including database and schema."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on individual parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find storedProcedures with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding storedProcedures by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified storedProcedures by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with stored procedure."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with stored procedure."
+        }
+      ]
+    },
+    {
+      "entityType": "query",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on the query display name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on query name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on query name for finding queries with partial name information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable query name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible search."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on query descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the query."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "queryText",
+          "description": "Search within the actual SQL query text to find queries with specific SQL patterns, table references, or functions."
+        },
+        {
+          "name": "queryText.ngram",
+          "description": "Partial matching on query text to find queries containing specific SQL fragments."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with query."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with query."
+        }
+      ]
+    },
+    {
+      "entityType": "topic",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on topic name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on topic name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on topic name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable topic name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on topic descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the topic."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "messageSchema.schemaFields.name",
+          "description": "Search on field names in the topic's message schema to find topics with specific data fields."
+        },
+        {
+          "name": "messageSchema.schemaFields.name.keyword",
+          "description": "Exact match on schema field names for precise field lookups."
+        },
+        {
+          "name": "messageSchema.schemaFields.description",
+          "description": "Search within field descriptions in the message schema to find topics with fields serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find topics with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding topics by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified topics by partial certification name."
+        },
+        {
+          "name": "messageSchema.schemaFields.tags.tagFQN.text",
+          "description": "Search within parts of schema field tag names. Helps find topics with schema fields tagged with specific terms."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find topics with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding topics by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified topics by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with topic."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with topic."
+        }
+      ]
+    },
+    {
+      "entityType": "dashboard",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on dashboard name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on dashboard name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on dashboard name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable dashboard name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on dashboard descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the dashboard."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "charts.name",
+          "description": "Search on the names of charts included in the dashboard to find dashboards containing specific visualizations."
+        },
+        {
+          "name": "charts.description",
+          "description": "Search on chart descriptions to find dashboards with charts serving specific purposes."
+        },
+        {
+          "name": "messageSchema.schemaFields.description",
+          "description": "Search within schema field descriptions to find dashboards with data fields serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find dashboards with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding dashboards by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified dashboards by partial certification name."
+        },
+        {
+          "name": "charts.tags.tagFQN.text",
+          "description": "Search within parts of chart tag names. Helps find dashboards with charts tagged with specific terms."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find dashboards with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding dashboards by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified dashboards by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with dashboard."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with dashboard."
+        }
+      ]
+    },
+    {
+      "entityType": "dashboardDataModel",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on data model name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on data model name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on data model name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable data model name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on data model descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the data model."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "columns.name.keyword",
+          "description": "Exact match on column names in the data model for finding models with specific fields."
+        },
+        {
+          "name": "columns.name",
+          "description": "Standard text analysis on column names in the data model."
+        },
+        {
+          "name": "columns.displayName",
+          "description": "Search on human-readable column names to find data models with fields having specific display names."
+        },
+        {
+          "name": "columns.description",
+          "description": "Search on column descriptions to find data models with fields serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find dashboard data models with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding dashboard data models by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified dashboard data models by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with dashboard data model."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with dashboard data model."
+        }
+      ]
+    },
+    {
+      "entityType": "pipeline",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on pipeline name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on pipeline name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on pipeline name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable pipeline name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on pipeline descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the pipeline."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "tasks.name",
+          "description": "Search on the names of tasks within the pipeline to find pipelines with specific processing steps."
+        },
+        {
+          "name": "tasks.description",
+          "description": "Search on task descriptions to find pipelines with tasks serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find pipelines with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding pipelines by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified pipelines by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with pipeline."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with pipeline."
+        }
+      ]
+    },
+    {
+      "entityType": "mlmodel",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on ML model name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on ML model name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on ML model name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable ML model name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on ML model descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the ML model."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "mlFeatures.name",
+          "description": "Search on the names of features used by the ML model to find models using specific input features."
+        },
+        {
+          "name": "mlFeatures.description",
+          "description": "Search on feature descriptions to find models with features serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find mlModels with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding mlModels by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified mlModels by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with mlmodel."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with mlmodel."
+        }
+      ]
+    },
+    {
+      "entityType": "searchIndex",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on search index name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on search index name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on search index name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable search index name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on search index descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the search index."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "fields.name",
+          "description": "Search on the names of fields indexed in the search index."
+        },
+        {
+          "name": "fields.name.keyword",
+          "description": "Exact match on a search index field name for precise lookups."
+        },
+        {
+          "name": "fields.description",
+          "description": "Search on field descriptions to find search indexes with fields serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find searchIndexes with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding searchIndexes by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified searchIndexes by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with search index."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with search index."
+        }
+      ]
+    },
+    {
+      "entityType": "container",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on container name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on container name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on container name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable container name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on container descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the container."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "dataModel.columns.name",
+          "description": "Search on column names in the container's data model to find containers with specific data fields."
+        },
+        {
+          "name": "dataModel.columns.name.keyword",
+          "description": "Exact match on data model column names for precise field lookups."
+        },
+        {
+          "name": "dataModel.columns.displayName",
+          "description": "Search on human-readable column names in the data model."
+        },
+        {
+          "name": "dataModel.columns.description",
+          "description": "Search on column descriptions to find containers with fields serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find containers with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names. Enables finding containers by partial tier name."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified containers by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with container."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with container."
+        }
+      ]
+    },
+    {
+      "entityType": "apiEndpoint",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on API endpoint name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on API endpoint name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on API endpoint name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable API endpoint name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on API endpoint descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the API endpoint."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "responseSchema.schemaFields.name",
+          "description": "Search on field names in the API response schema to find endpoints returning specific data fields."
+        },
+        {
+          "name": "responseSchema.schemaFields.name.keyword",
+          "description": "Exact match on response schema field names for precise field lookups."
+        },
+        {
+          "name": "responseSchema.schemaFields.description",
+          "description": "Search on field descriptions in the response schema to find endpoints with fields serving specific purposes."
+        },
+        {
+          "name": "requestSchema.schemaFields.name",
+          "description": "Search on field names in the API request schema to find endpoints accepting specific data fields."
+        },
+        {
+          "name": "requestSchema.schemaFields.name.keyword",
+          "description": "Exact match on request schema field names for precise field lookups."
+        },
+        {
+          "name": "requestSchema.schemaFields.description",
+          "description": "Search on field descriptions in the request schema to find endpoints with fields serving specific purposes."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find apiEndPoint with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        },
+        {
+          "name": "certification.tagLabel.tagFQN.text",
+          "description": "Search within parts of certification tag names. Useful for finding certified apiEndpoint by partial certification name."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with apiEndpoint."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with apiEndpoint."
+        }
+      ]
+    },
+    {
+      "entityType": "domain",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on domain name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on domain name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on domain name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable domain name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on domain descriptions to find by purpose or coverage."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the domain."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find domains with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        }
+      ]
+    },
+    {
+      "entityType": "dataProduct",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on data product name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on data product name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on data product name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable data product name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on data product descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the data product."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names. Use this to find data products with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
+        }
+      ]
+    },
+    {
+      "entityType": "tag",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on tag name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on tag name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on tag name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable tag name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on tag descriptions to find by purpose or meaning."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the tag including classification hierarchy."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "classification.name",
+          "description": "Search on the name of the classification that contains this tag to find tags within specific categories."
+        }
+      ]
+    },
+    {
+      "entityType": "glossaryTerm",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on glossary term name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on glossary term name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on glossary term name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable glossary term name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on glossary term descriptions to find by purpose or meaning."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the glossary term including parent glossary."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "synonyms",
+          "description": "Search on alternative terms/synonyms to find glossary terms with specific alternate names."
+        },
+        {
+          "name": "synonyms.ngram",
+          "description": "Partial matching on synonyms for flexible searching of alternate terms."
+        },
+        {
+          "name": "glossary.name",
+          "description": "Search on the name of the parent glossary to find terms within specific glossaries."
+        },
+        {
+          "name": "glossary.displayName",
+          "description": "Search on the display name of the parent glossary."
+        },
+        {
+          "name": "domain.name.keyword",
+          "description": "Exact match on domain associated with table."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with glossary term."
+        }
+      ]
+    },
+    {
+      "entityType": "metric",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on metric display name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on metric name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on metric name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable metric name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on metric descriptions to find by purpose or definition."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the metric."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        }
+      ]
+    },
+    {
+      "entityType": "driveService",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on drive service name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on drive service name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on drive service name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable drive service name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on drive service descriptions to find by purpose or functionality."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the drive service."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "serviceType",
+          "description": "Exact match on the type of drive service (e.g., Google Drive, SharePoint, Box)."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with drive service."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with drive service."
+        }
+      ]
+    },
+    {
+      "entityType": "directory",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on directory name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on directory name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on directory name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable directory name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on directory descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the directory including parent path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "path",
+          "description": "Exact match on the directory path within the drive service."
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "description": "Exact match on parent directory display name to find subdirectories."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this directory."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find directories with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for directories."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with directory."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with directory."
+        }
+      ]
+    },
+    {
+      "entityType": "file",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on file name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on file name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on file name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable file name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on file descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the file including directory path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "fileType",
+          "description": "Exact match on the type of file (e.g., DOCUMENT, SPREADSHEET, PRESENTATION)."
+        },
+        {
+          "name": "mimeType",
+          "description": "Exact match on the MIME type of the file."
+        },
+        {
+          "name": "fileExtension",
+          "description": "Exact match on the file extension (e.g., pdf, docx, xlsx)."
+        },
+        {
+          "name": "path",
+          "description": "Exact match on the file path within the drive service."
+        },
+        {
+          "name": "directory.displayName.keyword",
+          "description": "Exact match on the directory that contains this file."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this file."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find files with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for files."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with file."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with file."
+        }
+      ]
+    },
+    {
+      "entityType": "spreadsheet",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on spreadsheet name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on spreadsheet name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on spreadsheet name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable spreadsheet name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on spreadsheet descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the spreadsheet including directory path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "mimeType",
+          "description": "Exact match on the MIME type of the spreadsheet file."
+        },
+        {
+          "name": "path",
+          "description": "Exact match on the spreadsheet path within the drive service."
+        },
+        {
+          "name": "directory.displayName.keyword",
+          "description": "Exact match on the directory that contains this spreadsheet."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this spreadsheet."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find spreadsheets with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for spreadsheets."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with spreadsheet."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with spreadsheet."
+        }
+      ]
+    },
+    {
+      "entityType": "worksheet",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on worksheet name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on worksheet name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on worksheet name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable worksheet name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on worksheet descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the worksheet including spreadsheet and directory path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "columns.name.keyword",
+          "description": "Exact match on column names within the worksheet."
+        },
+        {
+          "name": "columns.displayName.keyword",
+          "description": "Exact match on column display names within the worksheet."
+        },
+        {
+          "name": "columnNames",
+          "description": "Search on indexed column names for finding worksheets with specific columns."
+        },
+        {
+          "name": "spreadsheet.displayName.keyword",
+          "description": "Exact match on the spreadsheet that contains this worksheet."
+        },
+        {
+          "name": "service.displayName.keyword",
+          "description": "Exact match on the drive service that contains this worksheet."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find worksheets with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for worksheets."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with worksheet."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with worksheet."
+        }
+      ]
+    },
+    {
+      "entityType": "contextFile",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on context file name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on context file name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on context file name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable context file name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on context file descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the context file including folder path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "fileType",
+          "description": "Exact match on the context file type (e.g., PDF, Image, Spreadsheet, Text)."
+        },
+        {
+          "name": "contentType",
+          "description": "Exact match on the MIME content type of the context file."
+        },
+        {
+          "name": "fileExtension",
+          "description": "Exact match on the context file extension (e.g., pdf, docx, xlsx)."
+        },
+        {
+          "name": "processingStatus",
+          "description": "Exact match on the extraction processing status of the context file."
+        },
+        {
+          "name": "folder.displayName.keyword",
+          "description": "Exact match on the folder that contains this context file."
+        },
+        {
+          "name": "extractedText",
+          "description": "Full-text search on text extracted from the uploaded context file."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find context files with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for context files."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with context file."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with context file."
+        }
+      ]
+    },
+    {
+      "entityType": "folder",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on folder name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on folder name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on folder name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable folder name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on folder descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the folder including parent path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "description": "Exact match on parent folder display name to find subfolders."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find folders with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for folders."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with folder."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with folder."
+        }
+      ]
+    },
+    {
+      "entityType": "page",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on knowledge page name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on knowledge page name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on knowledge page name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable knowledge page name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on knowledge page descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the knowledge page including parent path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "pageType",
+          "description": "Exact match on the knowledge page type (Article or QuickLink)."
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "description": "Exact match on parent knowledge page display name to find child pages."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find knowledge pages with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for knowledge pages."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with knowledge page."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with knowledge page."
+        }
+      ]
+    },
+    {
+      "entityType": "default",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on entity name for precise lookups. This field is useful when you need to find exact matches of entity names."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on entity name with tokenization and stemming. This provides more flexible matching than keyword searches."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on entity name using n-grams. This helps users find entities when they only remember part of the name."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable entity name. This searches the user-friendly names assigned to entities."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for more flexible searching with incomplete terms."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on entity descriptions to find by purpose, content or other documented details."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the entity including all parent components."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchy components."
+        }
+      ]
+    }
+  ],
+  "allowedFieldValueBoosts": [
+    {
+      "entityType": "default",
+      "fields": [
+        {
+          "name": "totalVotes",
+          "description": "Total number of votes (upvotes minus downvotes) received by the entity. Universal metric for boosting community-endorsed entities."
+        },
+        {
+          "name": "upVotes",
+          "description": "Number of upvotes received by the entity. Universal metric for boosting positively rated entities."
+        },
+        {
+          "name": "usageSummary.weeklyStats.count",
+          "description": "Weekly usage count of an entity. Generic usage statistic that applies to various entity types."
+        },
+        {
+          "name": "usageSummary.dailyStats.count",
+          "description": "Daily usage count of an entity. Generic recent usage statistic."
+        },
+        {
+          "name": "usageSummary.monthlyStats.count",
+          "description": "Monthly usage count of an entity. Generic long-term usage statistic."
+        }
+      ]
+    }
+  ]
+}

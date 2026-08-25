@@ -1,0 +1,119 @@
+{
+  "name": "ActivityFeedAlert",
+  "fullyQualifiedName": "ActivityFeedAlert",
+  "displayName": "Activity Feed Alerts",
+  "description": "Alerts received on the Activity Feed are controlled with this.",
+  "alertType": "ActivityFeed",
+  "filteringRules":{
+    "resources": ["all"],
+    "rules": [
+      {
+        "name": "matchAnyEventType",
+        "effect": "include",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !isBot() && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
+        "prefixCondition": "AND"
+      },
+      {
+        "name": "matchAnyFieldChange",
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'description', 'domains', 'owners', 'tags', 'followers','parameterValues', 'assets'})",
+        "prefixCondition": "OR"
+      },
+      {
+        "name": "matchAnySource",
+        "effect": "include",
+        "prefixCondition": "AND",
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric'})"
+      },
+      {
+        "name": "noBotAllowed",
+        "effect": "exclude",
+        "condition": "isBot()",
+        "prefixCondition": "AND"
+      }
+    ]
+  },
+  "destinations": [
+    {
+      "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a65",
+      "category": "External",
+      "type": "ActivityFeed"
+    }
+  ],
+  "input": {
+    "filters": [
+      {
+        "name": "filterByEventType",
+        "effect" : "include",
+        "prefixCondition": "OR",
+        "arguments": [
+          {
+            "name": "eventTypeList",
+            "input": [
+              "entityCreated",
+              "entityDeleted",
+              "entitySoftDeleted"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByFieldChange",
+        "effect" : "include",
+        "prefixCondition": "AND",
+        "arguments": [
+          {
+            "name": "fieldChangeList",
+            "input": [
+              "description",
+              "domains",
+              "owners",
+              "tags",
+              "followers",
+              "parameterValues",
+              "pipelineStatus"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterBySource",
+        "effect" : "include",
+        "prefixCondition": "AND",
+        "arguments": [
+          {
+            "name": "sourceList",
+            "input": [
+              "chart",
+              "container",
+              "dashboard",
+              "dashboardDataModel",
+              "database",
+              "databaseSchema",
+              "glossary",
+              "glossaryTerm",
+              "mlmodel",
+              "pipeline",
+              "query",
+              "report",
+              "searchIndex",
+              "storedProcedure",
+              "table",
+              "topic",
+              "domain",
+              "dataProduct"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "effect" : "exclude",
+        "prefixCondition": "AND"
+      }
+    ]
+  },
+  "provider" : "system",
+  "pollInterval" : 30,
+  "enabled" : true
+}

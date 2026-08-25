@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/slaValidation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SlaValidation",
+  "description": "SLA validation details for data contract.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.SlaValidation",
+  "properties": {
+    "refreshFrequencyMet": {
+      "description": "Whether refresh frequency requirement was met.",
+      "type": "boolean"
+    },
+    "latencyMet": {
+      "description": "Whether latency requirement was met.",
+      "type": "boolean"
+    },
+    "availabilityMet": {
+      "description": "Whether availability requirement was met.",
+      "type": "boolean"
+    },
+    "actualLatency": {
+      "description": "Actual latency in milliseconds.",
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}

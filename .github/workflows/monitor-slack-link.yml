@@ -1,0 +1,66 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: monitor-slack-link
+on:
+  schedule:
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+  
+
+# Grant least privilege permissions needed
+permissions:
+  contents: read # Needed for checkout and reading requirements.txt
+
+jobs:
+  monitor-slack-link:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Ensure all matrix jobs run even if one fails
+    # Only run specific matrix job when manually triggered with selection
+    steps:
+    # Step 1: Checkout repository code
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    # Step 2: Set up Python environment with caching
+    - name: Set up Python 3.9 # Or consider a newer version like 3.11/3.12
+      uses: actions/setup-python@v6
+      with:
+        python-version: 3.9 # Or e.g., '3.11'
+        cache: 'pip'
+
+    # Step 3: Install dependencies
+    - name: Install Dependencies
+      run: |
+        python -m venv env
+        source env/bin/activate
+        pip install --upgrade pip playwright slack_sdk==3.35.0
+
+    # Step 4: Install Playwright browsers
+    - name: Install Playwright Browsers
+      run: |
+        source env/bin/activate
+        playwright install chromium --with-deps
+
+    # Step 5: Run the monitoring script
+    - name: Monitor Slack Link
+      id: monitor
+      env:
+        PYTHONUNBUFFERED: "1"
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
+        GITHUB_SERVER_URL: ${{ github.server_url }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+      run: |
+        source env/bin/activate
+        python scripts/slack-link-monitor.py

@@ -1,0 +1,185 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.edit-icon {
+  cursor: pointer;
+  height: 20px;
+}
+.tags-section {
+  border-bottom: 0.6px solid @grey-15;
+  padding-bottom: var(--om-space-16);
+  .tags-header {
+    display: flex;
+    gap: var(--om-space-8);
+    align-items: center;
+    margin-bottom: var(--om-space-12);
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+
+    .tags-title {
+      font-weight: var(--om-font-weight-semibold);
+      font-size: var(--om-font-size-13);
+      color: @grey-900;
+    }
+  }
+
+  .tags-content {
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+
+    .tag-selector-display {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--om-space-8);
+      cursor: pointer;
+
+      .selected-tags-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--om-space-8);
+        width: 100%;
+
+        .selected-tag-chip {
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          border-radius: var(--om-radius-lg);
+          padding: var(--om-space-5) var(--om-space-6);
+          display: flex;
+          align-items: center;
+          gap: var(--om-space-5);
+          height: 26px;
+          .tag-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
+          }
+
+          .tag-name {
+            font-weight: var(--om-font-weight-regular);
+            font-size: var(--om-font-size-xs);
+            color: @tag-text;
+          }
+        }
+      }
+    }
+
+    .tags-display {
+      .tags-list {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: var(--om-space-8);
+
+        .tag-item {
+          display: flex;
+          align-items: center;
+          gap: var(--om-space-5);
+          padding: var(--om-space-5) var(--om-space-6);
+          height: 26px;
+          border-radius: var(--om-radius-lg);
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          min-width: 0;
+
+          .tag-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
+          }
+
+          .tag-name {
+            font-size: var(--om-font-size-xs);
+            font-weight: var(--om-font-weight-regular);
+            color: @tag-text;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .show-more-tags-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: var(--om-font-size-xs);
+          font-weight: var(--om-font-weight-regular);
+          cursor: pointer;
+          transition: all var(--om-duration-200) ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+
+    .no-data-placeholder {
+      color: @grey-500;
+      font-size: var(--om-font-size-xs);
+    }
+  }
+}
+
+.tags-select-container {
+  min-width: 450px;
+  width: 100%;
+
+  .tag-selector {
+    width: 100%;
+  }
+}
+
+.dropdown-item {
+  padding: var(--om-space-8) var(--om-space-12);
+  cursor: pointer;
+  transition: background-color var(--om-duration-200) ease;
+
+  &:hover {
+    background-color: @grey-100;
+  }
+
+  .dropdown-item-content {
+    display: flex;
+    align-items: center;
+    gap: var(--om-space-8);
+
+    .dropdown-item-name {
+      font-size: var(--om-font-size-sm);
+      color: @grey-11;
+    }
+  }
+}
+.tag-select-popover {
+  padding-bottom: 0;
+  width: 285px;
+  .ant-popover-inner {
+    border-radius: var(--om-radius-2xl);
+  }
+  .ant-list-sm .ant-list-item {
+    padding: var(--om-space-8) var(--om-space-12);
+    align-items: center;
+  }
+  .ant-popover-inner-content {
+    padding: var(--om-space-8) var(--om-space-12);
+    padding-bottom: 0;
+  }
+}

@@ -1,0 +1,199 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Registry } from '@rjsf/utils';
+import {
+  act,
+  findByRole,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MOCK_TREE_SELECT_WIDGET } from '../../../../../mocks/SelectWidget.mock';
+import TreeSelectWidget from './TreeSelectWidget';
+
+const mockOnFocus = jest.fn();
+const mockOnBlur = jest.fn();
+const mockOnChange = jest.fn();
+
+const mockProps = {
+  onFocus: mockOnFocus,
+  onBlur: mockOnBlur,
+  onChange: mockOnChange,
+  registry: {} as Registry,
+  ...MOCK_TREE_SELECT_WIDGET,
+};
+
+describe('Test TreeSelectWidget Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('Should render tree select component', async () => {
+    render(<TreeSelectWidget {...mockProps} />);
+
+    const treeSelectWidget = screen.getByTestId('tree-select-widget');
+
+    expect(treeSelectWidget).toBeInTheDocument();
+  });
+
+  it('Should be disabled', async () => {
+    render(<TreeSelectWidget {...mockProps} disabled />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    expect(treeSelectInput).toBeDisabled();
+  });
+
+  it('Should call onFocus', async () => {
+    render(<TreeSelectWidget {...mockProps} />);
+
+    const treeSelectInput = screen.getByTestId('tree-select-widget');
+
+    fireEvent.focus(treeSelectInput);
+
+    expect(mockOnFocus).toHaveBeenCalled();
+  });
+
+  it('Should call onBlur', async () => {
+    render(<TreeSelectWidget {...mockProps} />);
+
+    const treeSelectInput = screen.getByTestId('tree-select-widget');
+
+    fireEvent.blur(treeSelectInput);
+
+    expect(mockOnBlur).toHaveBeenCalled();
+  });
+
+  it('Should call onChange', async () => {
+    render(<TreeSelectWidget {...mockProps} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('Table'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Table'));
+    });
+
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('Should pass through "all" when expandAllValue is not set', async () => {
+    const passThroughProps = {
+      ...mockProps,
+      value: [],
+    };
+
+    render(<TreeSelectWidget {...passThroughProps} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('All'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('All'));
+    });
+
+    expect(mockOnChange).toHaveBeenCalledWith(['all']);
+  });
+
+  it('Should not render "all" as a child option when it is part of the enum', async () => {
+    const propsWithAllEnum = {
+      ...mockProps,
+      options: {
+        enumOptions: [
+          { label: 'all', value: 'all' },
+          { label: 'table', value: 'table' },
+        ],
+      },
+      value: [],
+    };
+
+    render(<TreeSelectWidget {...propsWithAllEnum} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('Table'));
+
+    expect(screen.getAllByText('All')).toHaveLength(1);
+  });
+
+  it('Should expand "all" into individual enum values when expandAllValue is true', async () => {
+    const expandAllProps = {
+      ...mockProps,
+      options: {
+        enumOptions: [
+          { label: 'PROFILE', value: 'PROFILE' },
+          { label: 'TEST_CASE_RESULTS', value: 'TEST_CASE_RESULTS' },
+          { label: 'ENTITY_HISTORY', value: 'ENTITY_HISTORY' },
+        ],
+      },
+      schema: {
+        ...mockProps.schema,
+        expandAllValue: true,
+      },
+      value: [],
+    };
+
+    render(<TreeSelectWidget {...expandAllProps} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('All'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('All'));
+    });
+
+    expect(mockOnChange).toHaveBeenCalledWith([
+      'PROFILE',
+      'TEST_CASE_RESULTS',
+      'ENTITY_HISTORY',
+    ]);
+    expect(mockOnChange).not.toHaveBeenCalledWith(['all']);
+  });
+});

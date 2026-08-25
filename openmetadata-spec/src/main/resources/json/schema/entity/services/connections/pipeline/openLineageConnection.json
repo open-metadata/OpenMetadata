@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/openLineageConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageConnection",
+  "description": "OpenLineage Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection",
+  "definitions": {
+    "OpenLineageType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "OpenLineage"
+      ],
+      "default": "OpenLineage"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/OpenLineageType",
+      "default": "OpenLineage"
+    },
+    "brokerConfig": {
+      "title": "Broker Configuration",
+      "description": "Event broker configuration. Choose between Kafka and Kinesis.",
+      "oneOf": [
+        {
+          "$ref": "openlineage/kafkaBrokerConfig.json"
+        },
+        {
+          "$ref": "openlineage/kinesisBrokerConfig.json"
+        }
+      ]
+    },
+    "namespaceToServiceMapping": {
+      "title": "Namespace to Service Mapping",
+      "description": "Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names. Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' -> 'mysql-cluster-a'.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "required": ["brokerConfig"],
+  "additionalProperties": false
+}

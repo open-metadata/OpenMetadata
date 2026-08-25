@@ -1,0 +1,332 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, Page } from '@playwright/test';
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { MetricClass } from '../support/entity/MetricClass';
+import { clickOutside, descriptionBox, uuid } from './common';
+import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
+
+export const updateMetricType = async (page: Page, metric: string) => {
+  await page.click(`[data-testid="edit-metric-type-button"]`);
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  await page.getByRole('listitem', { name: metric, exact: true }).click();
+
+  await patchPromise;
+
+  // verify the metric type is updated
+  await expect(
+    page.getByText(`Metric Type${metric.toUpperCase()}`)
+  ).toBeVisible();
+};
+
+export const removeMetricType = async (page: Page) => {
+  await page.click(`[data-testid="edit-metric-type-button"]`);
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('remove-metric-type-button').click();
+
+  await patchPromise;
+
+  // verify the metric type is updated
+  await expect(page.getByText('Metric Type--')).toBeVisible();
+};
+
+export const updateUnitOfMeasurement = async (
+  page: Page,
+  unitOfMeasurement: string
+) => {
+  await page.click(`[data-testid="edit-measurement-unit-button"]`);
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  await page
+    .getByRole('listitem', { name: unitOfMeasurement, exact: true })
+    .click();
+
+  await patchPromise;
+
+  // verify the unit of measurement is updated
+  await expect(
+    page.getByText(`Measurement Unit${unitOfMeasurement.toUpperCase()}`)
+  ).toBeVisible();
+};
+
+export const removeUnitOfMeasurement = async (page: Page) => {
+  await page.click(`[data-testid="edit-measurement-unit-button"]`);
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('remove-measurement-unit-button').click();
+
+  await patchPromise;
+
+  // verify the unit of measurement is updated
+  await expect(page.getByText('Measurement Unit--')).toBeVisible();
+};
+
+export const updateGranularity = async (page: Page, granularity: string) => {
+  await page.click(`[data-testid="edit-granularity-button"]`);
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  await page.getByRole('listitem', { name: granularity, exact: true }).click();
+
+  await patchPromise;
+
+  // verify the granularity is updated
+  await expect(
+    page.getByText(`Granularity${granularity.toUpperCase()}`)
+  ).toBeVisible();
+};
+
+export const removeGranularity = async (page: Page) => {
+  await page.click(`[data-testid="edit-granularity-button"]`);
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('remove-granularity-button').click();
+
+  await patchPromise;
+
+  // verify the granularity is updated
+  await expect(page.getByText('Granularity--')).toBeVisible();
+};
+
+export const updateExpression = async (
+  page: Page,
+  language: string,
+  code: string
+) => {
+  await page.getByRole('tab', { name: 'Expression', exact: true }).click();
+  await page.click(`[data-testid="edit-expression-button"]`);
+
+  // Select the language
+  await page.locator('[id="root\\/language"]').fill(language);
+  await page.getByTitle(`${language}`, { exact: true }).click();
+
+  await page.locator("pre[role='presentation']").last().click();
+  await page.keyboard.type(code);
+
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('update-button').click();
+
+  await patchPromise;
+
+  await expect(
+    page.getByLabel('Expression').locator('.CodeMirror-scroll')
+  ).toContainText(code);
+
+  await page.getByRole('tab', { name: 'Overview', exact: true }).click();
+};
+
+export const updateRelatedMetric = async (
+  page: Page,
+  dataAsset: MetricClass,
+  title: string,
+  type: 'add' | 'update'
+) => {
+  const patchPromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+  if (type === 'add') {
+    await page.getByTestId('add-related-metrics-container').first().click();
+  } else {
+    await page.getByTestId('edit-related-metrics').click();
+  }
+
+  await page
+    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
+    .waitFor({ state: 'visible' });
+
+  const apiPromise = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=metric&*'
+  );
+
+  await page.fill(
+    '[data-testid="asset-select-list"] > .ant-select-selector input',
+    dataAsset.entity.name
+  );
+
+  await apiPromise;
+
+  await page
+    .locator('.ant-select-item-option-content', {
+      hasText: dataAsset.entity.name,
+    })
+    .click();
+
+  // perform click outside to close the select options and make click to button
+  await clickOutside(page);
+  await page.locator('[data-testid="saveRelatedMetrics"]').click();
+
+  await patchPromise;
+
+  await page.getByTestId(dataAsset.entity.name).waitFor({
+    state: 'visible',
+  });
+
+  // Wait for the metrics API call to complete
+  const metricsResponsePromise1 = page.waitForResponse(
+    `/api/v1/metrics/name/${dataAsset.entity.name}?fields=*`
+  );
+
+  await page
+    .getByRole('button', { name: dataAsset.entity.name, exact: true })
+    .click();
+
+  await metricsResponsePromise1;
+
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('entity-header-display-name')).toContainText(
+    dataAsset.entity.name
+  );
+
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- right panel rendering delay
+  await page.waitForTimeout(1000);
+
+  // Wait for the metrics API call to complete
+  const metricsResponsePromise2 = page.waitForResponse(
+    `/api/v1/metrics/name/${title}?fields=*`
+  );
+  await page.getByRole('button', { name: title, exact: true }).click();
+  await metricsResponsePromise2;
+
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('entity-header-display-name')).toContainText(
+    title
+  );
+};
+
+export const addMetric = async (page: Page) => {
+  const metricName = `pw-metric-${uuid()}`;
+
+  const metricData = {
+    name: metricName,
+    description: `Total sales over the last quarter ${metricName}`,
+    metricExpression: {
+      code: 'SUM(sales)',
+      language: 'SQL',
+    },
+    granularity: 'Quarter',
+    metricType: 'Sum',
+    displayName: metricName,
+    unitOfMeasurement: 'Dollars',
+  };
+
+  const selectFormOption = async (
+    field: ReturnType<Page['getByTestId']>,
+    input: ReturnType<Page['locator']>,
+    title: string
+  ) => {
+    await input.click();
+    await input.fill(title);
+
+    const option = page
+      .locator('.ant-select-dropdown:visible')
+      .getByTitle(title, { exact: true });
+    await expect(option).toBeVisible();
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+    await option.click({ force: true });
+    await expect(field).toContainText(title);
+  };
+
+  await page.getByTestId('create-button').click();
+
+  await expect(page.locator('#name_help')).toHaveText('Name is required');
+
+  await page.locator('#root\\/name').fill(metricData.name);
+  await page.locator('#root\\/displayName').fill(metricData.name);
+
+  await page.click(descriptionBox);
+  await page.fill(descriptionBox, metricData.description);
+
+  // Select the granularity
+  await selectFormOption(
+    page.getByTestId('granularity'),
+    page.locator('[id="root\\/granularity"]'),
+    metricData.granularity
+  );
+
+  // Select the metric type
+  await selectFormOption(
+    page.getByTestId('metricType'),
+    page.locator('[id="root\\/metricType"]'),
+    metricData.metricType
+  );
+
+  // Select the unit of measurement
+  await selectFormOption(
+    page.getByTestId('unitOfMeasurement'),
+    page.getByTestId('unitOfMeasurement').locator('input'),
+    metricData.unitOfMeasurement
+  );
+
+  // Select the language
+  await selectFormOption(
+    page.getByTestId('language'),
+    page.locator('[id="root\\/language"]'),
+    metricData.metricExpression.language
+  );
+
+  // Enter the code
+  await page.locator("pre[role='presentation']").last().click();
+  await page.keyboard.type(metricData.metricExpression.code);
+
+  const postPromise = page.waitForResponse(
+    (response) => response.request().method() === 'POST'
+  );
+
+  const getPromise = page.waitForResponse(
+    `/api/v1/metrics/name/${metricName}?*`
+  );
+
+  await page.getByTestId('create-button').click();
+
+  await postPromise;
+
+  await getPromise;
+
+  // verify the metric type is updated
+  await expect(
+    page.getByText(`Metric Type${metricData.metricType.toUpperCase()}`)
+  ).toBeVisible();
+
+  // verify the unit of measurement is updated
+
+  await expect(
+    page.getByText(
+      `Measurement Unit${metricData.unitOfMeasurement.toUpperCase()}`
+    )
+  ).toBeVisible();
+
+  // verify the granularity is updated
+  await expect(
+    page.getByText(`Granularity${metricData.granularity.toUpperCase()}`)
+  ).toBeVisible();
+
+  // clean the created metric
+
+  await hardDeleteEntity(
+    page,
+    metricData.displayName,
+    EntityTypeEndpoint.METRIC
+  );
+};

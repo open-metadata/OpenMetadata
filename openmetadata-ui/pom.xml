@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>platform</artifactId>
+    <groupId>org.open-metadata</groupId>
+    <version>2.0.0-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>openmetadata-ui</artifactId>
+  <name>OpenMetadata UI</name>
+
+  <properties>
+    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <!-- Don't upgrade from this version as tests don't work with later version-->
+    <skipTests>false</skipTests>
+    <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
+    <node.heap.size>6144</node.heap.size>
+    <!-- Overridden to `true` by the skip-ui-build profile below when BOTH
+         `env.SKIP_UI_BUILD=true` is set (exported by .github/actions/cache-ui-dist
+         on a cache HIT) AND the vite app dist already exists on disk. Each
+         frontend-maven-plugin execution honors <skip> to short-circuit. -->
+    <skip.ui.build>false</skip.ui.build>
+  </properties>
+
+  <dependencies>
+    <!-- No Java classpath dependency exists between openmetadata-ui and
+         openmetadata-ui-core-components — the vite build resolves core-components
+         at build time via a workspace symlink in node_modules. This dep exists
+         solely to declare reactor ordering: `mvn ... -pl openmetadata-dist -am`
+         (used by playwright-postgresql-e2e and java-playwright-nightly) only
+         pulls Maven-declared deps into the reactor, and openmetadata-dist
+         depends on openmetadata-ui but not on openmetadata-ui-core-components.
+         Without this, core-components' dist/ is never built and vite fails with
+         "Failed to resolve entry for package @openmetadata/ui-core-components".
+         `<optional>true</optional>` keeps the core-components jar off any
+         downstream consumer's transitive classpath. -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-ui-core-components</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <!-- Activates ONLY when the composite action .github/actions/cache-ui-dist
+         signals a cache hit by exporting SKIP_UI_BUILD=true, AND the vite
+         build output exists on disk. Both conditions together defend against
+         two independent risks:
+
+           - The env-var gate keeps a stale on-disk dist from silently
+             suppressing a rebuild during a local `mvn clean package` after
+             the developer edited UI sources (mvn clean removes target, not
+             the source-tree dist).
+           - The file-exists check keeps a spurious env var from suppressing
+             the build when the cache actually missed and left dist empty. -->
+    <profile>
+      <id>skip-ui-build</id>
+      <activation>
+        <property>
+          <name>env.SKIP_UI_BUILD</name>
+          <value>true</value>
+        </property>
+        <file>
+          <exists>${project.basedir}/src/main/resources/ui/dist/index.html</exists>
+        </file>
+      </activation>
+      <properties>
+        <skip.ui.build>true</skip.ui.build>
+      </properties>
+    </profile>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <configuration>
+              <doclint>none</doclint>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources/ui/dist</directory>
+        <targetPath>assets</targetPath>
+      </resource>
+      <resource>
+        <directory>src/main/resources/json/data</directory>
+      </resource>
+    </resources>
+
+    <plugins>
+      <!-- Handle Compiling Frontend -->
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>1.12.1</version>
+
+        <!-- Shared with openmetadata-ui-core-components so the reactor downloads
+             node+yarn once. See openmetadata-ui-core-components/pom.xml. -->
+        <configuration>
+          <workingDirectory>src/main/resources/ui/</workingDirectory>
+          <installDirectory>${maven.multiModuleProjectDirectory}/target/frontend</installDirectory>
+        </configuration>
+
+        <executions>
+          <execution>
+            <id>install node and yarn</id>
+            <goals>
+              <goal>install-node-and-yarn</goal>
+            </goals>
+            <configuration>
+              <nodeVersion>v22.22.2</nodeVersion>
+              <yarnVersion>v1.22.18</yarnVersion>
+              <skip>${skip.ui.build}</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn install --frozen-lockfile</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
+              <!-- ignore-scripts skips the package.json preinstall hook (which
+                   would otherwise re-install and re-build openmetadata-ui-core-components
+                   that the reactor already built). It also suppresses postinstall, so
+                   the `yarn run build-check` execution below re-runs its work (js-antlr
+                   parser generation + schema parsing) explicitly, since those outputs
+                   are gitignored and required by the vite build. -->
+              <arguments>install --frozen-lockfile --ignore-scripts</arguments>
+              <skip>${skip.ui.build}</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run build-check</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
+              <arguments>run build-check</arguments>
+              <skip>${skip.ui.build}</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run test</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
+              <skip>${skipTests}</skip>
+              <arguments>run test</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run build</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <!-- optional: the default phase is "generate-resources" -->
+            <phase>prepare-package</phase>
+            <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
+              <!-- optional: if not specified, it will run gulp's default task
+                  (and you can remove this whole <configuration> section.) -->
+              <arguments>run build</arguments>
+              <!--arguments>build</arguments-->
+              <skip>${skip.ui.build}</skip>
+              <environmentVariables>
+                <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
+                <APP_VERSION>${project.version}</APP_VERSION>
+              </environmentVariables>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <configuration>
+            <nonFilteredFileExtensions>
+              <nonFilteredFileExtension>ttf</nonFilteredFileExtension>
+              <nonFilteredFileExtension>woff</nonFilteredFileExtension>
+              <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
+              <nonFilteredFileExtension>eot</nonFilteredFileExtension>
+              <nonFilteredFileExtension>svg</nonFilteredFileExtension>
+            </nonFilteredFileExtensions>
+        </configuration>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <!-- here the phase you need -->
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/classes/assets</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/resources/ui/dist</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+              <nonFilteredFileExtensions>
+                <nonFilteredFileExtension>gz</nonFilteredFileExtension>
+                <nonFilteredFileExtension>br</nonFilteredFileExtension>
+                <nonFilteredFileExtension>woff</nonFilteredFileExtension>
+                <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
+                <nonFilteredFileExtension>ttf</nonFilteredFileExtension>
+                <nonFilteredFileExtension>eot</nonFilteredFileExtension>
+                <nonFilteredFileExtension>svg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>png</nonFilteredFileExtension>
+                <nonFilteredFileExtension>webp</nonFilteredFileExtension>
+                <nonFilteredFileExtension>jpg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>mp4</nonFilteredFileExtension>
+                <nonFilteredFileExtension>webm</nonFilteredFileExtension>
+                <nonFilteredFileExtension>js</nonFilteredFileExtension>
+                <nonFilteredFileExtension>css</nonFilteredFileExtension>
+              </nonFilteredFileExtensions>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

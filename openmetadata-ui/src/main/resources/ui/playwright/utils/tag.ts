@@ -1,0 +1,647 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { get, isUndefined } from 'lodash';
+import { PolicyRulesType } from '../support/access-control/PoliciesClass';
+import { Domain } from '../support/domain/Domain';
+import { DashboardClass } from '../support/entity/DashboardClass';
+import { EntityClass } from '../support/entity/EntityClass';
+import { MlModelClass } from '../support/entity/MlModelClass';
+import { PipelineClass } from '../support/entity/PipelineClass';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
+import { TagClass } from '../support/tag/TagClass';
+import {
+  descriptionBox,
+  descriptionBoxReadOnly,
+  getApiContext,
+  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
+  redirectToHomePage,
+  uuid,
+} from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+
+export const TAG_INVALID_NAMES = {
+  MIN_LENGTH: 'c',
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const NEW_TAG = {
+  name: `PlaywrightTag-${uuid()}`,
+  displayName: `PlaywrightTag-${uuid()}`,
+  renamedName: `PlaywrightTag-${uuid()}`,
+  description: 'This is the PlaywrightTag',
+  color: '#F14C75',
+  icon: 'Cube01',
+};
+
+export const visitClassificationPage = async (
+  page: Page,
+  classificationName: string,
+  classificationDisplayName: string
+) => {
+  await redirectToHomePage(page);
+  const fetchTags = page.waitForResponse(
+    (url) =>
+      url.url().includes('/api/v1/tags') &&
+      url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
+  );
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
+
+  await expect(
+    page
+      .getByTestId('tags-container')
+      .locator('.table-container')
+      .getByTestId('loader')
+  ).toHaveCount(0, { timeout: 30000 });
+
+  await expect(page.locator('.activeCategory')).toContainText(
+    classificationDisplayName
+  );
+
+  await fetchTags;
+  await expect(
+    page
+      .getByTestId('tags-container')
+      .locator('.table-container')
+      .getByTestId('loader')
+  ).toHaveCount(0, { timeout: 30000 });
+};
+
+// Other asset type that should not get from the search in explore, they are not added to the tag
+export const addAssetsToTag = async (
+  page: Page,
+  assets: EntityClass[],
+  tag: TagClass,
+  otherAsset?: EntityClass[]
+) => {
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+  const searchBar = assetSelectionModal.getByTestId('searchbar');
+
+  await tag.visitPage(page);
+
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
+  await page.getByTestId('assets').click();
+  const initialFetchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+  );
+  await page.getByTestId('data-classification-add-button').click();
+
+  await initialFetchResponse;
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  if (!isUndefined(otherAsset)) {
+    for (const asset of otherAsset) {
+      const name = get(asset, 'entityResponseData.name');
+      const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+      const entityDisplayName = get(asset, 'entityResponseData.displayName');
+      const visibleName = entityDisplayName ?? name;
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/query?q=${encodeURIComponent(
+          visibleName
+        )}&index=all&from=0&size=25&**`
+      );
+      await searchBar.fill(visibleName);
+      await searchRes;
+
+      await expect
+        .poll(
+          async () => {
+            return assetSelectionModal
+              .locator(`[data-testid="table-data-card_${fqn}"]`)
+              .count();
+          },
+          {
+            timeout: 45000,
+          }
+        )
+        .toBe(0);
+    }
+  }
+
+  for (const asset of assets) {
+    const name = get(asset, 'entityResponseData.name');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityDisplayName = get(asset, 'entityResponseData.displayName');
+    const visibleName = entityDisplayName ?? name;
+
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        visibleName
+      )}&index=all&from=0&size=25&**`
+    );
+    await searchBar.fill(visibleName);
+    await searchRes;
+
+    await assetSelectionModal
+      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .check();
+
+    await expect(
+      assetSelectionModal.locator(
+        `[data-testid="table-data-card_${fqn}"] [data-testid="entity-header-name"]`
+      )
+    ).toContainText(visibleName);
+  }
+
+  const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
+  await page.getByTestId('save-btn').click();
+  await assetsAddRes;
+};
+
+export const removeAssetsFromTag = async (
+  page: Page,
+  assets: EntityClass[],
+  tag: TagClass
+) => {
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await tag.visitPage(page);
+  await res;
+
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
+  await page.getByTestId('assets').click();
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
+
+  await page.getByTestId('delete-all-button').click();
+  await assetsRemoveRes;
+
+  await page.reload();
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+  await checkAssetsCount(page, 0);
+};
+
+export const checkAssetsCount = async (page: Page, count: number) => {
+  await expect(
+    page.getByTestId('assets').getByTestId('filter-count')
+  ).toContainText(count.toString());
+};
+
+export const setupAssetsForTag = async (page: Page) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  const mlModel = new MlModelClass();
+  const pipeline = new PipelineClass();
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+    mlModel.create(apiContext),
+    pipeline.create(apiContext),
+  ]);
+
+  const assetCleanup = async () => {
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+      mlModel.delete(apiContext),
+      pipeline.delete(apiContext),
+    ]);
+    await afterAction();
+  };
+
+  return {
+    assets: [table, topic, dashboard],
+    otherAsset: [mlModel, pipeline],
+    assetCleanup,
+  };
+};
+
+export async function submitForm(page: Page) {
+  await page.getByRole('button', { name: 'Save' }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Save' }).click();
+}
+
+export async function validateForm(page: Page) {
+  // submit form without any data to trigger validation
+  await submitForm(page);
+
+  // error messages
+  await expect(page.getByText('Name is required')).toBeVisible();
+
+  await expect(page.getByText('Description is required')).toBeVisible();
+
+  // validation should work for invalid names
+
+  // min length validation
+  await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MIN_LENGTH);
+
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(
+    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
+  ).toBeVisible();
+
+  // max length validation
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MAX_LENGTH);
+
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(
+    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
+  ).toBeVisible();
+
+  // with special char validation
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
+}
+
+export const addTagToTableColumn = async (
+  page: Page,
+  {
+    tagName,
+    tagFqn,
+    tagDisplayName,
+    columnNumber,
+    rowName,
+  }: {
+    tagName: string;
+    tagFqn: string;
+    tagDisplayName: string;
+    columnNumber: number;
+    rowName: string;
+  }
+) => {
+  await page.click(
+    `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
+  );
+  await page.fill('[data-testid="tag-selector"] input', tagName);
+  await page.click(`[data-testid="tag-${tagFqn}"]`);
+
+  await expect(
+    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+  ).toContainText(tagDisplayName);
+
+  const saveAssociatedTag = page.waitForResponse(`/api/v1/columns/name/**`);
+  await page.click('[data-testid="saveAssociatedTag"]');
+  await saveAssociatedTag;
+
+  await page.locator('.ant-select-dropdown').first().waitFor({
+    state: 'detached',
+  });
+
+  await expect(
+    page.getByRole('row', { name: rowName }).getByTestId('tags-container')
+  ).toContainText(tagDisplayName);
+
+  await expect(
+    page.locator(
+      `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="tag-${tagFqn}"]`
+    )
+  ).toBeVisible();
+};
+
+export const verifyTagPageUI = async (
+  page: Page,
+  classificationName: string,
+  tag: TagClass,
+  limitedAccess = false
+) => {
+  await redirectToHomePage(page);
+  await tag.visitPage(page);
+
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
+  await expect(page.getByTestId('entity-header-name')).toContainText(
+    tag.data.name
+  );
+  await expect(page.locator(descriptionBoxReadOnly)).toContainText(
+    tag.data.description
+  );
+
+  await expect(
+    page.getByTestId('data-classification-add-button')
+  ).toBeVisible();
+
+  if (limitedAccess) {
+    await expect(page.getByTestId('manage-button')).not.toBeVisible();
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+  }
+
+  const classificationTable = page.waitForResponse(
+    `/api/v1/classifications/name/*`
+  );
+  await page.getByRole('link', { name: classificationName }).click();
+  await classificationTable;
+
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await page.getByTestId(tag.data.name).click();
+  await res;
+
+  const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
+  await page.getByRole('link', { name: 'Classifications' }).click();
+  await classificationPage;
+};
+
+export const editTagPageDescription = async (page: Page, tag: TagClass) => {
+  await redirectToHomePage(page);
+  await tag.visitPage(page);
+
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
+  const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
+
+  await expect(page.getByTestId('edit-description')).toBeVisible();
+  await page.getByTestId('edit-description').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator(descriptionBox).clear();
+  await page.locator(descriptionBox).fill(updatedDescription);
+
+  const editDescription = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      response.url().includes('/api/v1/tags/') &&
+      response.status() === 200
+  );
+  await page.getByTestId('save').click();
+  await editDescription;
+  await page
+    .getByTestId('tags-container')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+
+  await expect(page.getByTestId('viewer-container')).toContainText(
+    updatedDescription
+  );
+};
+
+export const verifyCertificationTagPageUI = async (page: Page) => {
+  await visitClassificationPage(page, 'Certification', 'Certification');
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await page.getByTestId('Gold').click();
+  await res;
+
+  await page.getByTestId('assets').click();
+
+  await expect(
+    page.getByTestId('data-classification-add-button')
+  ).not.toBeVisible();
+};
+
+export const LIMITED_USER_RULES: PolicyRulesType[] = [
+  {
+    name: 'limitedUserEditTagRole',
+    resources: [
+      'apiCollection',
+      'apiEndpoint',
+      'apiService',
+      'app',
+      'appMarketPlaceDefinition',
+      'bot',
+      'chart',
+      'classification',
+      'container',
+      'dashboardDataModel',
+      'dashboardService',
+      'database',
+      'databaseSchema',
+      'databaseService',
+      'dataInsightChart',
+      'dataInsightCustomChart',
+      'dataInsightDashboard',
+      'dataProduct',
+      'document',
+      'domain',
+      'entityReportData',
+      'eventsubscription',
+      'feed',
+      'glossary',
+      'glossaryTerm',
+      'ingestionPipeline',
+      'kpi',
+      'messagingService',
+      'metadataService',
+      'metric',
+      'mlmodel',
+      'mlmodelService',
+      'page',
+      'persona',
+      'pipeline',
+      'pipelineService',
+      'policy',
+      'query',
+      'report',
+      'role',
+      'searchIndex',
+      'searchService',
+      'storageService',
+      'storedProcedure',
+      'suggestion',
+      'tag',
+      'team',
+      'testCase',
+      'testCaseResolutionStatus',
+      'testCaseResult',
+      'testConnectionDefinition',
+      'testDefinition',
+      'testSuite',
+      'type',
+      'user',
+      'webAnalyticEvent',
+      'workflow',
+      'workflowDefinition',
+      'workflowInstance',
+      'workflowInstanceState',
+    ],
+    operations: ['EditTags'],
+    effect: 'deny',
+  },
+];
+
+export const fillTagForm = async (adminPage: Page, domain: Domain) => {
+  await adminPage.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+  await adminPage
+    .getByTestId('displayName')
+    .getByRole('textbox')
+    .fill(NEW_TAG.displayName);
+  await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
+  await adminPage.getByTestId('icon-picker-btn').click();
+  await adminPage.getByRole('button', { name: NEW_TAG.icon }).click();
+  await adminPage
+    .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
+    .click();
+
+  const domainInput = adminPage
+    .getByTestId('domain-select')
+    .getByRole('combobox');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+  await waitForAllLoadersToDisappear(adminPage);
+
+  const searchDomain = adminPage.waitForResponse(
+    `/api/v1/search/query?q=*index=domain*`
+  );
+
+  await domainInput.fill(domain.responseData.displayName);
+
+  await searchDomain;
+  await waitForAllLoadersToDisappear(adminPage);
+
+  const domainOption = adminPage.getByText(
+    domain.responseData.displayName || domain.responseData.name
+  );
+
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
+};
+
+export const setTagDisabled = async (
+  apiContext: APIRequestContext,
+  tagId: string,
+  disabled: boolean
+) => {
+  await apiContext.patch(`/api/v1/tags/${tagId}`, {
+    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+export const setClassificationDisabled = async (
+  apiContext: APIRequestContext,
+  classificationName: string,
+  disabled: boolean
+) => {
+  const response = await apiContext.get(
+    `/api/v1/classifications/name/${encodeURIComponent(classificationName)}`
+  );
+  const classification = await response.json();
+
+  await apiContext.patch(`/api/v1/classifications/${classification.id}`, {
+    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+export const getTagByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string
+) => {
+  const response = await apiContext.get(
+    `/api/v1/tags/name/${encodeURIComponent(tagFqn)}`
+  );
+
+  return await response.json();
+};
+
+export const setTagDisabledByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string,
+  disabled: boolean
+) => {
+  const tag = await getTagByFqn(apiContext, tagFqn);
+  await setTagDisabled(apiContext, tag.id, disabled);
+};
+
+export const verifyEntityTypeFilterInTagAssets = async (
+  page: Page,
+  assets: EntityClass[]
+) => {
+  await page.getByTestId('asset-filter-button').click();
+  await page.getByRole('menuitem', { name: 'Entity Type' }).click();
+  await expect(page.getByRole('button', { name: 'Entity Type' })).toBeVisible();
+  await page.getByRole('button', { name: 'Entity Type' }).click();
+  await page.getByTestId('table-checkbox').check();
+  await page.getByTestId('topic-checkbox').check();
+  await page.getByTestId('dashboard-checkbox').check();
+  const filterResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByTestId('update-btn').click();
+  await filterResponse;
+
+  // Check that items are visible after applying filter
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByText('Clear').click();
+  await clearResponse;
+};
+
+export const selectTagInTagSuggestion = async (
+  page: Page,
+  {
+    searchTerm,
+    tagFqn,
+  }: {
+    searchTerm: string;
+    tagFqn: string;
+  }
+) => {
+  const tagInput = page.getByRole('combobox', { name: 'Tags' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
+
+  const tagSearchResponse = page.waitForResponse((response) => {
+    const url = response.url();
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=tag') &&
+      response.request().method() === 'GET'
+    );
+  });
+
+  await tagInput.click();
+  await tagInput.fill(searchTerm);
+  await tagSearchResponse;
+
+  await tagOption.click();
+  await page.keyboard.press('Escape');
+  await tagOption.waitFor({ state: 'hidden' });
+};

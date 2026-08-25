@@ -1,0 +1,142 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.data-products-section {
+  .data-products-header {
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+    padding-bottom: var(--om-space-12);
+    display: flex;
+    gap: var(--om-space-8);
+    align-items: center;
+
+    .data-products-title {
+      font-size: var(--om-font-size-13);
+      font-weight: var(--om-font-weight-semibold);
+      color: @grey-900;
+    }
+  }
+
+  .data-products-content {
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+    padding-bottom: var(--om-space-16);
+
+    .no-data-placeholder {
+      color: @grey-500;
+      font-size: var(--om-font-size-xs);
+    }
+
+    .data-product-selector-trigger {
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .data-products-display {
+      .data-products-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--om-space-8);
+
+        .data-product-item {
+          display: flex;
+          align-items: center;
+          height: 26px;
+          border: 1px solid @grey-40;
+          border-radius: var(--om-radius-md) !important;
+          background-color: var(--tw-color-bg-primary);
+          min-width: 0;
+          transition: all var(--om-duration-200) ease;
+          overflow: hidden;
+
+          .data-product-card-bar {
+            height: 100%;
+            border-left: 6px solid @primary-color;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            min-width: 0;
+            padding-top: var(--om-space-3);
+            padding-bottom: var(--om-space-3);
+
+            .data-product-card-content {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              min-width: 0;
+              gap: var(--om-space-4);
+
+              .data-product-icon {
+                width: 14px;
+                height: 14px;
+                flex-shrink: 0;
+
+                svg {
+                  width: 14px;
+                  height: 14px;
+                }
+              }
+
+              .data-product-name {
+                font-size: var(--om-font-size-xs);
+                color: @grey-700;
+                font-weight: var(--om-font-weight-regular);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+          }
+        }
+
+        .show-more-data-products-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: var(--om-font-size-xs);
+          font-weight: var(--om-font-weight-regular);
+          cursor: pointer;
+          transition: all var(--om-duration-200) ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+.data-product-select-popover {
+  width: 285px;
+  padding-bottom: 0 !important;
+  .ant-popover-inner {
+    border-radius: var(--om-radius-2xl);
+  }
+  .ant-popover-inner-content {
+    padding: var(--om-space-8) var(--om-space-12);
+    padding-bottom: 0;
+  }
+}

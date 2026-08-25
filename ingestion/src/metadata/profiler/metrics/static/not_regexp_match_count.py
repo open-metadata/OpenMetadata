@@ -1,0 +1,121 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Regex Count Metric definition
+"""
+# pylint: disable=duplicate-code
+
+import traceback
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import case, column, not_
+
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
+from metadata.profiler.orm.functions.regexp import RegexpMatchFn
+from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.orm.registry import is_concatenable
+from metadata.utils.logger import profiler_logger
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from metadata.profiler.processor.runner import PandasRunner
+
+logger = profiler_logger()
+
+
+class NotRegexCount(StaticMetric):
+    """
+    NOT_REGEX_COUNT Metric
+
+    Given a column, and an expression, return the number of
+    rows that match the forbidden regex pattern
+
+    This Metric needs to be initialised passing the expression to check
+    add_props(expression="j%")(Metrics.notRegexCount.value)
+    """
+
+    schema_metric_type = MetricType.notRegexCount
+
+    expression: str
+
+    @classmethod
+    def name(cls):
+        return MetricType.notRegexCount.value
+
+    @property
+    def metric_type(self):
+        return int
+
+    def _is_concatenable(self):
+        return is_concatenable(self.col.type)
+
+    @_label
+    def fn(self):
+        """sqlalchemy function"""
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.notRegexCount)"
+            )
+        return SumFn(
+            case(
+                (
+                    not_(
+                        RegexpMatchFn(column(self.col.name, self.col.type), self.expression),
+                    ),
+                    0,
+                ),
+                else_=1,
+            )
+        )
+
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
+        """pandas function"""
+        if dfs is None:
+            return None
+        computation = self.get_pandas_computation()
+        accumulator = computation.create_accumulator()
+        for df in dfs:
+            try:
+                accumulator = computation.update_accumulator(accumulator, df)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error trying to run Not RegExp Match Count for {self.col.name}: {err}")
+                return None
+        return computation.aggregate_accumulator(accumulator)
+
+    def get_pandas_computation(self) -> PandasComputation:
+        """Returns the logic to compute this metric using Pandas"""
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.notRegexCount)"
+            )
+
+        return PandasComputation[int, int](
+            create_accumulator=lambda: 0,
+            update_accumulator=lambda acc, df: NotRegexCount.update_accumulator(acc, df, self.col, self.expression),
+            aggregate_accumulator=lambda acc: acc,
+        )
+
+    @staticmethod
+    def update_accumulator(running_count: int, df: "pd.DataFrame", column, expression: str) -> int:
+        """Computes one DataFrame chunk and updates the running count
+
+        Counts rows that DO match the forbidden regex pattern.
+        Maintains a single running total. Adds chunk's count to the current total.
+        """
+        if not is_concatenable(column.type):
+            raise TypeError(f"Don't know how to process type {column.type} when computing Not RegExp Match Count")
+        chunk_count = df[column.name].astype(str).str.contains(expression, na=False).sum()
+        return running_count + chunk_count

@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/createAndRunIngestionPipelineTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAndRunIngestionPipelineTask",
+  "description": "Creates and Runs an Ingestion Pipeline",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "pipelineType": {
+          "title": "Pipeline Type",
+          "description": "Define which ingestion pipeline type should be created",
+          "$ref": "../../../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
+        },
+        "shouldRun": {
+          "title": "Run the Ingestion Pipeline",
+          "description": "If True, it will be created and run. Otherwise it will just be created.",
+          "type": "boolean",
+          "default": true
+        },
+        "waitForCompletion": {
+          "title": "Wait for Completion",
+          "description": "Set if this step should wait until the Ingestion Pipeline finishes running",
+          "type": "boolean",
+          "default": true
+        },
+        "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.",
+          "type": "integer",
+          "default": 3600
+        }
+      },
+      "additionalProperties": false,
+      "required": ["pipelineType", "waitForCompletion", "timeoutSeconds"]
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "createAndRunIngestionPipelineTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["success", "failure"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

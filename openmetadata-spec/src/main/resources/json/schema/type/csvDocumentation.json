@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/csvDocumentation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "csvDocumentation",
+  "description": "Documentation for CSV file that describes headers and example values.",
+  "javaType": "org.openmetadata.schema.type.csv.CsvDocumentation",
+  "type": "object",
+  "properties": {
+    "summary" : {
+      "description": "Summary documentation for CSV file.",
+      "type" : "string"
+
+    },
+    "headers": {
+      "description": "Documentation for CSV file header",
+      "type": "array",
+      "items": {
+        "$ref": "csvFile.json#/definitions/csvHeader"
+      }
+    }
+  },
+  "required": ["summary", "headers"],
+  "additionalProperties": false
+}

@@ -1,0 +1,16 @@
+{
+  "name": "CollateClues_DataProducts",
+  "displayName": "Collate Clues: Data Products",
+  "description": "Quick overview of Data Products in Collate - learn how to organize and manage your data assets as products.",
+  "resourceType": "Video",
+  "categories": ["DataGovernance", "Discovery"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=-P7_qO1qYY4",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "dataProduct"},
+    {"pageId": "domain"}
+  ],
+  "status": "Active"
+}

@@ -1,0 +1,752 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Base class for ingesting dashboard services
+"""
+
+import traceback
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
+
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated  # noqa: UP035
+
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceRequest,
+)
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+)
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.api.steps import Source
+from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.patch_request import PatchRequest
+from metadata.ingestion.models.topology import (
+    NodeStage,
+    ServiceTopology,
+    TopologyContextManager,
+    TopologyNode,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_dashboard, filter_by_project
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+LINEAGE_MAP = {
+    Dashboard: "dashboard",
+    Table: "table",
+    DashboardDataModel: "dashboardDataModel",
+    Chart: "chart",
+}
+
+
+class DashboardUsage(BaseModel):
+    """
+    Wrapper to handle type at the sink
+    """
+
+    dashboard: Dashboard
+    usage: UsageRequest
+
+
+class DashboardServiceTopology(ServiceTopology):
+    """
+    Defines the hierarchy in Dashboard Services.
+    service -> data models -> dashboard -> charts.
+
+    We could have a topology validator. We can only consume
+    data that has been produced by any parent node.
+    """
+
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=DashboardService,
+                context="dashboard_service",
+                processor="yield_create_request_dashboard_service",
+                overwrite=False,
+                must_return=True,
+            ),
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                processor="yield_bulk_tags",
+                nullable=True,
+            ),
+        ],
+        children=["bulk_data_model", "dashboard"],
+        post_process=[
+            "mark_dashboards_as_deleted",
+            "mark_datamodels_as_deleted",
+            "mark_charts_as_deleted",
+        ],
+    )
+    # Dashboard Services have very different approaches when
+    # when dealing with data models. Tableau has the models
+    # tightly coupled with dashboards, while Looker
+    # handles them as independent entities.
+    # When configuring a new source, we will either implement
+    # the yield_bulk_datamodel or yield_datamodel functions.
+    bulk_data_model: Annotated[TopologyNode, Field(description="Write data models in bulk")] = TopologyNode(
+        producer="list_datamodels",
+        stages=[
+            NodeStage(
+                type_=DashboardDataModel,
+                processor="yield_bulk_datamodel",
+                consumer=["dashboard_service"],
+                nullable=True,
+            )
+        ],
+    )
+    dashboard: Annotated[TopologyNode, Field(description="Process dashboards")] = TopologyNode(
+        producer="get_dashboard",
+        stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                processor="yield_tags",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=Chart,
+                context="charts",
+                processor="yield_dashboard_chart",
+                consumer=["dashboard_service"],
+                nullable=True,
+                store_all_in_context=True,
+                clear_context=True,
+            ),
+            NodeStage(
+                type_=DashboardDataModel,
+                context="dataModels",
+                processor="yield_datamodel",
+                consumer=["dashboard_service"],
+                nullable=True,
+                store_all_in_context=True,
+                clear_context=True,
+            ),
+            NodeStage(
+                type_=Dashboard,
+                context="dashboard",
+                processor="yield_dashboard",
+                consumer=["dashboard_service"],
+            ),
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="yield_dashboard_lineage",
+                consumer=["dashboard_service"],
+                nullable=True,
+            ),
+            NodeStage(
+                type_=UsageRequest,
+                processor="yield_dashboard_usage",
+                consumer=["dashboard_service"],
+                nullable=True,
+            ),
+        ],
+    )
+
+
+from metadata.utils.helpers import retry_with_docker_host  # noqa: E402
+
+
+# pylint: disable=too-many-public-methods
+class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
+    """
+    Base class for Database Services.
+    It implements the topology and context.
+    """
+
+    source_config: DashboardServiceMetadataPipeline
+    config: WorkflowSource
+    metadata: OpenMetadata
+    # Big union of types we want to fetch dynamically
+    service_connection: DashboardConnection.model_fields["config"].annotation  # noqa: F821
+
+    topology = DashboardServiceTopology()
+    context = TopologyContextManager(topology)
+    dashboard_source_state: Set = set()  # noqa: RUF012, UP006
+    datamodel_source_state: Set = set()  # noqa: RUF012, UP006
+    chart_source_state: Set = set()  # noqa: RUF012, UP006
+
+    def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+        """Declare the grouping axis (e.g. workspaces) as a global counter.
+
+        These group helpers drive ``self.progress_tracking.manual`` and therefore require
+        the connector to set ``progress_mode = ProgressMode.MANUAL`` (as PowerBI
+        does); calling them from a default AUTO source raises ``ProgressModeError``
+        and would double-count against the runner's own tracking."""
+        self.progress_tracking.manual.declare_groups(label, total)
+
+    def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
+        """Open one child node per asset type under ``group`` so each type renders
+        as its own line; ``expected`` may be None for lazy (running) counts."""
+        self.progress_tracking.manual.open_group(group, expected_by_type)
+
+    def _advance_group_progress(self, group: str, asset_type: str) -> None:
+        """Record one processed asset of ``asset_type`` under ``group``."""
+        self.progress_tracking.manual.advance(group, asset_type)
+
+    def _close_group_progress(self, group: str) -> None:
+        """Count the finished group on its global counter and prune its subtree."""
+        self.progress_tracking.manual.close_group(group)
+
+    @retry_with_docker_host()
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
+        super().__init__()
+        self.config = config
+        self.metadata = metadata
+        self.service_connection = self.config.serviceConnection.root.config
+        self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
+        self._connection = create_connection(self.service_connection)
+        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
+        self.connection_obj = self.client
+        with close_on_failure(self._connection):
+            self.test_connection()
+
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
+    @abstractmethod
+    def yield_dashboard(self, dashboard_details: Any) -> Iterable[Either[CreateDashboardRequest]]:
+        """
+        Method to Get Dashboard Entity
+        """
+
+    @abstractmethod
+    def yield_dashboard_lineage_details(
+        self,
+        dashboard_details: Any,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Get lineage between dashboard and data sources
+        """
+
+    @abstractmethod
+    def yield_dashboard_chart(self, dashboard_details: Any) -> Iterable[Either[CreateChartRequest]]:
+        """
+        Method to fetch charts linked to dashboard
+        """
+
+    @abstractmethod
+    def get_dashboards_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+        """
+        Get List of all dashboards
+        """
+
+    @abstractmethod
+    def get_dashboard_name(self, dashboard: Any) -> str:
+        """
+        Get Dashboard Name from each element coming from `get_dashboards_list`
+        """
+
+    @abstractmethod
+    def get_dashboard_details(self, dashboard: Any) -> Any:
+        """
+        Get Dashboard Details
+        """
+
+    def list_datamodels(self) -> Iterable[Any]:
+        """
+        Optional Node producer for processing datamodels in bulk
+        before the dashboards
+        """
+        return []
+
+    def yield_datamodel(self, _) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModel linked to Dashboard
+        """
+
+    def yield_bulk_datamodel(self, _) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModels in bulk
+        """
+
+    def yield_datamodel_dashboard_lineage(
+        self,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Returns:
+            Lineage request between Data Models and Dashboards
+        """
+        if hasattr(self.context.get(), "dataModels") and self.context.get().dataModels:
+            for datamodel in self.context.get().dataModels:
+                try:
+                    datamodel_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.context.get().dashboard_service,
+                        data_model_name=datamodel,
+                    )
+                    datamodel_entity = self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
+
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.context.get().dashboard_service,
+                        dashboard_name=self.context.get().dashboard,
+                    )
+                    dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
+                    yield self._get_add_lineage_request(to_entity=dashboard_entity, from_entity=datamodel_entity)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
+                    )
+
+    def get_db_service_prefixes(self) -> List[str]:  # noqa: UP006
+        """
+        Get the list of db service prefixes
+        """
+        return (
+            self.source_config.lineageInformation.dbServicePrefixes or []
+            if self.source_config.lineageInformation
+            else []
+        )
+
+    def get_query_parser_type(self) -> QueryParserType:
+        """
+        Get the query parser type from source config.
+
+        Returns QueryParserType.Auto if queryParserConfig is not set.
+        """
+        if (
+            hasattr(self.source_config, "queryParserConfig")
+            and self.source_config.queryParserConfig
+            and self.source_config.queryParserConfig.type
+        ):
+            return self.source_config.queryParserConfig.type
+        return QueryParserType.Auto
+
+    def parse_db_service_prefix(
+        self,
+        db_service_prefix: Optional[str],  # noqa: UP045
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
+        """
+        Parse the db service prefix
+        Returns:
+            Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]: service, database, schema, table
+        """
+        prefix_parts = (db_service_prefix or "").split(".")
+        return prefix_parts + ([None] * (4 - len(prefix_parts)))
+
+    def yield_dashboard_lineage(self, dashboard_details: Any) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Yields lineage if config is enabled.
+
+        We will look for the data in all the services
+        we have informed.
+        """
+        # Flush the sink buffer so charts, datamodels and dashboards created in this
+        # stage are persisted before lineage resolution looks them up via get_by_name.
+        yield Either(right=Barrier(reason="dashboard_lineage_flush"))  # pyright: ignore[reportCallIssue]
+
+        # yield datamodel dashboard lineage
+        for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            yield from self.yield_lineage_request(lineage)
+
+        # yield datamodel lineage with tables from db services
+        db_service_prefixes = self.get_db_service_prefixes()
+        for db_service_prefix in db_service_prefixes or [None]:
+            for lineage in self.yield_dashboard_lineage_details(dashboard_details, db_service_prefix) or []:
+                yield from self.yield_lineage_request(lineage)
+
+    def yield_lineage_request(
+        self,
+        lineage: Optional[Either[AddLineageRequest]] = None,  # noqa: UP045
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Method to yield lineage request
+        """
+        if lineage:
+            if lineage.right is not None:
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=lineage.right,
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            else:
+                yield lineage
+
+    def yield_bulk_tags(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to bulk fetch dashboard tags
+        """
+
+    def yield_tags(self, dashboard_details) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        Method to fetch dashboard tags
+        """
+
+    def yield_dashboard_usage(self, *args, **kwargs) -> Iterable[DashboardUsage]:
+        """
+        Method to pick up dashboard usage data
+        """
+        if not self.source_config.includeUsage:
+            return
+
+    def close(self):
+        if self._connection is not None:
+            self._connection.close()
+        self.metadata.close()
+
+    def get_services(self) -> Iterable[WorkflowSource]:
+        yield self.config
+
+    def yield_create_request_dashboard_service(
+        self, config: WorkflowSource
+    ) -> Iterable[Either[CreateDashboardServiceRequest]]:
+        yield Either(right=self.metadata.get_create_service_from_source(entity=DashboardService, config=config))
+
+    def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Method to mark the dashboards as deleted
+        """
+        if self.source_config.markDeletedDashboards:
+            logger.info("Mark Deleted Dashboards set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                entity_source_state=self.dashboard_source_state,
+                recursive=self.source_config.markDeletedDashboards,
+                params={"service": self.context.get().dashboard_service},
+            )
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Method to mark the datamodels as deleted
+        """
+        if self.source_config.markDeletedDataModels:
+            logger.info("Mark Deleted Datamodels set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DashboardDataModel,
+                entity_source_state=self.datamodel_source_state,
+                recursive=self.source_config.markDeletedDataModels,
+                params={"service": self.context.get().dashboard_service},
+            )
+
+    def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Method to mark the charts as deleted
+        """
+        if self.source_config.markDeletedCharts:
+            logger.info("Mark Deleted Charts set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Chart,
+                entity_source_state=self.chart_source_state,
+                recursive=self.source_config.markDeletedCharts,
+                params={"service": self.context.get().dashboard_service},
+            )
+
+    def get_owner_ref(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+        """
+        Method to process the dashboard owners
+        """
+        logger.debug(f"Processing ownership is not supported for {self.service_connection.type.name}")
+        return None
+
+    def register_record(self, dashboard_request: CreateDashboardRequest) -> None:
+        """
+        Mark the dashboard record as scanned and update the dashboard_source_state
+        """
+        dashboard_fqn = fqn.build(
+            self.metadata,
+            entity_type=Dashboard,
+            service_name=dashboard_request.service.root,
+            dashboard_name=dashboard_request.name.root,
+        )
+
+        self.dashboard_source_state.add(dashboard_fqn)
+
+    def register_record_datamodel(self, datamodel_request: CreateDashboardDataModelRequest) -> None:
+        """
+        Mark the datamodel record as scanned and update the datamodel_source_state
+        """
+        datamodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=DashboardDataModel,
+            service_name=datamodel_request.service.root,
+            data_model_name=datamodel_request.name.root,
+        )
+
+        self.datamodel_source_state.add(datamodel_fqn)
+
+    def register_record_chart(self, chart_request: CreateChartRequest) -> None:
+        """
+        Mark the chart record as scanned and update the chart_source_state
+        """
+        chart_fqn = fqn.build(
+            self.metadata,
+            entity_type=Chart,
+            service_name=chart_request.service.root,
+            chart_name=chart_request.name.root,
+        )
+
+        self.chart_source_state.add(chart_fqn)
+
+    @staticmethod
+    def _get_add_lineage_request(
+        to_entity: Union[Dashboard, DashboardDataModel, Chart],  # noqa: UP007
+        from_entity: Union[Table, DashboardDataModel, Dashboard],  # noqa: UP007
+        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
+        sql: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        if from_entity and to_entity:
+            return Either(  # pyright: ignore[reportCallIssue]
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        # Carry the FQN on both references so the sink can return the source FQN
+                        # without a follow-up lineage GET (see add_lineage return_lineage flag).
+                        fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
+                            id=Uuid(from_entity.id.root),
+                            type=LINEAGE_MAP[type(from_entity)],
+                            fullyQualifiedName=(
+                                model_str(from_entity.fullyQualifiedName) if from_entity.fullyQualifiedName else None
+                            ),
+                        ),
+                        toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
+                            id=Uuid(to_entity.id.root),
+                            type=LINEAGE_MAP[type(to_entity)],
+                            fullyQualifiedName=(
+                                model_str(to_entity.fullyQualifiedName) if to_entity.fullyQualifiedName else None
+                            ),
+                        ),
+                        lineageDetails=LineageDetails(
+                            source=LineageSource.DashboardLineage,
+                            sqlQuery=sql,
+                            columnsLineage=column_lineage,
+                        ),
+                    )
+                )
+            )
+
+        return None
+
+    @staticmethod
+    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:  # noqa: UP045
+        """
+        Get fqn of column if exist in table entity
+        """
+        if not data_model_entity:
+            return None
+        for tbl_column in data_model_entity.columns:
+            if (tbl_column.displayName and tbl_column.displayName.lower() == column.lower()) or (
+                tbl_column.name.root.lower() == column.lower()
+            ):
+                return tbl_column.fullyQualifiedName.root
+        return None
+
+    def get_dashboard(self) -> Any:
+        """
+        Method to iterate through dashboard lists filter dashboards & yield dashboard details
+        """
+        for dashboard in self.get_dashboards_list():
+            dashboard_name = self.get_dashboard_name(dashboard)
+            if filter_by_dashboard(
+                self.source_config.dashboardFilterPattern,
+                dashboard_name,
+            ):
+                self.status.filter(
+                    dashboard_name,
+                    "Dashboard Filtered Out",
+                )
+                continue
+
+            try:
+                dashboard_details = self.get_dashboard_details(dashboard)
+                self.context.get().project_name = (  # pylint: disable=E1128
+                    self.get_project_name(dashboard_details=dashboard_details)
+                )
+
+                # Get both single project name and list of project names
+                project_name = self.context.get().project_name
+                project_names = self.get_project_names(dashboard_details=dashboard_details) or []
+                if project_names:
+                    project_name = project_names
+
+                if filter_by_project(
+                    self.source_config.projectFilterPattern,
+                    project_name,
+                ):
+                    self.status.filter(
+                        project_name,
+                        "Project / Workspace Filtered Out",
+                    )
+                    continue
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Cannot extract dashboard details from {dashboard}: {exc}")
+                continue
+
+            yield dashboard_details
+
+    def test_connection(self) -> None:
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+
+    def prepare(self):
+        """By default, nothing to prepare"""
+
+    def check_database_schema_name(self, database_schema_name: str):
+        """
+        Check if the input database schema name is equal to "<default>" and return the input name if it is not.
+
+        Args:
+        - database_schema_name (str): A string representing the name of the database schema to be checked.
+
+        Returns:
+        - None: If the input database schema name is equal to "<default>".
+        - database_schema_name (str): If the input database schema name is not equal to "<default>".
+        """
+        if database_schema_name == "<default>":
+            return None
+
+        return database_schema_name
+
+    def get_project_name(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[str]:  # noqa: UP045
+        """
+        Get the project / workspace / folder / collection name of the dashboard
+        """
+        logger.debug(f"Project name is not supported for {self.service_connection.type.name}")
+        return None
+
+    def get_project_names(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[str]:  # noqa: UP045
+        """
+        Get the project / workspace / folder / collection names of the dashboard
+        """
+        logger.debug(f"Project names are not supported for {self.service_connection.type.name}")
+        return None
+
+    def create_patch_request(self, original_entity: Entity, create_request: C) -> PatchRequest:
+        """
+        Method to get the PatchRequest object
+        To be overridden by the process if any custom logic is to be applied
+        """
+        patch_request = PatchRequest(
+            original_entity=original_entity,
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
+            override_metadata=self.source_config.overrideMetadata,
+        )
+        if isinstance(original_entity, Dashboard):
+            # For patch the charts need to be entity ref instead of fqn
+            charts_entity_ref_list = []
+            for chart_fqn in create_request.charts or []:
+                chart_entity = self.metadata.get_by_name(entity=Chart, fqn=chart_fqn)
+                if chart_entity:
+                    charts_entity_ref_list.append(
+                        EntityReference(
+                            id=chart_entity.id.root,
+                            type=LINEAGE_MAP[type(chart_entity)],
+                        )
+                    )
+            patch_request.new_entity.charts = EntityReferenceList(charts_entity_ref_list)
+
+            # For patch the datamodels need to be entity ref instead of fqn
+            datamodel_entity_ref_list = []
+            for datamodel_fqn in create_request.dataModels or []:
+                datamodel_entity = self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
+                if datamodel_entity:
+                    datamodel_entity_ref_list.append(
+                        EntityReference(
+                            id=datamodel_entity.id.root,
+                            type=LINEAGE_MAP[type(datamodel_entity)],
+                        )
+                    )
+            patch_request.new_entity.dataModels = EntityReferenceList(datamodel_entity_ref_list)
+        return patch_request
+
+    def _get_column_lineage(
+        self,
+        om_table: Table,
+        data_model_entity: DashboardDataModel,
+        columns_list: List[str],  # noqa: UP006
+    ) -> List[ColumnLineage]:  # noqa: UP006
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for field in columns_list or []:
+                from_column = get_column_fqn(table_entity=om_table, column=field)
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column=field,
+                )
+                if from_column and to_column:
+                    column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
+            return column_lineage  # noqa: TRY300
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())

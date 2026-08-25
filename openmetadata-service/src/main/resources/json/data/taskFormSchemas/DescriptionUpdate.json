@@ -1,0 +1,72 @@
+{
+  "name": "DescriptionUpdate",
+  "displayName": "Description Update",
+  "taskType": "DescriptionUpdate",
+  "taskCategory": "MetadataUpdate",
+  "formSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "fieldPath": {
+        "type": "string",
+        "title": "Field Path"
+      },
+      "currentDescription": {
+        "type": "string",
+        "title": "Current Description"
+      },
+      "newDescription": {
+        "type": "string",
+        "title": "New Description"
+      },
+      "source": {
+        "type": "string",
+        "title": "Source"
+      },
+      "confidence": {
+        "type": "number",
+        "title": "Confidence"
+      }
+    }
+  },
+  "uiSchema": {
+    "ui:handler": {
+      "type": "descriptionUpdate",
+      "permission": "EDIT_DESCRIPTION",
+      "fieldPathField": "fieldPath",
+      "valueField": "newDescription"
+    },
+    "ui:editablePayload": {
+      "fieldPathField": "fieldPath",
+      "currentValueField": "currentDescription",
+      "editedValueField": "newDescription"
+    },
+    "ui:resolution": {
+      "mode": "field",
+      "valueField": "newDescription"
+    },
+    "ui:order": [
+      "newDescription",
+      "fieldPath",
+      "currentDescription",
+      "source",
+      "confidence"
+    ],
+    "fieldPath": {
+      "ui:widget": "hidden"
+    },
+    "currentDescription": {
+      "ui:widget": "hidden"
+    },
+    "source": {
+      "ui:widget": "hidden"
+    },
+    "confidence": {
+      "ui:widget": "hidden"
+    },
+    "newDescription": {
+      "ui:widget": "descriptionTabs"
+    }
+  },
+  "fullyQualifiedName": "DescriptionUpdate"
+}

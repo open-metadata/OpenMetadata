@@ -1,0 +1,268 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  expect,
+  Page,
+  PlaywrightTestArgs,
+  PlaywrightWorkerArgs,
+  TestType,
+} from '@playwright/test';
+import { env } from 'process';
+import { resetTokenFromBotPage } from '../../../utils/bot';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../../utils/common';
+import {
+  visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
+import { expandAdvancedConfig } from '../../../utils/profilerForm';
+import { visitServiceDetailsPage } from '../../../utils/service';
+import {
+  checkServiceFieldSectionHighlighting,
+  getAgentCard,
+  Services,
+  waitForIngestionWorkflowForm,
+} from '../../../utils/serviceIngestion';
+import ServiceBaseClass from './ServiceBaseClass';
+
+class MysqlIngestionClass extends ServiceBaseClass {
+  name = '';
+  defaultFilters = ['^information_schema$', '^performance_schema$'];
+  tableFilter: string[];
+  excludeSchemas: string[];
+  profilerTable = 'alert_entity';
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+    tableFilter?: string[];
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+      tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+    } = extraParams ?? {};
+
+    const serviceName = `pw-mysql-with-%-${uuid()}`;
+    super(
+      Services.Database,
+      serviceName,
+      'Mysql',
+      'bot_entity',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
+    );
+    this.name = serviceName;
+    this.tableFilter = tableFilter;
+    this.excludeSchemas = ['openmetadata'];
+  }
+
+  async createService(page: Page) {
+    await super.createService(page);
+  }
+
+  async updateService(page: Page) {
+    await super.updateService(page);
+  }
+
+  async fillConnectionDetails(page: Page) {
+    const username = env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
+    const password = env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
+    const hostPort = env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
+
+    await page.fill('#root\\/username', username);
+    await checkServiceFieldSectionHighlighting(page, 'username');
+    await page.fill('#root\\/authType\\/password', password);
+    await checkServiceFieldSectionHighlighting(page, 'password');
+    await page.fill('#root\\/hostPort', hostPort);
+    await checkServiceFieldSectionHighlighting(page, 'hostPort');
+  }
+
+  async fillIngestionDetails(page: Page) {
+    for (const filter of this.tableFilter) {
+      await this.openIngestionFilterSection(page);
+      await page.getByTestId('filter-section-tableFilterPattern').click();
+      await page.getByTestId('tableFilterPattern-only-specific-button').click();
+      await page
+        .getByTestId('filter-section-tableFilterPattern')
+        .getByTestId('include-filter-input')
+        .locator('input')
+        .fill(filter);
+      await page
+        .getByTestId('filter-section-tableFilterPattern')
+        .getByTestId('include-filter-input')
+        .locator('input')
+        .press('Enter');
+    }
+    for (const schema of this.excludeSchemas) {
+      await page.getByTestId('filter-section-schemaFilterPattern').click();
+      await page
+        .getByTestId('filter-section-schemaFilterPattern')
+        .getByTestId('exclude-filter-input')
+        .locator('input')
+        .fill(schema);
+      await page
+        .getByTestId('filter-section-schemaFilterPattern')
+        .getByTestId('exclude-filter-input')
+        .locator('input')
+        .press('Enter');
+    }
+  }
+
+  async runAdditionalTests(
+    page: Page,
+    test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
+  ) {
+    await test.step('Add Profiler ingestion', async () => {
+      const { apiContext } = await getApiContext(page);
+      await redirectToHomePage(page);
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        // Todo: Remove this patch once the issue is fixed #19140
+        await resetTokenFromBotPage(page, 'profiler-bot');
+      }
+
+      await visitServiceDetailsPage(
+        page,
+        {
+          type: this.category,
+          name: this.serviceName,
+          displayName: this.serviceName,
+        },
+        true
+      );
+
+      await page.click('[data-testid="agents"]');
+      await page.getByTestId('ingestion-details-container').waitFor();
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+      await page.click('[data-testid="add-new-ingestion-button"]');
+
+      const profilerMenuItem = page
+        .locator('.ant-dropdown:visible')
+        .getByTestId('agent-item-profiler');
+      await expect(profilerMenuItem).toBeVisible();
+      await profilerMenuItem.click();
+
+      await waitForIngestionWorkflowForm(page);
+      await expandAdvancedConfig(page);
+
+      const sampleConfigTypeSelect = page.getByTestId(
+        'sample-config-type-select'
+      );
+      await expect(sampleConfigTypeSelect).toBeVisible();
+      await sampleConfigTypeSelect.click();
+      await page.locator('[data-key="STATIC"]').click();
+
+      await page.getByTestId('profile-sample-input').waitFor();
+      await page
+        .getByTestId('profile-sample-input')
+        .locator('input')
+        .fill('10');
+      await page.click('[data-testid="next-button"]');
+      // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
+      await this.scheduleIngestion(page);
+
+      await page.click('[data-testid="view-service-button"]');
+
+      // Header available once page loads
+      await page.getByTestId('data-assets-header').waitFor();
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('agents').click();
+      const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab2.isVisible()) {
+        await metadataTab2.click();
+      }
+
+      await page
+        .getByLabel('agents')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
+
+      const response = await apiContext
+        .get(
+          `/api/v1/services/ingestionPipelines?service=${encodeURIComponent(
+            this.serviceName
+          )}&pipelineType=profiler&serviceType=databaseService&limit=1`
+        )
+        .then((res) => res.json());
+
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
+      await page.waitForTimeout(3000);
+
+      await getAgentCard(page, response.data[0].name)
+        .getByTestId('run-agent-button')
+        .click();
+
+      await toastNotification(page, `Pipeline triggered successfully!`);
+
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
+      await page.waitForTimeout(2000);
+
+      await this.handleIngestionRetry('profiler', page);
+    });
+
+    await test.step('Validate profiler ingestion', async () => {
+      await visitEntityPage({
+        page,
+        searchTerm: this.profilerTable,
+        dataTestId: `${this.serviceName}-${this.profilerTable}`,
+      });
+    });
+
+    await page.getByTestId('profiler').click();
+    await page.getByRole('tab', { name: 'Table Profile' }).click();
+
+    await expect(
+      page.locator('[data-testid="no-profiler-placeholder"]')
+    ).not.toBeVisible();
+  }
+
+  async validateIngestionDetails(page: Page) {
+    await waitForAllLoadersToDisappear(page);
+    const ingestionFilterSection = page.getByTestId(
+      'ingestion-section-filters'
+    );
+    if (await ingestionFilterSection.isVisible()) {
+      ingestionFilterSection.click();
+    }
+    await page.getByTestId('filter-section-tableFilterPattern').click();
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    const tableIncludes = page.getByTestId('filter-section-tableFilterPattern');
+    const schemaExcludes = page.getByTestId(
+      'filter-section-schemaFilterPattern'
+    );
+
+    for (const filter of this.tableFilter) {
+      await expect(
+        tableIncludes.getByTestId(`include-chip-contains:.*${filter}.*`)
+      ).toBeVisible();
+    }
+
+    for (const schema of this.excludeSchemas) {
+      await expect(
+        schemaExcludes.getByTestId(`exclude-chip-startsWith:^${schema}`)
+      ).toBeVisible();
+    }
+  }
+}
+
+export default MysqlIngestionClass;

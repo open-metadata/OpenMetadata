@@ -1,0 +1,596 @@
+#  Copyright 2022 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Great Expectations subpackage to send expectation results to
+Open Metadata table quality.
+
+This subpackage needs to be used in Great Expectations
+checkpoints actions.
+"""
+
+import logging
+import traceback
+from datetime import datetime
+from typing import Dict, List, Literal, Optional, Union, cast  # noqa: UP035
+
+# Imported from the defining submodules rather than the `great_expectations.checkpoint`
+# package. The package-level re-exports only appeared in 1.3, so importing through them
+# turns any future drop of a re-export into an ImportError at module load.
+from great_expectations.checkpoint.actions import (  # type: ignore
+    ActionContext,
+    ValidationAction,
+)
+from great_expectations.checkpoint.checkpoint import CheckpointResult  # type: ignore
+from great_expectations.core.expectation_validation_result import (
+    ExpectationSuiteValidationResult,
+    ExpectationSuiteValidationResultMeta,
+)
+from great_expectations.expectations.expectation_configuration import (  # type: ignore
+    ExpectationConfiguration,
+)
+from sqlalchemy.engine.url import URL, make_url
+
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import (
+    EntityType,
+    TestCaseParameterDefinition,
+    TestPlatform,
+)
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import Timestamp
+from metadata.great_expectations.table_mapper import (
+    TableConfigMap,
+    TableMapper,
+    TablePart,
+)
+from metadata.great_expectations.utils.ometa_config_handler import (
+    create_jinja_environment,
+    create_ometa_connection_obj,
+    render_template,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
+from metadata.utils.entity_link import get_entity_link
+
+logger = logging.getLogger("great_expectations.validation_operators.validation_operators.openmetadata")
+
+# GX carries these in the expectation kwargs but neither is a test parameter:
+# `column` is already conveyed by the test case entity link and `batch_id` is run-scoped.
+EXCLUDED_KWARGS = {"column", "batch_id"}
+
+# GX 1.x hands the action a plain dict instead of the typed `*BatchSpec` classes that
+# 0.18.x dispatched on, so a SQL batch spec is recognised by its shape: table assets
+# carry `table_name`/`schema_name`, query assets carry `query`/`temp_table_schema_name`.
+SQL_BATCH_SPEC_KEYS = frozenset({"table_name", "schema_name", "query", "temp_table_schema_name"})
+
+
+class OpenMetadataValidationAction(ValidationAction):
+    """Open Metadata validation action for GX 1.x.x. It inherits from
+    great expectation validation action class and implements the
+    `run` method.
+
+    Attributes:
+        database_service_name: name of the service for the table
+        config_file_path: path to the open metadata config path
+        database_name: default database of the tables the expectations run against.
+            Falls back to the database of the execution engine when not set.
+        schema_name: default schema, for databases without a schema concept
+        table_name: default table the validation results are written to
+        expectation_suite_table_config_map: optional mapping of expectation suite names
+            to table configurations. Used to route validation results to specific tables
+            in multi-table checkpoints.
+            Format: {"suite_name": {"database_name": "db", "schema_name": "schema", "table_name": "table"}}
+    """
+
+    type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"  # type: ignore
+    name: str = "OpenMetadataValidationAction"
+    config_file_path: Optional[str] = None  # noqa: UP045
+    database_service_name: Optional[str] = None  # noqa: UP045
+    schema_name: Optional[str] = "default"  # noqa: UP045
+    database_name: Optional[str] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
+    expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None  # noqa: UP006, UP045
+    # Using Optional to make this field not part of the serialized model
+    # This will be initialized in the run method
+    ometa_conn: Optional[OpenMetadata] = None  # noqa: UP045
+
+    @property
+    def table_mapper(self) -> TableMapper:
+        """Mapping used to resolve which OpenMetadata table an expectation suite writes to.
+
+        Exposed as a property rather than a field so that GX can still serialize the
+        action into the checkpoint config.
+        """
+        return TableMapper(
+            default_database_name=self.database_name,
+            default_schema_name=self.schema_name,
+            default_table_name=self.table_name,
+            expectation_suite_table_config_map=TableConfigMap.parse(self.expectation_suite_table_config_map or {}),
+        )
+
+    # unused-argument covers action_context, which we do not consume here.
+    # pylint: disable=unused-argument
+    def run(
+        self,
+        checkpoint_result: CheckpointResult,
+        action_context: Union[ActionContext, None],  # noqa: UP007
+    ):
+        """main function to implement great expectation hook
+
+        Args:
+            checkpoint_result: results of every validation of the checkpoint run
+            action_context: context shared between the actions of the checkpoint
+        """
+        self.ometa_conn = self._create_ometa_connection()
+
+        table_mapper = self.table_mapper
+        execution_engine_urls = self._get_execution_engine_urls(checkpoint_result)
+
+        for validation_result in checkpoint_result.run_results.values():
+            meta = validation_result.meta
+            expectation_suite_name = self._get_expectation_suite_name(validation_result)
+            check_point_spec = self._get_checkpoint_batch_spec(meta)
+
+            # The batch spec only carries the table it ran against for table assets;
+            # query assets and any part left unset fall back to the configured mapping.
+            table_entity = self._get_table_entity(
+                table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name)
+                or self._get_execution_engine_database(meta, execution_engine_urls),
+                check_point_spec.get("schema_name")
+                or table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
+                check_point_spec.get("table_name")
+                or table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
+            )
+
+            if table_entity:
+                for result in validation_result.results:
+                    self._handle_test_case(result, table_entity)  # type: ignore
+
+    @staticmethod
+    def _get_expectation_suite_name(
+        validation_result: ExpectationSuiteValidationResult,
+    ) -> Optional[str]:  # noqa: UP045
+        """Return the name of the expectation suite that produced a validation result
+
+        Args:
+            validation_result: result of a single validation of the checkpoint run
+        Returns:
+            Optional[str]
+        """
+        expectation_suite_name = getattr(validation_result, "suite_name", None)  # works in GE 1.x
+        if expectation_suite_name is None and validation_result.meta:
+            expectation_suite_name = validation_result.meta.get("suite_name")
+        return expectation_suite_name
+
+    @staticmethod
+    def _get_checkpoint_batch_spec(
+        meta: Union[ExpectationSuiteValidationResultMeta, dict, None],  # noqa: UP007
+    ) -> dict:
+        """Return the batch spec the expectations ran against
+
+        Args:
+            meta: metadata attached to a validation result
+        Returns:
+            dict: the batch spec, empty when the run carries none
+        Raises:
+            ValueError: if the batch spec was not produced by a SQL datasource
+        """
+        batch_spec = meta.get("batch_spec") if meta else None
+        if not batch_spec:
+            return {}
+
+        if not SQL_BATCH_SPEC_KEYS.intersection(batch_spec):
+            raise ValueError(
+                f"Batch spec `{batch_spec}` is not supported."
+                " Make sure you ran your expectations against a relational database",
+            )
+
+        return batch_spec
+
+    def _get_table_entity(
+        self,
+        database: Optional[str],  # noqa: UP045
+        schema_name: Optional[str],  # noqa: UP045
+        table_name: Optional[str],  # noqa: UP045
+    ) -> Optional[Table]:  # noqa: UP045
+        """Return the table entity for the test. If service name is defined
+        in GE checkpoint entity will be fetch using the FQN. If not provided
+        iterative search will be perform among all the entities. If 2 entities
+        are found with the same `database`.`schema`.`table` the method will
+        raise an error.
+
+        Args:
+            database: database name
+            schema_name: schema name
+            table_name: table name
+
+        Return:
+           Optional[Table]
+
+        Raises:
+             ValueError: if any part of the table name is missing, or if 2 entities
+                         with the same `database`.`schema`.`table` are found
+        """
+        # Every part has to be resolved before we build an FQN out of them: a missing
+        # one would otherwise be interpolated as the string `None` and looked up as
+        # `service.None.schema.table`, which fails as a confusing "no entity found".
+        missing = [
+            part_name
+            for part_name, part in (
+                ("database_name", database),
+                ("schema_name", schema_name),
+                ("table_name", table_name),
+            )
+            if not part
+        ]
+        if missing:
+            raise ValueError(
+                f"Can't fetch the table entity from OpenMetadata, {', '.join(missing)} could not be resolved."
+                " Set it on the action, or map the expectation suite to a table through"
+                " `expectation_suite_table_config_map`.",
+            )
+
+        if self.database_service_name:
+            return self.ometa_conn.get_by_name(
+                entity=Table,
+                fqn=f"{self.database_service_name}.{database}.{schema_name}.{table_name}",
+                fields=["testSuite"],
+            )
+
+        table_entity = [
+            entity
+            for entity in self.ometa_conn.list_entities(entity=Table, fields=["testSuite"]).entities
+            if f"{database}.{schema_name}.{table_name}" in entity.fullyQualifiedName.root
+        ]
+
+        if len(table_entity) > 1:
+            raise ValueError(
+                f"Non unique `database`.`schema`.`table` found: {table_entity}."
+                "Please specify an `database_service_name` in you checkpoint.yml file.",
+            )
+
+        if table_entity:
+            return table_entity[0]
+
+        logger.warning("No entity found for %s.%s.%s", database, schema_name, table_name)
+        return None
+
+    def _check_or_create_test_suite(self, table_entity: Table) -> TestSuite:
+        """Check if test suite already exists for a given table entity. If not
+        create a new one.
+
+        Args:
+            table_entity: table entity object
+        Returns:
+            TestSuite
+        """
+
+        if table_entity.testSuite:
+            test_suite = self.ometa_conn.get_by_name(TestSuite, table_entity.testSuite.fullyQualifiedName)
+            test_suite = cast(TestSuite, test_suite)  # noqa: TC006
+            return test_suite  # noqa: RET504
+
+        create_test_suite = CreateTestSuiteRequest(
+            name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
+            basicEntityReference=table_entity.fullyQualifiedName.root,
+        )  # type: ignore
+        test_suite = self.ometa_conn.create_or_update_executable_test_suite(create_test_suite)
+        return test_suite  # noqa: RET504
+
+    @staticmethod
+    def _get_execution_engine_urls(checkpoint_result: CheckpointResult) -> Dict[str, URL]:  # noqa: UP006
+        """Map every datasource of the checkpoint to the URL of its execution engine.
+
+        GX 1.x does not hand the action the data asset it validated, so the connection
+        details are read back from the checkpoint definition instead.
+
+        Args:
+            checkpoint_result: results of the checkpoint run
+        Returns:
+            Dict[str, URL]: execution engine URL per datasource name
+        """
+        execution_engine_urls: Dict[str, URL] = {}  # noqa: UP006
+        checkpoint = getattr(checkpoint_result, "checkpoint_config", None)
+
+        for validation_definition in getattr(checkpoint, "validation_definitions", None) or []:
+            data_asset = getattr(getattr(validation_definition, "data", None), "data_asset", None)
+            datasource = getattr(data_asset, "datasource", None)
+            connection_string = getattr(datasource, "connection_string", None)
+            if datasource is None or not connection_string:
+                continue
+            try:
+                execution_engine_urls[datasource.name] = make_url(str(connection_string))
+            except Exception as exc:
+                logger.debug("Could not parse the connection string of datasource `%s`: %s", datasource.name, exc)
+
+        return execution_engine_urls
+
+    @staticmethod
+    def _get_execution_engine_database(
+        meta: Union[ExpectationSuiteValidationResultMeta, dict, None],  # noqa: UP007
+        execution_engine_urls: Dict[str, URL],  # noqa: UP006
+    ) -> Optional[str]:  # noqa: UP045
+        """Get the database the expectations ran against, used when none is configured
+
+        Args:
+            meta: metadata attached to a validation result
+            execution_engine_urls: execution engine URL per datasource name
+        Returns:
+            Optional[str]
+        """
+        datasource_name = (meta or {}).get("active_batch_definition", {}).get("datasource_name")
+        if not datasource_name:
+            return None
+
+        execution_engine_url = execution_engine_urls.get(datasource_name)
+        return execution_engine_url.database if execution_engine_url else None
+
+    def _create_ometa_connection(self) -> OpenMetadata:
+        """Create OpenMetadata API connection"""
+        environment = create_jinja_environment(self.config_file_path)
+        rendered_config = render_template(environment)
+
+        return OpenMetadata(create_ometa_connection_obj(rendered_config))
+
+    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:  # noqa: UP006
+        """build test case fqn from table entity and GE test results
+
+        Args:
+            table_fqn (str): table fully qualified name
+            result (Dict): result from great expectation tests
+        """
+        split_table_fqn = table_fqn.split(".")
+        fqn_ = fqn.build(
+            self.ometa_conn,
+            entity_type=TestCase,
+            service_name=split_table_fqn[0],
+            database_name=split_table_fqn[1],
+            schema_name=split_table_fqn[2],
+            table_name=split_table_fqn[3],
+            column_name=result["expectation_config"]["kwargs"].get("column"),
+            test_case_name=result["expectation_config"]["type"],
+        )
+        fqn_ = cast(str, fqn_)  # noqa: TC006
+        return fqn_  # noqa: RET504
+
+    @staticmethod
+    def _get_expectation_config(result: dict) -> Optional[ExpectationConfiguration]:  # noqa: UP045
+        """Get expectation config from GE test result.
+
+        Unlike 0.18.x -- which had to look the expectation up in the suite by type, and
+        so returned the first expectation sharing a type -- GX 1.x attaches the exact
+        configuration that produced the result.
+
+        Args:
+            result: GE test result
+        Returns:
+            Optional[ExpectationConfiguration]: expectation configuration
+        """
+        return result.get("expectation_config")
+
+    def _get_test_case_description(self, result: dict) -> str:
+        """Get test case description from GE test result"""
+        expectation = self._get_expectation_config(result)
+        if expectation and expectation.meta:
+            return expectation.meta.get("description", "")
+        return ""
+
+    def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:  # noqa: UP006
+        """Build test case parameter value from GE test result"""
+        expectation = self._get_expectation_config(result)
+        if expectation:
+            return [
+                TestCaseParameterValue(
+                    name=key,
+                    value=str(value),
+                )  # type: ignore
+                for key, value in expectation.kwargs.items()
+                if key not in EXCLUDED_KWARGS
+            ]
+
+        if "observed_value" not in result["result"]:
+            return [
+                TestCaseParameterValue(
+                    name="unexpected_percentage_total",
+                    value=str(0.0),
+                )
+            ]
+
+        return [
+            TestCaseParameterValue(
+                name=key,
+                value=str(value),
+            )
+            for key, value in result["expectation_config"]["kwargs"].items()
+            if key not in EXCLUDED_KWARGS
+        ]
+
+    def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:  # noqa: UP006
+        """Build test case parameter definition from GE test result"""
+        expectation = self._get_expectation_config(result)
+        if expectation:
+            return [
+                TestCaseParameterDefinition(
+                    name=key,
+                )  # type: ignore
+                for key, _ in expectation.kwargs.items()
+                if key not in EXCLUDED_KWARGS
+            ]
+
+        if "observed_value" not in result["result"]:
+            return [
+                TestCaseParameterDefinition(
+                    name="unexpected_percentage_total",
+                )  # type: ignore
+            ]
+
+        return [
+            TestCaseParameterDefinition(
+                name=key,
+            )  # type: ignore
+            for key, _ in result["expectation_config"]["kwargs"].items()
+            if key not in EXCLUDED_KWARGS
+        ]
+
+    def _get_test_result_value(self, result: dict) -> List[TestResultValue]:  # noqa: UP006
+        """Get test result value from GE test result
+
+        Args:
+            result (dict): result
+
+        Returns:
+            TestCaseResult: a test case result object
+        """
+        test_result_values = []
+        result_data = result.get("result", {})
+
+        # Counts only, no percentages. OpenMetadata charts every result value of a test
+        # case on a single axis, so mixing percentages (0-100) with row counts flattens
+        # the percentages into the baseline. Every native OM test emits a single unit for
+        # the same reason, and the percentages GX reports are derivable from these counts.
+        numeric_fields = [
+            "unexpected_count",
+            "missing_count",
+            "element_count",
+            "observed_value",
+        ]
+
+        for field in numeric_fields:
+            if field in result_data:
+                value = result_data[field]
+
+                if isinstance(value, (int, float)):
+                    test_result_values.append(
+                        TestResultValue(
+                            name=field,
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                elif field == "observed_value":
+                    test_result_values.extend(self._extract_complex_value_from_observed_value(value))
+
+        return test_result_values
+
+    def _extract_complex_value_from_observed_value(self, observed_value) -> List[TestResultValue]:  # noqa: UP006
+        """Extract complex value from observed value
+
+        Args:
+            observed_value: observed value
+        Returns:
+            str: complex value
+        """
+        if isinstance(observed_value, list):
+            return [
+                TestResultValue(
+                    name="element_count",
+                    value=str(len(observed_value)),
+                    predictedValue=None,
+                )
+            ]
+
+        if isinstance(observed_value, dict):
+            if "quantiles" in observed_value:
+                result_values = []
+                quantiles = observed_value["quantiles"]
+                values = observed_value["values"]
+                for quantile, value in zip(quantiles, values):  # noqa: B905
+                    result_values.append(
+                        TestResultValue(
+                            name=f"quantile_{str(quantile)}",  # noqa: RUF010
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                return result_values
+
+            # catch all other cases that are not a quantile
+            for k, v in observed_value.items():
+                if isinstance(v, (int, float)):
+                    return [
+                        TestResultValue(
+                            name=k,
+                            value=str(v),
+                            predictedValue=None,
+                        )
+                    ]
+
+        if isinstance(observed_value, str):
+            return [
+                TestResultValue(
+                    name="observed_value",
+                    value=str(1),
+                    predictedValue=None,
+                )
+            ]
+
+        return []
+
+    def _handle_test_case(self, result: Dict, table_entity: Table):  # noqa: UP006
+        """Handle adding test to table entity based on the test case.
+        Test Definitions will be created on the fly from the results of the
+        great expectations run. We will then write the test case results to the
+        specific test case.
+
+        Args:
+            result: GE test result
+            table_entity: table entity object
+        """
+
+        try:
+            test_definition = self.ometa_conn.get_or_create_test_definition(
+                test_definition_fqn=result["expectation_config"]["type"],
+                test_definition_description=result["expectation_config"]["type"].replace("_", " "),
+                entity_type=EntityType.COLUMN
+                if "column" in result["expectation_config"]["kwargs"]
+                else EntityType.TABLE,
+                test_platforms=[TestPlatform.GreatExpectations],
+                test_case_parameter_definition=self._get_test_case_params_definition(result),
+            )
+
+            test_case_fqn = self._build_test_case_fqn(
+                table_entity.fullyQualifiedName.root,
+                result,
+            )
+
+            test_case = self.ometa_conn.get_or_create_test_case(
+                test_case_fqn,
+                entity_link=get_entity_link(
+                    Table,
+                    fqn=table_entity.fullyQualifiedName.root,
+                    column_name=fqn.split_test_case_fqn(test_case_fqn).column,
+                ),
+                test_definition_fqn=test_definition.fullyQualifiedName.root,
+                test_case_parameter_values=self._get_test_case_params_value(result),
+                description=self._get_test_case_description(result),
+            )
+
+            self.ometa_conn.add_test_case_results(
+                test_results=TestCaseResult(
+                    timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
+                    testCaseStatus=TestCaseStatus.Success if result["success"] else TestCaseStatus.Failed,
+                    testResultValue=self._get_test_result_value(result),
+                ),  # type: ignore
+                test_case_fqn=test_case.fullyQualifiedName.root,
+            )
+
+            logger.debug(f"Test case result for {test_case.fullyQualifiedName.root} successfully ingested")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(exc)

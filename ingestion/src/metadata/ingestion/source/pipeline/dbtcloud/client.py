@@ -1,0 +1,416 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Client to interact with DBT Cloud REST APIs
+"""
+
+import json
+import traceback
+from datetime import datetime, timedelta, timezone
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+
+from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
+    DBTCloudConnection,
+)
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.source.pipeline.dbtcloud.models import (
+    DBTJob,
+    DBTJobList,
+    DBTModel,
+    DBTModelList,
+    DBTRun,
+    DBTRunList,
+)
+from metadata.ingestion.source.pipeline.dbtcloud.queries import (
+    DBT_GET_MODELS_WITH_LINEAGE,
+)
+from metadata.utils.constants import AUTHORIZATION_HEADER
+from metadata.utils.helpers import clean_uri
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
+API_VERSION = "api/v2"
+
+# Bounds the error body kept in the step's error log.
+ERROR_DETAIL_LIMIT = 200
+
+# Between-retry sleep for the test calls; the client default (30s) would blow a step budget.
+TEST_RETRY_WAIT_SECONDS = 2
+
+# Timestamp format accepted by the dbt Cloud run range filters.
+RUN_FILTER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# dbt Cloud rejects an open-ended range (`created_at__gte` answers HTTP 400), so the
+# lookback window has to be closed with a bound that sits past the newest run.
+RUN_WINDOW_END_PADDING_DAYS = 1
+
+
+def build_created_at_range(lookback_days: int) -> str:
+    """
+    Serialise a lookback window into the two-element JSON array that the dbt
+    Cloud ``created_at__range`` filter expects.
+    """
+    now = datetime.now(timezone.utc)
+    window_start = (now - timedelta(days=lookback_days)).strftime(RUN_FILTER_DATE_FORMAT)
+    window_end = (now + timedelta(days=RUN_WINDOW_END_PADDING_DAYS)).strftime(RUN_FILTER_DATE_FORMAT)
+    return json.dumps([window_start, window_end])
+
+
+class DBTCloudApiError(Exception):
+    """A dbt Cloud API call answered with a non-success HTTP status."""
+
+    def __init__(self, status_code: int, path: str, detail: str) -> None:
+        super().__init__(f"dbt Cloud API returned HTTP {status_code} for {path}: {detail}")
+        self.status_code = status_code
+        self.path = path
+
+
+class DBTCloudClient:
+    """
+    Wrapper on top of DBT cloud REST API
+    """
+
+    def __init__(self, config: DBTCloudConnection):
+        self.config = config
+
+        self.job_ids = self.config.jobIds
+        self.project_ids = self.config.projectIds
+        self.environment_ids = self.config.environmentIds
+
+        client_config: ClientConfig = ClientConfig(
+            base_url=clean_uri(self.config.host),
+            api_version=API_VERSION,
+            auth_header=AUTHORIZATION_HEADER,
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
+            allow_redirects=True,
+        )
+
+        graphql_client_config: ClientConfig = ClientConfig(
+            base_url=clean_uri(self.config.discoveryAPI),
+            api_version="",
+            auth_header=AUTHORIZATION_HEADER,
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
+            allow_redirects=True,
+        )
+
+        self.client = TrackedREST(client_config, source_name="dbtcloud")
+        self.graphql_client = TrackedREST(graphql_client_config, source_name="dbtcloud")
+
+    def _get_jobs(
+        self,
+        job_id: str = None,  # noqa: RUF013
+        project_id: str = None,  # noqa: RUF013
+        environment_id: str = None,  # noqa: RUF013
+    ) -> Iterable[DBTJob]:
+        """
+        Fetch jobs for an account in dbt cloud
+        """
+        query_params = {"offset": 0, "limit": 100}
+
+        try:
+            job_path = f"{job_id}/" if job_id else ""
+
+            # Build query string for filters
+            filters = []
+            if project_id:
+                filters.append(f"project_id={project_id}")
+            if environment_id:
+                filters.append(f"environment_id={environment_id}")
+            query_string = "?" + "&".join(filters) if filters else ""
+
+            result = self.client.get(
+                f"/accounts/{self.config.accountId}/jobs/{job_path}{query_string}",
+                data=query_params,
+            )
+
+            if job_id:
+                yield DBTJob.model_validate(result["data"])
+            else:
+                job_list_response = DBTJobList.model_validate(result)
+                yield from job_list_response.Jobs
+
+                while job_list_response.extra and job_list_response.extra.pagination:
+                    total_count = job_list_response.extra.pagination.total_count
+                    current_count = job_list_response.extra.pagination.count
+
+                    if current_count >= total_count:
+                        break
+
+                    query_params["offset"] += query_params["limit"]
+                    result = self.client.get(
+                        f"/accounts/{self.config.accountId}/jobs/{job_path}{query_string}",
+                        data=query_params,
+                    )
+                    job_list_response = DBTJobList.model_validate(result)
+                    yield from job_list_response.Jobs
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Failed to get job info for project_id: `{project_id}`, "
+                f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
+            )
+
+    def _test_get(self, path: str, params: dict | None = None) -> Any:
+        """
+        Authenticated GET that raises DBTCloudApiError on a non-success status.
+
+        Uses get_raw: dbt Cloud nests the error `code` under `status`, which get does
+        not recognise, so it would drop the status and return None.
+        """
+        response = self.client.get_raw(path, data=params, retry_wait=TEST_RETRY_WAIT_SECONDS)
+        if not response.ok:
+            raise DBTCloudApiError(response.status_code, path, response.text[:ERROR_DETAIL_LIMIT])
+        return response.json()
+
+    def test_check_access(self) -> None:
+        """
+        Read one job: the smallest authenticated call proving host, token and account id.
+        """
+        self._test_get(f"/accounts/{self.config.accountId}/jobs/", params={"limit": 1, "offset": 0})
+
+    def test_get_jobs(self) -> list[DBTJob]:
+        """
+        test fetch jobs for an account in dbt cloud
+        """
+        job_list = self._test_get(f"/accounts/{self.config.accountId}/jobs/")
+        return DBTJobList.model_validate(job_list).Jobs
+
+    def test_get_runs(self) -> list[DBTRun]:
+        """
+        test fetch runs for a job in dbt cloud
+        """
+        result = self._test_get(f"/accounts/{self.config.accountId}/runs/")
+        return DBTRunList.model_validate(result).Runs or []
+
+    def get_jobs(self) -> Iterable[DBTJob]:
+        """
+        List jobs for an account in dbt cloud using generator pattern.
+        yields job one at a time for memory efficiency.
+
+        Filter priority:
+        1. If jobIds specified - fetch specific jobs directly (highest priority)
+        2. If projectIds and/or environmentIds specified - fetch by those filters
+        3. If nothing specified - fetch all jobs
+        """
+        try:
+            # Case 1: jobIds specified - fetch specific jobs directly (highest priority)
+            if self.job_ids:
+                for job_id in self.job_ids:
+                    yield from self._get_jobs(job_id=job_id)
+
+            # Case 2: projectIds and/or environmentIds specified (no jobIds)
+            elif self.project_ids or self.environment_ids:
+                project_list = self.project_ids or [None]
+                env_list = self.environment_ids or [None]
+
+                for project_id in project_list:
+                    for environment_id in env_list:
+                        yield from self._get_jobs(
+                            project_id=project_id,
+                            environment_id=environment_id,
+                        )
+
+            # Case 3: No filters specified - fetch all jobs
+            else:
+                yield from self._get_jobs()
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get job info :{exc}")
+
+    def _get_jobs_total_count(
+        self,
+        project_id: Optional[str] = None,  # noqa: UP045
+        environment_id: Optional[str] = None,  # noqa: UP045
+    ) -> int:
+        """Read the paginated ``total_count`` for a single job filter. Returns
+        0 on any failure so a single bad filter never aborts the whole count."""
+        try:
+            filters = []
+            if project_id:
+                filters.append(f"project_id={project_id}")
+            if environment_id:
+                filters.append(f"environment_id={environment_id}")
+            query_string = "?" + "&".join(filters) if filters else ""
+
+            result = self.client.get(
+                f"/accounts/{self.config.accountId}/jobs/{query_string}",
+                data={"offset": 0, "limit": 1},
+            )
+            job_list_response = DBTJobList.model_validate(result)
+            if job_list_response.extra and job_list_response.extra.pagination:
+                return job_list_response.extra.pagination.total_count
+        except Exception as exc:
+            logger.debug(
+                f"Could not fetch job count for project_id: `{project_id}`, environment_id: `{environment_id}` : {exc}"
+            )
+        return 0
+
+    def get_jobs_count(self) -> Optional[int]:  # noqa: UP045
+        """
+        Total number of jobs that will be ingested for the configured filters,
+        mirroring the ``get_jobs`` filter priority, or ``None`` when it cannot
+        be determined.
+        """
+        try:
+            if self.job_ids:
+                return len(self.job_ids)
+
+            if self.project_ids or self.environment_ids:
+                project_list = self.project_ids or [None]
+                env_list = self.environment_ids or [None]
+                total = 0
+                for project_id in project_list:
+                    for environment_id in env_list:
+                        total += self._get_jobs_total_count(project_id=project_id, environment_id=environment_id)
+                return total
+
+            return self._get_jobs_total_count()
+        except Exception as exc:
+            logger.debug(f"Could not fetch job count: {exc}")
+        return None
+
+    def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:  # noqa: UP045
+        """
+        Get the latest successful run ID for a given job.
+        """
+        try:
+            query_params = {
+                "job_definition_id": job_id,
+                "order_by": "-finished_at",
+                "limit": "1",
+                "status": "10",  # 10 = Success in dbt Cloud API
+            }
+
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
+            run_list_response = DBTRunList.model_validate(result)
+
+            if run_list_response.Runs:
+                return run_list_response.Runs[0].id
+
+            return None  # noqa: TRY300
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
+            return None
+
+    def get_latest_run(self, job_id: int) -> Optional[DBTRun]:  # noqa: UP045
+        """
+        Most recent run of a job, ignoring any lookback window.
+
+        A job that has not run inside the configured window would otherwise have
+        no execution history at all, so the caller falls back to this.
+        """
+        latest_run = None
+        try:
+            query_params = {
+                "job_definition_id": job_id,
+                "offset": 0,
+                "limit": 1,
+                "order_by": "-created_at",
+            }
+
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
+            runs = DBTRunList.model_validate(result).Runs
+            if runs:
+                latest_run = runs[0]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get latest run for job {job_id}: {exc}")
+        return latest_run
+
+    def get_runs(self, job_id: int, lookback_days: Optional[int] = None) -> Iterable[DBTRun]:  # noqa: UP045
+        """
+        List runs for a job in dbt cloud using generator pattern.
+        yields run one at a time for memory efficiency.
+
+        ``lookback_days`` restricts the result to runs created within the last N
+        days. The filter is applied server side, so runs older than the window
+        are never transferred or paginated over.
+        """
+        try:
+            number_of_runs = self.config.numberOfRuns
+            yielded_count = 0
+            # we will get 100 runs at a time and order by created_at in descending order
+            query_params = {
+                "job_definition_id": job_id,
+                "offset": 0,
+                "limit": min(100, number_of_runs) if number_of_runs else 100,
+                "order_by": "-created_at",
+            }
+            if lookback_days:
+                query_params["created_at__range"] = build_created_at_range(lookback_days)
+
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
+            run_list_response = DBTRunList.model_validate(result)
+
+            for run in run_list_response.Runs or []:
+                if number_of_runs is not None and yielded_count >= number_of_runs:
+                    return
+                yield run
+                yielded_count += 1
+
+            while run_list_response.extra and run_list_response.extra.pagination:
+                if number_of_runs is not None and yielded_count >= number_of_runs:
+                    return
+
+                total_count = run_list_response.extra.pagination.total_count
+                current_count = run_list_response.extra.pagination.count
+
+                if current_count >= total_count:
+                    break
+
+                query_params["offset"] += query_params["limit"]
+                result = self.client.get(
+                    f"/accounts/{self.config.accountId}/runs/",
+                    data=query_params,
+                )
+                run_list_response = DBTRunList.model_validate(result)
+
+                for run in run_list_response.Runs or []:
+                    if number_of_runs is not None and yielded_count >= number_of_runs:
+                        return
+                    yield run
+                    yielded_count += 1
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get run info :{exc}")
+
+    def get_models_with_lineage(
+        self, job_id: int, run_id: int
+    ) -> Tuple[Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]]:  # noqa: UP006, UP045
+        """
+        Get models with dependsOn and seeds in a single GraphQL call.
+        """
+        try:
+            query_params = {
+                "query": DBT_GET_MODELS_WITH_LINEAGE,
+                "variables": {"jobId": job_id, "runId": run_id},
+            }
+
+            result = self.graphql_client.post("", json=query_params)
+
+            if result.get("data") and result["data"].get("job"):
+                model_list = DBTModelList.model_validate(result["data"]["job"])
+                logger.debug(
+                    f"Successfully fetched models and seeds from dbt for "
+                    f"job_id:{job_id} run_id:{run_id}: "
+                    f"models={len(model_list.models or [])}, seeds={len(model_list.seeds or [])}, sources={len(model_list.sources or [])}"
+                )
+                return model_list.models, model_list.seeds, model_list.sources
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get models with lineage info: {exc}")
+        return None, None, None

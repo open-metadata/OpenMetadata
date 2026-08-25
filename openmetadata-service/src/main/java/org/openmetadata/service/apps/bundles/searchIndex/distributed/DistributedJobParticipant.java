@@ -1,0 +1,497 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.apps.bundles.searchIndex.distributed;
+
+import io.dropwizard.lifecycle.Managed;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchClusterMetrics;
+import org.openmetadata.service.search.SearchRepository;
+
+/**
+ * Background service that monitors for active distributed indexing jobs and joins them to help
+ * process partitions.
+ *
+ * <p>In a clustered environment, only one server will trigger the SearchIndexApp via Quartz. This
+ * service runs on all servers and allows non-triggering servers to discover and participate in
+ * active jobs.
+ *
+ * <p>Job discovery is handled by a {@link DistributedJobNotifier} backed by database polling.
+ */
+@Slf4j
+public class DistributedJobParticipant implements Managed {
+
+  private final CollectionDAO collectionDAO;
+  private final SearchRepository searchRepository;
+  private final String serverId;
+  private final DistributedSearchIndexCoordinator coordinator;
+
+  /**
+   * -- GETTER --
+   * Get the notifier being used (for testing/debugging).
+   */
+  @Getter private final DistributedJobNotifier notifier;
+
+  private final AtomicBoolean running = new AtomicBoolean(false);
+  private final AtomicBoolean participating = new AtomicBoolean(false);
+  private OrphanJobMonitor orphanJobMonitor;
+
+  /**
+   * -- GETTER --
+   * Get the current job ID being processed, if any.
+   */
+  @Getter private UUID currentJobId;
+
+  private volatile Thread participantThread;
+
+  public DistributedJobParticipant(
+      CollectionDAO collectionDAO, SearchRepository searchRepository, String serverId) {
+    this(
+        collectionDAO,
+        searchRepository,
+        serverId,
+        DistributedJobNotifierFactory.create(collectionDAO, serverId));
+  }
+
+  /**
+   * Constructor that allows injection of a custom notifier (for testing).
+   *
+   * @param collectionDAO The collection DAO
+   * @param searchRepository The search repository
+   * @param serverId The server ID
+   * @param notifier The job notifier to use
+   */
+  DistributedJobParticipant(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      String serverId,
+      DistributedJobNotifier notifier) {
+    this.collectionDAO = collectionDAO;
+    this.searchRepository = searchRepository;
+    this.serverId = serverId;
+    this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO);
+    this.notifier = notifier;
+  }
+
+  /** Start the background job monitor. */
+  @Override
+  public void start() {
+    if (running.compareAndSet(false, true)) {
+      // Register callback to receive job start notifications
+      notifier.onJobStarted(this::onJobDiscovered);
+
+      // Start the notifier
+      notifier.start();
+
+      // Start orphan job monitor to detect jobs left behind by crashed coordinators
+      orphanJobMonitor = new OrphanJobMonitor(collectionDAO);
+      orphanJobMonitor.start();
+
+      LOG.info(
+          "Started distributed job participant on server {} using {} notifier",
+          serverId,
+          notifier.getType());
+    }
+  }
+
+  /** Stop the background monitor. */
+  @Override
+  public void stop() {
+    if (running.compareAndSet(true, false)) {
+      if (orphanJobMonitor != null) {
+        orphanJobMonitor.shutdown();
+      }
+      Thread thread = participantThread;
+      if (thread != null) {
+        thread.interrupt();
+        try {
+          thread.join(10_000);
+          if (thread.isAlive()) {
+            LOG.warn("Participant thread did not terminate within 10s after interrupt");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+      notifier.stop();
+      LOG.info("Stopped distributed job participant on server {}", serverId);
+    }
+  }
+
+  /**
+   * Called when a job is discovered (either via Redis notification or polling).
+   *
+   * @param jobId The discovered job ID
+   */
+  private void onJobDiscovered(UUID jobId) {
+    if (participating.get()) {
+      LOG.debug("Already participating in a job, ignoring notification for {}", jobId);
+      return;
+    }
+
+    try {
+      Optional<SearchIndexJob> jobOpt = coordinator.getJob(jobId);
+      if (jobOpt.isEmpty()) {
+        LOG.warn("Job {} not found", jobId);
+        return;
+      }
+
+      SearchIndexJob job = jobOpt.get();
+
+      // Check if job is still running
+      if (job.isTerminal()) {
+        LOG.debug("Job {} is already terminal, ignoring", jobId);
+        return;
+      }
+
+      if (job.getStatus() != IndexJobStatus.RUNNING) {
+        LOG.debug("Job {} is not in RUNNING state ({}), ignoring", jobId, job.getStatus());
+        return;
+      }
+
+      // Check if this server is coordinating this job (don't participate in our own job)
+      if (DistributedSearchIndexExecutor.isCoordinatingJob(jobId)) {
+        LOG.debug("Job {} is being coordinated by this server, participant will not join", jobId);
+        return;
+      }
+
+      // Check if there are pending partitions we can help with
+      long pendingCount = coordinator.getPartitions(job.getId(), PartitionStatus.PENDING).size();
+      if (pendingCount == 0) {
+        long processingCount =
+            coordinator.getPartitions(job.getId(), PartitionStatus.PROCESSING).size();
+        long completedCount =
+            coordinator.getPartitions(job.getId(), PartitionStatus.COMPLETED).size();
+        LOG.info(
+            "Discovered distributed job {} on server {}, but no pending partitions remain (processing={}, completed={}); not joining",
+            job.getId(),
+            serverId,
+            processingCount,
+            completedCount);
+        return;
+      }
+
+      LOG.info(
+          "Discovered active distributed job {} with {} pending partitions, joining...",
+          job.getId(),
+          pendingCount);
+
+      joinAndProcessJob(job);
+
+    } catch (Exception e) {
+      LOG.error("Error handling job discovery for {}", jobId, e);
+    }
+  }
+
+  /** Join an active job and help process partitions. */
+  private void joinAndProcessJob(SearchIndexJob job) {
+    if (!participating.compareAndSet(false, true)) {
+      return;
+    }
+
+    currentJobId = job.getId();
+
+    // Update polling notifier to use faster interval while participating
+    if (notifier instanceof PollingJobNotifier pollingNotifier) {
+      pollingNotifier.setParticipating(true);
+    }
+
+    participantThread =
+        Thread.ofVirtual()
+            .name("reindex-participant-" + job.getId().toString().substring(0, 8))
+            .start(
+                () -> {
+                  try {
+                    processJobPartitions(job);
+                  } finally {
+                    currentJobId = null;
+                    if (notifier instanceof PollingJobNotifier pollingNotifier) {
+                      pollingNotifier.setParticipating(false);
+                    }
+                    participating.set(false);
+                    participantThread = null;
+                  }
+                });
+  }
+
+  private AppRunRecordContext resolveAppRunRecordContext() {
+    try {
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      App app = appRepository.getDao().findEntityByName("SearchIndexingApplication");
+      AppRunRecord latestRecord = appRepository.getLatestAppRuns(app);
+      if (latestRecord != null) {
+        return new AppRunRecordContext(app.getId(), latestRecord.getStartTime());
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not resolve app run record context for stats aggregator", e);
+    }
+    return null;
+  }
+
+  private void restoreAppRunRecordToRunning(UUID appId, long startTime) {
+    try {
+      collectionDAO.appExtensionTimeSeriesDao().markEntryRunning(appId.toString(), startTime);
+      LOG.info("Restored appRunRecord to running for appId={}, startTime={}", appId, startTime);
+    } catch (Exception e) {
+      LOG.warn("Failed to restore appRunRecord to running", e);
+    }
+  }
+
+  private void finalizeAppRunRecord(
+      DistributedJobStatsAggregator statsAggregator, AppRunRecordContext appCtx, UUID jobId) {
+    try {
+      AppRunRecord finalRecord = statsAggregator.buildFinalAppRunRecord();
+      if (finalRecord == null) {
+        return;
+      }
+      AppRunRecord.Status status = finalRecord.getStatus();
+      if (status == AppRunRecord.Status.RUNNING || status == AppRunRecord.Status.PENDING) {
+        return;
+      }
+      String existingJson =
+          collectionDAO
+              .appExtensionTimeSeriesDao()
+              .getByAppIdAndTimestamp(appCtx.appId().toString(), appCtx.startTime(), "status");
+      if (existingJson == null) {
+        return;
+      }
+      AppRunRecord existingRecord = JsonUtils.readValue(existingJson, AppRunRecord.class);
+      existingRecord.setStatus(status);
+      existingRecord.setEndTime(System.currentTimeMillis());
+      existingRecord.setSuccessContext(finalRecord.getSuccessContext());
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .update(
+              appCtx.appId().toString(),
+              JsonUtils.pojoToJson(existingRecord),
+              appCtx.startTime(),
+              "status");
+      LOG.info("Finalized appRunRecord to {} for recovered job {}", status, jobId);
+    } catch (Exception e) {
+      LOG.warn("Failed to finalize appRunRecord for job {}", jobId, e);
+    }
+  }
+
+  private record AppRunRecordContext(UUID appId, long startTime) {}
+
+  /** Process partitions for a job. */
+  private void processJobPartitions(SearchIndexJob job) {
+    LOG.info("Server {} joining distributed job {} to process partitions", serverId, job.getId());
+
+    BulkSink bulkSink = null;
+    IndexingFailureRecorder failureRecorder = null;
+    DistributedJobStatsAggregator statsAggregator = null;
+    AppRunRecordContext appCtx = null;
+    try {
+      Optional<ReindexContext> stagedIndexContext = buildStagedIndexContext(job);
+      if (stagedIndexContext.isEmpty()) {
+        return;
+      }
+      ReindexContext reindexContext = stagedIndexContext.orElseThrow();
+
+      appCtx = resolveAppRunRecordContext();
+      if (appCtx != null) {
+        restoreAppRunRecordToRunning(appCtx.appId(), appCtx.startTime());
+        statsAggregator =
+            new DistributedJobStatsAggregator(
+                coordinator,
+                job.getId(),
+                appCtx.appId(),
+                appCtx.startTime(),
+                DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS);
+        statsAggregator.start();
+        LOG.info("Started stats aggregator for recovered job {}", job.getId());
+      }
+
+      // Create failure recorder for this participation
+      failureRecorder =
+          new IndexingFailureRecorder(collectionDAO, job.getId().toString(), serverId);
+
+      // Create bulk sink for this participation
+      bulkSink =
+          searchRepository.createBulkSink(
+              job.getJobConfiguration().getBatchSize() != null
+                  ? job.getJobConfiguration().getBatchSize()
+                  : 100,
+              job.getJobConfiguration().getMaxConcurrentRequests() != null
+                  ? job.getJobConfiguration().getMaxConcurrentRequests()
+                  : 100,
+              job.getJobConfiguration().getPayLoadSize() != null
+                  ? job.getJobConfiguration().getPayLoadSize()
+                  : SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
+
+      int batchSize =
+          job.getJobConfiguration().getBatchSize() != null
+              ? job.getJobConfiguration().getBatchSize()
+              : 100;
+
+      final IndexingFailureRecorder recorder = failureRecorder;
+      bulkSink.setFailureCallback(
+          (entityType, entityId, entityFqn, errorMessage, stage) -> {
+            if (recorder != null) {
+              if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+                recorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+              } else {
+                recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              }
+            }
+          });
+
+      PartitionWorker worker =
+          new PartitionWorker(coordinator, bulkSink, batchSize, reindexContext, failureRecorder);
+
+      int partitionsProcessed = 0;
+      long totalReaderSuccess = 0;
+      long totalReaderFailed = 0;
+      long totalReaderWarnings = 0;
+      final BulkSink sinkForStats = bulkSink;
+
+      // Process partitions until none are available or job completes
+      while (running.get()) {
+        // Check if job is still running
+        Optional<SearchIndexJob> currentJob = coordinator.getJob(job.getId());
+        if (currentJob.isEmpty() || currentJob.get().isTerminal()) {
+          LOG.info("Job {} is no longer active, stopping participation", job.getId());
+          break;
+        }
+
+        // Try to claim a partition
+        Optional<SearchIndexPartition> partitionOpt = coordinator.claimNextPartition(job.getId());
+
+        if (partitionOpt.isEmpty()) {
+          // No partition available - check if job is complete
+          long pendingCount =
+              coordinator.getPartitions(job.getId(), PartitionStatus.PENDING).size();
+          long processingCount =
+              coordinator.getPartitions(job.getId(), PartitionStatus.PROCESSING).size();
+
+          if (pendingCount == 0 && processingCount == 0) {
+            LOG.info(
+                "No more partitions to claim for job {}, processed {} partitions",
+                job.getId(),
+                partitionsProcessed);
+            break;
+          }
+
+          // Some partitions still processing (by other servers) - wait and retry
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+          continue;
+        }
+
+        SearchIndexPartition partition = partitionOpt.get();
+        LOG.info(
+            "Participant server {} claimed partition {} for entity type {}",
+            serverId,
+            partition.getId(),
+            partition.getEntityType());
+
+        PartitionWorker.PartitionResult result = worker.processPartition(partition);
+        partitionsProcessed++;
+        totalReaderSuccess += result.successCount();
+        totalReaderFailed += result.readerFailed();
+        totalReaderWarnings += result.readerWarnings();
+
+        LOG.info(
+            "Participant completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
+            partition.getId(),
+            result.successCount(),
+            result.failedCount(),
+            result.readerFailed(),
+            result.readerWarnings());
+      }
+
+      // Flush sink and wait for all pending bulk requests to complete
+      if (sinkForStats != null) {
+        LOG.info("Flushing sink and waiting for pending requests");
+        boolean completed = sinkForStats.flushAndAwait(60);
+        if (!completed) {
+          LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
+        }
+      }
+
+      // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
+      // No need for participant-level aggregation - it causes double-counting
+
+      LOG.info(
+          "Server {} finished participating in job {}, processed {} partitions",
+          serverId,
+          job.getId(),
+          partitionsProcessed);
+
+    } catch (Exception e) {
+      LOG.error("Error participating in job {}", job.getId(), e);
+    } finally {
+      if (statsAggregator != null && appCtx != null) {
+        try {
+          statsAggregator.forceUpdate();
+          finalizeAppRunRecord(statsAggregator, appCtx, job.getId());
+          statsAggregator.stop();
+        } catch (Exception e) {
+          LOG.warn("Error stopping stats aggregator", e);
+        }
+      }
+      if (failureRecorder != null) {
+        try {
+          failureRecorder.close();
+        } catch (Exception e) {
+          LOG.warn("Error closing failure recorder", e);
+        }
+      }
+      if (bulkSink != null) {
+        try {
+          bulkSink.close();
+        } catch (Exception e) {
+          LOG.warn("Error closing bulk sink", e);
+        }
+      }
+    }
+  }
+
+  private Optional<ReindexContext> buildStagedIndexContext(SearchIndexJob job) {
+    if (job.getStagedIndexMapping() == null || job.getStagedIndexMapping().isEmpty()) {
+      LOG.warn(
+          "Skipping distributed reindex job {} on server {} because staged index mapping is missing",
+          job.getId(),
+          serverId);
+      return Optional.empty();
+    }
+    LOG.info(
+        "Participant using staged index mapping from job {}: {}",
+        job.getId(),
+        job.getStagedIndexMapping());
+    return Optional.of(ReindexContext.fromStagedIndexMapping(job.getStagedIndexMapping()));
+  }
+
+  /** Check if currently participating in a job. */
+  public boolean isParticipating() {
+    return participating.get();
+  }
+}

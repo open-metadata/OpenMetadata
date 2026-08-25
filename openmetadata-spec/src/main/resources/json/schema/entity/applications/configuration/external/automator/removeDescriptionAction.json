@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeDescriptionAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveDescriptionAction",
+  "description": "Remove Owner Action Type",
+  "type": "object",
+  "definitions": {
+    "removeDescriptionActionType": {
+      "description": "Remove Description Action Type",
+      "type": "string",
+      "enum": ["RemoveDescriptionAction"],
+      "default": "RemoveDescriptionAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/removeDescriptionActionType",
+      "default": "RemoveDescriptionAction"
+    },
+    "applyToChildren": {
+      "title": "Apply to Children",
+      "description": "Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic fields,...",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
+    },
+    "applyToAll": {
+      "title": "Apply to All",
+      "description": "Remove descriptions from all the children and parent of the selected assets.",
+      "type": "boolean",
+      "default": null
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

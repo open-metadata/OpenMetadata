@@ -1,0 +1,464 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
+import classNames from 'classnames';
+import { get, isEmpty, isUndefined, noop } from 'lodash';
+import { Fragment, lazy, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
+import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
+import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { Domain } from '../generated/entity/domains/domain';
+import { Operation } from '../generated/entity/policies/policy';
+import { EntityReference } from '../generated/entity/type';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
+import { getEntityName } from './EntityNameUtils';
+import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from './PermissionsUtils';
+import { getDomainPath } from './RouterUtils';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const DataProductsTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component'
+      )
+  )
+);
+
+const SubDomainsTable = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Domain/SubDomainsTable/SubDomainsTable.component')
+  )
+);
+
+const AssetsTabs = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component')
+  )
+);
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
+
+const DomainExpertWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Domain/DomainExpertsWidget/DomainExpertWidget').then(
+      (module) => ({ default: module.DomainExpertWidget })
+    )
+  )
+);
+
+const DomainTypeWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Domain/DomainTypeWidget/DomainTypeWidget').then(
+      (module) => ({ default: module.DomainTypeWidget })
+    )
+  )
+);
+
+const ResizablePanels = withSuspenseFallback(
+  lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
+);
+
+// Domain type description which will be shown in tooltip
+export const domainTypeTooltipDataRender = () => (
+  <Space direction="vertical" size="middle">
+    {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
+      <Fragment key={type}>
+        <Space direction="vertical" size={0}>
+          <Typography.Text className="tw:text-primary_on-brand">{`${t(
+            type
+          )} :`}</Typography.Text>
+          <Typography.Paragraph className="m-0 tw:text-primary_on-brand">
+            {t(description)}
+          </Typography.Paragraph>
+        </Space>
+
+        {index !== 2 && <Divider className="m-0" />}
+      </Fragment>
+    ))}
+  </Space>
+);
+
+export const renderDomainLink = (
+  domain: EntityReference,
+  domainDisplayName: ReactNode,
+  showDomainHeading: boolean,
+  textClassName?: string,
+  trimLink?: boolean
+) => {
+  const displayName = isUndefined(domainDisplayName)
+    ? getEntityName(domain)
+    : domainDisplayName;
+
+  return (
+    <AntDTooltip title={domainDisplayName ?? getEntityName(domain)}>
+      <Link
+        className={classNames(
+          'no-underline domain-link domain-link-text font-medium',
+          {
+            'text-sm': !showDomainHeading,
+            'text-truncate truncate w-max-full': trimLink,
+          },
+          textClassName
+        )}
+        data-testid="domain-link"
+        to={getDomainPath(domain?.fullyQualifiedName)}>
+        {trimLink ? (
+          <Typography.Text
+            className="domain-link-name"
+            ellipsis={{ tooltip: false }}>
+            {displayName}
+          </Typography.Text>
+        ) : (
+          <>{displayName}</>
+        )}
+      </Link>
+    </AntDTooltip>
+  );
+};
+
+export const convertDomainsToTreeOptions = (
+  options: EntityReference[] | Domain[] = [],
+  level = 0,
+  multiple = false
+): TreeListItem[] => {
+  const treeData = options.map((option) => {
+    const hasChildren = 'children' in option && !isEmpty(option?.children);
+    const domainOption = option as unknown as Domain;
+    const hasChildrenCount =
+      'childrenCount' in domainOption && (domainOption.childrenCount ?? 0) > 0;
+
+    return {
+      id: option.id,
+      value: option.fullyQualifiedName,
+      name: option.name,
+      label: option.name,
+      key: option.fullyQualifiedName,
+      displayName: option.displayName,
+      childrenCount:
+        domainOption.childrenCount || domainOption.children?.length || 0,
+      fullyQualifiedName: option.fullyQualifiedName,
+      title: (
+        <div className="d-flex items-center gap-1">
+          {level === 0 ? (
+            <DomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="domain"
+              width={20}
+            />
+          ) : (
+            <SubDomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="subdomain"
+              width={20}
+            />
+          )}
+
+          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+        </div>
+      ),
+      'data-testid': `tag-${option.fullyQualifiedName}`,
+      isLeaf: !hasChildren && !hasChildrenCount,
+      selectable: !multiple,
+      children: hasChildren
+        ? convertDomainsToTreeOptions(
+            domainOption?.children as EntityReference[],
+            level + 1,
+            multiple
+          )
+        : undefined,
+    };
+  });
+
+  return treeData;
+};
+
+export const getDomainDetailTabs = ({
+  domain,
+  isVersionsView,
+  domainPermission,
+  subDomainsCount,
+  dataProductsCount,
+  assetCount,
+  activeTab,
+  onAddDataProduct,
+  queryFilter,
+  assetTabRef,
+  dataProductsTabRef,
+  previewAsset,
+  setPreviewAsset,
+  setAssetModalVisible,
+  handleAssetClick,
+  handleAssetSave,
+  setShowAddSubDomainModal,
+  feedCount,
+  onFeedUpdate,
+  onDeleteSubDomain,
+  labelMap,
+}: DomainDetailPageTabProps) => {
+  return [
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.DOCUMENTATION}
+          name={get(
+            labelMap,
+            EntityTabs.DOCUMENTATION,
+            t('label.documentation')
+          )}
+        />
+      ),
+      key: EntityTabs.DOCUMENTATION,
+      children: <GenericTab type={PageType.Domain} variant="flat" />,
+    },
+    ...(isVersionsView
+      ? []
+      : [
+          {
+            label: (
+              <TabsLabel
+                count={subDomainsCount ?? 0}
+                id={EntityTabs.SUBDOMAINS}
+                isActive={activeTab === EntityTabs.SUBDOMAINS}
+                name={get(
+                  labelMap,
+                  EntityTabs.SUBDOMAINS,
+                  t('label.sub-domain-plural')
+                )}
+              />
+            ),
+            key: EntityTabs.SUBDOMAINS,
+            children: (
+              <SubDomainsTable
+                domainFqn={domain.fullyQualifiedName ?? ''}
+                permissions={domainPermission}
+                subDomainsCount={subDomainsCount}
+                onAddSubDomain={() => setShowAddSubDomainModal(true)}
+                onDeleteSubDomain={onDeleteSubDomain}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                count={dataProductsCount ?? 0}
+                id={EntityTabs.DATA_PRODUCTS}
+                isActive={activeTab === EntityTabs.DATA_PRODUCTS}
+                name={get(
+                  labelMap,
+                  EntityTabs.DATA_PRODUCTS,
+                  t('label.data-product-plural')
+                )}
+              />
+            ),
+            key: EntityTabs.DATA_PRODUCTS,
+            children: (
+              <DataProductsTab
+                domainFqn={domain.fullyQualifiedName}
+                permissions={domainPermission}
+                ref={dataProductsTabRef}
+                onAddDataProduct={onAddDataProduct}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                count={feedCount?.totalCount ?? 0}
+                id={EntityTabs.ACTIVITY_FEED}
+                isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+                name={get(
+                  labelMap,
+                  EntityTabs.ACTIVITY_FEED,
+                  t('label.activity-feed-and-task-plural')
+                )}
+              />
+            ),
+            key: EntityTabs.ACTIVITY_FEED,
+            children: (
+              <ActivityFeedTab
+                refetchFeed
+                entityFeedTotalCount={feedCount?.totalCount ?? 0}
+                entityType={EntityType.DOMAIN}
+                feedCount={feedCount}
+                layoutType={ActivityFeedLayoutType.THREE_PANEL}
+                owners={domain.owners}
+                urlFqn={domain.fullyQualifiedName}
+                onFeedUpdate={onFeedUpdate ?? noop}
+                onUpdateEntityDetails={noop}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                count={assetCount ?? 0}
+                id={EntityTabs.ASSETS}
+                isActive={activeTab === EntityTabs.ASSETS}
+                name={get(labelMap, EntityTabs.ASSETS, t('label.asset-plural'))}
+              />
+            ),
+            key: EntityTabs.ASSETS,
+            children: (
+              <ResizablePanels
+                className="h-full domain-height-with-resizable-panel"
+                firstPanel={{
+                  wrapInCard: false,
+                  className: 'domain-resizable-panel-container',
+                  children: (
+                    <AssetsTabs
+                      assetCount={assetCount}
+                      entityFqn={domain.fullyQualifiedName}
+                      isSummaryPanelOpen={false}
+                      permissions={domainPermission}
+                      queryFilter={queryFilter}
+                      ref={assetTabRef}
+                      type={AssetsOfEntity.DOMAIN}
+                      onAddAsset={() => setAssetModalVisible(true)}
+                      onAssetClick={handleAssetClick}
+                      onRemoveAsset={handleAssetSave}
+                    />
+                  ),
+                  minWidth: 800,
+                  flex: 0.67,
+                }}
+                hideSecondPanel={!previewAsset}
+                pageTitle={t('label.domain')}
+                secondPanel={{
+                  wrapInCard: false,
+                  children: previewAsset && (
+                    <EntitySummaryPanel
+                      entityDetails={previewAsset}
+                      handleClosePanel={() => setPreviewAsset(undefined)}
+                    />
+                  ),
+                  minWidth: 400,
+                  flex: 0.33,
+                  className:
+                    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
+                }}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CUSTOM_PROPERTIES}
+                name={get(
+                  labelMap,
+                  EntityTabs.CUSTOM_PROPERTIES,
+                  t('label.custom-property-plural')
+                )}
+              />
+            ),
+            key: EntityTabs.CUSTOM_PROPERTIES,
+            children: (
+              <CustomPropertyTable<EntityType.DOMAIN>
+                className="p-lg"
+                entityType={EntityType.DOMAIN}
+                hasEditAccess={getPrioritizedEditPermission(
+                  domainPermission,
+                  Operation.EditCustomFields
+                )}
+                hasPermission={getPrioritizedViewPermission(
+                  domainPermission,
+                  Operation.ViewCustomFields
+                )}
+              />
+            ),
+          },
+        ]),
+  ];
+};
+
+export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
+    return <DomainExpertWidget />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
+    return <DomainTypeWidget />;
+  }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.DOMAIN}
+      showTaskHandler={false}
+      widgetConfig={widgetConfig}
+    />
+  );
+};
+
+export const getDomainIcon = (iconURL?: string) => {
+  // Try to render the icon using the utility (handles both URLs and icon names)
+  const iconElement = renderIcon(iconURL, {
+    size: 24,
+    className: 'tw:h-6 tw:w-6 tw:text-quaternary',
+  });
+
+  // If we got an icon element, return it
+  if (iconElement) {
+    return iconElement;
+  }
+
+  // Otherwise return the default domain icon
+  return <DomainIcon className="tw:text-quaternary" />;
+};

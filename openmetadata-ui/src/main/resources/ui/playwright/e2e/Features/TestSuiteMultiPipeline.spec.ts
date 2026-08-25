@@ -1,0 +1,353 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import { TableClass } from '../../support/entity/TableClass';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
+} from '../../utils/dataQuality';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  confirmIngestionPipelineHardDelete,
+  submitTestCaseForm,
+  waitForTestSuiteIngestionPipelinesListResponse,
+} from '../../utils/testCases';
+
+// use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
+/**
+ * Create, update, and delete a TestSuite pipeline from the entity page
+ * @description Creates a test case, configures and deploys a weekly TestSuite pipeline, updates the schedule,
+ * and finally deletes pipelines to validate the empty state and action CTA visibility.
+ */
+test(
+  'TestSuite multi pipeline support',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page }) => {
+    test.slow(true);
+
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
+    await table.create(apiContext);
+    await table.visitEntityPage(page, table.entity.displayName);
+    const testCaseName = `multi-pipeline-test-${uuid()}`;
+    const pipelineName = `test suite pipeline 2`;
+
+    /**
+     * Step 1: Create a new pipeline
+     * @description Navigates to Data Observability → Table Profile, creates a test case, opens Pipeline tab,
+     * selects the new test case, sets a weekly schedule, deploys, and verifies success modal.
+     */
+    await test.step('Create a new pipeline', async () => {
+      await page
+        .getByTestId('profiler')
+        .getByText('Data Observability')
+        .click();
+      await page
+        .getByRole('tab', {
+          name: 'Table Profile',
+        })
+        .click();
+      await page.getByTestId('profiler-add-table-test-btn').click();
+      await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+      await page.getByTestId('test-case-name').locator('input').clear();
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(testCaseName);
+      await page.click('[id="root\\/testType"]');
+      await page
+        .getByRole('option')
+        .filter({ hasText: 'Table Column Count To Equal' })
+        .first()
+        .click();
+      await page.getByPlaceholder('Enter a Count').fill('13');
+      await submitTestCaseForm(page);
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
+      await page.getByRole('tab', { name: 'Pipeline' }).click();
+      await ingestionPipelinesListResponse;
+      await page.getByTestId('add-pipeline-button').click();
+
+      await page.fill('[data-testid="pipeline-name"]', pipelineName);
+
+      await page.getByTestId(testCaseName).click();
+
+      await page.getByTestId('cron-type').locator('div').click();
+      await page.getByTitle('Week').click();
+
+      await expect(page.getByTestId('deploy-button')).toBeVisible();
+
+      const deployResponse = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
+      await page.getByTestId('deploy-button').click();
+      await deployResponse;
+
+      await page.getByTestId('body-text').waitFor({
+        state: 'detached',
+      });
+
+      await expect(page.getByTestId('success-line')).toContainText(
+        /has been created and deployed successfully/
+      );
+      await expect(page.getByTestId('view-service-button')).toContainText(
+        'View Test Suite'
+      );
+      await expect(page.getByTestId('view-service-button')).toBeVisible();
+
+      const ingestionPipelinesListResponse2 =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
+      await page.getByTestId('view-service-button').click();
+      await ingestionPipelinesListResponse2;
+    });
+
+    /**
+     * Step 2: Update the pipeline
+     * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
+     * validates the updated success messaging before returning to the service view.
+     */
+    await test.step('Verify test case count column displays correct values', async () => {
+      // Verify the pipeline with selected test case shows count "1"
+      const pipelineRow = page.getByRole('row', {
+        name: new RegExp(pipelineName),
+      });
+      await expect(
+        pipelineRow.getByTestId(new RegExp('test-case-count-'))
+      ).toContainText('1');
+
+      // Verify the default pipeline shows "All" for test case count
+      const defaultPipelineTestCaseCount = page
+        .getByTestId('ingestion-list-table')
+        .getByTestId(new RegExp('test-case-count-'))
+        .filter({ hasNotText: '1' });
+      await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
+    });
+
+    await test.step('Update the pipeline', async () => {
+      await page
+        .getByRole('row', {
+          name: new RegExp(pipelineName),
+        })
+        .getByTestId('more-actions')
+        .click();
+
+      await page
+        .locator(
+          '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+        )
+        .click();
+
+      await expect(
+        page.getByTestId('week-segment-day-option-container')
+      ).toBeVisible();
+
+      await page
+        .getByTestId('week-segment-day-option-container')
+        .getByText('W')
+        .click();
+      const updateDeployResponse = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
+      await page.getByTestId('deploy-button').click();
+      await updateDeployResponse;
+
+      await page.getByTestId('body-text').waitFor({
+        state: 'detached',
+      });
+
+      await expect(page.getByTestId('success-line')).toContainText(
+        /has been updated and deployed successfully/
+      );
+
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
+      await page.getByTestId('view-service-button').click();
+      await ingestionPipelinesListResponse;
+    });
+
+    /**
+     * Step 3: Delete the pipeline(s)
+     * @description Deletes the created pipeline(s) via actions menu, confirms with DELETE text, waits for API completion,
+     * then verifies the Pipeline tab shows the assignment placeholder and add CTA.
+     */
+    await test.step('Delete the pipeline', async () => {
+      await page
+        .getByRole('row', {
+          name: new RegExp(pipelineName),
+        })
+        .getByTestId('more-actions')
+        .click();
+
+      await page
+        .locator(
+          '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+        )
+        .click();
+
+      await confirmIngestionPipelineHardDelete(page);
+
+      await page
+        .getByTestId('ingestion-list-table')
+        .getByTestId('more-actions')
+        .first()
+        .click();
+
+      await page
+        .locator(
+          '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+        )
+        .click();
+      await confirmIngestionPipelineHardDelete(page);
+
+      const emptyPlaceholder = page.getByTestId('empty-placeholder');
+      await expect(emptyPlaceholder).toContainText(
+        "Add a pipeline to automate the data quality tests at a regular schedule. It's advisable to align the schedule with the frequency of table loads for optimal results"
+      );
+      await expect(
+        emptyPlaceholder.getByRole('button', { name: /add pipeline/i })
+      ).toBeVisible();
+    });
+
+    await table.delete(apiContext);
+    await afterAction();
+  }
+);
+
+/**
+ * Edit the pipeline's test cases
+ * @description Creates multiple test cases and a TestSuite pipeline, edits the pipeline to unselect a test case,
+ * deploys the change, and verifies the persisted selection on re-open.
+ */
+test(
+  "Edit the pipeline's test case",
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page }) => {
+    test.slow(true);
+
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
+    await table.create(apiContext);
+    for (let index = 0; index < 4; index++) {
+      await table.createTestCase(apiContext);
+    }
+    const testCaseNames = [
+      table.testCasesResponseData[0]?.['name'],
+      table.testCasesResponseData[1]?.['name'],
+    ];
+    const pipeline = await table.createTestSuitePipeline(
+      apiContext,
+      testCaseNames
+    );
+    await table.visitEntityPage(page, table.entity.displayName);
+    await page.getByTestId('profiler').getByText('Data Observability').click();
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
+
+    const ingestionPipelinesListResponse =
+      waitForTestSuiteIngestionPipelinesListResponse(page);
+    await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await ingestionPipelinesListResponse;
+
+    // Verify the pipeline shows count "2" for 2 selected test cases
+    const pipelineRow = page.getByRole('row', {
+      name: new RegExp(pipeline?.['name']),
+    });
+    await expect(
+      pipelineRow.getByTestId(new RegExp('test-case-count-'))
+    ).toContainText('2');
+
+    await page
+      .getByRole('row', {
+        name: new RegExp(pipeline?.['name']),
+      })
+      .getByTestId('more-actions')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+      .click({ force: true });
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+      )
+      .click();
+
+    for (const testCaseName of testCaseNames) {
+      await expect(page.getByTestId(`checkbox-${testCaseName}`)).toBeChecked();
+    }
+
+    await page.getByTestId(`checkbox-${testCaseNames[0]}`).click();
+
+    await expect(
+      page.getByTestId(`checkbox-${testCaseNames[0]}`)
+    ).not.toBeChecked();
+
+    const editDeployResponse = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines/deploy/*'
+    );
+    await page.getByTestId('deploy-button').click();
+    await editDeployResponse;
+
+    await page.getByTestId('body-text').waitFor({
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('success-line')).toContainText(
+      /has been updated and deployed successfully/
+    );
+
+    const ingestionPipelinesListResponse2 =
+      waitForTestSuiteIngestionPipelinesListResponse(page);
+    await page.getByTestId('view-service-button').click();
+    await ingestionPipelinesListResponse2;
+
+    // Verify the pipeline now shows count "1" after unchecking one test case
+    const updatedPipelineRow = page.getByRole('row', {
+      name: new RegExp(pipeline?.['name']),
+    });
+    await expect(
+      updatedPipelineRow.getByTestId(new RegExp('test-case-count-'))
+    ).toContainText('1');
+
+    await page
+      .getByRole('row', {
+        name: new RegExp(pipeline?.['name']),
+      })
+      .getByTestId('more-actions')
+      .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+      )
+      .click();
+
+    await expect(
+      page.getByTestId(`checkbox-${testCaseNames[0]}`)
+    ).not.toBeChecked();
+    await expect(
+      page.getByTestId(`checkbox-${testCaseNames[1]}`)
+    ).toBeChecked();
+
+    await table.delete(apiContext);
+    await afterAction();
+  }
+);

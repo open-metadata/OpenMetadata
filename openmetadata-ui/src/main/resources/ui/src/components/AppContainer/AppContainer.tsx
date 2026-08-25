@@ -1,0 +1,127 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Layout } from 'antd';
+import classNames from 'classnames';
+import { isNil } from 'lodash';
+import { useCallback, useEffect } from 'react';
+import { useAnalytics } from 'use-analytics';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { SettingType } from '../../generated/settings/settings';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useLineageStore } from '../../hooks/useLineageStore';
+import { getLimitConfig } from '../../rest/limitsAPI';
+import { getSettingsByType } from '../../rest/settingConfigAPI';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import { isNewLayoutRoute } from '../../utils/LayoutUtils';
+import AppSidebar from '../AppSidebar/AppSidebar.component';
+import { LimitBanner } from '../common/LimitBanner/LimitBanner';
+import NavBar from '../NavBar/NavBar';
+import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
+import './app-container.less';
+
+const { Content } = Layout;
+
+const AppContainer = () => {
+  const location = useCustomLocation();
+  const analytics = useAnalytics();
+  const { currentUser, setAppPreferences, appPreferences } =
+    useApplicationStore();
+  const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
+  const ApplicationExtras = applicationsClassBase.getApplicationExtension();
+  const { isAuthenticated } = useApplicationStore();
+
+  const { setConfig, bannerDetails } = useLimitStore();
+  const { setLineageConfig } = useLineageStore();
+
+  const renderNavBar = () => {
+    if (isNewLayoutRoute(location.pathname)) {
+      return null;
+    }
+
+    return <NavBar />;
+  };
+
+  const fetchAppConfigurations = useCallback(async () => {
+    try {
+      const [response, lineageConfig] = await Promise.all([
+        getLimitConfig(),
+        getSettingsByType(SettingType.LineageSettings),
+      ]);
+
+      const defaultLineageConfig = lineageConfig as LineageSettings;
+
+      setLineageConfig({
+        upstreamDepth: defaultLineageConfig.upstreamDepth,
+        downstreamDepth: defaultLineageConfig.downstreamDepth,
+        pipelineViewMode: defaultLineageConfig.pipelineViewMode,
+        nodesPerLayer: 50,
+      });
+
+      setConfig(response);
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig: defaultLineageConfig,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching app configurations:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchAppConfigurations();
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    const { pathname } = location;
+
+    if (pathname !== '/' && !isNil(analytics)) {
+      analytics.page();
+    }
+  }, [location.pathname, analytics]);
+
+  return (
+    <Layout>
+      <LimitBanner />
+      <Layout
+        hasSider
+        className={classNames('app-container', {
+          ['extra-banner']: Boolean(bannerDetails),
+        })}>
+        {/* Render left side navigation */}
+        <AppSidebar />
+
+        {/* Render main content */}
+        <Layout>
+          {/* Render Appbar */}
+          {applicationRoutesClass.isProtectedRoute(location.pathname) &&
+          isAuthenticated
+            ? renderNavBar()
+            : null}
+
+          {/* Render main content */}
+          <Content>
+            <AuthenticatedRouter />
+            {ApplicationExtras && <ApplicationExtras />}
+          </Content>
+        </Layout>
+      </Layout>
+    </Layout>
+  );
+};
+
+export default AppContainer;

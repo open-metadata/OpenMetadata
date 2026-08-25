@@ -1,0 +1,858 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/**
+ * Create LLM Model entity request
+ */
+export interface CreateLLMModel {
+    /**
+     * Base model name
+     */
+    baseModel: string;
+    /**
+     * Capabilities of this model
+     */
+    capabilities?: ModelCapability[];
+    /**
+     * Certifications this model has received
+     */
+    certifications?: string[];
+    /**
+     * Cost metrics for model usage
+     */
+    costMetrics?: CostMetrics;
+    /**
+     * List of fully qualified names of data products this entity is part of.
+     */
+    dataProducts?: string[];
+    /**
+     * Deployment and availability information
+     */
+    deploymentInfo?: DeploymentInfo;
+    /**
+     * Description of the LLM model. Its capabilities, use cases, and limitations.
+     */
+    description?: string;
+    /**
+     * Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs,
+     * connector audits, etc.
+     */
+    detection?: AIDetection;
+    /**
+     * Display Name that identifies this LLM model.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified names of the domains the LLM Model belongs to.
+     */
+    domains?: string[];
+    /**
+     * Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)
+     */
+    evidence?: AIEvidence;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
+     * Governance status - tracks unauthorized/shadow AI models
+     */
+    governanceStatus?: GovernanceStatus;
+    /**
+     * Model performance metrics and evaluation results
+     */
+    modelEvaluation?: ModelEvaluation;
+    /**
+     * Model provider (e.g., 'OpenAI', 'Anthropic', 'Meta')
+     */
+    modelProvider?: string;
+    /**
+     * Detailed model specifications
+     */
+    modelSpecifications?: ModelSpecifications;
+    /**
+     * Type of LLM model
+     */
+    modelType?: ModelType;
+    /**
+     * Version of the model
+     */
+    modelVersion?: string;
+    /**
+     * Name that identifies this LLM model.
+     */
+    name: string;
+    /**
+     * Owners of this LLM Model
+     */
+    owners?: EntityReference[];
+    /**
+     * Provider's internal model ID
+     */
+    providerModelId?: string;
+    /**
+     * Regulatory compliance standards met
+     */
+    regulatoryCompliance?: string[];
+    /**
+     * Structured remediation actions with assignee, due date, priority, and status
+     */
+    remediationActions?: RemediationAction[];
+    /**
+     * Link to the LLM service where this model is hosted
+     */
+    service: string;
+    /**
+     * Tags for this LLM Model
+     */
+    tags?: TagLabel[];
+    /**
+     * Training data and methodology information
+     */
+    trainingMetadata?: TrainingMetadata;
+}
+
+export enum ModelCapability {
+    Audio = "Audio",
+    Chat = "Chat",
+    CodeGeneration = "CodeGeneration",
+    Embeddings = "Embeddings",
+    FunctionCalling = "FunctionCalling",
+    TextGeneration = "TextGeneration",
+    ToolUse = "ToolUse",
+    Vision = "Vision",
+}
+
+/**
+ * Cost metrics for model usage
+ *
+ * Cost metrics for using this model
+ */
+export interface CostMetrics {
+    currency?: string;
+    /**
+     * Estimated monthly cost
+     */
+    estimatedMonthlyCost?: number;
+    /**
+     * Estimated monthly token usage
+     */
+    estimatedMonthlyUsage?: number;
+    /**
+     * Cost per 1000 input tokens
+     */
+    inputCostPer1kTokens?: number;
+    /**
+     * Cost per 1000 output tokens
+     */
+    outputCostPer1kTokens?: number;
+}
+
+/**
+ * Deployment and availability information
+ *
+ * Deployment information for the model
+ */
+export interface DeploymentInfo {
+    availabilityZones?: string[];
+    deploymentType?:    DeploymentType;
+    /**
+     * API endpoint for the model
+     */
+    endpoint?: string;
+    /**
+     * Deployment region
+     */
+    region?: string;
+}
+
+export enum DeploymentType {
+    API = "API",
+    Hybrid = "Hybrid",
+    OnPremise = "OnPremise",
+    SelfHosted = "SelfHosted",
+}
+
+/**
+ * Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs,
+ * connector audits, etc.
+ *
+ * Origin of a Shadow AI detection. Populated when an asset was auto-discovered (outbound
+ * API traffic, SSO logs, connector audits, etc.) rather than registered through the intake
+ * wizard.
+ */
+export interface AIDetection {
+    /**
+     * When the detection was recorded
+     */
+    detectedAt?: number;
+    /**
+     * Heuristic flags associated with this detection
+     */
+    flags?: Flag[];
+    /**
+     * Triage severity assigned to this detection
+     */
+    severity?: Rity;
+    /**
+     * How this AI asset was detected
+     */
+    source?: Source;
+    /**
+     * Free-text detail about the detection (e.g. 'api.openai.com from #marketing-eng workspace')
+     */
+    sourceDetails?: string;
+    /**
+     * Likely team or workspace driving this AI usage
+     */
+    suspectedTeam?: string;
+    /**
+     * Likely user driving this AI usage, when known
+     */
+    suspectedUser?: string;
+    /**
+     * Human-readable 7-day volume estimate (e.g. '~1,820 calls / 7d')
+     */
+    volume7d?: string;
+}
+
+export enum Flag {
+    NewDeployment = "NewDeployment",
+    NoOwner = "NoOwner",
+    OrgWideEnable = "OrgWideEnable",
+    PiiWithoutDpa = "PiiWithoutDpa",
+    PrivilegedData = "PrivilegedData",
+}
+
+/**
+ * Triage severity assigned to this detection
+ */
+export enum Rity {
+    High = "High",
+    Low = "Low",
+    Medium = "Medium",
+}
+
+/**
+ * How this AI asset was detected
+ */
+export enum Source {
+    ConnectorAudit = "ConnectorAudit",
+    ManualUpload = "ManualUpload",
+    Other = "Other",
+    OutboundAPITraffic = "OutboundApiTraffic",
+    SSOLogs = "SSOLogs",
+}
+
+/**
+ * Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)
+ *
+ * Supporting documentation URLs for AI governance evidence packs (DPIA, model card,
+ * fairness analysis, etc.)
+ */
+export interface AIEvidence {
+    /**
+     * Additional evidence references
+     */
+    additional?: Additional[];
+    /**
+     * Data Protection Impact Assessment URL
+     */
+    dpiaUrl?: string;
+    /**
+     * URL to fairness / subgroup analysis evidence
+     */
+    fairnessEvidenceUrl?: string;
+    /**
+     * Model card URL
+     */
+    modelCardUrl?: string;
+    /**
+     * Technical documentation URL
+     */
+    technicalDocsUrl?: string;
+}
+
+export interface Additional {
+    addedAt?:   number;
+    addedBy?:   string;
+    framework?: ComplianceFramework;
+    label?:     string;
+    url?:       string;
+}
+
+/**
+ * Type of AI compliance framework
+ *
+ * Framework that requires this remediation
+ */
+export enum ComplianceFramework {
+    CanadaAIDA = "Canada_AIDA",
+    ChinaAIRegulations = "China_AI_Regulations",
+    Custom = "Custom",
+    EUAIAct = "EU_AI_Act",
+    ISOIEC42001 = "ISO_IEC_42001",
+    NISTAIRmf = "NIST_AI_RMF",
+    SingaporeModelAIGovernance = "Singapore_Model_AI_Governance",
+    UKAIRegulation = "UK_AI_Regulation",
+    USAIBillOfRights = "US_AI_Bill_of_Rights",
+}
+
+/**
+ * Governance status - tracks unauthorized/shadow AI models
+ */
+export enum GovernanceStatus {
+    Approved = "Approved",
+    PendingReview = "PendingReview",
+    Rejected = "Rejected",
+    Unauthorized = "Unauthorized",
+}
+
+/**
+ * Model performance metrics and evaluation results
+ *
+ * Comprehensive evaluation metrics for the LLM model
+ */
+export interface ModelEvaluation {
+    accuracyMetrics?: AccuracyMetrics;
+    /**
+     * LLM BIAS EVALUATION - critical for governance
+     */
+    biasMetrics?:       BiasMetrics;
+    evaluatedAt?:       number;
+    evaluationDataset?: EntityReference;
+    fairnessMetrics?:   FairnessMetrics;
+    robustnessMetrics?: RobustnessMetrics;
+    safetyMetrics?:     SafetyMetrics;
+}
+
+export interface AccuracyMetrics {
+    accuracy?:   number;
+    bleuScore?:  number;
+    f1Score?:    number;
+    precision?:  number;
+    recall?:     number;
+    rougeScore?: number;
+    [property: string]: any;
+}
+
+/**
+ * LLM BIAS EVALUATION - critical for governance
+ */
+export interface BiasMetrics {
+    demographicParity?: number;
+    dimensionScores?:   DimensionScores;
+    disparateImpact?:   number;
+    equalizedOdds?:     number;
+    /**
+     * Overall bias score 0-1, higher = more biased
+     */
+    overallBiasScore?: number;
+    testDataset?:      EntityReference;
+    testMethod?:       string;
+    [property: string]: any;
+}
+
+export interface DimensionScores {
+    age?:           number;
+    disability?:    number;
+    gender?:        number;
+    nationality?:   number;
+    race?:          number;
+    religion?:      number;
+    socioeconomic?: number;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Owners of this LLM Model
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * User or team accountable for completing the action
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+export interface FairnessMetrics {
+    counterfactualFairness?: number;
+    groupFairness?:          number;
+    individualFairness?:     number;
+    [property: string]: any;
+}
+
+export interface RobustnessMetrics {
+    adversarialRobustness?: number;
+    noiseRobustness?:       number;
+    outlierSensitivity?:    number;
+    [property: string]: any;
+}
+
+export interface SafetyMetrics {
+    harmfulContentRate?: number;
+    piiLeakageRisk?:     number;
+    toxicityScore?:      number;
+    [property: string]: any;
+}
+
+/**
+ * Detailed model specifications
+ *
+ * Technical specifications of the model
+ */
+export interface ModelSpecifications {
+    /**
+     * Model architecture (e.g., 'Transformer', 'GPT', 'BERT')
+     */
+    architecture?: string;
+    /**
+     * Context window size in tokens
+     */
+    contextWindow?: number;
+    /**
+     * Maximum output tokens
+     */
+    maxOutputTokens?: number;
+    /**
+     * Number of parameters (e.g., '7B', '70B', '175B')
+     */
+    parametersCount?: string;
+    /**
+     * Quantization method if applicable
+     */
+    quantization?: string;
+}
+
+/**
+ * Type of LLM model
+ */
+export enum ModelType {
+    Adapter = "Adapter",
+    BaseModel = "BaseModel",
+    Custom = "Custom",
+    Distilled = "Distilled",
+    FineTuned = "FineTuned",
+    Quantized = "Quantized",
+}
+
+/**
+ * A structured remediation action with assignee, due date, priority, and status. Replaces
+ * the legacy string-array remediationRequired on AIComplianceRecord.
+ */
+export interface RemediationAction {
+    /**
+     * User or team accountable for completing the action
+     */
+    assignee?:    EntityReference;
+    completedAt?: number;
+    /**
+     * Control identifier within the framework (e.g. 'art-10')
+     */
+    controlCode?: string;
+    createdAt?:   number;
+    createdBy?:   string;
+    /**
+     * Target completion date
+     */
+    dueDate?: number;
+    /**
+     * Framework that requires this remediation
+     */
+    frameworkRef?: ComplianceFramework;
+    /**
+     * Stable identifier of this remediation action
+     */
+    id: string;
+    /**
+     * Short description of the remediation action
+     */
+    label:     string;
+    notes?:    string;
+    priority?: Rity;
+    status:    Status;
+}
+
+export enum Status {
+    Deferred = "Deferred",
+    Done = "Done",
+    InProgress = "InProgress",
+    Open = "Open",
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ */
+export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelType;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+ * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+ * used to determine the tag label.
+ */
+export enum LabelType {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum State {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * Training data and methodology information
+ *
+ * Training or fine-tuning metadata - critical for data lineage and impact analysis
+ */
+export interface TrainingMetadata {
+    /**
+     * Base model this was trained/fine-tuned from
+     */
+    baseModel?: string;
+    /**
+     * Detailed data lineage for training - tracks exactly what data was used
+     */
+    dataLineage?: DataLineage[];
+    /**
+     * Hyperparameters used for training
+     */
+    hyperparameters?: Hyperparameters;
+    trainedBy?:       string;
+    trainingCost?:    TrainingCost;
+    /**
+     * Datasets used for training - KEY FOR DATA LINEAGE
+     */
+    trainingDatasets?: EntityReference[];
+    trainingJobId?:    string;
+    /**
+     * Metrics from training process
+     */
+    trainingMetrics?: TrainingMetrics;
+    trainingPeriod?:  TrainingPeriod;
+    trainingType?:    TrainingType;
+    /**
+     * Datasets used for validation
+     */
+    validationDatasets?: EntityReference[];
+}
+
+export interface DataLineage {
+    /**
+     * Columns used from the dataset
+     */
+    columns?: string[];
+    dataset?: EntityReference;
+    /**
+     * Transformations applied to the data
+     */
+    dataTransformations?: string[];
+    dateRange?:           DateRange;
+    /**
+     * How PII was handled in this dataset
+     */
+    piiHandling?: string;
+    /**
+     * Number of records used from this dataset
+     */
+    recordCount?:      number;
+    sensitivityLevel?: SensitivityLevel;
+    [property: string]: any;
+}
+
+export interface DateRange {
+    end?:   number;
+    start?: number;
+    [property: string]: any;
+}
+
+export enum SensitivityLevel {
+    Confidential = "Confidential",
+    Internal = "Internal",
+    Public = "Public",
+    Restricted = "Restricted",
+}
+
+/**
+ * Hyperparameters used for training
+ */
+export interface Hyperparameters {
+    batchSize?:    number;
+    epochs?:       number;
+    learningRate?: number;
+    optimizer?:    string;
+    warmupSteps?:  number;
+    weightDecay?:  number;
+    [property: string]: any;
+}
+
+export interface TrainingCost {
+    computeHours?: number;
+    currency?:     string;
+    resourceType?: string;
+    totalCost?:    number;
+    [property: string]: any;
+}
+
+/**
+ * Metrics from training process
+ */
+export interface TrainingMetrics {
+    accuracy?:       number;
+    finalLoss?:      number;
+    perplexity?:     number;
+    validationLoss?: number;
+    [property: string]: any;
+}
+
+export interface TrainingPeriod {
+    durationHours?: number;
+    endDate?:       number;
+    startDate?:     number;
+    [property: string]: any;
+}
+
+export enum TrainingType {
+    FullFineTune = "FullFineTune",
+    LoRA = "LoRA",
+    PrefixTuning = "PrefixTuning",
+    PromptTuning = "PromptTuning",
+    QLoRA = "QLoRA",
+    Rlhf = "RLHF",
+}

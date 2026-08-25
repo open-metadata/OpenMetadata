@@ -1,0 +1,24 @@
+{
+  "id": "3c0b9a8f-7e6d-5c4b-3a2f-1e0d9c8b7a6f",
+  "name": "sample_tag",
+  "displayName": "Sample Tag",
+  "fullyQualifiedName": "sample_classification.sample_tag",
+  "description": "Mock tag for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "deprecated": false,
+  "href": "http://localhost:8585/api/v1/tags/3c0b9a8f-7e6d-5c4b-3a2f-1e0d9c8b7a6f",
+  "classification": {
+    "id": "4b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+    "type": "classification",
+    "name": "sample_classification",
+    "fullyQualifiedName": "sample_classification",
+    "deleted": false
+  },
+  "style": {
+    "color": "#2196F3",
+    "iconURL": ""
+  }
+}

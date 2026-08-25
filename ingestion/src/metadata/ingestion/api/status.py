@@ -1,0 +1,154 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Status output utilities
+"""
+
+import pprint
+import time
+from typing import Any, Dict, List, Optional  # noqa: UP035
+
+from pydantic import AfterValidator, BaseModel, Field
+from typing_extensions import Annotated  # noqa: UP035
+
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
+from metadata.utils.logger import get_log_name, ingestion_logger
+
+logger = ingestion_logger()
+
+
+MAX_STACK_TRACE_LENGTH = 1_000_000
+# Max items per list rendered in as_string() to bound memory usage
+MAX_STATUS_DISPLAY_ITEMS = 1_000
+
+TruncatedStr = Annotated[Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]  # noqa: UP045
+
+
+class TruncatedStackTraceError(StackTraceError):
+    """
+    Update StackTraceError to limit the payload size,
+    since some connectors can make it explode
+    """
+
+    error: TruncatedStr
+    stackTrace: TruncatedStr = None  # noqa: N815
+
+
+class Status(BaseModel):
+    """
+    Class to handle status
+    """
+
+    source_start_time: float = Field(
+        default_factory=lambda: time.time()  # pylint: disable=unnecessary-lambda  # noqa: PLW0108
+    )
+
+    records: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
+    record_count: int = Field(default=0)
+    updated_records: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
+    warnings: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
+    filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]  # noqa: UP006
+    failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]  # noqa: UP006
+
+    def scanned(self, record: Any) -> None:
+        """
+        Clean up the status results we want to show.
+
+        We allow to not consider specific records that
+        are not worth keeping record of.
+        """
+        if log_name := get_log_name(record):
+            if isinstance(record, (PatchRequest, PatchedEntity)):
+                self.updated_records.append(log_name)
+            else:
+                self.records.append(log_name)
+
+    def scanned_all(self, record: Any) -> None:
+        """
+        Clean up the status results we want to show.
+
+        We allow to not consider specific records that
+        are not worth keeping record of.
+        """
+        record = [get_log_name(r) for r in record if get_log_name(r)]
+        if record:
+            if isinstance(record, (PatchRequest, PatchedEntity)):
+                self.updated_records.extend(record)
+            else:
+                self.records.extend(record)
+
+    def updated(self, record: Any) -> None:
+        if log_name := get_log_name(record):
+            self.updated_records.append(log_name)
+
+    def increment_record_count(self, increment: int = 1) -> None:
+        self.record_count += increment
+
+    def warning(self, key: str, reason: str) -> None:
+        self.warnings.append({key: reason})
+
+    def filter(self, key: str, reason: str) -> None:
+        self.filtered.append({key: reason})
+
+    def as_string(self) -> str:
+        def literal_safe(v: Any) -> Any:
+            return v.model_dump() if isinstance(v, BaseModel) else v
+
+        parts = []
+        for key, value in self.__dict__.items():
+            if isinstance(value, list) and len(value) > MAX_STATUS_DISPLAY_ITEMS:
+                shown = [literal_safe(v) for v in value[:MAX_STATUS_DISPLAY_ITEMS]]
+                formatted = pprint.pformat(shown, width=150)
+                parts.append(f"'{key}': {formatted}")
+                # Total count as a sibling key, not a list element: Status.model_validate()
+                # ignores unknown fields, so this round-trips without corrupting the typed
+                # list (filtered/failures aren't List[Any]) or inflating len(value).
+                parts.append(f"'{key}_total_items': {len(value)}")
+            elif isinstance(value, list):
+                formatted = pprint.pformat([literal_safe(v) for v in value], width=150)
+                parts.append(f"'{key}': {formatted}")
+            else:
+                parts.append(f"'{key}': {pprint.pformat(value, width=150)}")
+        return "{\n " + ",\n ".join(parts) + "}"
+
+    def failed(self, error: StackTraceError) -> None:
+        """
+        Add a failure to the list of failures
+        """
+        logger.warning(error.error)
+        logger.debug(error.stackTrace)
+        # Truncate StackTrace to avoid payload explosion
+        self.failures.append(
+            TruncatedStackTraceError(
+                name=error.name,
+                error=error.error,
+                stackTrace=error.stackTrace,
+            )
+        )
+
+    def fail_all(self, failures: List[StackTraceError]) -> None:  # noqa: UP006
+        """
+        Add a list of failures
+        Args:
+            failures: a list of stack tracer errors
+        """
+        self.failures.extend(failures)
+
+    def calculate_success(self) -> float:
+        record_count = self.record_count if self.record_count > 0 else len(self.records)
+        source_success = max(
+            record_count + len(self.updated_records), 1
+        )  # To avoid ZeroDivisionError using minimum value as 1
+        source_failed = len(self.failures)
+        return round(source_success * 100 / (source_success + source_failed), 2)

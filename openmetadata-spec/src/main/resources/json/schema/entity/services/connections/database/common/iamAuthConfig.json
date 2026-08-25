@@ -1,0 +1,15 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/common/iamAuthConfig.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "IAM Auth Configuration Source",
+    "description": "IAM Auth Database Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.common.IamAuthConfig",
+    "properties": {
+        "awsConfig": {
+            "title": "AWS Credentials Configuration",
+            "$ref": "../../../../../security/credentials/awsCredentials.json"
+        }
+    },
+    "additionalProperties": false
+}

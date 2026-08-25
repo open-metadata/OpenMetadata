@@ -1,0 +1,854 @@
+package org.openmetadata.service.jdbi3;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+
+@Slf4j
+public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
+
+  private static final String USER_APPROVAL_TASK = "userApprovalTask";
+
+  public WorkflowDefinitionRepository() {
+    super(
+        WorkflowDefinitionResource.COLLECTION_PATH,
+        Entity.WORKFLOW_DEFINITION,
+        WorkflowDefinition.class,
+        Entity.getCollectionDAO().workflowDefinitionDAO(),
+        "",
+        "");
+  }
+
+  @Override
+  public List<WorkflowDefinition> getEntitiesFromSeedData() throws IOException {
+    return getEntitiesFromSeedData(".*json/data/governance/workflows/.*\\.json$");
+  }
+
+  @Override
+  protected void postCreate(WorkflowDefinition entity) {
+    WorkflowHandler.getInstance().deploy(new Workflow(entity));
+  }
+
+  @Override
+  protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
+    WorkflowHandler.getInstance().deploy(new Workflow(updated));
+  }
+
+  @Override
+  protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+  }
+
+  @Override
+  protected void setFields(
+      WorkflowDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
+    if (WorkflowHandler.isInitialized()) {
+      entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
+    } else {
+      LOG.debug("Can't get `deploy` status since WorkflowHandler is not initialized.");
+    }
+  }
+
+  @Override
+  protected void clearFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
+
+  @Override
+  protected void prepare(WorkflowDefinition entity, boolean update) {
+    // Validate workflow configuration - single entry point for all validations
+    LOG.info("Validating workflow configuration for: {}", entity.getName());
+    validateWorkflow(entity);
+  }
+
+  @Override
+  public EntityRepository<WorkflowDefinition>.EntityUpdater getUpdater(
+      WorkflowDefinition original,
+      WorkflowDefinition updated,
+      Operation operation,
+      ChangeSource changeSource) {
+    return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+  }
+
+  public class WorkflowDefinitionUpdater extends EntityUpdater {
+    public WorkflowDefinitionUpdater(
+        WorkflowDefinition original, WorkflowDefinition updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Transaction
+    @Override
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate("trigger", this::updateTrigger);
+      compareAndUpdate("config", this::updateConfig);
+      compareAndUpdate("nodes", this::updateNodes);
+      compareAndUpdate("edges", this::updateEdges);
+    }
+
+    private void updateTrigger() {
+      if (original.getTrigger() == updated.getTrigger()) {
+        return;
+      }
+      recordChange("trigger", original.getTrigger(), updated.getTrigger());
+    }
+
+    private void updateConfig() {
+      if (Objects.equals(original.getConfig(), updated.getConfig())) {
+        return;
+      }
+      recordChange("config", original.getConfig(), updated.getConfig());
+    }
+
+    private void updateNodes() {
+      List<WorkflowNodeDefinitionInterface> addedNodes = new ArrayList<>();
+      List<WorkflowNodeDefinitionInterface> deletedNodes = new ArrayList<>();
+      recordListChange(
+          "nodes",
+          original.getNodes(),
+          updated.getNodes(),
+          addedNodes,
+          deletedNodes,
+          WorkflowNodeDefinitionInterface::equals);
+    }
+
+    private void updateEdges() {
+      List<EdgeDefinition> addedEdges = new ArrayList<>();
+      List<EdgeDefinition> deletedEdges = new ArrayList<>();
+      recordListChange(
+          "nodes",
+          original.getEdges(),
+          updated.getEdges(),
+          addedEdges,
+          deletedEdges,
+          EdgeDefinition::equals);
+    }
+  }
+
+  @Override
+  protected void storeEntity(WorkflowDefinition entity, boolean update) {
+    store(entity, update);
+  }
+
+  @Override
+  protected void storeRelationships(WorkflowDefinition entity) {}
+
+  public UUID getIdFromName(String workflowDefinitionName) {
+    EntityReference workflowDefinitionReference =
+        getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*")))
+            .getEntityReference();
+    return workflowDefinitionReference.getId();
+  }
+
+  /**
+   * Efficiently retrieves WorkflowDefinition with minimal fields for stage processing.
+   * This returns the full object so callers can extract both ID and stage displayName without additional DB calls.
+   */
+  public WorkflowDefinition getByNameForStageProcessing(String workflowDefinitionName) {
+    return getByName(null, workflowDefinitionName, EntityUtil.Fields.EMPTY_FIELDS);
+  }
+
+  /**
+   * Main validation entry point - executes all validations in order.
+   * This follows the command pattern where each validation is executed sequentially.
+   * Any validation failure will throw BadRequestException and stop further validations.
+   *
+   * @param workflowDefinition The workflow to validate
+   * @throws BadRequestException if any validation fails
+   */
+  public void validateWorkflow(WorkflowDefinition workflowDefinition) {
+    // Execute validations in order of importance
+    // 1. Basic structural validations
+    validateNodeIds(workflowDefinition);
+    // 2. Comprehensive graph structure validations (cycles, connectivity, edges, start/end nodes)
+    validateWorkflowGraphStructure(workflowDefinition);
+    // 3. Namespace configuration validations
+    validateUpdatedByNamespace(workflowDefinition);
+    // 4. Node input/output validations
+    validateNodeInputOutputMapping(workflowDefinition);
+    // 5. Conditional task validations
+    validateConditionalTasks(workflowDefinition);
+  }
+
+  /**
+   * Comprehensive workflow graph structure validation.
+   * Performs all graph validations in a single traversal for efficiency:
+   * 1. Exactly one start node (if nodes exist)
+   * 2. No infinite (automated-only) cycles
+   * 3. No orphaned nodes (all nodes are reachable from start)
+   * 4. All edges reference valid nodes
+   * 5. Non-end nodes must have outgoing edges
+   * 6. End nodes must not have outgoing edges
+   *
+   * <p>A cycle is permitted only when it passes through a human-gated node (a userApprovalTask):
+   * workflow state machines legitimately loop back (e.g. the incident-resolution New-&gt;Ack-&gt;New
+   * transition, or an Assigned self-reassign). A cycle of only automated tasks is an infinite loop
+   * and is rejected.
+   */
+  private void validateWorkflowGraphStructure(WorkflowDefinition workflowDefinition) {
+    // Skip validation if no nodes are present - allow empty workflows
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
+      return;
+    }
+
+    if (workflowDefinition.getEdges() == null) {
+      workflowDefinition.setEdges(new ArrayList<>());
+    }
+
+    String workflowName = workflowDefinition.getName();
+
+    // Build node sets and maps for validation
+    Set<String> allNodeIds = new java.util.HashSet<>();
+    Set<String> startNodes = new java.util.HashSet<>();
+    Set<String> endNodes = new java.util.HashSet<>();
+    Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
+
+    // Collect all nodes and identify start/end nodes
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      String nodeId = node.getName();
+      allNodeIds.add(nodeId);
+      nodeMap.put(nodeId, node);
+
+      if ("startEvent".equals(node.getSubType())) {
+        startNodes.add(nodeId);
+      }
+      if ("endEvent".equals(node.getSubType())) {
+        endNodes.add(nodeId);
+      }
+    }
+
+    // Validation 1: Exactly one start node
+    if (startNodes.isEmpty()) {
+      throw BadRequestException.of(
+          String.format("Workflow '%s' must have exactly one start event node", workflowName));
+    }
+    if (startNodes.size() > 1) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' must have exactly one start event node, found %d: %s",
+              workflowName, startNodes.size(), startNodes));
+    }
+
+    // Build adjacency lists
+    Map<String, List<String>> outgoingEdges = new java.util.HashMap<>();
+    Map<String, List<String>> incomingEdges = new java.util.HashMap<>();
+
+    // Initialize empty lists for all nodes
+    for (String nodeId : allNodeIds) {
+      outgoingEdges.put(nodeId, new ArrayList<>());
+      incomingEdges.put(nodeId, new ArrayList<>());
+    }
+
+    // Validation 4: All edges must reference valid nodes
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      String from = edge.getFrom();
+      String to = edge.getTo();
+
+      if (!allNodeIds.contains(from)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s' has edge from non-existent node: '%s'", workflowName, from));
+      }
+      if (!allNodeIds.contains(to)) {
+        throw BadRequestException.of(
+            String.format("Workflow '%s' has edge to non-existent node: '%s'", workflowName, to));
+      }
+
+      outgoingEdges.get(from).add(to);
+      incomingEdges.get(to).add(from);
+    }
+
+    // Validation 5 & 6: End nodes validation and non-end nodes must have outgoing edges
+    for (String nodeId : allNodeIds) {
+      WorkflowNodeDefinitionInterface node = nodeMap.get(nodeId);
+      boolean hasOutgoing = !outgoingEdges.get(nodeId).isEmpty();
+      boolean isEndNode = "endEvent".equals(node.getSubType());
+
+      if (isEndNode && hasOutgoing) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s': End node '%s' cannot have outgoing edges",
+                workflowName, node.getNodeDisplayName()));
+      }
+
+      // Non-end nodes must have outgoing edges
+      if (!isEndNode && !hasOutgoing) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s': Node '%s' requires outgoing edges",
+                workflowName, node.getNodeDisplayName()));
+      }
+    }
+
+    // Reject infinite automated cycles and orphaned nodes. A cycle is ALLOWED when it passes
+    // through
+    // a human-gated node (a userApprovalTask): such a loop cannot run unbounded without external
+    // input (e.g. the incident New<->Ack transitions, or an Assigned self-reassign). A cycle of
+    // only
+    // automated tasks would loop forever and is rejected.
+    String startNode = startNodes.iterator().next();
+    Set<String> visited = new java.util.HashSet<>();
+    if (hasAutomatedOnlyCycle(startNode, outgoingEdges, nodeMap, visited, new ArrayList<>())) {
+      throw BadRequestException.of(
+          String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
+    }
+
+    Set<String> orphanedNodes = new java.util.HashSet<>(allNodeIds);
+    orphanedNodes.removeAll(visited);
+
+    if (!orphanedNodes.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' has orphaned nodes not reachable from start: %s",
+              workflowName, orphanedNodes));
+    }
+  }
+
+  /**
+   * Depth-first traversal that detects an infinite automated cycle while collecting every reachable
+   * node into {@code visited} (which drives the orphaned-node check). A back edge to a node on the
+   * current path forms a cycle; that cycle is allowed when it contains a human-gated node (a {@code
+   * userApprovalTask}), because such a loop cannot advance without external input (e.g. the incident
+   * New&lt;-&gt;Ack transitions). A cycle of only automated tasks would loop forever and is reported.
+   *
+   * @param node Current node being visited
+   * @param adjacencyList Graph representation
+   * @param nodeMap Node id to definition, used to classify human-gated nodes
+   * @param visited Accumulates every node reachable from the start node
+   * @param path Nodes on the current DFS path, used to extract a detected cycle
+   */
+  private boolean hasAutomatedOnlyCycle(
+      String node,
+      Map<String, List<String>> adjacencyList,
+      Map<String, WorkflowNodeDefinitionInterface> nodeMap,
+      Set<String> visited,
+      List<String> path) {
+    boolean automatedOnlyCycle = false;
+    int cycleStart = path.indexOf(node);
+    if (cycleStart >= 0) {
+      automatedOnlyCycle =
+          path.subList(cycleStart, path.size()).stream()
+              .noneMatch(nodeId -> isHumanGatedNode(nodeMap.get(nodeId)));
+    } else if (visited.add(node)) {
+      path.add(node);
+      List<String> neighbors = adjacencyList.get(node);
+      if (neighbors != null) {
+        for (String neighbor : neighbors) {
+          if (hasAutomatedOnlyCycle(neighbor, adjacencyList, nodeMap, visited, path)) {
+            automatedOnlyCycle = true;
+            break;
+          }
+        }
+      }
+      path.removeLast();
+    }
+    return automatedOnlyCycle;
+  }
+
+  private boolean isHumanGatedNode(WorkflowNodeDefinitionInterface node) {
+    return node != null && "userApprovalTask".equals(node.getSubType());
+  }
+
+  public void suspendWorkflow(WorkflowDefinition workflow) {
+    String workflowName = workflow.getName();
+
+    try {
+      // Suspend all active process instances for this workflow
+      WorkflowHandler.getInstance().suspendWorkflow(workflowName);
+
+      workflow.setSuspended(true);
+      dao.update(workflow);
+      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
+    } catch (IllegalArgumentException e) {
+      // Workflow not deployed to Flowable - this can happen for workflows that haven't been
+      // triggered yet
+      LOG.warn(
+          "Workflow '{}' is not deployed to Flowable engine: {}", workflowName, e.getMessage());
+      throw BadRequestException.of(
+          "Workflow '"
+              + workflowName
+              + "' is not deployed to the workflow engine. "
+              + "Please ensure the workflow has been triggered at least once before attempting to suspend it.");
+    }
+  }
+
+  public void resumeWorkflow(WorkflowDefinition workflow) {
+    String workflowName = workflow.getName();
+
+    try {
+      // Resume all suspended process instances for this workflow
+      WorkflowHandler.getInstance().resumeWorkflow(workflowName);
+
+      workflow.setSuspended(false);
+      dao.update(workflow);
+      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+
+      // Log the resumption
+      LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
+    } catch (IllegalArgumentException e) {
+      // Workflow not deployed to Flowable - this can happen for workflows that haven't been
+      // triggered yet
+      LOG.warn(
+          "Workflow '{}' is not deployed to Flowable engine: {}", workflowName, e.getMessage());
+      throw BadRequestException.of(
+          "Workflow '"
+              + workflowName
+              + "' is not deployed to the workflow engine. "
+              + "Please ensure the workflow has been triggered at least once before attempting to resume it.");
+    }
+  }
+
+  /**
+   * Validates that node IDs are unique and don't clash with workflow name.
+   */
+  private void validateNodeIds(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null) {
+      return;
+    }
+
+    Set<String> nodeIds = new java.util.HashSet<>();
+    String workflowName = workflowDefinition.getName();
+
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      String nodeId = node.getName();
+
+      // Check for duplicate node IDs
+      if (!nodeIds.add(nodeId)) {
+        throw BadRequestException.of(
+            String.format("Workflow '%s' has duplicate node ID: '%s'", workflowName, nodeId));
+      }
+
+      // Check if node ID clashes with workflow name
+      if (nodeId.equals(workflowName)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s' has a node with ID '%s' that clashes with the workflow name",
+                workflowName, nodeId));
+      }
+    }
+
+    // Validate that all edges reference existing nodes
+    if (workflowDefinition.getEdges() != null) {
+      for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+        if (!nodeIds.contains(edge.getFrom())) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s' has an edge from non-existent node: '%s'",
+                  workflowName, edge.getFrom()));
+        }
+        if (!nodeIds.contains(edge.getTo())) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s' has an edge to non-existent node: '%s'",
+                  workflowName, edge.getTo()));
+        }
+      }
+    }
+  }
+
+  /**
+   * Validates updatedBy namespace configuration.
+   */
+  private void validateUpdatedByNamespace(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
+      return;
+    }
+
+    // Build node map
+    Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      nodeMap.put(node.getName(), node);
+    }
+
+    // Build adjacency list for reverse traversal
+    Map<String, List<String>> reverseAdjacency = new java.util.HashMap<>();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      reverseAdjacency.computeIfAbsent(edge.getTo(), k -> new ArrayList<>()).add(edge.getFrom());
+    }
+
+    // Check each node that uses updatedBy
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      Object inputNamespaceMapObj = node.getInputNamespaceMap();
+      if (inputNamespaceMapObj != null && inputNamespaceMapObj instanceof Map) {
+        @SuppressWarnings("unchecked")
+        Map<String, String> inputNamespaceMap = (Map<String, String>) inputNamespaceMapObj;
+
+        if (inputNamespaceMap.containsKey("updatedBy")) {
+          String namespace = inputNamespaceMap.get("updatedBy");
+          boolean hasUserTaskBefore = hasUserTaskInPath(node.getName(), reverseAdjacency, nodeMap);
+
+          if (!hasUserTaskBefore && !"global".equals(namespace)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Workflow '%s' node '%s' uses updatedBy with namespace '%s' but has no user task in its path. Should use 'global' namespace.",
+                    workflowDefinition.getName(), node.getName(), namespace));
+          }
+
+          if (hasUserTaskBefore && "global".equals(namespace)) {
+            LOG.warn(
+                "Workflow '{}' node '{}' has user task before it but uses 'global' namespace for updatedBy",
+                workflowDefinition.getName(),
+                node.getName());
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Performs BFS traversal backwards from a node to check if there's any user task in its execution path.
+   * This is used to validate the updatedBy namespace - if a user task exists before a node,
+   * the updatedBy should come from that task, not from global namespace.
+   *
+   * @param nodeId The node to start backward traversal from
+   * @param reverseAdjacency Reverse adjacency list (edges pointing backwards)
+   * @param nodeMap Map of node names to node definitions
+   * @return true if there's a user task in the path leading to this node
+   */
+  private boolean hasUserTaskInPath(
+      String nodeId,
+      Map<String, List<String>> reverseAdjacency,
+      Map<String, WorkflowNodeDefinitionInterface> nodeMap) {
+    Set<String> visited = new java.util.HashSet<>();
+    Queue<String> queue = new java.util.LinkedList<>();
+    queue.add(nodeId);
+
+    List<String> userTaskTypes = List.of(USER_APPROVAL_TASK);
+
+    // BFS traversal backwards through the workflow
+    while (!queue.isEmpty()) {
+      String current = queue.poll();
+      if (visited.contains(current)) {
+        continue;
+      }
+      visited.add(current);
+
+      // Check all predecessors of current node
+      List<String> predecessors = reverseAdjacency.get(current);
+      if (predecessors != null) {
+        for (String pred : predecessors) {
+          WorkflowNodeDefinitionInterface predNode = nodeMap.get(pred);
+          // If predecessor is a user task, we found one in the path
+          if (predNode != null && userTaskTypes.contains(predNode.getSubType())) {
+            return true;
+          }
+          queue.add(pred);
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Validates node input/output mappings.
+   * Ensures that nodes properly reference variables from global scope or from reachable upstream nodes.
+   */
+  private void validateNodeInputOutputMapping(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
+      return;
+    }
+
+    // Build node map and reachability information
+    Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
+    Map<String, List<String>> adjacencyList = new java.util.HashMap<>();
+
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      nodeMap.put(node.getName(), node);
+    }
+
+    if (workflowDefinition.getEdges() != null) {
+      for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+        adjacencyList.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge.getTo());
+      }
+    }
+
+    Set<String> globalVariables = workflowDefinition.getTrigger().getOutput();
+    boolean isNoOpTrigger = "noOp".equals(workflowDefinition.getTrigger().getType());
+
+    // Validate each node's input namespace mapping
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(node.getInputNamespaceMap(), Map.class);
+
+      if (inputNamespaceMap == null) {
+        continue;
+      }
+
+      for (Map.Entry<String, String> entry : inputNamespaceMap.entrySet()) {
+        String variable = entry.getKey();
+        String namespace = entry.getValue();
+
+        if (Workflow.GLOBAL_NAMESPACE.equals(namespace)) {
+          // Validate global variable exists (unless noOp trigger)
+          if (!isNoOpTrigger && !globalVariables.contains(variable)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' expects '%s' to be a global variable, but it is not present in trigger outputs",
+                    node.getName(), variable));
+          }
+        } else {
+          // Validate the referenced node exists and is reachable
+          WorkflowNodeDefinitionInterface sourceNode = nodeMap.get(namespace);
+          if (sourceNode == null) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' references non-existent node '%s'",
+                    node.getName(), namespace));
+          }
+
+          // Check if the source node outputs the expected variable
+          if (sourceNode.getOutput() != null && !sourceNode.getOutput().contains(variable)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' expects '%s' from node '%s', but it does not output this variable",
+                    node.getName(), variable, namespace));
+          }
+
+          // Validate node is reachable
+          if (!isNodeReachable(namespace, node.getName(), adjacencyList)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' expects input from '%s', but no path exists between them",
+                    node.getName(), namespace));
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if targetNode is reachable from sourceNode in the workflow graph.
+   */
+  private boolean isNodeReachable(
+      String sourceNode, String targetNode, Map<String, List<String>> adjacencyList) {
+    if (sourceNode.equals(targetNode)) {
+      return false; // Self-reference is not allowed
+    }
+
+    Set<String> visited = new java.util.HashSet<>();
+    Queue<String> queue = new java.util.LinkedList<>();
+    queue.add(sourceNode);
+
+    while (!queue.isEmpty()) {
+      String current = queue.poll();
+      if (visited.contains(current)) {
+        continue;
+      }
+      visited.add(current);
+
+      List<String> neighbors = adjacencyList.get(current);
+      if (neighbors != null) {
+        for (String neighbor : neighbors) {
+          if (neighbor.equals(targetNode)) {
+            return true;
+          }
+          queue.add(neighbor);
+        }
+      }
+    }
+    return false;
+  }
+
+  private void validateConditionalTasks(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
+      return;
+    }
+
+    String workflowName = workflowDefinition.getName();
+
+    // Build outgoing edges map for each node
+    Map<String, List<EdgeDefinition>> outgoingEdgesMap = new java.util.HashMap<>();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      outgoingEdgesMap.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
+    }
+
+    // Check each conditional task node
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (isConditionalTask(node)) {
+        List<EdgeDefinition> outgoingEdges = outgoingEdgesMap.get(node.getName());
+
+        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have outgoing sequence flows for both TRUE and FALSE conditions",
+                  workflowName, node.getNodeDisplayName()));
+        }
+
+        if (USER_APPROVAL_TASK.equals(node.getSubType())) {
+          List<String> configuredTransitions = getConfiguredUserApprovalTransitions(node);
+          if (!configuredTransitions.isEmpty()) {
+            validateUserApprovalTransitions(
+                workflowName, node.getNodeDisplayName(), configuredTransitions, outgoingEdges);
+            continue;
+          }
+          validateApprovalConditions(workflowName, node.getNodeDisplayName(), outgoingEdges);
+          continue;
+        }
+
+        // Check if we have both TRUE and FALSE conditions
+        boolean hasTrueCondition = false;
+        boolean hasFalseCondition = false;
+
+        for (EdgeDefinition edge : outgoingEdges) {
+          String condition = edge.getCondition();
+          if (condition != null) {
+            if ("true".equals(condition.trim())) {
+              hasTrueCondition = true;
+            } else if ("false".equals(condition.trim())) {
+              hasFalseCondition = true;
+            }
+          }
+        }
+
+        if (!hasTrueCondition || !hasFalseCondition) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have both TRUE and FALSE outgoing sequence flows. "
+                      + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+                  workflowName, node.getNodeDisplayName()));
+        }
+      }
+    }
+  }
+
+  private void validateApprovalConditions(
+      String workflowName, String nodeDisplayName, List<EdgeDefinition> outgoingEdges) {
+    boolean hasApprove = false;
+    boolean hasReject = false;
+    for (EdgeDefinition edge : outgoingEdges) {
+      String condition = edge.getCondition();
+      if (condition != null) {
+        String trimmed = condition.trim();
+        if (APPROVE_CONDITIONS.contains(trimmed)) {
+          hasApprove = true;
+        } else if (REJECT_CONDITIONS.contains(trimmed)) {
+          hasReject = true;
+        }
+      }
+    }
+
+    if (!hasApprove || !hasReject) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' must have both approve and reject outgoing sequence flows. "
+                  + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+              workflowName, nodeDisplayName));
+    }
+  }
+
+  private static final Set<String> APPROVE_CONDITIONS =
+      Set.of(Workflow.APPROVE_CONDITION, Workflow.LEGACY_APPROVE_CONDITION);
+  private static final Set<String> REJECT_CONDITIONS =
+      Set.of(Workflow.REJECT_CONDITION, Workflow.LEGACY_REJECT_CONDITION);
+
+  /**
+   * Checks if a node is a conditional task that requires TRUE/FALSE outputs.
+   */
+  private boolean isConditionalTask(WorkflowNodeDefinitionInterface node) {
+    String nodeType = node.getSubType();
+    return "checkEntityAttributesTask".equals(nodeType)
+        || "userApprovalTask".equals(nodeType)
+        || "checkChangeDescriptionTask".equals(nodeType);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<String> getConfiguredUserApprovalTransitions(WorkflowNodeDefinitionInterface node) {
+    List<String> transitionIds = new ArrayList<>();
+    if (node.getConfig() != null) {
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      collectTransitionMetadataIds(config.get("transitionMetadata"), transitionIds);
+      collectExpiryTimerTransitionId(config.get("expiryTimer"), transitionIds);
+    }
+    return transitionIds;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void collectTransitionMetadataIds(Object transitionMetadata, List<String> transitionIds) {
+    if (transitionMetadata == null) {
+      return;
+    }
+    List<Map<String, Object>> transitions =
+        JsonUtils.readOrConvertValue(transitionMetadata, List.class);
+    for (Map<String, Object> transition : transitions) {
+      if (transition == null) {
+        continue;
+      }
+      Object transitionId = transition.get("id");
+      if (transitionId instanceof String id && !id.isBlank()) {
+        transitionIds.add(id.trim());
+      }
+    }
+  }
+
+  // expiryTimer.transitionId is a legitimate outgoing edge condition on a user approval task —
+  // it is emitted by the boundary timer's ExpireOnTimerImpl service task, not by a user click.
+  // Without this, workflows that use expiryTimer fail validation because the outgoing edge
+  // named after transitionId is not declared in transitionMetadata.
+  @SuppressWarnings("unchecked")
+  private void collectExpiryTimerTransitionId(Object expiryTimer, List<String> transitionIds) {
+    if (expiryTimer == null) {
+      return;
+    }
+    Map<String, Object> timerConfig = JsonUtils.readOrConvertValue(expiryTimer, Map.class);
+    Object transitionId = timerConfig.get("transitionId");
+    if (transitionId instanceof String id && !id.isBlank()) {
+      transitionIds.add(id.trim());
+    }
+  }
+
+  private void validateUserApprovalTransitions(
+      String workflowName,
+      String nodeDisplayName,
+      List<String> configuredTransitions,
+      List<EdgeDefinition> outgoingEdges) {
+    Set<String> configuredTransitionSet = Set.copyOf(configuredTransitions);
+    Set<String> outgoingConditions = new java.util.HashSet<>();
+    for (EdgeDefinition edge : outgoingEdges) {
+      if (edge.getCondition() != null && !edge.getCondition().isBlank()) {
+        outgoingConditions.add(edge.getCondition().trim());
+      }
+    }
+
+    List<String> missingTransitions =
+        configuredTransitions.stream()
+            .filter(transitionId -> !outgoingConditions.contains(transitionId))
+            .toList();
+    if (!missingTransitions.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' must have outgoing sequence flows for every configured transition. Missing conditions for %s",
+              workflowName, nodeDisplayName, missingTransitions));
+    }
+
+    List<String> unexpectedConditions =
+        outgoingConditions.stream()
+            .filter(condition -> !configuredTransitionSet.contains(condition))
+            .sorted()
+            .toList();
+    if (!unexpectedConditions.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' has outgoing sequence flows with conditions not declared in transitionMetadata: %s",
+              workflowName, nodeDisplayName, unexpectedConditions));
+    }
+  }
+}

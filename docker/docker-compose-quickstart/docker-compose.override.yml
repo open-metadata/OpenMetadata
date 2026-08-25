@@ -1,0 +1,44 @@
+version: "3.9"
+
+# Override file to increase disk storage for persistent volumes
+# Place this file in the same directory as docker-compose-rdf.yml
+
+volumes:
+  # Increase Elasticsearch data volume
+  es-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./docker-volume/elasticsearch-data
+
+  # Fuseki data volume. Renamed from `fuseki-data` (and host path changed
+  # from `./docker-volume/fuseki-data` to `./docker-volume/fuseki-tdb2-data`)
+  # to match docker-compose-rdf.yml — see ../development/docker-compose-fuseki.yml
+  # for the migration rationale (new on-disk layout vs the old stain image).
+  fuseki-tdb2-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./docker-volume/fuseki-tdb2-data
+
+services:
+  # Additional Elasticsearch optimizations
+  elasticsearch:
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    sysctls:
+      - vm.max_map_count=262144
+
+  # Additional Fuseki optimizations
+  fuseki:
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536

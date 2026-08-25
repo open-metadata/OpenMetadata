@@ -1,0 +1,264 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Mixin class containing User specific methods
+
+To be used by OpenMetadata class
+"""
+
+import json
+import traceback
+from functools import lru_cache
+from typing import Optional, Type  # noqa: UP035
+from urllib.parse import quote
+
+from metadata.generated.schema.entity.teams.team import Team, TeamType
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.common import T
+from metadata.ingestion.ometa.client import REST
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
+from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
+
+
+class OMetaUserMixin:
+    """
+    OpenMetadata API methods related to user.
+
+    To be inherited by OpenMetadata
+    """
+
+    client: REST
+
+    @staticmethod
+    def email_search_query_es(entity: Type[T]) -> str:  # noqa: UP006
+        return "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
+
+    @staticmethod
+    def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:  # noqa: UP006
+        """
+        Allow for more flexible lookup following what the UI is doing when searching users.
+
+        We don't want to stick to `q=name:{name}` since in case a user is named `random.user`
+        but looked as `Random User`, we want to find this match.
+
+        Search should only look in name and displayName fields and should not return bots.
+        """
+        query_filter = {
+            "query": {
+                "query_string": {
+                    "query": f"{name} AND isBot:false",
+                    "fields": ["name", "displayName"],
+                    "default_operator": "AND",
+                    "fuzziness": "AUTO",
+                }
+            }
+        }
+
+        return (
+            f"""/search/query?query_filter={quote(json.dumps(query_filter), safe="")}"""
+            f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
+        )
+
+    def _search_by_email(
+        self,
+        entity: Type[T],  # noqa: UP006
+        email: Optional[str],  # noqa: UP045
+        from_count: int = 0,
+        size: int = 1,
+        fields: Optional[list] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        GET user or team entity by mail
+
+        Args:
+            email: user email to search
+            from_count: records to expect
+            size: number of records
+            fields: Optional field list to pass to ES request
+        """
+        if email:
+            query_string = self.email_search_query_es(entity=entity).format(email=email, from_=from_count, size=size)
+            return self.get_entity_from_es(entity=entity, query_string=query_string, fields=fields)
+
+        return None
+
+    def _search_by_name(
+        self,
+        entity: Type[T],  # noqa: UP006
+        name: Optional[str],  # noqa: UP045
+        from_count: int = 0,
+        size: int = 1,
+        fields: Optional[list] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        GET entity by name
+
+        Args:
+            name: user name to search
+            from_count: records to expect
+            size: number of records
+            fields: Optional field list to pass to ES request
+        """
+        if name:
+            query_string = self.name_search_query_es(entity=entity, name=name, from_=from_count, size=size)
+            return self.get_entity_from_es(entity=entity, query_string=query_string, fields=fields)
+
+        return None
+
+    @lru_cache(maxsize=None)  # noqa: B019, UP033
+    def get_reference_by_email(
+        self,
+        email: Optional[str],  # noqa: UP045
+        from_count: int = 0,
+        size: int = 1,
+        fields: Optional[list] = None,  # noqa: UP045
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+        """
+        Get a User or Team Entity Reference by searching by its mail
+        """
+        maybe_user = self._search_by_email(entity=User, email=email, from_count=from_count, size=size, fields=fields)
+        if maybe_user:
+            return EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=maybe_user.id.root,
+                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                        name=maybe_user.name.root,
+                        displayName=maybe_user.displayName,
+                    )
+                ]
+            )
+
+        maybe_team = self._search_by_email(entity=Team, email=email, from_count=from_count, size=size, fields=fields)
+        if maybe_team:
+            return EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=maybe_team.id.root,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                        name=maybe_team.name.root,
+                        displayName=maybe_team.displayName,
+                    )
+                ]
+            )
+
+        return None
+
+    @lru_cache(maxsize=None)  # noqa: B019, UP033
+    def get_reference_by_name(
+        self,
+        name: Optional[str],  # noqa: UP045
+        from_count: int = 0,
+        size: int = 1,
+        fields: Optional[list] = None,  # noqa: UP045
+        is_owner: bool = False,
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+        """
+        Get a User or Team Entity Reference by searching by its name.
+        """
+        if not name:
+            return None
+
+        try:
+            maybe_team = self.get_by_name(entity=Team, fqn=name)
+            if maybe_team is None:
+                maybe_team = self._search_by_name(
+                    entity=Team,
+                    name=name,
+                    from_count=from_count,
+                    size=size,
+                    fields=fields,
+                )
+            if maybe_team:
+                if is_owner and maybe_team.teamType != TeamType.Group:
+                    return None
+                return EntityReferenceList(
+                    root=[
+                        EntityReference(
+                            id=maybe_team.id.root,
+                            type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                            name=maybe_team.name.root,
+                            displayName=maybe_team.displayName,
+                        )
+                    ]
+                )
+            maybe_user = self.get_by_name(entity=User, fqn=name)
+            if maybe_user is None:
+                maybe_user = self._search_by_name(
+                    entity=User,
+                    name=name,
+                    from_count=from_count,
+                    size=size,
+                    fields=fields,
+                )
+            if maybe_user:
+                return EntityReferenceList(
+                    root=[
+                        EntityReference(
+                            id=maybe_user.id.root,
+                            type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                            name=maybe_user.name.root,
+                            displayName=maybe_user.displayName,
+                        )
+                    ]
+                )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to resolve owner reference for '{name}' due to: {err}. Skipping owner assignment.")
+
+        return None
+
+    def get_user_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
+        """
+        Get paginated list of assets for a user
+
+        Args:
+            name: Name of the user
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        try:
+            path = f"/users/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get user assets due to {exc}")
+            return {}
+
+    def get_team_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
+        """
+        Get paginated list of assets for a team
+
+        Args:
+            name: Name of the team
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        try:
+            path = f"/teams/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get team assets due to {exc}")
+            return {}

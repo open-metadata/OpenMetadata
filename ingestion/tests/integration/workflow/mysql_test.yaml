@@ -1,0 +1,32 @@
+source:
+  type: mysql
+  serviceName: local_mysql_test
+  serviceConnection:
+    config:
+      type: Mysql
+      username: openmetadata_user
+      authType:
+        password: openmetadata_password
+      hostPort: localhost:3306
+      databaseSchema: openmetadata_db
+      connectionOptions: {}
+      connectionArguments: {}
+  sourceConfig:
+    config:
+      schemaFilterPattern:
+        excludes:
+        - mysql.*
+        - information_schema.*
+        - performance_schema.*
+        - sys.*
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "..."
+ingestionPipelineFQN: local_mysql_test.test_metadata
+pipelineRunId: 948eba5d-94ec-4fc5-b233-29038722db16

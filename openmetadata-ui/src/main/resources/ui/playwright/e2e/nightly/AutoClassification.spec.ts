@@ -1,0 +1,105 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import test from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
+import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
+import { resetTokenFromBotPage } from '../../utils/bot';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+
+const mysqlService = new MysqlIngestionClass({
+  tableFilter: ['sensitive_customers'],
+});
+
+// use the admin user to login
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'retain-on-failure',
+  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
+});
+
+test.describe.configure({
+  // 5 minutes max for ingestion tests
+  timeout: 5 * 60 * 1000,
+});
+
+test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
+  test.beforeAll(async ({ browser }) => {
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      const { page, afterAction } = await createNewPage(browser, {
+        navigate: true,
+      });
+      await resetTokenFromBotPage(page, 'autoClassification-bot');
+      await afterAction();
+    }
+  });
+
+  test('should be able to auto classify data', async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(
+      page,
+      mysqlService.category as unknown as SettingOptionsType
+    );
+
+    // Create and ingest service data
+    await mysqlService.createService(page);
+
+    await addAndTriggerAutoClassificationPipeline(page, mysqlService);
+
+    // Check if the classification is successful
+
+    // Click on databases tab
+    await page.click('.ant-tabs-nav-list [data-testid="databases"]');
+
+    // Click on the database name
+    await page.getByTestId('column-name').getByText('default').click();
+
+    await page.getByTestId('cypress_integrations_test_db').waitFor();
+
+    // Click on the database schema name
+    await page.getByTestId('cypress_integrations_test_db').click();
+
+    await page.getByTestId('sensitive_customers').waitFor();
+
+    // Click on the table name
+    await page.getByTestId('sensitive_customers').click();
+
+    // Verify the sensitive tags
+    await test
+      .expect(
+        page.locator(
+          `[data-row-key*="user_name"] [data-testid="tag-General.Person"] `
+        )
+      )
+      .toBeAttached();
+
+    await test
+      .expect(
+        page.locator(
+          `[data-row-key*="DWH_X10"] [data-testid="tag-General.Email"] `
+        )
+      )
+      .toBeAttached();
+
+    // Delete the created service
+    const { apiContext } = await getApiContext(page);
+    await mysqlService.deleteServiceByAPI(apiContext);
+  });
+});

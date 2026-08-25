@@ -1,0 +1,15 @@
+{
+  "name": "sample_sharepoint_drive",
+  "serviceType": "SharePoint",
+  "connection": {
+    "config": {
+      "type": "SharePoint",
+      "clientId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "clientSecret": "SuperSecretClientSecret123!",
+      "tenantId": "12345678-1234-1234-1234-123456789012",
+      "siteName": "CompanyIntranet",
+      "siteUrl": "https://contoso.sharepoint.com/sites/CompanyIntranet",
+      "driveId": "b!vP_zOj2KN0WyIQxEH8cWxe3Cim2BabtJnJDa1IZNrsFQ7rEwXGVRpvkSa4v3zBA"
+    }
+  }
+}

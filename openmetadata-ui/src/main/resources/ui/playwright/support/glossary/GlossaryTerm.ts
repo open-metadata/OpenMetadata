@@ -1,0 +1,172 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { omit } from 'lodash';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { EntityTypeEndpoint } from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
+import { Glossary } from './Glossary';
+import {
+  GlossaryTermData,
+  GlossaryTermResponseDataType,
+} from './Glossary.interface';
+
+export class GlossaryTerm extends EntityClass {
+  randomName: string;
+  data: GlossaryTermData;
+  glossary: Glossary;
+  createGlossary = true;
+
+  responseData: GlossaryTermResponseDataType =
+    {} as GlossaryTermResponseDataType;
+
+  constructor(glossary?: Glossary, parent?: string, name?: string) {
+    super(EntityTypeEndpoint.GlossaryTerm);
+
+    this.randomName = getRandomLastName();
+    const id1 = uuid();
+    const id2 = uuid();
+
+    this.glossary = glossary ?? new Glossary();
+    this.createGlossary = !glossary;
+
+    this.data = {
+      name: name ?? `PW.${id1}%${this.randomName}`,
+      displayName: name ?? `PW ${id2}%${this.randomName}`,
+      description: 'A bank account number.',
+      mutuallyExclusive: false,
+      glossary: this.glossary.data.name,
+      synonyms: '',
+      fullyQualifiedName: '',
+      reviewers: this.glossary.data.reviewers,
+    };
+
+    if (parent) {
+      this.data.parent = parent;
+    }
+
+    // eslint-disable-next-line no-useless-escape
+    this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
+  }
+
+  async visitEntityPage(page: Page) {
+    await this.visitPage(page);
+  }
+
+  async visitPage(page: Page) {
+    const glossaryDisplayName =
+      this.responseData.glossary?.displayName ?? this.glossary.data.displayName;
+    await visitGlossaryPage(page, glossaryDisplayName);
+    const glossaryTerm = page.getByTestId(this.data.displayName);
+    const expandCollapseButton = page.getByTestId('expand-collapse-all-button');
+    await expect
+      .poll(async () => {
+        if (await glossaryTerm.isVisible()) {
+          return 'term-visible';
+        }
+
+        return (await expandCollapseButton.textContent())?.trim();
+      })
+      .toMatch(/^(term-visible|.*Expand All.*)$/);
+    if (!(await glossaryTerm.isVisible())) {
+      const glossaryId =
+        this.responseData.glossary?.id ?? this.glossary.responseData.id;
+      const glossaryTermListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaryTerms?') &&
+          response.url().includes(`glossary=${glossaryId}`) &&
+          response.status() === 200
+      );
+      await expandCollapseButton.click();
+      await glossaryTermListResponse;
+    }
+    const glossaryTermResponse = page.waitForResponse(
+      `/api/v1/glossaryTerms/name/${encodeURIComponent(
+        this.responseData.fullyQualifiedName
+      )}?*`
+    );
+    await glossaryTerm.click();
+    await glossaryTermResponse;
+
+    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+      this.data.displayName
+    );
+  }
+
+  async create(apiContext: APIRequestContext) {
+    if (this.createGlossary) {
+      await this.glossary.create(apiContext);
+    }
+
+    const apiData = omit(this.data, [
+      'fullyQualifiedName',
+      'synonyms',
+      'reviewers',
+    ]);
+    const response = await apiContext.post('/api/v1/glossaryTerms', {
+      data: apiData,
+    });
+
+    this.responseData = await okJson(response, 'GlossaryTerm.create');
+
+    return this.responseData;
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/glossaryTerms/${this.responseData.id}`, {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      })
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `GlossaryTerm.patch failed for ${
+          this.responseData.id
+        }: HTTP ${response.status()} — ${body}`
+      );
+    }
+
+    this.responseData = await response.json();
+  }
+
+  get() {
+    return this.responseData;
+  }
+
+  async delete(apiContext: APIRequestContext) {
+    const fqn =
+      this.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
+    const response = await apiContext.delete(
+      `/api/v1/glossaryTerms/name/${encodeURIComponent(
+        fqn
+      )}?recursive=true&hardDelete=true`
+    );
+
+    return await response.json();
+  }
+
+  getTermDisplayName() {
+    return this.responseData.displayName;
+  }
+
+  rename(newTermName: string, newTermFqn: string) {
+    this.responseData.name = newTermName;
+    this.responseData.fullyQualifiedName = newTermFqn;
+  }
+}

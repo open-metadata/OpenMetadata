@@ -1,0 +1,38 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/cassandra/cloudConfig.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Cloud Config",
+    "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+    "javaType": "org.openmetadata.schema.services.connections.database.cassandra.CloudConfig",
+    "type": "object",
+    "properties": {
+        "cloudConfig": {
+            "title": "DataStax Astra DB Configuration",
+            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+            "type": "object",
+            "properties": {
+                "connectTimeout": {
+                    "title": "Connect Timeout",
+                    "description": "Timeout in seconds for establishing new connections to Cassandra.",
+                    "type": "integer"
+                },
+                "requestTimeout": {
+                    "title": "Request Timeout",
+                    "description": "Timeout in seconds for individual Cassandra requests.",
+                    "type": "integer"
+                },
+                "token": {
+                    "title": "Token",
+                    "description": "The Astra DB application token used for authentication.",
+                    "type": "string"
+                },
+                "secureConnectBundle": {
+                    "title": "Secure Connect Bundle",
+                    "description": "File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "additionalProperties": false
+}

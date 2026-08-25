@@ -1,0 +1,21 @@
+{
+  "source": {
+    "type": "mlflow",
+    "config": {
+      "tracking_uri": "http://localhost:5000",
+      "registry_uri": "mysql+pymysql://mlflow:password@localhost:3307/experiments",
+      "secret": "${PASSWORD}"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}

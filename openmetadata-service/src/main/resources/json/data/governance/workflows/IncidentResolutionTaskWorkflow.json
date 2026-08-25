@@ -1,0 +1,192 @@
+{
+  "name": "IncidentResolutionTaskWorkflow",
+  "fullyQualifiedName": "IncidentResolutionTaskWorkflow",
+  "displayName": "Incident Resolution Task Workflow",
+  "description": "Default workflow-driven lifecycle for incident resolution tasks. Stages mirror the incident manager flow: New, Acknowledged, Assigned.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "noOp",
+    "config": {},
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "IncidentStart",
+      "displayName": "Incident Start"
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "NewStage",
+      "displayName": "New",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "new",
+        "stageDisplayName": "New",
+        "taskStatus": "Open",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "ack",
+            "label": "Acknowledge",
+            "targetStageId": "ack",
+            "targetTaskStatus": "InProgress"
+          },
+          {
+            "id": "assign",
+            "label": "Assign",
+            "targetStageId": "assigned",
+            "targetTaskStatus": "InProgress"
+          },
+          {
+            "id": "resolve",
+            "label": "Resolve",
+            "targetStageId": "resolved",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "resolve",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "AckStage",
+      "displayName": "Acknowledged",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "ack",
+        "stageDisplayName": "Acknowledged",
+        "taskStatus": "InProgress",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "assign",
+            "label": "Assign",
+            "targetStageId": "assigned",
+            "targetTaskStatus": "InProgress"
+          },
+          {
+            "id": "resolve",
+            "label": "Resolve",
+            "targetStageId": "resolved",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "resolve",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "AssignedStage",
+      "displayName": "Assigned",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "assigned",
+        "stageDisplayName": "Assigned",
+        "taskStatus": "InProgress",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "reassign",
+            "label": "Reassign",
+            "targetStageId": "assigned",
+            "targetTaskStatus": "InProgress"
+          },
+          {
+            "id": "resolve",
+            "label": "Resolve",
+            "targetStageId": "resolved",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "resolve",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ResolvedEnd",
+      "displayName": "Resolved"
+    }
+  ],
+  "edges": [
+    {
+      "from": "IncidentStart",
+      "to": "NewStage"
+    },
+    {
+      "from": "NewStage",
+      "to": "AckStage",
+      "condition": "ack"
+    },
+    {
+      "from": "NewStage",
+      "to": "AssignedStage",
+      "condition": "assign"
+    },
+    {
+      "from": "NewStage",
+      "to": "ResolvedEnd",
+      "condition": "resolve"
+    },
+    {
+      "from": "AckStage",
+      "to": "AssignedStage",
+      "condition": "assign"
+    },
+    {
+      "from": "AckStage",
+      "to": "ResolvedEnd",
+      "condition": "resolve"
+    },
+    {
+      "from": "AssignedStage",
+      "to": "AssignedStage",
+      "condition": "reassign"
+    },
+    {
+      "from": "AssignedStage",
+      "to": "ResolvedEnd",
+      "condition": "resolve"
+    }
+  ]
+}

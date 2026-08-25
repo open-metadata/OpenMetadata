@@ -1,0 +1,279 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, Locator, Page } from '@playwright/test';
+import { descriptionBox } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+import { waitForPageLoaded } from './polling';
+import { TaskDetails } from './task';
+
+export const REACTION_EMOJIS = ['🚀', '😕', '👀', '❤️', '🎉', '😄', '👎', '👍'];
+
+export const FEED_REACTIONS = [
+  'thumbsUp',
+  'thumbsDown',
+  'laugh',
+  'hooray',
+  'confused',
+  'heart',
+  'eyes',
+  'rocket',
+];
+// Returns the nth feed message container (0-based) regardless of page context (widget, drawer, or full page)
+const getNthFeedMessage = (page: Page, indexZeroBased: number) =>
+  page.locator('[data-testid="message-container"]').nth(indexZeroBased);
+
+export const checkDescriptionInEditModal = async (
+  page: Page,
+  taskValue: TaskDetails
+) => {
+  const taskContent = await page.getByTestId('task-title').innerText();
+
+  expect(taskContent).toContain(`Request to update description for`);
+
+  await page.getByRole('button', { name: 'down' }).click();
+  await page.locator('.ant-dropdown').waitFor({
+    state: 'visible',
+  });
+
+  await page.getByRole('menuitem', { name: 'edit' }).click();
+
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+  await expect(page.locator('.ant-modal-title')).toContainText(
+    `Update description for table ${taskValue.term} columns/${taskValue.columnName}`
+  );
+
+  await expect(page.locator(descriptionBox)).toContainText(
+    taskValue.description ?? ''
+  );
+
+  // click on the Current tab
+  await page.getByRole('tab', { name: 'current' }).click();
+
+  const taskDescriptionTabs = page.getByTestId('task-description-tabs');
+
+  await expect(
+    taskDescriptionTabs
+      .locator('.ant-tabs-content-holder')
+      .getByTestId('markdown-parser')
+      .first()
+  ).toContainText(taskValue.oldDescription ?? '');
+};
+
+export const deleteFeedComments = async (page: Page, feed: Locator) => {
+  await feed.locator('.feed-reply-card-v2').click();
+
+  await page.getByTestId('feed-actions').waitFor({
+    state: 'visible',
+  });
+
+  await page.locator('[data-testid="delete-message"]').click();
+
+  await page.locator('[role="dialog"].ant-modal').waitFor();
+
+  const deleteResponse = page.waitForResponse('/api/v1/feed/*/posts/*');
+
+  await page.getByTestId('save-button').click();
+
+  await deleteResponse;
+};
+
+/**
+ * Reactions are served by two different endpoints depending on what the card is:
+ * legacy conversation threads use `/api/v1/feed/{id}`, activity events use
+ * `PUT /api/v1/activity/{id}/reaction/{type}`. Matching only the feed one made
+ * `reactOnFeed` hang for 60s against the landing-page widget, which renders
+ * activity events.
+ */
+export const waitForReactionResponse = (page: Page, reaction: string) =>
+  page.waitForResponse(
+    (response) =>
+      (response.url().includes('/api/v1/activity') ||
+        response.url().includes('/api/v1/feed')) &&
+      response.url().includes(`/reaction/${reaction}`) &&
+      response.ok()
+  );
+
+/**
+ * Cycles every reaction on a specific card. Callers that react twice (add, then
+ * toggle off) must pass the same `Locator` both times — the list re-renders
+ * between calls, so an index would not resolve to the same card.
+ */
+export const reactOnFeedCard = async (page: Page, message: Locator) => {
+  await expect(message).toBeVisible();
+
+  for (const reaction of FEED_REACTIONS) {
+    const addReactionButton = message
+      .locator('[data-testid="feed-reaction-container"]')
+      .locator('[data-testid="add-reactions"]');
+
+    await expect(addReactionButton).toBeVisible();
+
+    await addReactionButton.click();
+
+    await page
+      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
+      .waitFor({ state: 'visible' });
+
+    const reactionResponse = waitForReactionResponse(page, reaction);
+    await page
+      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+      .click();
+    await reactionResponse;
+  }
+};
+
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
+  await reactOnFeedCard(
+    page,
+    getNthFeedMessage(page, Math.max(0, feedNumber - 1))
+  );
+};
+
+export const addMentionCommentInFeed = async (
+  page: Page,
+  user: string,
+  isReply = false
+) => {
+  if (!isReply) {
+    const fetchFeedResponse = page.waitForResponse(
+      '/api/v1/feed?type=Conversation*'
+    );
+    await fetchFeedResponse;
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId('comments-input-field').click();
+
+  const userSuggestionsResponse = page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=*${user}`),
+      { timeout: 5000 }
+    )
+    .catch(() => null);
+  const userSuggestionOption = page.locator(`[data-value="@${user}"]`).first();
+
+  await page
+    .locator(
+      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+    )
+    .fill(`Can you resolve this thread for me? @${user}`);
+  await Promise.race([
+    userSuggestionsResponse,
+    userSuggestionOption.waitFor({ state: 'visible', timeout: 5000 }),
+  ]).catch(() => undefined);
+
+  if (await userSuggestionOption.isVisible().catch(() => false)) {
+    await userSuggestionOption.click();
+  } else {
+    await page.keyboard.press('Enter');
+  }
+
+  // Send reply
+  await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="send-button"]')).not.toBeDisabled();
+
+  const postReplyResponse = page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/v1\/feed\/[^/]+\/posts(?:\?|$)/.test(response.url()),
+      { timeout: 5000 }
+    )
+    .catch(() => null);
+  await page.locator('[data-testid="send-button"]').click();
+  await Promise.race([
+    postReplyResponse,
+    page.waitForFunction(() => {
+      const editor = document.querySelector(
+        '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+      );
+
+      return !editor || (editor.textContent ?? '').trim().length === 0;
+    }),
+  ]).catch(() => undefined);
+};
+
+/**
+ * Add a reaction to an activity event (uses Activity API)
+ */
+export const reactOnActivity = async (
+  page: Page,
+  activityIndex: number,
+  reaction: string = 'thumbsUp'
+) => {
+  const message = getNthFeedMessage(page, Math.max(0, activityIndex - 1));
+
+  await expect(message).toBeVisible();
+
+  const reactionContainer = message.locator(
+    '[data-testid="feed-reaction-container"]'
+  );
+
+  if (await reactionContainer.isVisible()) {
+    const addReactionButton = reactionContainer.locator(
+      '[data-testid="add-reactions"]'
+    );
+
+    await expect(addReactionButton).toBeVisible();
+    await addReactionButton.click();
+
+    await page
+      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
+      .waitFor({ state: 'visible' });
+
+    // Activity API uses /api/v1/activity/*/reaction/* endpoint
+    const waitForReactionResponse = page.waitForResponse(
+      (response) =>
+        (response.url().includes('/api/v1/activity') &&
+          response.url().includes('/reaction')) ||
+        response.url().includes('/api/v1/feed')
+    );
+
+    await page
+      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+      .click();
+    await waitForReactionResponse;
+  }
+};
+
+/**
+ * Navigate to activity feed tab on entity page
+ */
+export const navigateToActivityFeedTab = async (page: Page) => {
+  await page.getByTestId('activity_feed').click();
+  await waitForPageLoaded(page);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+/**
+ * Wait for activity events to load
+ */
+export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
+  const feedContainer = page.locator('[data-testid="message-container"]');
+  const emptyState = page.locator(
+    '[data-testid="no-data-placeholder-container"]'
+  );
+
+  // Wait for either feed messages or empty state
+  await Promise.race([
+    feedContainer.first().waitFor({ state: 'visible', timeout }),
+    emptyState.waitFor({ state: 'visible', timeout }),
+  ]).catch(() => {
+    // Neither appeared within timeout, which may be acceptable
+  });
+};

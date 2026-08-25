@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/article.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Article",
+  "description": "Article Knowledge Page",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Article",
+  "properties": {
+    "publicationDate": {
+      "description": "The publication date of the article.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "relatedArticles": {
+      "description": "An array of related articles.",
+      "$ref": "../../type/entityReferenceList.json"
+    }
+  },
+  "additionalProperties": false
+}

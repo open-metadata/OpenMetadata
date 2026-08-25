@@ -1,0 +1,751 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import type { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { Operation } from 'fast-json-patch';
+import { capitalize } from 'lodash';
+import type { FC } from 'react';
+import type { NavigateFunction } from 'react-router-dom';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import {
+  ResourceEntity,
+  type OperationPermission,
+} from '../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { ServiceCategoryPlural } from '../enums/service.enum';
+import type { APICollection } from '../generated/entity/data/apiCollection';
+import type { Database } from '../generated/entity/data/database';
+import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import type { ServicesType } from '../interface/service.interface';
+import type { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import { patchApiCollection } from '../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
+import { patchApplication } from '../rest/applicationAPI';
+import { patchChartDetails } from '../rest/chartsAPI';
+import { patchDashboardDetails } from '../rest/dashboardAPI';
+import {
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from '../rest/databaseAPI';
+import { patchDataModelDetails } from '../rest/dataModelsAPI';
+import { patchDataProduct } from '../rest/dataProductAPI';
+import { patchDomains } from '../rest/domainAPI';
+import { patchDriveAssetDetails } from '../rest/driveAPI';
+import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import { patchKnowledgePage } from '../rest/knowledgeCenterAPI';
+import { patchKPI } from '../rest/KpiAPI';
+import { patchMetric } from '../rest/metricsAPI';
+import { patchMlModelDetails } from '../rest/mlModelAPI';
+import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchQueries } from '../rest/queryAPI';
+import { patchPolicy, patchRole } from '../rest/rolesAPIV1';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
+import { patchService } from '../rest/serviceAPI';
+import { patchContainerDetails } from '../rest/storageAPI';
+import { patchStoredProceduresDetails } from '../rest/storedProceduresAPI';
+import { patchTableDetails } from '../rest/tableAPI';
+import { patchClassification, patchTag } from '../rest/tagAPI';
+import { patchTeamDetail } from '../rest/teamsAPI';
+import { patchTopicDetails } from '../rest/topicsAPI';
+import { ExtraDatabaseDropdownOptions } from './Database/DatabaseDropdownOptions';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
+import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { getEntityByFqnUtil } from './EntityByFqnUtils';
+import { getEntityDetailComponent as getLazyEntityDetailComponent } from './EntityDetailComponentUtils';
+import { EntityTypeName } from './EntityNameUtils';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
+import Fqn from './Fqn';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
+import {
+  getApplicationDetailsPath,
+  getBotsPath,
+  getClassificationTagPath,
+  getDataProductDetailsPath,
+  getDomainDetailsPath,
+  getEditWebhookPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+  getKpiPath,
+  getNotificationAlertDetailsPath,
+  getObservabilityAlertDetailsPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+  getServiceDetailsPath,
+  getSettingPath,
+  getTagsDetailsPath,
+  getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
+  getUserPath,
+} from './RouterUtils';
+import { ExtraTableDropdownOptions } from './TableDropdownOptions';
+import { getTestSuiteDetailsPath } from './TestSuiteUtils';
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
+
+const SERVICE_ROUTE_CATEGORIES: Set<string> = new Set(
+  Object.values(ServiceCategoryPlural)
+);
+
+class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+      ...FormattedDriveServiceType,
+    });
+  }
+
+  protected ENTITY_PATCH_API_MAP: Partial<
+    Record<EntityType, PatchAPIFunction>
+  > = {
+    [EntityType.TABLE]: patchTableDetails,
+    [EntityType.DASHBOARD]: patchDashboardDetails,
+    [EntityType.TOPIC]: patchTopicDetails,
+    [EntityType.PIPELINE]: patchPipelineDetails,
+    [EntityType.MLMODEL]: patchMlModelDetails,
+    [EntityType.CHART]: patchChartDetails,
+    [EntityType.API_COLLECTION]: patchApiCollection,
+    [EntityType.API_ENDPOINT]: patchApiEndPoint,
+    [EntityType.DATABASE]: patchDatabaseDetails,
+    [EntityType.DATABASE_SCHEMA]: patchDatabaseSchemaDetails,
+    [EntityType.STORED_PROCEDURE]: patchStoredProceduresDetails,
+    [EntityType.CONTAINER]: patchContainerDetails,
+    [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
+    [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
+    [EntityType.DATA_PRODUCT]: patchDataProduct,
+    [EntityType.METRIC]: patchMetric,
+    [EntityType.GLOSSARY]: patchGlossaries,
+    [EntityType.GLOSSARY_TERM]: patchGlossaryTerm,
+    [EntityType.DOMAIN]: patchDomains,
+    [EntityType.TAG]: patchTag,
+    [EntityType.DIRECTORY]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.DIRECTORY),
+    [EntityType.FILE]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.FILE),
+    [EntityType.SPREADSHEET]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.SPREADSHEET),
+    [EntityType.WORKSHEET]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.WORKSHEET),
+    [EntityType.DATABASE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('databaseServices', id, patch),
+    [EntityType.DASHBOARD_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('dashboardServices', id, patch),
+    [EntityType.MESSAGING_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('messagingServices', id, patch),
+    [EntityType.PIPELINE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('pipelineServices', id, patch),
+    [EntityType.MLMODEL_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('mlmodelServices', id, patch),
+    [EntityType.METADATA_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('metadataServices', id, patch),
+    [EntityType.STORAGE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('storageServices', id, patch),
+    [EntityType.SEARCH_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('searchServices', id, patch),
+    [EntityType.API_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('apiServices', id, patch),
+    [EntityType.SECURITY_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('securityServices', id, patch),
+    [EntityType.DRIVE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('driveServices', id, patch),
+    [EntityType.KPI]: patchKPI,
+    [EntityType.APPLICATION]: patchApplication,
+    [EntityType.QUERY]: patchQueries,
+    [EntityType.ROLE]: (id: string, patch: Operation[]) => patchRole(patch, id),
+    [EntityType.POLICY]: (id: string, patch: Operation[]) =>
+      patchPolicy(patch, id),
+    [EntityType.CLASSIFICATION]: patchClassification,
+    [EntityType.TEAM]: patchTeamDetail,
+    [EntityType.KNOWLEDGE_PAGE]: patchKnowledgePage,
+  };
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
+  /**
+   * Plural route segment for a caller-supplied service category. Accepts the plural segment
+   * (`databaseServices`) and the singular entity type (`databaseService`) — chat entity links
+   * carry either — and returns undefined for anything that is not a service category.
+   */
+  private getServiceRouteCategory(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    if (SERVICE_ROUTE_CATEGORIES.has(value)) {
+      return value;
+    }
+
+    // The value is model-authored, so it can be a prototype key ("constructor") whose lookup
+    // returns a truthy non-category; validate the result rather than the input.
+    const plural =
+      ServiceCategoryPlural[value as keyof typeof ServiceCategoryPlural];
+
+    return SERVICE_ROUTE_CATEGORIES.has(plural) ? plural : undefined;
+  }
+
+  public getEntityLink(
+    indexType: string,
+    fullyQualifiedName: string,
+    tab?: string,
+    subTab?: string,
+    isExecutableTestSuite?: boolean,
+    isObservabilityAlert?: boolean,
+    serviceCategory?: string,
+    serviceFqn?: string
+  ) {
+    const serviceRouteCategory = this.getServiceRouteCategory(serviceCategory);
+
+    switch (indexType) {
+      case SearchIndex.TOPIC:
+      case EntityType.TOPIC:
+        return getEntityDetailsPath(
+          EntityType.TOPIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case SearchIndex.DASHBOARD:
+      case EntityType.DASHBOARD:
+        return getEntityDetailsPath(
+          EntityType.DASHBOARD,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.CHART:
+        return getEntityDetailsPath(
+          EntityType.CHART,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case SearchIndex.PIPELINE:
+      case EntityType.PIPELINE:
+        return getEntityDetailsPath(
+          EntityType.PIPELINE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.DATABASE:
+        return getEntityDetailsPath(
+          EntityType.DATABASE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.DATABASE_SCHEMA:
+        return getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.GLOSSARY:
+      case SearchIndex.GLOSSARY:
+      case EntityType.GLOSSARY_TERM:
+      case SearchIndex.GLOSSARY_TERM:
+        return getGlossaryTermDetailsPath(fullyQualifiedName, tab, subTab);
+
+      case EntityType.DATABASE_SERVICE:
+      case EntityType.DASHBOARD_SERVICE:
+      case EntityType.MESSAGING_SERVICE:
+      case EntityType.PIPELINE_SERVICE:
+      case EntityType.MLMODEL_SERVICE:
+      case EntityType.METADATA_SERVICE:
+      case EntityType.STORAGE_SERVICE:
+      case EntityType.SEARCH_SERVICE:
+      case EntityType.API_SERVICE:
+      case EntityType.DRIVE_SERVICE:
+      case EntityType.SECURITY_SERVICE:
+        return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
+
+      case EntityType.WEBHOOK:
+        return getEditWebhookPath(fullyQualifiedName);
+
+      case EntityType.TYPE:
+        return getSettingPath(
+          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+          `${fullyQualifiedName}s`
+        );
+
+      case EntityType.MLMODEL:
+      case SearchIndex.MLMODEL:
+        return getEntityDetailsPath(
+          EntityType.MLMODEL,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.CONTAINER:
+      case SearchIndex.CONTAINER:
+        return getEntityDetailsPath(
+          EntityType.CONTAINER,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case SearchIndex.TAG:
+      case EntityType.TAG:
+        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
+      case EntityType.CLASSIFICATION:
+        return getTagsDetailsPath(fullyQualifiedName);
+
+      case SearchIndex.DASHBOARD_DATA_MODEL:
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return getEntityDetailsPath(
+          EntityType.DASHBOARD_DATA_MODEL,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case SearchIndex.STORED_PROCEDURE:
+      case EntityType.STORED_PROCEDURE:
+        return getEntityDetailsPath(
+          EntityType.STORED_PROCEDURE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.TEST_CASE:
+        return getTestCaseDetailPagePath(fullyQualifiedName);
+
+      case EntityType.TEST_SUITE:
+        return getTestSuiteDetailsPath({
+          isExecutableTestSuite,
+          fullyQualifiedName,
+        });
+
+      case EntityType.SEARCH_INDEX:
+      case SearchIndex.SEARCH_INDEX:
+        return getEntityDetailsPath(
+          EntityType.SEARCH_INDEX,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.DOMAIN:
+      case SearchIndex.DOMAIN:
+        return getDomainDetailsPath(fullyQualifiedName, tab, subTab);
+
+      case EntityType.DATA_PRODUCT:
+      case SearchIndex.DATA_PRODUCT:
+        return getDataProductDetailsPath(fullyQualifiedName, tab, subTab);
+      case EntityType.APPLICATION:
+        return getApplicationDetailsPath(fullyQualifiedName);
+
+      case EntityType.USER:
+      case SearchIndex.USER:
+        return getUserPath(fullyQualifiedName, tab, subTab);
+
+      case EntityType.TEAM:
+      case SearchIndex.TEAM:
+        return getTeamsWithFqnPath(fullyQualifiedName);
+
+      case EntityType.EVENT_SUBSCRIPTION:
+        return isObservabilityAlert
+          ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+          : getNotificationAlertDetailsPath(fullyQualifiedName);
+
+      case EntityType.ROLE:
+        return getRoleWithFqnPath(fullyQualifiedName);
+
+      case EntityType.POLICY:
+        return getPolicyWithFqnPath(fullyQualifiedName);
+
+      case EntityType.PERSONA:
+        return getPersonaDetailsPath(fullyQualifiedName);
+
+      case SearchIndex.API_COLLECTION:
+      case EntityType.API_COLLECTION:
+        return getEntityDetailsPath(
+          EntityType.API_COLLECTION,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case SearchIndex.API_ENDPOINT:
+      case EntityType.API_ENDPOINT:
+        return getEntityDetailsPath(
+          EntityType.API_ENDPOINT,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case SearchIndex.METRIC:
+      case EntityType.METRIC:
+        return getEntityDetailsPath(
+          EntityType.METRIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.DIRECTORY:
+        return getEntityDetailsPath(
+          EntityType.DIRECTORY,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.FILE:
+        return getEntityDetailsPath(
+          EntityType.FILE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.SPREADSHEET:
+        return getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.WORKSHEET:
+        return getEntityDetailsPath(
+          EntityType.WORKSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.BOT:
+        return getBotsPath(fullyQualifiedName);
+
+      case EntityType.KPI:
+        return getKpiPath(fullyQualifiedName);
+
+      case EntityType.KNOWLEDGE_PAGE:
+        return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
+
+      case EntityType.INGESTION_PIPELINE:
+        // No standalone detail page for a pipeline: route to the owning service's agents
+        // tab. Callers without service context (prepareFeedLink) and unrecognised
+        // categories must fall through, or the URL matches no route.
+        if (serviceFqn && serviceRouteCategory) {
+          return getServiceDetailsPath(
+            serviceFqn,
+            serviceRouteCategory,
+            EntityTabs.AGENTS
+          );
+        }
+
+      // falls through
+
+      case SearchIndex.TABLE:
+      case EntityType.TABLE:
+      default:
+        return getEntityDetailsPath(
+          EntityType.TABLE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+    }
+  }
+
+  public getEntityPatchAPI(entityType: EntityType): PatchAPIFunction {
+    if (!entityType) {
+      throw new Error('Entity type is required');
+    }
+
+    const api = this.ENTITY_PATCH_API_MAP[entityType];
+
+    if (!api) {
+      throw new Error(`No patch API available for entity type: ${entityType}`);
+    }
+
+    return api;
+  }
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string) {
+    return getEntityByFqnUtil(entityType, fqn, fields);
+  }
+
+  public getEntityDetailComponent(entityType: string): FC | null {
+    // Entity detail pages are large route-level surfaces. Delegate to the lazy
+    // registry so importing EntityUtilClassBase for links/patch APIs does not
+    // pull every detail page into the startup bundle.
+    return getLazyEntityDetailComponent(entityType);
+  }
+
+  public getResourceEntityFromEntityType(entityType: string): string {
+    switch (entityType) {
+      case EntityType.TABLE: {
+        return ResourceEntity.TABLE;
+      }
+      case EntityType.TOPIC: {
+        return ResourceEntity.TOPIC;
+      }
+      case EntityType.DASHBOARD: {
+        return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.CHART: {
+        return ResourceEntity.CHART;
+      }
+      case EntityType.PIPELINE: {
+        return ResourceEntity.PIPELINE;
+      }
+      case EntityType.MLMODEL: {
+        return ResourceEntity.ML_MODEL;
+      }
+      case EntityType.CONTAINER: {
+        return ResourceEntity.CONTAINER;
+      }
+      case EntityType.SEARCH_INDEX: {
+        return ResourceEntity.SEARCH_INDEX;
+      }
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        return ResourceEntity.DASHBOARD_DATA_MODEL;
+      }
+      case EntityType.STORED_PROCEDURE: {
+        return ResourceEntity.STORED_PROCEDURE;
+      }
+      case EntityType.DATABASE: {
+        return ResourceEntity.DATABASE;
+      }
+      case EntityType.DATABASE_SCHEMA: {
+        return ResourceEntity.DATABASE_SCHEMA;
+      }
+      case EntityType.GLOSSARY_TERM: {
+        return ResourceEntity.GLOSSARY_TERM;
+      }
+      case EntityType.DATA_PRODUCT: {
+        return ResourceEntity.DATA_PRODUCT;
+      }
+      case EntityType.API_COLLECTION: {
+        return ResourceEntity.API_COLLECTION;
+      }
+      case EntityType.API_ENDPOINT: {
+        return ResourceEntity.API_ENDPOINT;
+      }
+      case EntityType.METRIC: {
+        return ResourceEntity.METRIC;
+      }
+      case EntityType.DIRECTORY: {
+        return ResourceEntity.DRIVE_SERVICE;
+      }
+      case EntityType.FILE: {
+        return ResourceEntity.FILE;
+      }
+      case EntityType.SPREADSHEET: {
+        return ResourceEntity.SPREADSHEET;
+      }
+      case EntityType.WORKSHEET: {
+        return ResourceEntity.WORKSHEET;
+      }
+      case EntityType.KNOWLEDGE_PAGE:
+      case 'knowledge-center': {
+        return ResourceEntity.KNOWLEDGE_PAGE;
+      }
+
+      default: {
+        return ResourceEntity.TABLE;
+      }
+    }
+  }
+
+  public getEntityFloatingButton(_: EntityType): FC | null {
+    return null;
+  }
+
+  public getFqnParts(
+    fqn: string,
+    type?: string
+  ): { entityFqn: string; columnFqn?: string } {
+    if (!type) {
+      return { entityFqn: fqn, columnFqn: undefined };
+    }
+    const fqnParts = Fqn.split(fqn);
+    let entityFqn = fqn;
+    let columnFqn;
+
+    switch (type) {
+      case EntityType.TABLE:
+      case EntityType.STORED_PROCEDURE:
+        // Service.Database.Schema.Table
+        if (fqnParts.length > 4) {
+          entityFqn = Fqn.build(...fqnParts.slice(0, 4));
+          columnFqn = Fqn.build(...fqnParts.slice(4));
+        }
+
+        break;
+
+      case EntityType.API_ENDPOINT:
+      case EntityType.DATABASE_SCHEMA:
+      case EntityType.DASHBOARD_DATA_MODEL:
+        // 3-level parent FQN (e.g. Service.Database.Schema)
+        if (fqnParts.length > 3) {
+          entityFqn = Fqn.build(...fqnParts.slice(0, 3));
+          columnFqn = Fqn.build(...fqnParts.slice(3));
+        }
+
+        break;
+
+      case EntityType.TOPIC:
+      case EntityType.SEARCH_INDEX:
+      case EntityType.METRIC:
+      case EntityType.WORKSHEET:
+      case EntityType.PIPELINE:
+      case EntityType.DASHBOARD:
+      case EntityType.MLMODEL:
+      case EntityType.CHART:
+      case EntityType.DATABASE:
+        // Service.Topic
+        if (fqnParts.length > 2) {
+          entityFqn = Fqn.build(...fqnParts.slice(0, 2));
+          columnFqn = Fqn.build(...fqnParts.slice(2));
+        }
+
+        break;
+
+      default:
+        // Default behavior if needed, or just return as is
+        break;
+    }
+
+    return { entityFqn, columnFqn };
+  }
+
+  public getManageExtraOptions(
+    _entityType: EntityType,
+    _fqn: string,
+    _permission: OperationPermission,
+    _entityDetails:
+      | VersionData
+      | ServicesType
+      | Database
+      | DatabaseSchema
+      | APICollection,
+    navigate: NavigateFunction
+  ): ItemType[] {
+    const isEntityDeleted = _entityDetails?.deleted ?? false;
+    switch (_entityType) {
+      case EntityType.TABLE:
+        return [
+          ...ExtraTableDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      case EntityType.DATABASE:
+        return [
+          ...ExtraDatabaseDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      case EntityType.DATABASE_SCHEMA:
+        return [
+          ...ExtraDatabaseSchemaDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      case EntityType.DATABASE_SERVICE:
+        return [
+          ...ExtraDatabaseServiceDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  public getServiceTypeLookupMap(): Map<string, string> {
+    return this.serviceTypeLookupMap;
+  }
+
+  public getEntityTypeLookupMap(): Map<string, string> {
+    return this.createNormalizedLookupMap(EntityTypeName);
+  }
+
+  public getFormattedEntityType(entityType: string): string {
+    const normalizedKey = entityType?.toLowerCase();
+
+    return (
+      this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
+    );
+  }
+
+  public getFormattedServiceType(serviceType: string): string {
+    const normalizedKey = serviceType.toLowerCase();
+
+    return (
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
+      serviceType
+    );
+  }
+
+  public shouldShowEntityStatus(_entityType: string): boolean {
+    return false;
+  }
+
+  public getEntityTypes(): string[] {
+    return Object.values(EntityType);
+  }
+}
+
+const entityUtilClassBase = new EntityUtilClassBase();
+
+export default entityUtilClassBase;
+
+export { EntityUtilClassBase };

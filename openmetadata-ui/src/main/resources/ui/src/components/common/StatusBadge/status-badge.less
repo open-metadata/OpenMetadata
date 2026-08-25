@@ -1,0 +1,135 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.status-badge {
+  border-radius: @border-rad-md;
+  padding: @padding-xss @padding-xs;
+  text-align: center;
+  max-width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: var(--om-space-4);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  border: 1px solid;
+
+  &.success {
+    color: @green-10;
+    background-color: @green-9;
+    border: 1px solid var(--om-color-white);
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
+    line-height: 20px;
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
+  }
+
+  &.stopped,
+  &.failure,
+  &.failed {
+    color: @red-10;
+    background-color: @red-9;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
+    line-height: 20px;
+    border: 1px solid var(--om-color-white);
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
+  }
+
+  &.warning,
+  &.pending {
+    color: @yellow-11;
+    background-color: @yellow-10;
+    border-color: var(--tw-color-bg-primary);
+  }
+
+  &.aborted {
+    color: var(--om-legacy-color-a84c3d);
+    background-color: @alert-warning-bg;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
+    line-height: 20px;
+    border: 1px solid var(--om-color-white);
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
+  }
+
+  &.no-data {
+    color: @grey-400;
+    background-color: @grey-9;
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
+    border: 1px solid var(--om-color-white);
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
+    line-height: 20px;
+  }
+
+  &.acknowledged {
+    color: @blue-3;
+    background-color: @blue-1;
+    border-color: var(--tw-color-bg-primary);
+  }
+  &.running {
+    color: @primary-heading-color;
+    background-color: @primary-button-background;
+    border-color: @primary-heading-color;
+  }
+
+  &.started,
+  &.inReview {
+    color: @purple-2;
+    background-color: @purple-1;
+    border-color: var(--tw-color-bg-primary);
+  }
+
+  &.deprecated,
+  &.archived {
+    color: @grey-19;
+    background-color: @grey-9;
+    border-color: @grey-19;
+  }
+
+  &.activeError {
+    color: @red-17;
+    background-color: @red-18;
+    border-color: @red-17;
+  }
+
+  &.version {
+    color: @purple-5;
+    background-color: @purple-1;
+    border-color: @purple-5;
+  }
+
+  svg {
+    font-size: var(--om-font-size-xs);
+  }
+}
+
+.status-badge-label {
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-xs);
+  line-height: 20px;
+}
+
+.status-badge-v2 {
+  &.success {
+    .anticon {
+      color: transparent;
+    }
+  }
+}

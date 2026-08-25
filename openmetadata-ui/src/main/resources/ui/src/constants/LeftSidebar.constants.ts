@@ -1,0 +1,281 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Cube01 } from '@untitledui/icons';
+import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
+import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
+import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
+import { ReactComponent as ColumnBulkIcon } from '../assets/svg/entity/column.svg';
+import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
+import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
+import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
+import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
+import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
+import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
+import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
+import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as WorkflowsNavIcon } from '../assets/svg/ic-workflows.svg';
+import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
+import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import { ReactComponent as ArchiveIcon } from '../assets/svg/sidebar-icons/archive.svg';
+import { ReactComponent as ArticlesIcon } from '../assets/svg/sidebar-icons/articles.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/sidebar-icons/dashboard.svg';
+import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/documents.svg';
+import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
+import { SidebarItem } from '../enums/sidebar.enum';
+import { DataInsightTabs } from '../interface/data-insight.interface';
+import { createIconWithStroke } from '../utils/IconUtils';
+import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+
+type UntitledIconType = React.ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
+
+const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
+
+export const SIDEBAR_NESTED_KEYS = {
+  [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+  [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
+  [ROUTES.CONTEXT_CENTER_DASHBOARD]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
+};
+
+export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
+  [`/${ENTITY_PATH.metrics}`]: ROUTES.METRICS,
+  [`/${ENTITY_PATH.tags}`]: ROUTES.TAGS,
+  '/glossary-term': ROUTES.GLOSSARY,
+  '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
+  '/test-case': ROUTES.INCIDENT_MANAGER,
+};
+
+export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
+  {
+    key: ROUTES.MY_DATA,
+    title: 'label.home',
+    redirect_url: ROUTES.MY_DATA,
+    icon: HomeIcon,
+    dataTestId: `app-bar-item-${SidebarItem.HOME}`,
+  },
+  {
+    key: ROUTES.EXPLORE,
+    title: 'label.explore',
+    redirect_url: ROUTES.EXPLORE,
+    icon: ExploreIcon,
+    dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
+  },
+  {
+    key: ROUTES.PLATFORM_LINEAGE,
+    title: 'label.lineage',
+    redirect_url: ROUTES.PLATFORM_LINEAGE,
+    icon: PlatformLineageIcon,
+    dataTestId: `app-bar-item-${SidebarItem.LINEAGE}`,
+  },
+  {
+    key: ROUTES.OBSERVABILITY,
+    title: 'label.observability',
+    icon: ObservabilityIcon,
+    dataTestId: SidebarItem.OBSERVABILITY,
+    children: [
+      {
+        key: ROUTES.DATA_QUALITY,
+        title: 'label.data-quality',
+        redirect_url: ROUTES.DATA_QUALITY,
+        icon: DataQualityIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_QUALITY}`,
+      },
+      {
+        key: ROUTES.INCIDENT_MANAGER,
+        title: 'label.incident-manager',
+        redirect_url: ROUTES.INCIDENT_MANAGER,
+        icon: IncidentMangerIcon,
+        dataTestId: `app-bar-item-${SidebarItem.INCIDENT_MANAGER}`,
+      },
+      {
+        key: ROUTES.OBSERVABILITY_ALERTS,
+        title: 'label.alert-plural',
+        redirect_url: ROUTES.OBSERVABILITY_ALERTS,
+        icon: AlertIcon,
+        dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
+      },
+      {
+        key: ROUTES.TEST_LIBRARY,
+        title: 'label.test-library',
+        redirect_url: ROUTES.TEST_LIBRARY,
+        icon: DataQualityRulesIcon,
+        dataTestId: `app-bar-item-test-library`,
+      },
+    ],
+  },
+  {
+    key: ROUTES.DATA_INSIGHT,
+    title: 'label.insight-plural',
+    redirect_url: ROUTES.DATA_INSIGHT_WITH_TAB.replace(
+      PLACEHOLDER_ROUTE_TAB,
+      DataInsightTabs.DATA_ASSETS
+    ),
+    icon: InsightsIcon,
+    dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
+  },
+  {
+    key: ROUTES.DATA_MARKETPLACE_SECTION,
+    title: 'label.data-marketplace-section',
+    icon: MarketplaceIcon,
+    dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
+    children: [
+      {
+        key: ROUTES.DATA_MARKETPLACE,
+        title: 'label.overview',
+        icon: OverviewIcon,
+        redirect_url: ROUTES.DATA_MARKETPLACE,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
+      },
+      {
+        key: ROUTES.DOMAIN,
+        title: 'label.domain-plural',
+        redirect_url: ROUTES.DOMAIN,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+      },
+      {
+        key: ROUTES.DATA_PRODUCT,
+        title: 'label.data-product-plural',
+        redirect_url: ROUTES.DATA_PRODUCT,
+        icon: DataProductIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
+      },
+    ],
+  },
+  {
+    key: 'governance',
+    title: 'label.govern',
+    icon: GovernIcon,
+    dataTestId: SidebarItem.GOVERNANCE,
+    children: [
+      {
+        key: ROUTES.GLOSSARY,
+        title: 'label.glossary',
+        redirect_url: ROUTES.GLOSSARY,
+        icon: GlossaryIcon,
+        dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
+      },
+      {
+        key: ROUTES.ONTOLOGY_EXPLORER,
+        title: 'label.ontology-explorer',
+        redirect_url: ROUTES.ONTOLOGY_EXPLORER,
+        icon: LineageIcon,
+        dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
+      },
+      {
+        key: ROUTES.TAGS,
+        title: 'label.classification',
+        redirect_url: ROUTES.TAGS,
+        icon: ClassificationIcon,
+        dataTestId: `app-bar-item-${SidebarItem.TAGS}`,
+      },
+      {
+        key: ROUTES.METRICS,
+        title: 'label.metric-plural',
+        redirect_url: ROUTES.METRICS,
+        icon: MetricIcon,
+        dataTestId: `app-bar-item-${SidebarItem.METRICS}`,
+      },
+      {
+        key: ROUTES.COLUMN_BULK_OPERATIONS,
+        title: 'label.column-bulk-operations',
+        redirect_url: ROUTES.COLUMN_BULK_OPERATIONS,
+        icon: ColumnBulkIcon,
+        dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
+        isBeta: true,
+      },
+      {
+        key: ROUTES.WORKFLOWS,
+        title: 'label.workflow-plural',
+        redirect_url: ROUTES.WORKFLOWS,
+        icon: WorkflowsNavIcon,
+        dataTestId: `app-bar-item-${SidebarItem.WORKFLOWS}`,
+      },
+    ],
+  },
+  {
+    key: ROUTES.CONTEXT_CENTER,
+    title: 'label.context-center',
+    icon: KnowledgeCenterIcon,
+    dataTestId: SidebarItem.CONTEXT_CENTER,
+    children: [
+      {
+        key: ROUTES.CONTEXT_CENTER_DASHBOARD,
+        title: 'label.dashboard',
+        redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
+        icon: DashboardIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DASHBOARD}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARTICLES,
+        title: 'label.article-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
+        icon: ArticlesIcon,
+        dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_DOCUMENTS,
+        title: 'label.document-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
+        icon: DocumentsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DOCUMENTS}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_MEMORIES,
+        title: 'label.memory-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_MEMORIES,
+        icon: MemoriesIcon,
+        dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        title: 'label.archive',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        icon: ArchiveIcon,
+        dataTestId: `app-bar-item-context-center-archive`,
+      },
+    ],
+  },
+];
+
+export const SETTING_ITEM = {
+  key: ROUTES.SETTINGS,
+  title: 'label.setting-plural',
+  redirect_url: ROUTES.SETTINGS,
+  icon: SettingsIcon,
+  dataTestId: `app-bar-item-${SidebarItem.SETTINGS}`,
+};
+
+export const LOGOUT_ITEM = {
+  key: SidebarItem.LOGOUT,
+  title: 'label.logout',
+  icon: LogoutIcon,
+  dataTestId: `app-bar-item-${SidebarItem.LOGOUT}`,
+};

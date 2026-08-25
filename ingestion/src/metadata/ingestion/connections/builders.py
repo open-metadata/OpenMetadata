@@ -1,0 +1,246 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Get and test connection utilities
+"""
+
+from functools import partial
+from typing import Any, Callable, Dict, Optional  # noqa: UP035
+from urllib.parse import quote_plus
+
+from pydantic import SecretStr
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Dialect, Engine
+from sqlalchemy.event import listen
+from sqlalchemy.pool import QueuePool
+
+from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
+    ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
+    IamAuthConfigurationSource,
+)
+from metadata.ingestion.connections.headers import inject_query_header_by_conn
+from metadata.ingestion.connections.query_logger import attach_query_tracker
+from metadata.ingestion.connections.secrets import connection_with_options_secrets
+from metadata.utils.constants import BUILDER_PASSWORD_ATTR
+from metadata.utils.logger import cli_logger
+
+logger = cli_logger()
+
+
+@connection_with_options_secrets
+def get_connection_args_common(connection) -> Dict[str, Any]:  # noqa: UP006
+    """
+    Read the connection arguments of a connection.
+
+    Any function operating on top of the connection
+    arguments should be decorated with `connection_with_options_secrets`
+    """
+
+    return (
+        connection.connectionArguments.root
+        if connection.connectionArguments and connection.connectionArguments.root
+        else {}
+    )
+
+
+def _dialect_supports_autocommit(dialect: Dialect) -> bool:
+    """
+    Return True when the SQLAlchemy dialect accepts isolation_level='AUTOCOMMIT'.
+    Uses get_isolation_level_values(None), which the transactional dialects
+    evaluate without a live connection. Non-transactional dialects (Hive, Impala,
+    Druid, Pinot) may not implement it, in which case we treat it as unsupported.
+    """
+    supported = False
+    # Transactional dialects report their isolation levels without reading the
+    # connection, so None is safe here; others raise and are handled below.
+    no_connection: Any = None
+    try:
+        supported = "AUTOCOMMIT" in dialect.get_isolation_level_values(no_connection)
+    except Exception:  # pylint: disable=broad-except
+        supported = False
+    return supported
+
+
+def create_generic_db_connection(
+    connection,
+    get_connection_url_fn: Callable,
+    get_connection_args_fn: Callable,
+    **kwargs,
+) -> Engine:
+    """
+    Generic Engine creation from connection object
+
+    Args:
+        connection: JSON Schema connection model
+        get_connection_url_fn: url build callable
+        get_connection_args_fn: args build callable
+    Returns:
+        SQLAlchemy Engine
+    """
+    url = get_connection_url_fn(connection)
+    connect_args = get_connection_args_fn(connection)
+
+    def build_engine(**extra) -> Engine:
+        return create_engine(
+            url,
+            connect_args=connect_args,
+            poolclass=QueuePool,
+            pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
+            echo=False,
+            max_overflow=-1,
+            **extra,
+            **kwargs,
+        )
+
+    engine = build_engine()
+
+    # Read-only metadata/profiler ingestion must not hold a transaction open for
+    # the whole run. On Redshift/Postgres that pins AccessShareLock on every
+    # crawled table and blocks other users' DDL for hours (issue #29092).
+    # AUTOCOMMIT releases locks after each statement. Skip dialects that do not
+    # support it (non-transactional engines do not hold these locks anyway).
+    #
+    # It has to be a create_engine kwarg rather than engine.update_execution_options:
+    # only the kwarg records the level on the dialect, and that is what SQLAlchemy
+    # restores to when a connection returns to the pool. Supplied as an execution
+    # option that field stays unset and the restore falls back to the dialect's
+    # default_isolation_level, which Dialect.initialize leaves as None on any dialect
+    # that cannot read its level back (Azure Synapse cannot query sys.dm_exec_sessions),
+    # so releasing the connection asserts in reset_isolation_level. Dialect support can
+    # only be probed once the engine has resolved it, and building an engine opens no
+    # connection, so discarding the first one costs nothing.
+    if "isolation_level" not in kwargs and _dialect_supports_autocommit(engine.dialect):
+        engine = build_engine(isolation_level="AUTOCOMMIT")
+
+    attach_query_tracker(engine)
+
+    if hasattr(connection, "supportsQueryComment"):
+        listen(
+            engine,
+            "before_cursor_execute",
+            partial(inject_query_header_by_conn, connection),
+            retval=True,
+        )
+
+    return engine
+
+
+def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    """
+    Given a connection object, returns the connection options
+    dictionary if exists
+    """
+    return (
+        connection.connectionOptions.root
+        if connection.connectionOptions and connection.connectionOptions.root
+        else None
+    )
+
+
+def init_empty_connection_arguments() -> ConnectionArguments:
+    """
+    Initialize a ConnectionArguments model with an empty dictionary.
+    This helps set keys without further validations.
+
+    `ConnectionArguments()` raises a ValidationError since `root` is required.
+
+    Instead, we want `ConnectionArguments(root={})` so that
+    we can pass new keys easily as `connectionArguments.root["key"] = "value"`
+    """
+    return ConnectionArguments(root={})
+
+
+def init_empty_connection_options() -> ConnectionOptions:
+    """
+    Initialize a ConnectionOptions model with an empty dictionary.
+    This helps set keys without further validations.
+
+    `ConnectionOptions()` raises a ValidationError since `root` is required.
+
+    Instead, we want `ConnectionOptions(root={})` so that
+    we can pass new keys easily as `ConnectionOptions.root["key"] = "value"`
+    """
+    return ConnectionOptions(root={})
+
+
+def get_password_secret(connection) -> SecretStr:
+    """
+    Helper to extract the password secret from the connection object.
+    Handles BasicAuth, IamAuth, and falls back to empty SecretStr if not found.
+    """
+    password = getattr(connection, BUILDER_PASSWORD_ATTR, None)
+
+    if not password:
+        password = SecretStr("")
+
+        # Check if IamAuth exists - specific to Mysql and Postgres connection.
+        if hasattr(connection, "authType"):
+            password = getattr(connection.authType, BUILDER_PASSWORD_ATTR, SecretStr(""))
+            if isinstance(connection.authType, IamAuthConfigurationSource):
+                # if IAM based, fetch rds client and generate db auth token.
+                aws_client = AWSClient(config=connection.authType.awsConfig).get_rds_client()
+                host, port = connection.hostPort.split(":")
+                password = SecretStr(
+                    aws_client.generate_db_auth_token(
+                        DBHostname=host,
+                        Port=port,
+                        DBUsername=connection.username,
+                        Region=connection.authType.awsConfig.awsRegion,
+                    )
+                )
+    if not password:
+        logger.warning("No password has been provided in connection")
+        password = SecretStr("")
+    return password
+
+
+def _add_password(url: str, connection) -> str:
+    """
+    A helper function that adds the password to the url if it exists.
+    """
+    password = get_password_secret(connection)
+    url += f":{quote_plus(password.get_secret_value())}"
+    return url
+
+
+def get_connection_url_common(connection) -> str:
+    """
+    Common method for building the source connection urls
+    """
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        url = _add_password(url, connection)
+        url += "@"
+
+    url += connection.hostPort
+    if hasattr(connection, "database"):
+        url += f"/{connection.database}" if connection.database else ""
+
+    elif hasattr(connection, "databaseSchema"):
+        url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
+
+    options = get_connection_options_dict(connection)
+    if options:
+        if (hasattr(connection, "database") and not connection.database) or (
+            hasattr(connection, "databaseSchema") and not connection.databaseSchema
+        ):
+            url += "/"
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
+        url = f"{url}?{params}"
+    return url

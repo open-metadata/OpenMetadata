@@ -1,0 +1,18 @@
+{
+  "name": "DataContractValidationApplication",
+  "displayName": "Data Contract Validation",
+  "description": "The Data Contract Validation application is designed to validate data contracts and ensure compliance with your standards. It ensures schemas, semantics, and data quality are maintained across your data assets.",
+  "features": "Run the Data Contract validation at a schedule.",
+  "appType": "internal",
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.dataContracts.DataContractValidationApp",
+  "runtime": {
+    "enabled": "true"
+  },
+  "allowConfiguration": "false"
+}

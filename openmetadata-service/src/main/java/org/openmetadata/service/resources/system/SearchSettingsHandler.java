@@ -1,0 +1,336 @@
+package org.openmetadata.service.resources.system;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
+import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.search.StopWordsByLanguage;
+import org.openmetadata.service.exception.SystemSettingsException;
+
+public class SearchSettingsHandler {
+  private static final int MIN_AGGREGATE_SIZE = 100;
+  private static final int MAX_AGGREGATE_SIZE = 10000;
+  private static final int MIN_RESULT_HITS = 100;
+  private static final int MAX_RESULT_HITS = 10000;
+  private static final int MIN_ANALYZED_OFFSET = 1000;
+  private static final int MAX_ANALYZED_OFFSET = 1000000;
+
+  public void validateSearchSettings(SearchSettings searchSettings) {
+    // Validate global settings
+    validateGlobalSettings(searchSettings.getGlobalSettings());
+
+    if (searchSettings.getDefaultConfiguration() != null) {
+      validateAssetTypeConfiguration(searchSettings.getDefaultConfiguration());
+    }
+
+    // Validate asset type configurations for duplicate fields
+    if (searchSettings.getAssetTypeConfigurations() != null) {
+      for (AssetTypeConfiguration assetConfig : searchSettings.getAssetTypeConfigurations()) {
+        validateAssetTypeConfiguration(assetConfig);
+      }
+    }
+  }
+
+  public void validateAssetTypeConfiguration(AssetTypeConfiguration assetConfig) {
+    if (assetConfig.getSearchFields() != null) {
+      Set<String> fieldNames = new HashSet<>();
+
+      for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+        String fieldName = fieldBoost.getField();
+        if (!fieldNames.add(fieldName)) {
+          throw new SystemSettingsException(
+              String.format(
+                  "Duplicate field configuration found for field: %s in asset type: %s",
+                  fieldName, assetConfig.getAssetType()));
+        }
+
+        validateExtensionField(fieldName, assetConfig.getAssetType());
+      }
+    }
+    validateRanking(assetConfig.getRanking(), assetConfig.getAssetType());
+  }
+
+  private void validateRanking(RankingConfiguration ranking, String assetType) {
+    if (ranking == null || Boolean.FALSE.equals(ranking.getEnabled())) {
+      return;
+    }
+    if (ranking.getStages() == null || ranking.getStages().isEmpty()) {
+      throw new SystemSettingsException(
+          String.format("Ranking stages cannot be empty for asset type: %s", assetType));
+    }
+
+    Set<String> stageNames = new HashSet<>();
+    for (RankingStage stage : ranking.getStages()) {
+      if (stage.getName() == null || stage.getName().trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format("Ranking stage name cannot be empty for asset type: %s", assetType));
+      }
+      if (!stageNames.add(stage.getName())) {
+        throw new SystemSettingsException(
+            String.format(
+                "Duplicate ranking stage found for stage: %s in asset type: %s",
+                stage.getName(), assetType));
+      }
+      if (stage.getFields() == null || stage.getFields().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stage %s must define at least one field for asset type: %s",
+                stage.getName(), assetType));
+      }
+      if (stage.getWeight() != null && stage.getWeight() <= 0.0) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stage %s weight must be greater than zero for asset type: %s",
+                stage.getName(), assetType));
+      }
+    }
+    validateStopWordsByLanguage(ranking, assetType);
+    if (ranking.getSignals() != null
+        && ranking.getSignals().getMaxBoost() != null
+        && ranking.getSignals().getMaxBoost() <= 0.0) {
+      throw new SystemSettingsException(
+          String.format("Ranking signal maxBoost must be positive for asset type: %s", assetType));
+    }
+  }
+
+  private void validateStopWordsByLanguage(RankingConfiguration ranking, String assetType) {
+    StopWordsByLanguage stopWordsByLanguage = ranking.getStopWordsByLanguage();
+    if (stopWordsByLanguage == null || stopWordsByLanguage.getAdditionalProperties() == null) {
+      return;
+    }
+    for (Map.Entry<String, List<String>> entry :
+        stopWordsByLanguage.getAdditionalProperties().entrySet()) {
+      if (entry.getKey() == null || entry.getKey().trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stopword language cannot be empty for asset type: %s", assetType));
+      }
+      if (entry.getValue() == null) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stopwords cannot be null for language: %s in asset type: %s",
+                entry.getKey(), assetType));
+      }
+    }
+  }
+
+  private void validateExtensionField(String fieldName, String assetType) {
+    if (fieldName.startsWith("extension.")) {
+      String[] parts = fieldName.split("\\.", 2);
+      if (parts.length != 2 || parts[1].trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Invalid extension field format: %s. Extension fields must be in format 'extension.propertyName' for asset type: %s",
+                fieldName, assetType));
+      }
+    }
+  }
+
+  public void validateGlobalSettings(GlobalSettings globalSettings) {
+    if (globalSettings != null) {
+      if (globalSettings.getMaxAggregateSize() != null) {
+        validateRange(
+            globalSettings.getMaxAggregateSize(),
+            MIN_AGGREGATE_SIZE,
+            MAX_AGGREGATE_SIZE,
+            "maxAggregateSize");
+      }
+      if (globalSettings.getMaxResultHits() != null) {
+        validateRange(
+            globalSettings.getMaxResultHits(), MIN_RESULT_HITS, MAX_RESULT_HITS, "maxResultHits");
+      }
+      if (globalSettings.getMaxAnalyzedOffset() != null) {
+        validateRange(
+            globalSettings.getMaxAnalyzedOffset(),
+            MIN_ANALYZED_OFFSET,
+            MAX_ANALYZED_OFFSET,
+            "maxAnalyzedOffset");
+      }
+      if (globalSettings.getKeywordWeight() != null) {
+        validateWeightRange(globalSettings.getKeywordWeight(), "keywordWeight");
+      }
+      if (globalSettings.getSemanticWeight() != null) {
+        validateWeightRange(globalSettings.getSemanticWeight(), "semanticWeight");
+      }
+      validateHybridWeightsSum(
+          globalSettings.getKeywordWeight(), globalSettings.getSemanticWeight());
+    }
+  }
+
+  private void validateWeightRange(double value, String field) {
+    if (value < 0.0 || value > 1.0) {
+      throw new SystemSettingsException(String.format("%s must be between 0.0 and 1.0", field));
+    }
+  }
+
+  private void validateHybridWeightsSum(Double keywordWeight, Double semanticWeight) {
+    if (keywordWeight != null && semanticWeight != null) {
+      double sum = keywordWeight + semanticWeight;
+      if (Math.abs(sum - 1.0) > 0.001) {
+        throw new SystemSettingsException(
+            String.format(
+                "keywordWeight (%.2f) and semanticWeight (%.2f) must sum to 1.0, but got %.2f",
+                keywordWeight, semanticWeight, sum));
+      }
+    }
+  }
+
+  private void validateRange(int value, int min, int max, String field) {
+    if (value < min || value > max) {
+      throw new SystemSettingsException(
+          String.format("%s must be between %d and %d", field, min, max));
+    }
+  }
+
+  /**
+   * Merges default search settings with incoming search settings.
+   * Certain fields like aggregations and highlightFields are kept from defaults,
+   * while user-configurable settings like termBoosts and fieldValueBoosts are taken from incoming settings if present.
+   */
+  public SearchSettings mergeSearchSettings(
+      SearchSettings defaultSearchSettings, SearchSettings incomingSearchSettings) {
+    if (defaultSearchSettings == null) {
+      throw new SystemSettingsException("Default search settings cannot be null");
+    }
+
+    if (incomingSearchSettings == null) {
+      return defaultSearchSettings;
+    }
+
+    GlobalSettings defaultGlobalSettings = defaultSearchSettings.getGlobalSettings();
+    GlobalSettings incomingGlobalSettings = incomingSearchSettings.getGlobalSettings();
+    GlobalSettings mergedGlobalSettings = new GlobalSettings();
+
+    // For numeric settings, use incoming if provided, otherwise use default
+    mergedGlobalSettings.setMaxAggregateSize(
+        incomingGlobalSettings != null && incomingGlobalSettings.getMaxAggregateSize() != null
+            ? incomingGlobalSettings.getMaxAggregateSize()
+            : defaultGlobalSettings.getMaxAggregateSize());
+
+    mergedGlobalSettings.setMaxResultHits(
+        incomingGlobalSettings != null && incomingGlobalSettings.getMaxResultHits() != null
+            ? incomingGlobalSettings.getMaxResultHits()
+            : defaultGlobalSettings.getMaxResultHits());
+
+    mergedGlobalSettings.setMaxAnalyzedOffset(
+        incomingGlobalSettings != null && incomingGlobalSettings.getMaxAnalyzedOffset() != null
+            ? incomingGlobalSettings.getMaxAnalyzedOffset()
+            : defaultGlobalSettings.getMaxAnalyzedOffset());
+
+    mergedGlobalSettings.setEnableAccessControl(
+        incomingGlobalSettings != null && incomingGlobalSettings.getEnableAccessControl() != null
+            ? incomingGlobalSettings.getEnableAccessControl()
+            : defaultGlobalSettings.getEnableAccessControl());
+
+    mergedGlobalSettings.setKeywordWeight(
+        incomingGlobalSettings != null && incomingGlobalSettings.getKeywordWeight() != null
+            ? incomingGlobalSettings.getKeywordWeight()
+            : defaultGlobalSettings.getKeywordWeight());
+
+    mergedGlobalSettings.setSemanticWeight(
+        incomingGlobalSettings != null && incomingGlobalSettings.getSemanticWeight() != null
+            ? incomingGlobalSettings.getSemanticWeight()
+            : defaultGlobalSettings.getSemanticWeight());
+
+    // Keep these settings from default - these are system controlled
+    mergedGlobalSettings.setAggregations(defaultGlobalSettings.getAggregations());
+    mergedGlobalSettings.setHighlightFields(defaultGlobalSettings.getHighlightFields());
+
+    // Use incoming termBoosts and fieldValueBoosts if provided, otherwise keep defaults
+    // These settings are user controlled
+    if (incomingGlobalSettings != null) {
+      // For TermBoosts
+      if (incomingGlobalSettings.getTermBoosts() != null) {
+        mergedGlobalSettings.setTermBoosts(new ArrayList<>(incomingGlobalSettings.getTermBoosts()));
+      } else {
+        mergedGlobalSettings.setTermBoosts(
+            defaultGlobalSettings.getTermBoosts() != null
+                ? new ArrayList<>(defaultGlobalSettings.getTermBoosts())
+                : new ArrayList<>());
+      }
+
+      // For FieldValueBoosts
+      if (incomingGlobalSettings.getFieldValueBoosts() != null) {
+        mergedGlobalSettings.setFieldValueBoosts(
+            new ArrayList<>(incomingGlobalSettings.getFieldValueBoosts()));
+      } else {
+        mergedGlobalSettings.setFieldValueBoosts(
+            defaultGlobalSettings.getFieldValueBoosts() != null
+                ? new ArrayList<>(defaultGlobalSettings.getFieldValueBoosts())
+                : new ArrayList<>());
+      }
+    } else {
+      // If incomingGlobalSettings is null, use defaults
+      mergedGlobalSettings.setTermBoosts(
+          defaultGlobalSettings.getTermBoosts() != null
+              ? new ArrayList<>(defaultGlobalSettings.getTermBoosts())
+              : new ArrayList<>());
+      mergedGlobalSettings.setFieldValueBoosts(
+          defaultGlobalSettings.getFieldValueBoosts() != null
+              ? new ArrayList<>(defaultGlobalSettings.getFieldValueBoosts())
+              : new ArrayList<>());
+    }
+
+    // Set the merged global settings
+    incomingSearchSettings.setGlobalSettings(mergedGlobalSettings);
+
+    // Set default configuration if not provided
+    if (incomingSearchSettings.getDefaultConfiguration() == null) {
+      incomingSearchSettings.setDefaultConfiguration(
+          defaultSearchSettings.getDefaultConfiguration());
+    } else if (incomingSearchSettings.getDefaultConfiguration().getRanking() == null
+        && defaultSearchSettings.getDefaultConfiguration() != null) {
+      incomingSearchSettings
+          .getDefaultConfiguration()
+          .setRanking(defaultSearchSettings.getDefaultConfiguration().getRanking());
+    }
+
+    // Merge asset type configurations
+    mergeAssetTypeConfigurations(defaultSearchSettings, incomingSearchSettings);
+
+    // IMPORTANT: Always preserve allowedFields from default settings
+    // This ensures admins cannot override the allowedFields configuration
+    incomingSearchSettings.setAllowedFields(defaultSearchSettings.getAllowedFields());
+
+    // Validate the merged settings before returning
+    validateSearchSettings(incomingSearchSettings);
+
+    return incomingSearchSettings;
+  }
+
+  /**
+   * Merges asset type configurations from default settings into incoming settings
+   * ensuring all required asset types are present.
+   */
+  private void mergeAssetTypeConfigurations(
+      SearchSettings defaultSearchSettings, SearchSettings incomingSearchSettings) {
+    List<AssetTypeConfiguration> defaultAssetTypes =
+        defaultSearchSettings.getAssetTypeConfigurations();
+    List<AssetTypeConfiguration> incomingAssetTypes =
+        incomingSearchSettings.getAssetTypeConfigurations();
+
+    if (incomingAssetTypes == null) {
+      incomingAssetTypes = new ArrayList<>();
+      incomingSearchSettings.setAssetTypeConfigurations(incomingAssetTypes);
+    }
+
+    if (defaultAssetTypes != null) {
+      for (AssetTypeConfiguration defaultConfig : defaultAssetTypes) {
+        String assetType = defaultConfig.getAssetType().toLowerCase();
+        boolean exists =
+            incomingAssetTypes.stream()
+                .anyMatch(config -> config.getAssetType().equalsIgnoreCase(assetType));
+        if (!exists) {
+          incomingAssetTypes.add(defaultConfig);
+        }
+      }
+    }
+  }
+}

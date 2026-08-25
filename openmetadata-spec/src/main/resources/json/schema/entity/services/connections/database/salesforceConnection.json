@@ -1,0 +1,118 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/salesforceConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SalesforceConnection",
+  "description": "Salesforce Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SalesforceConnection",
+  "definitions": {
+    "salesforceType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Salesforce"
+      ],
+      "default": "Salesforce"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/salesforceType",
+      "default": "Salesforce"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Salesforce. This user should have privileges to read all the metadata in Salesforce.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Salesforce.",
+      "type": "string",
+      "format": "password"
+    },
+    "securityToken": {
+      "title": "Security Token",
+      "description": "Salesforce Security Token for username/password authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "consumerKey": {
+      "title": "Consumer Key",
+      "description": "Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration. Required along with Consumer Secret for OAuth authentication.",
+      "type": "string"
+    },
+    "consumerSecret": {
+      "title": "Consumer Secret",
+      "description": "Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration. Required along with Consumer Key for OAuth authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "organizationId": {
+      "title": "Salesforce Organization ID",
+      "description": "Salesforce Organization ID is the unique identifier for your Salesforce identity",
+      "type": "string"
+    },
+    "sobjectNames": {
+      "title": "Object Names",
+      "description": "List of Salesforce Object Names to ingest. If specified, only these objects will be fetched. Leave empty to fetch all objects (subject to tableFilterPattern).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "salesforceApiVersion": {
+      "title": "Salesforce API Version",
+      "description": "API version of the Salesforce instance",
+      "type": "string",
+      "default": "42.0"
+    },
+    "salesforceDomain": {
+      "title": "Salesforce Domain",
+      "description": "Domain of Salesforce instance",
+      "type": "string",
+      "default": "login"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,557 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { isEmpty, noop } from 'lodash';
+import { EntityTags } from 'Models';
+import { lazy, useCallback, useMemo, useState } from 'react';
+import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../../enums/CustomizeDetailPage.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Directory } from '../../../generated/entity/data/directory';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
+import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
+import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../generated/entity/type';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtilsPure';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../../AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+
+type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const WIDGET_FALLBACK = <EntityDetailWidgetSkeleton />;
+const LARGE_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton lineCount={5} />;
+
+const CertificationWidget = withSuspenseFallback(
+  lazy(() => import('../../common/CertificationWidget/CertificationWidget')),
+  WIDGET_FALLBACK
+);
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (m) => ({
+        default: m.CustomPropertyTable,
+      })
+    )
+  ),
+  LARGE_WIDGET_FALLBACK
+) as CustomPropertyTableComponent;
+
+const Description = withSuspenseFallback(
+  lazy(() => import('../../common/EntityDescription/Description')),
+  WIDGET_FALLBACK
+);
+
+const TierWidget = withSuspenseFallback(
+  lazy(() => import('../../common/TierWidget/TierWidget')),
+  WIDGET_FALLBACK
+);
+
+const LeftPanelContainer = withSuspenseFallback(
+  lazy(() =>
+    import('../../Customization/GenericTab/LeftPanelContainer').then((m) => ({
+      default: m.LeftPanelContainer,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const DataProductsContainer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
+  ),
+  WIDGET_FALLBACK
+);
+
+const DomainExpertWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../Domain/DomainExpertsWidget/DomainExpertWidget').then((m) => ({
+      default: m.DomainExpertWidget,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const TagsContainerV2 = withSuspenseFallback(
+  lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2')),
+  WIDGET_FALLBACK
+);
+
+const DomainLabelV2 = withSuspenseFallback(
+  lazy(() =>
+    import('../DomainLabelV2/DomainLabelV2').then((m) => ({
+      default: m.DomainLabelV2,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const OwnerLabelV2 = withSuspenseFallback(
+  lazy(() =>
+    import('../OwnerLabelV2/OwnerLabelV2').then((m) => ({
+      default: m.OwnerLabelV2,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const ReviewerLabelV2 = withSuspenseFallback(
+  lazy(() =>
+    import('../ReviewerLabelV2/ReviewerLabelV2').then((m) => ({
+      default: m.ReviewerLabelV2,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const GlossaryUpdateConfirmationModal = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal'
+    ).then((m) => ({ default: m.GlossaryUpdateConfirmationModal }))
+  ),
+  TAB_CONTENT_FALLBACK
+);
+
+interface GenericEntity
+  extends Exclude<EntityReference, 'type'>,
+    Pick<
+      Table,
+      | 'deleted'
+      | 'description'
+      | 'owners'
+      | 'domains'
+      | 'dataProducts'
+      | 'extension'
+      | 'tags'
+    > {
+  changeDescription: ChangeDescription;
+}
+
+interface CommonWidgetsProps {
+  widgetConfig: WidgetConfig;
+  entityType: EntityType;
+  showTaskHandler?: boolean;
+}
+
+export const CommonWidgets = ({
+  widgetConfig,
+  entityType,
+  showTaskHandler = true,
+}: CommonWidgetsProps) => {
+  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
+    useGenericContext<GenericEntity>();
+  const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
+
+  const updatedData = useMemo(() => {
+    const updatedDescription = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.DESCRIPTION,
+          data.description
+        )
+      : data.description;
+
+    const updatedName = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.NAME,
+          data.name
+        )
+      : data.name;
+    const updatedDisplayName = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.DISPLAYNAME,
+          data.displayName
+        )
+      : data.displayName;
+
+    const updatedTags = isVersionView
+      ? getEntityVersionTags(data as VersionEntityTypes, data.changeDescription)
+      : data.tags;
+
+    return {
+      ...data,
+      description: updatedDescription,
+      name: updatedName,
+      displayName: updatedDisplayName,
+      tags: updatedTags,
+    };
+  }, [data, isVersionView]);
+
+  const {
+    tier,
+    tags,
+    deleted,
+    owners,
+    domains,
+    dataProducts,
+    description,
+    entityName,
+    fullyQualifiedName,
+  } = useMemo(() => {
+    const { tags } = updatedData;
+
+    return {
+      ...updatedData,
+      tier: getTierTags(tags ?? []),
+      tags: getTagsWithoutTier(tags ?? []),
+      entityName: getEntityName(data),
+    };
+  }, [updatedData, updatedData?.tags]);
+
+  // To determine if Description is expanded or not
+  // Typically needed when description schema, charts or any other table is empty will expand description by default
+  const isDescriptionExpanded = useMemo(() => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return isEmpty((data as unknown as Table).columns);
+      case EntityType.DASHBOARD:
+        return isEmpty((data as unknown as Dashboard).charts);
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return isEmpty((data as unknown as DashboardDataModel).columns);
+      case EntityType.MLMODEL:
+        return isEmpty((data as unknown as Mlmodel).mlFeatures);
+      case EntityType.PIPELINE:
+        return isEmpty((data as unknown as Pipeline).tasks);
+      case EntityType.TOPIC:
+        return isEmpty((data as unknown as Topic).messageSchema?.schemaFields);
+      case EntityType.SEARCH_INDEX:
+        return isEmpty((data as unknown as SearchIndex).fields);
+      case EntityType.STORED_PROCEDURE:
+        return isEmpty(
+          (data as unknown as StoredProcedure).code ??
+            (data as unknown as StoredProcedure).storedProcedureCode
+        );
+      case EntityType.GLOSSARY:
+        return (data as unknown as Glossary).termCount === 0;
+      case EntityType.DOMAIN:
+      case EntityType.METRIC:
+      case EntityType.FILE:
+      case EntityType.WORKSHEET:
+        return true;
+      case EntityType.DIRECTORY:
+        return isEmpty((data as unknown as Directory).children);
+      case EntityType.SPREADSHEET:
+        return isEmpty((data as unknown as Spreadsheet).worksheets);
+      default:
+        return false;
+    }
+  }, [data, entityType]);
+
+  const {
+    editDataProductPermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
+    () => ({
+      editDataProductPermission: permissions.EditAll && !deleted,
+      editTagsPermission:
+        (permissions.EditTags || permissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (permissions.EditDescription || permissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
+      editCustomAttributePermission:
+        (permissions.EditAll || permissions.EditCustomFields) && !deleted,
+      editAllPermission: permissions.EditAll && !deleted,
+      editLineagePermission:
+        (permissions.EditAll || permissions.EditLineage) && !deleted,
+      viewSampleDataPermission:
+        permissions.ViewAll || permissions.ViewSampleData,
+      viewQueriesPermission: permissions.ViewAll || permissions.ViewQueries,
+      viewProfilerPermission:
+        permissions.ViewAll ||
+        permissions.ViewDataProfile ||
+        permissions.ViewTests,
+      viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewCustomFields
+      ),
+    }),
+    [permissions, deleted]
+  );
+
+  const handleDataProductsSave = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      // Create a clean updated list of entity references
+      const updatedDataProducts = dataProducts.map((dataProduct) =>
+        getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+      );
+
+      await onUpdate({ ...data, dataProducts: updatedDataProducts });
+    },
+    [data, onUpdate]
+  );
+
+  const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
+    setTagsUpdating(updatedTags);
+  };
+
+  const handleGlossaryTagUpdateValidationConfirm = async () => {
+    if (tagsUpdating && data) {
+      const updatedTags = [...(tier ? [tier] : []), ...tagsUpdating];
+      const updatedTable = { ...data, tags: updatedTags };
+      await onUpdate(updatedTable);
+    }
+  };
+
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const handleTagsUpdate = async (selectedTags?: Array<TagLabel>) => {
+    if (type === EntityType.GLOSSARY_TERM) {
+      handleTagUpdateForGlossaryTerm(selectedTags);
+
+      return;
+    }
+
+    if (selectedTags && data) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...data, tags: updatedTags };
+      await onUpdate(updatedTable);
+    }
+  };
+
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
+    await handleTagsUpdate(updatedTags);
+  };
+
+  const dataProductsWidget = useMemo(() => {
+    return (
+      <DataProductsContainer
+        newLook
+        activeDomains={domains}
+        dataProducts={dataProducts ?? []}
+        hasPermission={editDataProductPermission}
+        multiple={entityRules.canAddMultipleDataProducts}
+        onSave={handleDataProductsSave}
+      />
+    );
+  }, [
+    dataProducts,
+    domains,
+    editDataProductPermission,
+    handleDataProductsSave,
+  ]);
+
+  const tagsWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        newLook
+        useGenericControls
+        displayType={DisplayType.READ_MORE}
+        entityFqn={fullyQualifiedName}
+        entityType={type}
+        permission={editTagsPermission && !isVersionView}
+        selectedTags={tags}
+        showTaskHandler={showTaskHandler && !isVersionView}
+        tagType={TagSource.Classification}
+        onSelectionChange={handleTagSelection}
+      />
+    );
+  }, [
+    editTagsPermission,
+    tags,
+    type,
+    fullyQualifiedName,
+    showTaskHandler,
+    isVersionView,
+  ]);
+
+  const glossaryWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        newLook
+        useGenericControls
+        displayType={DisplayType.READ_MORE}
+        entityFqn={fullyQualifiedName}
+        entityType={type}
+        multiSelect={entityRules.canAddMultipleGlossaryTerm}
+        permission={editGlossaryTermsPermission && !isVersionView}
+        selectedTags={tags}
+        showTaskHandler={showTaskHandler && !isVersionView}
+        tagType={TagSource.Glossary}
+        onSelectionChange={handleTagSelection}
+      />
+    );
+  }, [
+    editGlossaryTermsPermission,
+    tags,
+    type,
+    fullyQualifiedName,
+    showTaskHandler,
+    isVersionView,
+  ]);
+
+  const descriptionWidget = useMemo(() => {
+    return (
+      <Description
+        showSuggestions
+        wrapInCard
+        description={description}
+        entityFullyQualifiedName={data?.fullyQualifiedName ?? ''}
+        entityName={entityName}
+        entityType={type}
+        hasEditAccess={editDescriptionPermission}
+        isDescriptionExpanded={isDescriptionExpanded}
+        owner={owners}
+        removeBlur={type === EntityType.DOMAIN}
+        showActions={!deleted}
+        onDescriptionUpdate={async (value: string) => {
+          if (value !== description) {
+            await onUpdate(
+              {
+                ...data,
+                description: value === '' ? undefined : value, // To remove the entire value and should present with empty quotes
+              },
+              'description'
+            );
+          }
+        }}
+      />
+    );
+  }, [
+    description,
+    entityName,
+    type,
+    editDescriptionPermission,
+    deleted,
+    owners,
+    isDescriptionExpanded,
+  ]);
+
+  const widget = useMemo(() => {
+    if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
+      return descriptionWidget;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
+      return dataProductsWidget;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {
+      return tagsWidget;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.GLOSSARY_TERMS)) {
+      return glossaryWidget;
+    } else if (
+      widgetConfig.i.startsWith(DetailPageWidgetKeys.CUSTOM_PROPERTIES)
+    ) {
+      return (
+        <CustomPropertyTable<EntityType.TABLE>
+          isRenderedInRightPanel
+          entityType={entityType as EntityType.TABLE}
+          hasEditAccess={Boolean(editCustomAttributePermission)}
+          hasPermission={viewCustomPropertiesPermission}
+          maxDataCap={5}
+        />
+      );
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
+      return <OwnerLabelV2 />;
+    } else if (
+      widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ) {
+      return <ReviewerLabelV2 />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
+      return <DomainExpertWidget />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
+      return (
+        <DomainLabelV2
+          showDomainHeading
+          multiple={entityRules.canAddMultipleDomains}
+        />
+      );
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TIER)) {
+      return <TierWidget />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CERTIFICATION)) {
+      return <CertificationWidget />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+      return (
+        <LeftPanelContainer
+          isEditView={false}
+          layout={widgetConfig.children ?? []}
+          type={ENTITY_PAGE_TYPE_MAP[type]}
+          onUpdate={noop}
+        />
+      );
+    }
+    const Widget =
+      commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
+
+    return Widget ? <Widget /> : null;
+  }, [
+    widgetConfig,
+    descriptionWidget,
+    glossaryWidget,
+    tagsWidget,
+    dataProductsWidget,
+  ]);
+
+  return (
+    <>
+      {widget}
+      {tagsUpdating && (
+        <GlossaryUpdateConfirmationModal
+          glossaryTerm={updatedData as unknown as GlossaryTerm}
+          updatedTags={tagsUpdating}
+          onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
+        />
+      )}
+    </>
+  );
+};

@@ -1,0 +1,30 @@
+{
+  "name": "DataInsightsApplication",
+  "displayName": "Data Insights",
+  "appConfiguration": {
+    "batchSize": 100,
+    "recreateDataAssetsIndex": false,
+    "backfillConfiguration": {
+        "enabled": false
+    },
+    "moduleConfiguration": {
+      "dataAssets": {
+        "enabled": true,
+        "entities": [
+          "all"
+        ],
+        "retention": 90
+      },
+      "appAnalytics": {
+        "enabled": true
+      },
+      "costAnalysis": {
+        "enabled": true
+      }
+    }
+  },
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 3 * * *"
+  }
+}

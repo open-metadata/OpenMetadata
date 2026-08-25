@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+if ! docker info &> /dev/null; then
+  echo "Docker must be running to start services"
+  exit 1
+fi
+
+help_function()
+{
+  echo "
+  Usage: $0 [OPTIONS]
+  This script downloads the docker compose of a given release and merges it with \`docker-compose.override.yml\`
+
+  Options:
+   -s services. Space separated list of services to boot from the compose file. Options: [jupyter, dwh, ingestion, openmetadata-server] Default: none.
+   -v OpenMetadata version: Default [1.10.4]
+   -d Download: [true, false]. Forces downloading the OM docker compose if already downloaded. Default [false]
+   -h For usage help
+  "
+   exit 1 # Exit script after printing help
+}
+
+while getopts "v:d:s:h" opt
+do
+   case "$opt" in
+      s ) services="$OPTARG" ;;
+      v ) version="$OPTARG" ;;
+      d ) download="$OPTARG" ;;
+      h ) help_function ;;
+      ? ) help_function ;;
+   esac
+done
+
+version="${version:=1.10.4}"
+download="${download:=false}"
+
+if [[ ! -f openmetadata-compose.yml ]] || [[ "$download" == "true" ]]; then
+  source="https://github.com/open-metadata/OpenMetadata/releases/download/${version}-release/docker-compose.yml"
+  echo "Downloading openmetadata-compose.yml from $source"
+  curl -fsSL $source -o openmetadata-compose.yml
+fi
+
+docker compose -f openmetadata-compose.yml -f docker-compose.yml up $services -d
+
+if [[ "$services" != "*jupyter*" ]] && [[ "$services" != "" ]]; then
+  exit 0
+fi
+
+while ! grep jupyter <(docker ps) &> /dev/null; do
+  echo "Waiting for jupyter container to be running"
+  sleep 1
+done
+
+url=""
+while [[ "$url" == "" ]]; do
+  url="$(docker compose -f openmetadata-compose.yml -f docker-compose.yml exec jupyter bash -c "jupyter server list | grep /home/jovyan | sed \"s/\$(hostname)/localhost/g\" | awk 'NR==1 { print \$1 }'")"
+done
+
+echo "You can access \`jupyter\` instance at $url"

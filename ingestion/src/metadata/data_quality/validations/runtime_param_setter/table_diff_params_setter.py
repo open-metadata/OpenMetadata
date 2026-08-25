@@ -1,0 +1,280 @@
+#  Copyright 2024 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Module that defines the TableDiffParamsSetter class."""
+
+from ast import literal_eval
+from typing import (  # noqa: UP035
+    Any,
+    Callable,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Union,
+    cast,
+    runtime_checkable,
+)
+
+from metadata.data_quality.validations import utils
+from metadata.data_quality.validations.models import (
+    Column,
+    TableDiffRuntimeParameters,
+    TableParameter,
+)
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    ServiceSpecPatch,
+)
+from metadata.data_quality.validations.runtime_param_setter.param_setter import (
+    RuntimeParameterSetter,
+)
+from metadata.generated.schema.entity.data.table import Constraint, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.utils import fqn
+from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.entity_reference import require_entity_reference_id
+
+
+@runtime_checkable
+class TableParameterSetter(Protocol):
+    def get(
+        self,
+        service: DatabaseService,
+        entity: Table,
+        key_columns,
+        extra_columns,
+        case_sensitive_columns,
+        service_url: Optional[Union[str, dict]],  # noqa: UP007, UP045
+    ) -> TableParameter: ...
+
+    def get_service_connection_config(self, service: DatabaseService): ...
+
+
+def get_service_url(
+    param_setter: TableParameterSetter, service: DatabaseService
+) -> Optional[Union[str, dict[str, Any]]]:  # noqa: UP007, UP045
+    return param_setter.get_service_connection_config(service)
+
+
+class TableDiffParamsSetter(RuntimeParameterSetter):
+    """
+    Set runtime parameters for a table diff test.
+    Sets the following variables:
+    - service1Url: The url of the first service (data diff compliant)
+    - service2Url: The url of the second service (data diff compliant)
+    - table1: The table path for the first service (only schema and table name)
+    - table2: The table path for the second service (only schema and table name)
+    - keyColumns: If not defined, construct the key columns based on primary key or unique constraint.
+    - extraColumns: If not defined, construct the extra columns as all columns except the key columns.
+    - whereClause: Extract where clause based on partitioning and user input
+    """
+
+    def __init__(
+        self,
+        *args,
+        service_url_getter: Callable[
+            [TableParameterSetter, DatabaseService],
+            Optional[Union[str, dict[str, Any]]],  # noqa: UP007, UP045
+        ] = get_service_url,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.get_service_url = service_url_getter
+
+    def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
+        if self.table_entity.service is None:
+            raise ValueError("Table service must be set")
+        service1_id = require_entity_reference_id(self.table_entity.service, "Table service")
+        service1 = cast(
+            "DatabaseService",
+            self.ometa_client.get_by_id(DatabaseService, service1_id, nullable=False),
+        )
+
+        table2_fqn = self.get_parameter(test_case, "table2")
+        if table2_fqn is None:
+            raise ValueError("table2 not set")
+
+        table2: Table = self.ometa_client.get_by_name(Table, fqn=table2_fqn, nullable=False)
+        if table2.service is None:
+            raise ValueError("Table2 service must be set")
+        service2_id = require_entity_reference_id(table2.service, "Table2 service")
+        service2 = cast(
+            "DatabaseService",
+            self.ometa_client.get_by_id(DatabaseService, service2_id, nullable=False),
+        )
+
+        table1_param_setter = self.get_param_setter(service1)
+        table2_param_setter = self.get_param_setter(service2)
+
+        service1_url = self.get_service_url(table1_param_setter, service1)
+
+        if table2.service == self.table_entity.service:
+            service2_url = self.get_parameter(test_case, "service2Url") or service1_url
+        else:
+            service2_url = self.get_service_url(table2_param_setter, service2)
+
+        key_columns = self.get_key_columns(test_case)
+        table2_key_columns = self.get_table_key_columns(test_case, table2) or key_columns
+
+        extra_columns = (
+            self.get_extra_columns(
+                key_columns | table2_key_columns,
+                test_case,
+                self.table_entity.columns,
+                table2.columns,
+            )
+            or set()
+        )
+        table1_extra_columns = self.get_table_extra_columns(test_case, self.table_entity)
+        table2_extra_columns = self.get_table_extra_columns(test_case, table2) or extra_columns
+
+        case_sensitive_columns: bool = (
+            utils.get_bool_test_case_param(test_case.parameterValues, "caseSensitiveColumns") or False
+        )
+
+        return TableDiffRuntimeParameters(
+            table_profile_config=self.table_entity.tableProfilerConfig,
+            table1=table1_param_setter.get(
+                service1,
+                self.table_entity,
+                key_columns,
+                table1_extra_columns or extra_columns,
+                case_sensitive_columns,
+                service1_url,
+            ),
+            table2=table2_param_setter.get(
+                service2,
+                table2,
+                table2_key_columns,
+                table2_extra_columns,
+                case_sensitive_columns,
+                service2_url,
+            ),
+            keyColumns=list(key_columns),
+            extraColumns=list(extra_columns),
+            whereClause=self.build_where_clause(test_case),
+        )
+
+    def build_where_clause(self, test_case) -> Optional[str]:  # noqa: UP045
+        param_where_clause = self.get_parameter(test_case, "where", None)
+        partition_where_clause = (
+            None
+            if not (self.sampler.partition_details and self.sampler.partition_details.enablePartitioning)
+            else self.sampler.get_partitioned_query().whereclause.compile(compile_kwargs={"literal_binds": True})
+        )
+        where_clauses = [param_where_clause, partition_where_clause]
+        where_clauses = [x for x in where_clauses if x]
+        where_clauses = [f"({x})" for x in where_clauses]
+        return " AND ".join(where_clauses)
+
+    def get_extra_columns(
+        self,
+        key_columns: Set[str],  # noqa: UP006
+        test_case,
+        left_columns: List[Column],  # noqa: UP006
+        right_columns: List[Column],  # noqa: UP006
+    ) -> Optional[Set[str]]:  # noqa: UP006, UP045
+        extra_columns_param = self.get_parameter(test_case, "useColumns", None)
+        if extra_columns_param is not None:
+            extra_columns: List[str] = literal_eval(extra_columns_param)  # noqa: UP006
+            self.validate_columns(extra_columns)
+            return set(extra_columns)
+        if extra_columns_param is None:
+            extra_columns_param = []
+            for column in left_columns + right_columns:
+                if column.name.root not in key_columns:
+                    extra_columns_param.insert(0, column.name.root)
+        return set(extra_columns_param)
+
+    def get_key_columns(self, test_case) -> Set[str]:  # noqa: UP006
+        key_columns_param = self.get_parameter(test_case, "keyColumns", "[]")
+        key_columns: List[str] = literal_eval(key_columns_param)  # noqa: UP006
+        if key_columns:
+            self.validate_columns(key_columns)
+        if not key_columns:
+            for column in self.table_entity.columns:
+                if column.constraint == Constraint.PRIMARY_KEY:
+                    key_columns.append(column.name.root)  # noqa: PERF401
+        if not key_columns:
+            for column in self.table_entity.columns:
+                if column.constraint == Constraint.UNIQUE:
+                    key_columns.append(column.name.root)  # noqa: PERF401
+        if not key_columns:
+            raise ValueError(
+                "Failed to resolve key columns for table diff.\n",
+                "Could not find primary key or unique constraint columns.\n",
+                "Specify 'keyColumns' to explicitly set the columns to use as keys.",
+            )
+        return set(key_columns)
+
+    def get_table_key_columns(self, test_case: TestCase, table: Table) -> Optional[set[str]]:  # noqa: UP045
+        key = "table1" if table is self.table_entity else "table2"
+        param = self.get_parameter(test_case, f"{key}.keyColumns", "[]")
+        key_columns: List[str] = literal_eval(param)  # noqa: UP006
+
+        if not key_columns:
+            return None
+
+        self.validate_columns(key_columns, table)
+        return set(key_columns)
+
+    def get_table_extra_columns(self, test_case: TestCase, table: Table) -> Optional[List[str]]:  # noqa: UP006, UP045
+        key = "table1" if table is self.table_entity else "table2"
+        param = self.get_parameter(test_case, f"{key}.extraColumns", "[]")
+        extra_columns: List[str] = literal_eval(param)  # noqa: UP006
+        if not extra_columns:
+            return None
+        self.validate_columns(extra_columns, table)
+        return extra_columns
+
+    def validate_columns(self, column_names: List[str], table: Optional[Table] = None) -> None:  # noqa: UP006, UP045
+        if table is None:
+            table = self.table_entity
+
+        table_columns_names: Set[str] = {c.name.root for c in table.columns}  # noqa: UP006
+
+        for column in column_names:
+            if column not in table_columns_names:
+                raise ValueError(
+                    f"Failed to resolve key columns for table diff.\n"
+                    f"Column '{column}' not found in table '{table.name.root}'.\n"
+                )
+
+    @staticmethod
+    def filter_relevant_columns(
+        columns: List[Column],  # noqa: UP006
+        key_columns: Set[str],  # noqa: UP006
+        extra_columns: Set[str],  # noqa: UP006
+        case_sensitive: bool,
+    ) -> List[Column]:  # noqa: UP006
+        validated_columns = (
+            [*key_columns, *extra_columns] if case_sensitive else CaseInsensitiveList([*key_columns, *extra_columns])
+        )
+        return [c for c in columns if c.name.root in validated_columns]
+
+    @staticmethod
+    def get_parameter(test_case: TestCase, key: str, default=None):
+        return next((p.value for p in test_case.parameterValues if p.name == key), default)
+
+    @staticmethod
+    def get_data_diff_table_path(table_fqn: str) -> str:
+        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable  # noqa: RUF059
+            table_fqn
+        )
+        return fqn._build(  # pylint: disable=protected-access
+            "___SERVICE___", "__DATABASE__", schema, table
+        ).replace("___SERVICE___.__DATABASE__.", "")
+
+    @staticmethod
+    def get_param_setter(service: DatabaseService) -> TableParameterSetter:
+        patch = ServiceSpecPatch(ServiceType.Database, service.connection.config.type.value.lower())
+        return patch.get_data_diff_class()()

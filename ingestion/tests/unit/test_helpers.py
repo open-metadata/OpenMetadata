@@ -1,0 +1,338 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Test helpers module
+"""
+
+import uuid
+from unittest import TestCase
+
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
+from metadata.generated.schema.type.basic import EntityLink
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
+from metadata.utils.helpers import (
+    clean_up_starting_ending_double_quotes_in_string,
+    deep_size_of_dict,
+    find_suggestion,
+    format_large_string_numbers,
+    get_entity_tier_from_tags,
+    is_safe_pandas_query,
+    is_safe_sql_query,
+    list_to_dict,
+    pretty_print_time_duration,
+)
+
+
+class TestHelpers(TestCase):
+    """
+    Test helpers module
+    """
+
+    def test_list_to_dict(self):
+        original = ["key=value", "a=b"]
+
+        self.assertEqual(list_to_dict(original=original), {"key": "value", "a": "b"})
+        self.assertEqual(list_to_dict([]), {})
+        self.assertEqual(list_to_dict(None), {})
+
+    def test_clean_up_starting_ending_double_quotes_in_string(self):
+        input_ = '"password"'
+        output_ = "password"
+
+        assert clean_up_starting_ending_double_quotes_in_string(input_) == output_
+
+    def test_get_entity_tier_from_tags(self):
+        """test correct entity tier are returned"""
+        table_entity_w_tier = Table(
+            id=uuid.uuid4(),
+            name="table_entity_test",
+            columns=[Column(name="col1", dataType=DataType.STRING)],
+            tags=[
+                TagLabel(
+                    tagFQN="Tier.Tier1",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state=State.Confirmed,
+                ),
+                TagLabel(
+                    tagFQN="Foo.Bar",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state=State.Confirmed,
+                ),
+            ],
+        )
+
+        assert get_entity_tier_from_tags(table_entity_w_tier.tags) == "Tier.Tier1"
+
+        table_entity_wo_tier = Table(
+            id=uuid.uuid4(),
+            name="table_entity_test",
+            columns=[Column(name="col1", dataType=DataType.STRING)],
+            tags=[
+                TagLabel(
+                    tagFQN="Foo.Bar",
+                    source=TagSource.Classification,
+                    labelType=LabelType.Automated,
+                    state=State.Confirmed,
+                )
+            ],
+        )
+
+        assert get_entity_tier_from_tags(table_entity_wo_tier.tags) is None
+
+    def test_deep_size_of_dict(self):
+        """test deep size of dict"""
+        test_dict = {
+            "a": 1,
+            "b": {"c": 2, "d": {"e": "Hello World", "f": [4, 5, 6]}},
+        }
+
+        assert deep_size_of_dict(test_dict) >= 1000
+        assert deep_size_of_dict(test_dict) <= 1500
+
+    def test_is_safe_sql_query(self):
+        """Test is_safe_sql_query function"""
+
+        delete_query = """
+         DELETE FROM airflow_task_instance
+         WHERE dag_id = 'test_dag_id'
+         """
+
+        drop_query = """
+         DROP TABLE IF EXISTS test_table
+         """
+
+        create_query = """
+         CREATE TABLE test_table (
+             id INT,
+             name VARCHAR(255)
+         )
+         """
+
+        select_query = """
+         SELECT * FROM test_table
+         """
+
+        cte_query = """
+         WITH foo AS (
+             SELECT * FROM test_table
+         )
+         SELECT * FROM foo
+         """
+
+        transaction_query = """
+         BEGIN TRAN T1;  
+             UPDATE table1 ...;  
+             BEGIN TRAN M2 WITH MARK;  
+                 UPDATE table2 ...;  
+                 SELECT * from table1;  
+             COMMIT TRAN M2;  
+             UPDATE table3 ...;  
+         COMMIT TRAN T1;  
+         """  # noqa: W291
+
+        self.assertFalse(is_safe_sql_query(delete_query))
+        self.assertFalse(is_safe_sql_query(drop_query))
+        self.assertFalse(is_safe_sql_query(create_query))
+        self.assertTrue(is_safe_sql_query(select_query))
+        self.assertTrue(is_safe_sql_query(cte_query))
+        self.assertFalse(is_safe_sql_query(transaction_query))
+
+    def test_is_safe_sql_query_case_insensitive(self):
+        """Test is_safe_sql_query handles different case variations"""
+        self.assertFalse(is_safe_sql_query("delete from table1"))
+        self.assertFalse(is_safe_sql_query("DELETE from table1"))
+        self.assertFalse(is_safe_sql_query("Delete From table1"))
+
+        self.assertFalse(is_safe_sql_query("drop table test"))
+        self.assertFalse(is_safe_sql_query("DROP TABLE test"))
+        self.assertFalse(is_safe_sql_query("Drop Table test"))
+
+        self.assertFalse(is_safe_sql_query("insert into table1 values (1)"))
+        self.assertFalse(is_safe_sql_query("INSERT INTO table1 VALUES (1)"))
+
+        self.assertFalse(is_safe_sql_query("update table1 set col = 1"))
+        self.assertFalse(is_safe_sql_query("UPDATE table1 SET col = 1"))
+
+        self.assertFalse(is_safe_sql_query("truncate table test"))
+        self.assertFalse(is_safe_sql_query("TRUNCATE TABLE test"))
+
+        self.assertFalse(is_safe_sql_query("BEGIN TRANSACTION; SELECT * FROM table1; COMMIT"))
+
+    def test_is_safe_sql_query_dangerous_functions(self):
+        """Test is_safe_sql_query blocks dangerous database functions"""
+        self.assertFalse(is_safe_sql_query("SELECT pg_read_file('/etc/passwd')"))
+        self.assertFalse(is_safe_sql_query("SELECT PG_READ_FILE('/etc/passwd')"))
+        self.assertFalse(is_safe_sql_query("SELECT Pg_Read_File('/etc/passwd')"))
+
+        self.assertFalse(is_safe_sql_query("SELECT lo_import('/etc/passwd')"))
+        self.assertFalse(is_safe_sql_query("SELECT LO_IMPORT('/etc/passwd')"))
+
+        self.assertFalse(is_safe_sql_query("SELECT pg_write_file('/tmp/test', 'data')"))
+        self.assertFalse(is_safe_sql_query("SELECT PG_WRITE_FILE('/tmp/test', 'data')"))
+
+        self.assertFalse(is_safe_sql_query("EXEC xp_cmdshell 'dir'"))
+        self.assertFalse(is_safe_sql_query("exec XP_CMDSHELL 'dir'"))
+        self.assertFalse(is_safe_sql_query("EXEC Xp_Cmdshell 'dir'"))
+
+        self.assertFalse(is_safe_sql_query("EXEC sp_oacreate 'obj'"))
+        self.assertFalse(is_safe_sql_query("exec SP_OACREATE 'obj'"))
+
+    def test_is_safe_sql_query_blocks_nested_dangerous_tokens(self):
+        """Dangerous functions and statements are rejected at any parse depth."""
+        self.assertFalse(is_safe_sql_query("SELECT COALESCE(pg_catalog.pg_read_file('/etc/passwd'), '')"))
+        self.assertFalse(is_safe_sql_query('SELECT "pg_catalog"."pg_read_file"(\'/etc/passwd\')'))
+        self.assertFalse(is_safe_sql_query("SELECT (SELECT lo_import('/tmp/payload'))"))
+        self.assertFalse(
+            is_safe_sql_query("WITH changed AS (UPDATE users SET admin = true RETURNING *) SELECT * FROM changed")
+        )
+        self.assertFalse(is_safe_sql_query("SELECT 1; SELECT pg_write_file('/tmp/x', 'data')"))
+
+    def test_is_safe_sql_query_allows_safe_nested_queries_and_token_text(self):
+        """Nested reads and forbidden words inside data or comments remain valid."""
+        self.assertTrue(is_safe_sql_query("SELECT * FROM (SELECT id FROM users) nested_users"))
+        self.assertTrue(is_safe_sql_query("SELECT id, comment, update, copy FROM reviews"))
+        self.assertTrue(is_safe_sql_query('SELECT "delete", [merge], `call` FROM reviews'))
+        self.assertTrue(is_safe_sql_query("SELECT COUNT(update) FROM reviews"))
+        self.assertTrue(is_safe_sql_query("SELECT 'pg_read_file', 'DROP', 'UPDATE'"))
+        self.assertTrue(is_safe_sql_query("SELECT id FROM users -- DROP is comment text"))
+
+    def test_is_safe_sql_query_none_input(self):
+        """Test is_safe_sql_query handles None input"""
+        self.assertTrue(is_safe_sql_query(None))
+
+    def test_is_safe_pandas_query_allows_legitimate_filters(self):
+        """Legitimate DataFrame.query() filter expressions must keep working"""
+        self.assertTrue(is_safe_pandas_query(None))
+        self.assertTrue(is_safe_pandas_query("`age` > 30"))
+        self.assertTrue(is_safe_pandas_query("age > 30 and name == 'x'"))
+        self.assertTrue(is_safe_pandas_query("`age` >= 18 and `age` <= 65"))
+        self.assertTrue(is_safe_pandas_query("1.5 < price < 9.99"))
+        self.assertTrue(is_safe_pandas_query("col1 in ['a', 'b']"))
+        self.assertTrue(is_safe_pandas_query("~(age > 1) or country != 'US'"))
+        # a bare column that happens to contain a double underscore is fine
+        self.assertTrue(is_safe_pandas_query("first__name > 1"))
+        # an @ inside a string literal is data, not a frame reference
+        self.assertTrue(is_safe_pandas_query("email == 'a@b.com'"))
+        # a dunder inside a backtick-quoted identifier is a column name, not an attack
+        self.assertTrue(is_safe_pandas_query("`weird.__col` > 0"))
+
+    def test_is_safe_pandas_query_blocks_frame_variable_injection(self):
+        """`@name` references the calling Python frame -> arbitrary code execution"""
+        self.assertFalse(is_safe_pandas_query("@self.get_client()"))
+        self.assertFalse(is_safe_pandas_query("a == @self.connection.password"))
+        self.assertFalse(is_safe_pandas_query("@os.system('echo pwned') or a > 0"))
+        self.assertFalse(is_safe_pandas_query("@self.exfil.go(@self.connection.password)"))
+
+    def test_is_safe_pandas_query_blocks_calls_and_attribute_access(self):
+        """Method calls and attribute access can execute code, e.g. writing files, so
+        they are rejected even without an @ or dunder"""
+        # Series methods that have side effects (confirmed to write files on pandas 2.1.4)
+        self.assertFalse(is_safe_pandas_query("a.to_csv('/tmp/x')"))
+        self.assertFalse(is_safe_pandas_query("a.values.tofile('/tmp/x')"))
+        # string accessor is still a method call, so it is rejected
+        self.assertFalse(is_safe_pandas_query("`name`.str.len() > 3"))
+        # dunder attribute traversal (the classic sandbox-escape gadget)
+        self.assertFalse(is_safe_pandas_query("a.__class__.__init__.__globals__"))
+        self.assertFalse(is_safe_pandas_query("a.__class__.__mro__[0]"))
+
+    def test_is_safe_pandas_query_blocks_matmul_operator(self):
+        """pandas reserves `@` for frame-variable references, so the binary `@`
+        operator (ast.MatMult) must not be treated as a safe filter"""
+        self.assertFalse(is_safe_pandas_query("a @ b"))
+        # legitimate boolean/bitwise combinations must still be allowed
+        self.assertTrue(is_safe_pandas_query("(a > 1) & (b < 2)"))
+        self.assertTrue(is_safe_pandas_query("a % 2 == 0"))
+
+    def test_format_large_string_numbers(self):
+        """test format_large_string_numbers"""
+        assert format_large_string_numbers(1000) == "1.000K"
+        assert format_large_string_numbers(1001) == "1.001K"
+        assert format_large_string_numbers(1000000) == "1.000M"
+        assert format_large_string_numbers(1000000000) == "1.000B"
+        assert format_large_string_numbers(1000000000000) == "1.000T"
+        assert format_large_string_numbers(10000000000000) == "10.000T"
+        assert format_large_string_numbers(100000000000000) == "100.000T"
+        assert format_large_string_numbers(1000000000000000) == "1e15"
+        assert format_large_string_numbers(10000000000000000) == "10e15"
+        assert format_large_string_numbers(100000000000000000) == "100e15"
+        assert format_large_string_numbers(1000000000000000000) == "1e18"
+
+    def test_find_suggestion(self):
+        """we can get one possible suggestion"""
+        suggestions = [
+            Suggestion(
+                id=uuid.uuid4(),
+                type=SuggestionType.SuggestDescription,
+                entityLink=EntityLink("<#E::table::tableFQN>"),
+                description="something",
+            ),
+            Suggestion(
+                id=uuid.uuid4(),
+                type=SuggestionType.SuggestDescription,
+                entityLink=EntityLink("<#E::table::tableFQN::columns::col>"),
+                description="something",
+            ),
+        ]
+
+        self.assertIsNone(
+            find_suggestion(
+                suggestions=suggestions,
+                suggestion_type=SuggestionType.SuggestTagLabel,
+                entity_link=...,
+            )
+        )
+
+        self.assertIsNone(
+            find_suggestion(
+                suggestions=suggestions,
+                suggestion_type=SuggestionType.SuggestDescription,
+                entity_link=...,
+            )
+        )
+
+        suggestion_table = find_suggestion(
+            suggestions=suggestions,
+            suggestion_type=SuggestionType.SuggestDescription,
+            entity_link=EntityLink("<#E::table::tableFQN>"),
+        )
+        self.assertEqual(suggestion_table, suggestions[0])
+
+        suggestion_col = find_suggestion(
+            suggestions=suggestions,
+            suggestion_type=SuggestionType.SuggestDescription,
+            entity_link=EntityLink("<#E::table::tableFQN::columns::col>"),
+        )
+        self.assertEqual(suggestion_col, suggestions[1])
+
+    def test_pretty_print_time_duration(self):
+        self.assertEqual(pretty_print_time_duration(10), "10s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(100), "1m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(1000), "16m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(10000), "2h 46m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(100000), "1day(s) 03h 46m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(1000000), "11day(s) 13h 46m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(20), "20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(200), "3m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(2000), "33m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(20000), "5h 33m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(200000), "2day(s) 07h 33m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(2000000), "23day(s) 03h 33m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(0.5), "500.000ms")
+        self.assertEqual(pretty_print_time_duration(1.234), "1s 234.000ms")
+        self.assertEqual(pretty_print_time_duration(65.5), "1m 05s 500.000ms")

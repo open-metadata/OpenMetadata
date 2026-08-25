@@ -1,0 +1,396 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+SQL Queries used during ingestion
+"""
+
+import textwrap
+
+ORACLE_TABLE_COMMENTS = textwrap.dedent(
+    """
+SELECT
+    comments table_comment,
+    LOWER(table_name) "table_name",
+    LOWER(owner) "schema"
+FROM {prefix}_TAB_COMMENTS
+where comments is not null and owner not in ('SYSTEM', 'SYS')
+"""
+)
+
+ORACLE_VIEW_DEFINITIONS = textwrap.dedent(
+    """
+SELECT
+    LOWER(v.view_name) AS "view_name",
+    LOWER(v.owner) AS "schema",
+    text AS "view_def",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_VIEWS v
+JOIN {prefix}_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
+UNION ALL
+SELECT
+    LOWER(m.mview_name) AS "view_name",
+    LOWER(m.owner) AS "schema",
+    query AS "view_def",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_MVIEWS m
+JOIN {prefix}_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
+"""
+)
+
+ORACLE_TABLE_COMMENTS_PRESERVE_CASE = textwrap.dedent(
+    """
+SELECT
+    comments "table_comment",
+    table_name "table_name",
+    owner "schema"
+FROM {prefix}_TAB_COMMENTS
+where comments is not null and owner not in ('SYSTEM', 'SYS')
+"""
+)
+
+
+ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE = textwrap.dedent(
+    """
+SELECT
+    v.view_name AS "view_name",
+    v.owner AS "schema",
+    text AS "view_def",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_VIEWS v
+JOIN {prefix}_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
+UNION ALL
+SELECT
+    m.mview_name AS "view_name",
+    m.owner AS "schema",
+    query AS "view_def",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_MVIEWS m
+JOIN {prefix}_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
+"""
+)
+
+
+# Fallback for the bulk view-definition fetch. DBA_VIEWS.TEXT / DBA_MVIEWS.QUERY
+# are LONG columns, and in Oracle thick mode a value larger than OCI's fetch
+# buffer aborts the whole array fetch (ORA-01406), leaving every view definition
+# empty. This lists view and materialized-view names only, with no LONG column,
+# so it always succeeds. Each definition is then read one at a time below.
+# https://github.com/open-metadata/OpenMetadata/issues/30319
+ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES = textwrap.dedent(
+    """
+SELECT v.owner AS "owner", v.view_name AS "name", 'VIEW' AS "object_type"
+FROM {prefix}_VIEWS v
+JOIN {prefix}_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
+UNION ALL
+SELECT m.owner AS "owner", m.mview_name AS "name", 'MATERIALIZED_VIEW' AS "object_type"
+FROM {prefix}_MVIEWS m
+JOIN {prefix}_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
+"""
+)
+
+# Per-view read of the LONG text. Fetching a single row is not an array fetch,
+# so it does not hit the ORA-01406 truncation, and it needs no privileges beyond
+# the bulk read. This is the same source column SQLAlchemy's Oracle dialect uses.
+ORACLE_GET_VIEW_TEXT_BY_NAME = textwrap.dedent(
+    """
+SELECT text FROM {prefix}_VIEWS WHERE owner = :owner AND view_name = :name
+"""
+)
+
+ORACLE_GET_MVIEW_QUERY_BY_NAME = textwrap.dedent(
+    """
+SELECT query FROM {prefix}_MVIEWS WHERE owner = :owner AND mview_name = :name
+"""
+)
+
+# Last resort when the raw text is NULL or still cannot be read. GET_DDL returns
+# a CLOB (read through a locator, immune to the LONG truncation) but needs
+# SELECT_CATALOG_ROLE for objects in other schemas.
+ORACLE_GET_VIEW_DEFINITION_BY_NAME = "SELECT DBMS_METADATA.GET_DDL(:object_type, :name, :owner) AS view_ddl FROM dual"
+
+GET_VIEW_NAMES = textwrap.dedent(
+    """
+SELECT view_name FROM {prefix}_VIEWS WHERE owner = :owner
+"""
+)
+
+GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
+    """
+SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner
+"""
+)
+
+ORACLE_GET_TABLE_NAMES = textwrap.dedent(
+    """
+SELECT table_name FROM {prefix}_TABLES WHERE
+{tablespace}
+OWNER = :owner
+AND IOT_NAME IS NULL
+AND DURATION IS NULL
+AND TABLE_NAME NOT IN
+(SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner)
+"""
+)
+
+ORACLE_IDENTITY_TYPE = textwrap.dedent(
+    """\
+col.default_on_null,
+(
+    SELECT id.generation_type || ',' || id.IDENTITY_OPTIONS
+    FROM {prefix}_TAB_IDENTITY_COLS{dblink} id
+    WHERE col.table_name = id.table_name
+    AND col.column_name = id.column_name
+    AND col.owner = id.owner
+) AS identity_options
+"""
+)
+
+ORACLE_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT,
+    'StoredProcedure' as procedure_type
+FROM
+    {prefix}_SOURCE
+WHERE
+    type = 'PROCEDURE' and owner = '{schema}'
+ORDER BY OWNER, NAME, LINE
+"""
+)
+
+ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
+    """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT,
+    'StoredPackage' as procedure_type
+
+FROM
+    {prefix}_SOURCE
+WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
+ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE
+"""
+)
+
+TEST_ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
+    """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT,
+    'StoredPackage' as procedure_type
+FROM
+    {prefix}_SOURCE
+WHERE
+    TYPE IN ('PACKAGE', 'PACKAGE BODY')
+    AND owner = (
+        SELECT
+            USERNAME
+        FROM
+            {prefix}_USERS
+        WHERE
+            ROWNUM = 1
+    )
+ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE
+"""
+)
+
+CHECK_ACCESS_TO_ALL = "SELECT table_name FROM {prefix}_TABLES where ROWNUM < 2"
+
+
+TEST_MATERIALIZED_VIEWS = textwrap.dedent(
+    """
+SELECT COUNT(*) as count
+FROM {prefix}_MVIEWS
+WHERE ROWNUM = 1
+"""
+)
+
+TEST_QUERY_HISTORY = textwrap.dedent(
+    """
+SELECT COUNT(*) as count
+FROM gv$sql
+WHERE ROWNUM = 1
+"""
+)
+
+ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY AS (
+  SELECT
+    sql_text AS query_text,
+    TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS start_time,
+    TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+      + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
+    PARSING_SCHEMA_NAME as user_name
+  FROM gv$sql
+  WHERE (UPPER(sql_text) LIKE '%%CALL%%' OR UPPER(sql_text) LIKE '%%BEGIN%%')
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+    >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+),
+Q_HISTORY AS (
+    SELECT
+      sql_text AS query_text,
+      sql_text AS full_text,
+      CASE
+          WHEN UPPER(SQL_TEXT) LIKE 'INSERT%%' THEN 'INSERT'
+          WHEN UPPER(SQL_TEXT) LIKE 'CREATE%%TABLE%%' THEN 'CREATE'
+          WHEN UPPER(SQL_TEXT) LIKE 'MERGE%%' THEN 'MERGE'
+          WHEN UPPER(SQL_TEXT) LIKE 'UPDATE%%' THEN 'UPDATE'
+          WHEN UPPER(SQL_TEXT) LIKE 'SELECT%%' THEN 'SELECT'
+          ELSE 'OTHER'
+      END AS QUERY_TYPE,
+      TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS start_time,
+      TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+        + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
+      PARSING_SCHEMA_NAME AS user_name,
+      PARSING_SCHEMA_NAME AS SCHEMA_NAME,
+      NULL AS DATABASE_NAME
+    FROM gv$sql
+    WHERE (UPPER(sql_text) NOT LIKE '%%CALL%%' AND UPPER(sql_text) NOT LIKE '%%BEGIN%%')
+      AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+      AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+        >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+)
+SELECT
+  Q.QUERY_TYPE AS QUERY_TYPE,
+  Q.DATABASE_NAME AS QUERY_DATABASE_NAME,
+  Q.SCHEMA_NAME AS QUERY_SCHEMA_NAME,
+  SP.QUERY_TEXT AS PROCEDURE_TEXT,
+  SP.START_TIME AS PROCEDURE_START_TIME,
+  SP.END_TIME AS PROCEDURE_END_TIME,
+  Q.START_TIME AS QUERY_START_TIME,
+  Q.QUERY_TEXT AS QUERY_TEXT,
+  Q.USER_NAME AS QUERY_USER_NAME
+FROM SP_HISTORY SP
+JOIN Q_HISTORY Q
+  ON Q.start_time between SP.start_time and SP.end_time
+  AND Q.end_time between SP.start_time and SP.end_time
+  AND Q.user_name = SP.user_name
+  AND Q.QUERY_TYPE <> 'SELECT'
+ORDER BY PROCEDURE_START_TIME DESC
+"""
+)
+
+ORACLE_GET_COLUMNS = textwrap.dedent(
+    """
+        SELECT
+            col.column_name,
+            col.data_type,
+            col.{char_length_col},
+            col.data_precision,
+            col.data_scale,
+            col.nullable,
+            col.data_default,
+            com.comments,
+            col.virtual_column,
+            {identity_cols}
+        FROM {prefix}_TAB_COLS{dblink} col
+        LEFT JOIN {prefix}_COL_COMMENTS{dblink} com
+        ON col.table_name = com.table_name
+        AND col.column_name = com.column_name
+        AND col.owner = com.owner
+        WHERE col.table_name = CAST(:table_name AS VARCHAR2(128))
+        AND col.hidden_column = 'NO'
+    """
+)
+
+ORACLE_CONSTRAINTS = textwrap.dedent(
+    """
+        SELECT
+            ac.constraint_name,
+            ac.constraint_type,
+            loc.column_name AS local_column,
+            rem.table_name AS remote_table,
+            rem.column_name AS remote_column,
+            rem.owner AS remote_owner,
+            loc.position as loc_pos,
+            rem.position as rem_pos,
+            ac.search_condition,
+            ac.delete_rule,
+            ac.index_name
+        FROM {prefix}_CONSTRAINTS{dblink} ac,
+            {prefix}_CONS_COLUMNS{dblink} loc,
+            {prefix}_CONS_COLUMNS{dblink} rem
+        WHERE ac.table_name = CAST(:table_name AS VARCHAR2(128))
+            AND ac.constraint_type IN ('R','P', 'U', 'C')
+            AND ac.owner = CAST(:owner AS VARCHAR2(128))
+            AND ac.owner = loc.owner
+            AND ac.constraint_name = loc.constraint_name
+            AND ac.r_owner = rem.owner(+)
+            AND ac.r_constraint_name = rem.constraint_name(+)
+            AND (rem.position IS NULL or loc.position=rem.position)
+        ORDER BY ac.constraint_name, loc.position
+    """
+)
+
+ORACLE_QUERY_HISTORY_STATEMENT = textwrap.dedent(
+    """
+SELECT
+    NULL AS user_name,
+    NULL AS database_name,
+    NULL AS schema_name,
+    NULL AS aborted,
+    SQL_FULLTEXT AS query_text,
+    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
+    ELAPSED_TIME / 1000 AS duration,
+    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
+FROM gv$sql
+WHERE OBJECT_STATUS = 'VALID'
+    {filters}
+    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
+    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND')
+    < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
+ORDER BY FIRST_LOAD_TIME DESC
+OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY
+"""
+)

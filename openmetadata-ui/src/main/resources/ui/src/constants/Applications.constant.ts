@@ -1,0 +1,31 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { StepperStepType } from 'Models';
+
+export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
+  {
+    name: 'label.detail-plural',
+    step: 1,
+  },
+  { name: 'label.configure', step: 2 },
+  { name: 'label.schedule', step: 3 },
+];
+
+export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
+// AutoPilot's Collate agents run as AI Automations instantiated per service,
+// named `{serviceName}_{template}`. These template suffixes identify each agent
+// and key the widget's ordering, labels and icons.
+export const DOCUMENTATION_AUTOMATION_TEMPLATE = 'DescriptionAutomation';
+export const DATA_QUALITY_AUTOMATION_TEMPLATE = 'DataQualityAutomation';
+export const TIER_AUTOMATION_TEMPLATE = 'TierAutomation';

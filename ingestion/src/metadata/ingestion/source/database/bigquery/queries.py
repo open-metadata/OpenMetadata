@@ -1,0 +1,317 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+SQL Queries used during ingestion
+"""
+
+import textwrap
+from datetime import datetime
+from typing import List, Optional  # noqa: UP035
+
+from pydantic import BaseModel, TypeAdapter
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+
+BIGQUERY_STATEMENT = textwrap.dedent(
+    """
+ SELECT
+   project_id as database_name,
+   user_email as user_name,
+   statement_type as query_type,
+   start_time,
+   end_time,
+   query as query_text,
+   null as schema_name,
+   total_slot_ms as duration,
+   (total_bytes_billed / POWER(2, 40)) * {cost_per_tib} as cost
+FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
+  {filters}
+  AND job_type = "QUERY"
+  AND state = "DONE"
+  AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE")
+  AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  LIMIT {result_limit}
+"""
+)
+
+BIGQUERY_TEST_STATEMENT = textwrap.dedent(
+    """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+    where creation_time > '{creation_date}' limit 1"""
+)
+
+
+BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
+    """
+    SELECT option_value as schema_description FROM
+    `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA_OPTIONS
+    where schema_name = '{schema_name}' and option_name = 'description'
+    and option_value is not null
+    """
+)
+
+BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
+    """
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
+    WHERE TRUE {view_filter}
+    """  # noqa: W291
+)
+
+BIGQUERY_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT
+        kcu.constraint_name,
+        kcu.table_catalog,
+        kcu.table_schema,
+        kcu.table_name,
+        kcu.column_name,
+        tc.constraint_type,
+        ccu.table_catalog AS referenced_catalog,
+        ccu.table_schema AS referenced_schema,
+        ccu.table_name AS referenced_table,
+        ccu.column_name AS referenced_column
+    FROM `{project_id}`.`{dataset_name}`.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS kcu
+    JOIN `{project_id}`.`{dataset_name}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ccu
+        ON kcu.constraint_catalog = ccu.constraint_catalog
+        AND kcu.constraint_schema = ccu.constraint_schema
+        AND kcu.constraint_name = ccu.constraint_name
+    JOIN `{project_id}`.`{dataset_name}`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
+        ON tc.constraint_catalog = ccu.constraint_catalog
+        AND tc.constraint_schema = ccu.constraint_schema
+        AND tc.constraint_name = ccu.constraint_name
+    WHERE tc.constraint_type IN ('PRIMARY KEY', 'FOREIGN KEY')
+    """
+)
+
+BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT
+  routine_name as name,
+  routine_definition as definition,
+  external_language as language
+FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION', 'FUNCTION')
+  AND routine_catalog = '{database_name}'
+  AND routine_schema = '{schema_name}'
+    """
+)
+
+BIGQUERY_GET_STORED_PROCEDURES_BY_REGION = textwrap.dedent(
+    """
+SELECT
+  routine_name as name,
+  routine_definition as definition,
+  external_language as language
+FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.ROUTINES
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION', 'FUNCTION')
+  AND routine_catalog = '{database_name}'
+  AND routine_schema = '{schema_name}'
+    """
+)
+
+BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY AS (
+  SELECT
+    query AS query_text,
+    start_time,
+    end_time,
+    user_email as user_name
+  FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  WHERE statement_type = 'SCRIPT'
+    AND creation_time >= '{start_date}'
+    AND job_type = "QUERY"
+    AND state = "DONE"
+    AND error_result is NULL
+    AND UPPER(query) LIKE 'CALL%%'
+),
+Q_HISTORY AS (
+  SELECT
+    project_id as database_name,
+    user_email as user_name,
+    statement_type as query_type,
+    start_time,
+    end_time,
+    query as query_text,
+    null as schema_name,
+    total_slot_ms/1000 as duration
+  FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  WHERE statement_type <> 'SCRIPT'
+    AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND creation_time >= '{start_date}'
+    AND job_type = "QUERY"
+    AND state = "DONE"
+    AND error_result is NULL
+)
+SELECT
+  Q.query_type as query_type,
+  SP.query_text as procedure_text,
+  Q.query_text as query_text,
+  null as query_database_name,
+  null as query_schema_name,
+  SP.start_time as procedure_start_time,
+  SP.end_time as procedure_end_time,
+  Q.start_time as query_start_time,
+  Q.end_time as query_end_time,
+  Q.duration as query_duration,
+  Q.user_name as query_user_name
+FROM SP_HISTORY SP
+JOIN Q_HISTORY Q
+  ON Q.start_time between SP.start_time and SP.end_time
+  AND Q.end_time between SP.start_time and SP.end_time
+  AND Q.user_name = SP.user_name
+ORDER BY procedure_start_time DESC
+"""
+)
+
+BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select
+table_name as table_name,
+creation_time as created_at
+from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
+where table_schema = '{schema_name}'
+and table_catalog = '{database_name}'
+"""
+)
+
+# TABLE_STORAGE is only exposed at the region/organization level (it cannot be
+# dataset-qualified like TABLES), so this variant is region-scoped and joins on
+# table_schema to restrict TABLE_STORAGE to the current dataset. Used when the
+# dataset's region can be resolved; otherwise we fall back to the dataset-scoped
+# created-only query above.
+BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION = textwrap.dedent(
+    """
+select
+t.table_name as table_name,
+t.creation_time as created_at,
+s.storage_last_modified_time as updated_at
+from `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES t
+left join `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_STORAGE s
+on t.table_name = s.table_name and t.table_schema = s.table_schema
+where t.table_schema = '{schema_name}'
+and t.table_catalog = '{database_name}'
+"""
+)
+
+BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING = """
+protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.BigQueryAuditMetadata"
+AND (
+    protoPayload.methodName = ("google.cloud.bigquery.v2.TableService.UpdateTable" OR "google.cloud.bigquery.v2.TableService.InsertTable" OR "google.cloud.bigquery.v2.TableService.PatchTable" OR "google.cloud.bigquery.v2.TableService.DeleteTable")
+    OR
+    (protoPayload.methodName = "google.cloud.bigquery.v2.JobService.InsertJob" AND (protoPayload.metadata.tableCreation:* OR protoPayload.metadata.tableChange:* OR protoPayload.metadata.tableDeletion:*))
+)
+AND resource.labels.project_id = "{project}"
+AND timestamp >= "{start_date}"
+AND timestamp < "{end_date}"
+{dataset_filter}
+"""
+
+BIGQUERY_GET_SCHEMA_NAMES = """
+SELECT schema_name FROM `{project}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA;
+"""
+
+BIGQUERY_GET_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.VIEWS;
+"""
+
+BIGQUERY_GET_MATERIALIZED_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.MATERIALIZED_VIEWS;
+"""
+
+BIGQUERY_GET_TABLE_DDLS = textwrap.dedent(
+    """
+    SELECT table_name, ddl
+    FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
+    WHERE table_schema = '{schema_name}'
+      AND table_catalog = '{database_name}'
+      AND table_type IN ('BASE TABLE', 'EXTERNAL')
+    """
+)
+
+BIGQUERY_GET_TABLE_DDLS_BY_REGION = textwrap.dedent(
+    """
+    SELECT table_name, ddl
+    FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES
+    WHERE table_schema = '{schema_name}'
+      AND table_catalog = '{database_name}'
+      AND table_type IN ('BASE TABLE', 'EXTERNAL')
+    """
+)
+
+
+class BigQueryQueryResult(BaseModel):
+    project_id: str
+    dataset_id: str
+    table_name: str
+    inserted_row_count: Optional[int] = None  # noqa: UP045
+    deleted_row_count: Optional[int] = None  # noqa: UP045
+    updated_row_count: Optional[int] = None  # noqa: UP045
+    start_time: datetime
+    statement_type: str
+
+    @staticmethod
+    def get_for_table(
+        session: Session,
+        usage_location: str,
+        dataset_id: str,
+        project_id: str,
+        billing_project_id: Optional[str] = None,  # noqa: UP045
+    ):
+        # Use billing project for the INFORMATION_SCHEMA query if provided
+        query_project_id = billing_project_id or project_id
+
+        rows = session.execute(
+            text(
+                JOBS.format(
+                    usage_location=usage_location,
+                    dataset_id=dataset_id,
+                    project_id=project_id,
+                    query_project_id=query_project_id,
+                    insert=DatabaseDMLOperations.INSERT.value,
+                    update=DatabaseDMLOperations.UPDATE.value,
+                    delete=DatabaseDMLOperations.DELETE.value,
+                    merge=DatabaseDMLOperations.MERGE.value,
+                )
+            )
+        )
+
+        return TypeAdapter(List[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])  # noqa: UP006
+
+
+JOBS = """
+    SELECT
+        statement_type,
+        start_time,
+        destination_table.project_id as project_id,
+        destination_table.dataset_id as dataset_id,
+        destination_table.table_id as table_name,
+        dml_statistics.inserted_row_count as inserted_row_count,
+        dml_statistics.deleted_row_count as deleted_row_count,
+        dml_statistics.updated_row_count as updated_row_count
+    FROM
+        `{query_project_id}`.`region-{usage_location}`.INFORMATION_SCHEMA.JOBS
+    WHERE
+        DATE(creation_time) >= CURRENT_DATE() - 1 AND
+        destination_table.dataset_id = '{dataset_id}' AND
+        destination_table.project_id = '{project_id}' AND
+        statement_type IN (
+            '{insert}',
+            '{update}',
+            '{delete}',
+            '{merge}'
+        )
+    ORDER BY creation_time DESC;
+"""

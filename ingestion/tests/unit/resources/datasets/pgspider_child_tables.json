@@ -1,0 +1,15 @@
+[
+    [
+      {
+        "relname": "test1__post_svr__0"
+      },
+      {
+        "relname": "test1__post_svr__1"
+      }
+    ],
+    [
+      {
+        "relname": "test2__post_svr__0"
+      }
+    ]
+]

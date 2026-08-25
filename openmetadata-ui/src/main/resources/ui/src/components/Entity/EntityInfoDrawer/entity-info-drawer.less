@@ -1,0 +1,186 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../styles/variables.less';
+
+.edge-drawer-sql-editor {
+  border: 1px solid @border-color;
+  border-radius: var(--om-radius-xs);
+
+  .CodeMirror {
+    height: 200px;
+  }
+}
+
+.entity-panel-container.ant-drawer-right {
+  .ant-drawer-content-wrapper {
+    box-shadow: none;
+    border: @global-border;
+
+    .ant-drawer-title {
+      width: 100%;
+    }
+  }
+}
+
+.entity-panel-container {
+  margin-top: var(--om-space-54);
+  .entity-title-link {
+    font-size: var(--om-font-size-15);
+    font-weight: var(--om-font-weight-semibold);
+    color: @primary-6;
+  }
+  .ant-drawer-header {
+    border-bottom: none;
+    align-items: flex-start;
+  }
+
+  .entity-header-title-link {
+    // added to fix title overlap with close button
+    max-width: 95%;
+  }
+
+  .entity-info-header-link {
+    .ant-btn-link > span {
+      color: @primary-color;
+    }
+  }
+
+  .ant-divider {
+    visibility: hidden;
+    margin: var(--om-space-12) 0;
+  }
+
+  .summary-panel-section-title {
+    font-size: var(--om-font-size-13);
+    font-weight: var(--om-font-weight-semibold);
+    color: @grey-900;
+  }
+
+  .summary-panel-statistics-count {
+    color: @text-color;
+    font-size: var(--om-font-size-lg);
+    line-height: 24px;
+    font-weight: var(--om-font-weight-bold);
+  }
+
+  .success {
+    color: @success-color;
+  }
+
+  .failed {
+    color: @failed-color;
+  }
+
+  .aborted {
+    color: @aborted-color;
+  }
+}
+
+.edge-info-drawer-container {
+  background-color: var(--tw-color-utility-gray-blue-50);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  .title-section {
+    position: sticky;
+    padding: var(--om-space-4);
+    z-index: var(--om-z-999);
+    top: 0;
+    flex: 1;
+    background-color: var(--tw-color-bg-primary);
+
+    &.drawer-title-section {
+      background-color: transparent;
+    }
+  }
+
+  .title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: var(--om-radius-lg);
+    height: 49px;
+    padding-left: var(--om-space-12);
+    padding-right: var(--om-space-12);
+    background-color: @grey-9;
+
+    .edge-info-drawer-title {
+      font-size: var(--om-font-size-15);
+      font-weight: var(--om-font-weight-semibold);
+      color: @grey-800;
+    }
+  }
+
+  .drawer-close-icon {
+    background: transparent;
+    border: none;
+
+    svg {
+      height: 16px;
+      width: 16px;
+    }
+
+    &:hover {
+      background: none;
+      border: none;
+    }
+  }
+  .summary-panel-card {
+    margin-top: var(--om-space-16);
+    .section-header {
+      justify-content: flex-start;
+      gap: var(--om-space-8);
+    }
+    .description-section {
+      margin-top: 0;
+    }
+    &:last-child {
+      border-bottom: none;
+    }
+    .schema-editor-container,
+    .CodeMirror {
+      border-radius: var(--om-radius-lg);
+    }
+  }
+  .lineage-source-text {
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-regular);
+    color: @grey-900;
+  }
+}
+
+.edge-info-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--tw-color-bg-primary);
+  border-radius: var(--om-radius-lg);
+  max-height: calc(100vh - 70px);
+  margin-left: var(--om-space-12);
+  margin-right: var(--om-space-12);
+  border: 1px solid @grey-15;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+
+  .summary-panel-section-title {
+    font-size: var(--om-font-size-13);
+    font-weight: var(--om-font-weight-semibold);
+    color: @grey-900;
+  }
+}

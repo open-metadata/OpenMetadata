@@ -1,0 +1,75 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../variables.less';
+
+.table-query-editor > .CodeMirror {
+  height: auto !important;
+}
+.custom-query-editor {
+  border: @global-border;
+  border-radius: @border-rad-base;
+  .CodeMirror {
+    border-radius: @border-rad-base;
+    height: 200px;
+  }
+}
+.query-editor-h-200 {
+  .CodeMirror {
+    height: 200px;
+  }
+}
+
+.query-editor-min-h-60 {
+  .CodeMirror {
+    min-height: 60px;
+  }
+}
+.full-screen-editor-height > .CodeMirror,
+.full-screen-editor-height > .react-codemirror2 > .CodeMirror {
+  height: calc(100vh - 250px) !important;
+}
+
+.CodeMirror-wrap pre.CodeMirror-line {
+  padding-right: var(--om-space-100);
+}
+
+.custom-code-mirror-theme {
+  .CodeMirror {
+    background: var(--om-legacy-color-f4f7f9);
+  }
+  .CodeMirror-gutters {
+    background-color: var(--tw-color-bg-primary);
+  }
+  .CodeMirror-linenumber {
+    color: @text-color;
+  }
+}
+
+.code-editor-new-style {
+  border-radius: @border-rad-sm;
+  .CodeMirror-gutters {
+    display: none;
+  }
+
+  .ant-card-head {
+    min-height: 28px;
+    background-color: @grey-50;
+  }
+
+  .ant-card-head-title {
+    padding: 0;
+    .ant-form-item-label {
+      padding: 0;
+    }
+  }
+}

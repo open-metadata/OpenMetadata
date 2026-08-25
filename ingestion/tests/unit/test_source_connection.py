@@ -1,0 +1,905 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+from unittest import TestCase
+
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
+
+from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
+    ClickhouseConnection,
+    ClickhouseScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.common import (
+    noConfigAuthenticationTypes,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.common.jwtAuth import (
+    JwtAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+    DatabricksScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    Db2Connection,
+    Db2Scheme,
+)
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBConnection,
+    MariaDBScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+    MssqlScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+    MySQLScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection as OracleConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleDatabaseSchema,
+    OracleScheme,
+    OracleServiceName,
+    OracleTNSConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+    PostgresScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+    RedshiftScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
+    SingleStoreScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection as SnowflakeConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection as TrinoConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoScheme,
+)
+from metadata.ingestion.connections.builders import (
+    get_connection_args_common,
+    get_connection_url_common,
+)
+from metadata.ingestion.source.database.oracle.connection import OracleConnection
+from metadata.ingestion.source.database.snowflake.connection import SnowflakeConnection
+from metadata.ingestion.source.database.trino.connection import TrinoConnection
+
+
+# pylint: disable=import-outside-toplevel
+class SourceConnectionTest(TestCase):
+    def test_databricks_url_without_db(self):
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "databricks://1.1.1.1:443"
+        databricks_conn_obj = DatabricksConnection(
+            scheme=DatabricksScheme.databricks,
+            hostPort="1.1.1.1:443",
+            authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
+            httpPath="/sql/1.0/warehouses/abcdedfg",
+        )
+        assert expected_result == get_connection_url(databricks_conn_obj)
+
+    def test_databricks_url_with_db(self):
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "databricks://1.1.1.1:443?catalog=main"
+        databricks_conn_obj = DatabricksConnection(
+            scheme=DatabricksScheme.databricks,
+            hostPort="1.1.1.1:443",
+            authType=DatabricksOauth(
+                clientId="d40e2905-88ef-42ab-8898-fbefff2d071d",
+                clientSecret="secret-value",
+            ),
+            httpPath="/sql/1.0/warehouses/abcdedfg",
+            catalog="main",
+        )
+        assert expected_result == get_connection_url(databricks_conn_obj)
+
+    def test_databricks_pipeline_url(self):
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.pipeline.databrickspipeline.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
+        assert "databricks+connector" not in url
+
+    def test_databricks_pipeline_auth_config(self):
+        from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+            DatabricksOauth,
+        )
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.database.databricks.auth import get_auth_config
+
+        pat_conn = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+        )
+        assert get_auth_config(pat_conn) == {"access_token": "dapi1234567890"}
+
+        oauth_conn = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=DatabricksOauth(clientId="client-id", clientSecret="client-secret"),
+        )
+        assert "credentials_provider" in get_auth_config(oauth_conn)
+
+    def test_databricks_url_with_special_chars_in_catalog(self):
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
+        databricks_conn_obj = DatabricksConnection(
+            scheme=DatabricksScheme.databricks,
+            hostPort="1.1.1.1:443",
+            authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
+            httpPath="/sql/1.0/warehouses/abcdedfg",
+            catalog="my catalog&name=val",
+        )
+        url = get_connection_url(databricks_conn_obj)
+        assert url == "databricks://1.1.1.1:443?catalog=my+catalog%26name%3Dval"
+
+    def test_unity_catalog_url_without_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
+
+    def test_unity_catalog_url_with_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="production",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=production"
+
+    def test_unity_catalog_url_with_special_chars_in_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="my catalog&name=val",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=my+catalog%26name%3Dval"
+
+    def test_trino_url_without_params(self):
+        expected_url = "trino://username@localhost:443/catalog"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+            catalog="catalog",
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+
+        assert expected_url == str(trino_connection.client.url)
+
+        # Passing @ in username and password
+        expected_url = "trino://username%40444@localhost:443/catalog"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username@444",
+            authType=BasicAuth(password="pass@111"),
+            catalog="catalog",
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+
+        assert expected_url == str(trino_connection.client.url)
+
+    def test_trino_conn_arguments(self):
+        # connection arguments without connectionArguments and without proxies
+        expected_args = {
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
+            username="user",
+            authType=BasicAuth(password=None),
+            hostPort="localhost:443",
+            catalog="tpcds",
+            connectionArguments=None,
+            scheme=TrinoScheme.trino,
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
+
+        # connection arguments with connectionArguments and without proxies
+        expected_args = {
+            "user": "user-to-be-impersonated",
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
+            username="user",
+            authType=BasicAuth(password=None),
+            hostPort="localhost:443",
+            catalog="tpcds",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=TrinoScheme.trino,
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
+
+        # connection arguments without connectionArguments and with proxies
+        expected_args = {
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
+            username="user",
+            authType=BasicAuth(password=None),
+            hostPort="localhost:443",
+            catalog="tpcds",
+            connectionArguments=None,
+            proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
+            scheme=TrinoScheme.trino,
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        conn_args = trino_connection.build_connection_args(trino_conn_obj).root
+
+        assert "http_session" in conn_args
+        conn_args.pop("http_session")
+        assert expected_args == conn_args
+
+        # connection arguments with connectionArguments and with proxies
+        expected_args = {
+            "user": "user-to-be-impersonated",
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
+            username="user",
+            authType=BasicAuth(password=None),
+            hostPort="localhost:443",
+            catalog="tpcds",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
+            scheme=TrinoScheme.trino,
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        conn_args = trino_connection.build_connection_args(trino_conn_obj).root
+        assert "http_session" in conn_args
+        conn_args.pop("http_session")
+        assert expected_args == conn_args
+
+    def test_trino_url_with_params(self):
+        expected_url = "trino://username@localhost:443/catalog?param=value"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+            catalog="catalog",
+            connectionOptions={"param": "value"},
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+
+    def test_trino_url_with_jwt_auth(self):
+        expected_url = "trino://username@localhost:443/catalog"
+        expected_args = {
+            "auth": JWTAuthentication("jwt_token_value"),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=JwtAuth(jwt="jwt_token_value"),
+            catalog="catalog",
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
+
+    def test_trino_with_proxies(self):
+        test_proxies = {"http": "http_proxy", "https": "https_proxy"}
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+            catalog="catalog",
+            proxies=test_proxies,
+        )
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert test_proxies == trino_connection.build_connection_args(trino_conn_obj).root.get("http_session").proxies
+
+    def test_trino_without_catalog(self):
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+        )
+
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+
+    def test_trino_without_catalog(self):  # noqa: F811
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+        )
+
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+
+    def test_trino_with_oauth2(self):
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"  # noqa: F841
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2,
+        )
+
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert trino_connection.build_connection_args(trino_conn_obj).root.get("auth") == OAuth2Authentication()
+
+    def test_mysql_url(self):
+        # connection arguments without db
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
+        mysql_conn_obj = MysqlConnection(
+            username="openmetadata_user",
+            hostPort="localhost:3306",
+            scheme=MySQLScheme.mysql_pymysql,
+        )
+        assert expected_url == get_connection_url_common(mysql_conn_obj)
+
+        # connection arguments with db
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
+        mysql_conn_obj = MysqlConnection(
+            username="openmetadata_user",
+            hostPort="localhost:3306",
+            scheme=MySQLScheme.mysql_pymysql,
+        )
+        assert expected_url == get_connection_url_common(mysql_conn_obj)
+
+    def test_clickhouse_url(self):
+        # connection arguments without db
+        expected_url = "clickhouse+http://username:@localhost:8123"
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="username",
+            hostPort="localhost:8123",
+            scheme=ClickhouseScheme.clickhouse_http,
+            databaseSchema=None,
+        )
+        assert expected_url == get_connection_url_common(clickhouse_conn_obj)
+
+        # connection arguments with db
+        expected_url = "clickhouse+http://username:@localhost:8123/default"
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="username",
+            hostPort="localhost:8123",
+            scheme=ClickhouseScheme.clickhouse_http,
+            databaseSchema="default",
+        )
+        assert expected_url == get_connection_url_common(clickhouse_conn_obj)
+
+        expected_url = "clickhouse+http://username:@localhost:8123/default?protocol=https"
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="username",
+            hostPort="localhost:8123",
+            scheme=ClickhouseScheme.clickhouse_http,
+            connectionOptions=dict(protocol="https"),  # noqa: C408
+            databaseSchema="default",
+        )
+        assert expected_url == get_connection_url_common(clickhouse_conn_obj)
+
+    def test_mariadb_url(self):
+        # connection arguments without db
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
+        mariadb_conn_obj = MariaDBConnection(
+            username="openmetadata_user",
+            hostPort="localhost:3306",
+            scheme=MariaDBScheme.mysql_pymysql,
+        )
+        assert expected_url == get_connection_url_common(mariadb_conn_obj)
+
+        # connection arguments with db
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
+        mariadb_conn_obj = MariaDBConnection(
+            username="openmetadata_user",
+            hostPort="localhost:3306",
+            scheme=MariaDBScheme.mysql_pymysql,
+        )
+        assert expected_url == get_connection_url_common(mariadb_conn_obj)
+
+    def test_postgres_url(self):
+        # connection arguments with db
+        expected_url = "postgresql+psycopg2://openmetadata_user:@localhost:5432/default"
+        postgres_conn_obj = PostgresConnection(
+            username="openmetadata_user",
+            hostPort="localhost:5432",
+            database="default",
+            scheme=PostgresScheme.postgresql_psycopg2,
+        )
+        assert expected_url == get_connection_url_common(postgres_conn_obj)
+
+    def test_redshift_url(self):
+        # connection arguments witho db
+        expected_url = (
+            "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
+        )
+        redshift_conn_obj = RedshiftConnection(
+            username="username",
+            authType=BasicAuth(password="strong_password"),
+            hostPort="cluster.name.region.redshift.amazonaws.com:5439",
+            scheme=RedshiftScheme.redshift_psycopg2,
+            database="dev",
+        )
+        assert expected_url == get_connection_url_common(redshift_conn_obj)
+
+    def test_singleStore_url(self):  # noqa: N802
+        # connection arguments without db
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
+            username="openmetadata_user",
+            hostPort="localhost:5432",
+            scheme=SingleStoreScheme.mysql_pymysql,
+        )
+        assert expected_url == get_connection_url_common(singleStore_conn_obj)
+
+        # connection arguments with db
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
+            username="openmetadata_user",
+            hostPort="localhost:5432",
+            scheme=SingleStoreScheme.mysql_pymysql,
+        )
+        assert expected_url == get_connection_url_common(singleStore_conn_obj)
+
+    def test_db2_url(self):
+        # connection arguments with db
+        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000/testdb"
+        db2_conn_obj = Db2Connection(
+            scheme=Db2Scheme.db2_ibm_db,
+            username="openmetadata_user",
+            hostPort="localhost:50000",
+            database="testdb",
+        )
+        assert expected_url == get_connection_url_common(db2_conn_obj)
+
+    def test_snowflake_url(self):
+        # Passing @ in username and password
+        expected_url = "snowflake://coding%40444:Abhi%40123@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        snowflake_conn_obj = SnowflakeConnectionConfig(
+            scheme=SnowflakeScheme.snowflake,
+            username="coding@444",
+            password="Abhi@123",
+            warehouse="COMPUTE_WH",
+            account="ue18849.us-east-2.aws",
+        )
+
+        assert expected_url == SnowflakeConnection.get_connection_url(snowflake_conn_obj)
+
+        # connection arguments with db
+        expected_url = (
+            "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        )
+        snowflake_conn_obj = SnowflakeConnectionConfig(
+            scheme=SnowflakeScheme.snowflake,
+            username="coding",
+            password="Abhi",
+            database="testdb",
+            warehouse="COMPUTE_WH",
+            account="ue18849.us-east-2.aws",
+        )
+
+        assert expected_url == SnowflakeConnection.get_connection_url(snowflake_conn_obj)
+
+    def test_mysql_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        mysql_conn_obj = MysqlConnection(
+            username="user",
+            authType=BasicAuth(
+                password=None,
+            ),
+            hostPort="localhost:443",
+            connectionArguments=None,
+            scheme=MySQLScheme.mysql_pymysql,
+        )
+        assert expected_args == get_connection_args_common(mysql_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        mysql_conn_obj = MysqlConnection(
+            username="user",
+            authType=BasicAuth(
+                password=None,
+            ),
+            hostPort="localhost:443",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=MySQLScheme.mysql_pymysql,
+        )
+        assert expected_args == get_connection_args_common(mysql_conn_obj)
+
+    def test_clickhouse_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            databaseSchema=None,
+            connectionArguments=None,
+            scheme=ClickhouseScheme.clickhouse_http,
+        )
+        assert expected_args == get_connection_args_common(clickhouse_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            databaseSchema="tiny",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=ClickhouseScheme.clickhouse_http,
+        )
+        assert expected_args == get_connection_args_common(clickhouse_conn_obj)
+
+    def test_mariadb_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        mariadb_conn_obj = MariaDBConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            connectionArguments=None,
+            scheme=MariaDBScheme.mysql_pymysql,
+        )
+        assert expected_args == get_connection_args_common(mariadb_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        mariadb_conn_obj = MariaDBConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=MariaDBScheme.mysql_pymysql,
+        )
+        assert expected_args == get_connection_args_common(mariadb_conn_obj)
+
+    def test_postgres_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        postgres_conn_obj = PostgresConnection(
+            username="user",
+            authType=BasicAuth(
+                password=None,
+            ),
+            database="postgres",
+            hostPort="localhost:443",
+            connectionArguments=None,
+            scheme=PostgresScheme.postgresql_psycopg2,
+        )
+        assert expected_args == get_connection_args_common(postgres_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        postgres_conn_obj = PostgresConnection(
+            authType=BasicAuth(
+                password=None,
+            ),
+            username="user",
+            hostPort="localhost:443",
+            database="tiny",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=PostgresScheme.postgresql_psycopg2,
+        )
+        assert expected_args == get_connection_args_common(postgres_conn_obj)
+
+    def test_redshift_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        redshift_conn_obj = RedshiftConnection(
+            username="user",
+            authType=BasicAuth(password=None),
+            hostPort="localhost:443",
+            database="tiny",
+            connectionArguments=None,
+            scheme=RedshiftScheme.redshift_psycopg2,
+        )
+        assert expected_args == get_connection_args_common(redshift_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        redshift_conn_obj = RedshiftConnection(
+            username="user",
+            authType=BasicAuth(password=None),
+            hostPort="localhost:443",
+            database="tiny",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=RedshiftScheme.redshift_psycopg2,
+        )
+        assert expected_args == get_connection_args_common(redshift_conn_obj)
+
+    def test_singleStore_conn_arguments(self):  # noqa: N802
+        # connection arguments without connectionArguments
+        expected_args = {}
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            connectionArguments=None,
+            scheme=SingleStoreScheme.mysql_pymysql,
+        )
+        assert expected_args == get_connection_args_common(singleStore_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=SingleStoreScheme.mysql_pymysql,
+        )
+        assert expected_args == get_connection_args_common(singleStore_conn_obj)
+
+    def test_db2_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        db2_conn_obj = Db2Connection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            connectionArguments=None,
+            scheme=Db2Scheme.db2_ibm_db,
+            database="testdb",
+        )
+        assert expected_args == get_connection_args_common(db2_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        db2_conn_obj = Db2Connection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=Db2Scheme.db2_ibm_db,
+            database="testdb",
+        )
+        assert expected_args == get_connection_args_common(db2_conn_obj)
+
+    def test_snowflake_conn_arguments(self):
+        # connection arguments without connectionArguments
+        expected_args = {}
+        snowflake_conn_obj = SnowflakeConnectionConfig(
+            username="user",
+            password="test-pwd",
+            database="tiny",
+            warehouse="COMPUTE_WH",
+            scheme=SnowflakeScheme.snowflake,
+            account="account.region_name.cloud_service",
+        )
+        assert expected_args == get_connection_args_common(snowflake_conn_obj)
+
+        # connection arguments with connectionArguments
+        expected_args = {"user": "user-to-be-impersonated"}
+        snowflake_conn_obj = SnowflakeConnectionConfig(
+            username="user",
+            password="test-pwd",
+            database="tiny",
+            warehouse="COMPUTE_WH",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=SnowflakeScheme.snowflake,
+            account="account.region_name.cloud_service",
+        )
+        assert expected_args == get_connection_args_common(snowflake_conn_obj)
+
+    def test_mssql_url(self):
+        from metadata.ingestion.source.database.mssql.connection import (
+            get_connection_url,
+        )
+
+        # connection arguments without db
+        expected_url = "mssql+pytds://sa:password@localhost:1433"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database=None,
+        )
+
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+    def test_mssql_url(self):  # noqa: F811
+        from metadata.ingestion.source.database.mssql.connection import (
+            get_connection_url,
+        )
+
+        # Passing @ in username and password
+        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433/master"
+        mssql_conn_obj = MssqlConnection(
+            username="sa@123",
+            password="password@444",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database="master",
+        )
+
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+        # connection arguments witho db
+        expected_url = "mssql+pytds://sa:password@localhost:1433/catalog_test"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database="catalog_test",
+        )
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+    def test_oracle_url(self):
+        # oracle with db
+        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
+
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
+        )
+
+        assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
+
+        # oracle with service name
+        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
+
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
+        )
+        assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
+
+        # oracle with db & connection options
+        expected_url = [
+            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
+        ]
+
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
+        )
+        assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
+
+        # oracle with service name & connection options
+        expected_url = [
+            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
+        ]
+
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
+        )
+        assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
+
+        tns_connection = (
+            "(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)"
+            "(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))"
+        )
+        expected_url = f"oracle+cx_oracle://admin:password@{tns_connection}"
+
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",  # We will ignore it here
+            oracleConnectionType=OracleTNSConnection(oracleTNSConnection=tns_connection),
+        )
+        assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url

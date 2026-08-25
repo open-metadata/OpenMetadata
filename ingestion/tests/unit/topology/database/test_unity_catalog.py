@@ -1,0 +1,716 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Test unitycatalog using the topology
+"""
+
+from types import SimpleNamespace
+from typing import List  # noqa: UP035
+from unittest import TestCase
+from unittest.mock import MagicMock, patch
+
+from databricks.sdk.service.catalog import (
+    CatalogInfo,
+    CatalogInfoSecurableKind,
+    CatalogType,
+    ColumnInfo,
+    ColumnTypeName,
+    DataSourceFormat,
+    IsolationMode,
+    SchemaInfo,
+    TableInfo,
+)
+from databricks.sdk.service.catalog import TableType as DatabricksTableType
+
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    ConstraintType,
+    DataType,
+    TableConstraint,
+    TableType,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
+
+# pylint: disable=line-too-long
+mock_unitycatalog_config = {
+    "source": {
+        "type": "unitycatalog",
+        "serviceName": "local_unitycatalog",
+        "serviceConnection": {
+            "config": {
+                "type": "UnityCatalog",
+                "catalog": "hive_metastore",
+                "databaseSchema": "default",
+                "authType": {"token": "123sawdtesttoken"},
+                "hostPort": "localhost:443",
+                "httpPath": "/sql/1.0/warehouses/abcdedfg",
+                "connectionTimeout": 120,
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+                "schemaFilterPattern": {"excludes": []},
+            }
+        },
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "unity_catalog"},
+        }
+    },
+}
+
+
+MOCK_CATALOG_INFO: List[CatalogInfo] = [  # noqa: UP006
+    CatalogInfo(
+        browse_only=False,
+        catalog_type=CatalogType.MANAGED_CATALOG,
+        comment=None,
+        connection_name=None,
+        created_at=1687515910367,
+        created_by="test@open-metadata.org",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="demo",
+        isolation_mode=IsolationMode.OPEN,
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="demo",
+        options=None,
+        owner="test@open-metadata.org",
+        properties=None,
+        provider_name=None,
+        provisioning_info=None,
+        securable_kind=CatalogInfoSecurableKind.CATALOG_STANDARD,
+        securable_type="CATALOG",
+        share_name=None,
+        storage_location=None,
+        storage_root=None,
+        updated_at=1687515910367,
+        updated_by="test@open-metadata.org",
+    ),
+    CatalogInfo(
+        browse_only=False,
+        catalog_type=CatalogType.MANAGED_CATALOG,
+        comment="Main catalog (auto-created)",
+        connection_name=None,
+        created_at=1687515800742,
+        created_by="test@open-metadata.org",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="main",
+        isolation_mode=IsolationMode.OPEN,
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="main",
+        options=None,
+        owner="test@open-metadata.org",
+        properties=None,
+        provider_name=None,
+        provisioning_info=None,
+        securable_kind=CatalogInfoSecurableKind.CATALOG_STANDARD,
+        securable_type="CATALOG",
+        share_name=None,
+        storage_location=None,
+        storage_root=None,
+        updated_at=1687515800742,
+        updated_by="test@open-metadata.org",
+    ),
+    CatalogInfo(
+        browse_only=False,
+        catalog_type=None,
+        comment="",
+        connection_name="postgres_connection",
+        created_at=1722951879190,
+        created_by="test@open-metadata.org",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="postgres_catalog",
+        isolation_mode=IsolationMode.OPEN,
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="postgres_catalog",
+        options={"database": "TESTDB"},
+        owner="test@open-metadata.org",
+        properties=None,
+        provider_name=None,
+        provisioning_info=None,
+        securable_kind=CatalogInfoSecurableKind.CATALOG_FOREIGN_POSTGRESQL,
+        securable_type="CATALOG",
+        share_name=None,
+        storage_location=None,
+        storage_root=None,
+        updated_at=1722951879190,
+        updated_by="test@open-metadata.org",
+    ),
+    CatalogInfo(
+        browse_only=False,
+        catalog_type=CatalogType.SYSTEM_CATALOG,
+        comment="System catalog (auto-created)",
+        connection_name=None,
+        created_at=1687515800756,
+        created_by="System user",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="system",
+        isolation_mode=IsolationMode.OPEN,
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="system",
+        options=None,
+        owner="System user",
+        properties=None,
+        provider_name=None,
+        provisioning_info=None,
+        securable_kind=CatalogInfoSecurableKind.CATALOG_SYSTEM,
+        securable_type="CATALOG",
+        share_name=None,
+        storage_location=None,
+        storage_root=None,
+        updated_at=1687515800756,
+        updated_by="System user",
+    ),
+]
+MOCK_SCHEMA_INFO = [
+    SchemaInfo(
+        catalog_name="demo",
+        catalog_type="MANAGED_CATALOG",
+        comment="Default schema (auto-created)",
+        created_at=1687515910369,
+        created_by="test@open-metadata.org",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="demo.default",
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="default",
+        owner="test@open-metadata.org",
+        properties=None,
+        storage_location=None,
+        storage_root=None,
+        updated_at=1687515910369,
+        updated_by="test@open-metadata.org",
+    ),
+    SchemaInfo(
+        catalog_name="demo",
+        catalog_type="MANAGED_CATALOG",
+        comment="Information schema (auto-created)",
+        created_at=1687515910373,
+        created_by="System user",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="demo.information_schema",
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="information_schema",
+        owner="System user",
+        properties=None,
+        storage_location=None,
+        storage_root=None,
+        updated_at=1687515910373,
+        updated_by="System user",
+    ),
+    SchemaInfo(
+        catalog_name="demo",
+        catalog_type="MANAGED_CATALOG",
+        comment="",
+        created_at=1687518049197,
+        created_by="test@open-metadata.org",
+        effective_predictive_optimization_flag=None,
+        enable_predictive_optimization=None,
+        full_name="demo.new_schema",
+        metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+        name="new_schema",
+        owner="test@open-metadata.org",
+        properties={"owner": "root"},
+        storage_location=None,
+        storage_root=None,
+        updated_at=1687518049197,
+        updated_by="test@open-metadata.org",
+    ),
+]
+
+MOCK_CONTEXT_TABLEDATA = TableInfo(full_name="demo.default.complex_data")
+MOCK_TABLE_INFO = TableInfo(
+    access_point=None,
+    catalog_name="demo",
+    columns=[
+        ColumnInfo(
+            comment=None,
+            mask=None,
+            name="id",
+            nullable=True,
+            partition_index=None,
+            position=0,
+            type_interval_type=None,
+            type_json='{"name":"id","type":"integer","nullable":true,"metadata":{}}',
+            type_name=ColumnTypeName.INT,
+            type_precision=0,
+            type_scale=0,
+            type_text="int",
+        ),
+        ColumnInfo(
+            comment=None,
+            mask=None,
+            name="array_data",
+            nullable=True,
+            partition_index=None,
+            position=1,
+            type_interval_type=None,
+            type_json='{"name":"array_data","type":{"type":"array","elementType":"integer","containsNull":true},"nullable":true,"metadata":{}}',
+            type_name=ColumnTypeName.ARRAY,
+            type_precision=0,
+            type_scale=0,
+            type_text="array<int>",
+        ),
+        ColumnInfo(
+            comment=None,
+            mask=None,
+            name="map_data",
+            nullable=True,
+            partition_index=None,
+            position=2,
+            type_interval_type=None,
+            type_json='{"name":"map_data","type":{"type":"map","keyType":"string","valueType":"integer","valueContainsNull":true},"nullable":true,"metadata":{}}',
+            type_name=ColumnTypeName.MAP,
+            type_precision=0,
+            type_scale=0,
+            type_text="map<string,int>",
+        ),
+        ColumnInfo(
+            comment=None,
+            mask=None,
+            name="struct_data",
+            nullable=True,
+            partition_index=None,
+            position=3,
+            type_interval_type=None,
+            type_json='{"name":"struct_data","type":{"type":"struct","fields":[{"name":"a","type":"integer","nullable":true,"metadata":{}},{"name":"b","type":"string","nullable":true,"metadata":{}},{"name":"c","type":{"type":"array","elementType":"string","containsNull":true},"nullable":true,"metadata":{}},{"name":"d","type":{"type":"struct","fields":[{"name":"abc","type":"integer","nullable":true,"metadata":{}}]},"nullable":true,"metadata":{}}]},"nullable":true,"metadata":{}}',
+            type_name=ColumnTypeName.STRUCT,
+            type_precision=0,
+            type_scale=0,
+            type_text="struct<a:int,b:string,c:array<string>,d:struct<abc:int>>",
+        ),
+    ],
+    comment="this is a description for dataset input",
+    created_at=1713519443052,
+    created_by="test@open-metadata.org",
+    data_access_configuration_id="00000000-0000-0000-0000-000000000000",
+    data_source_format=DataSourceFormat.DELTA,
+    deleted_at=None,
+    delta_runtime_properties_kvpairs=None,
+    effective_predictive_optimization_flag=None,
+    enable_predictive_optimization=None,
+    encryption_details=None,
+    full_name="demo.default.complex_data",
+    metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
+    name="complex_data",
+    owner="test@open-metadata.org",
+    pipeline_id=None,
+    properties={
+        "delta.lastCommitTimestamp": "1713519423000",
+        "delta.lastUpdateVersion": "0",
+        "delta.minWriterVersion": "7",
+        "delta.enableDeletionVectors": "true",
+        "delta.minReaderVersion": "3",
+        "delta.checkpoint.writeStatsAsStruct": "true",
+        "delta.checkpoint.writeStatsAsJson": "false",
+        "delta.feature.deletionVectors": "supported",
+    },
+    row_filter=None,
+    schema_name="default",
+    sql_path=None,
+    storage_credential_name=None,
+    storage_location="s3://awsdatalake-testing/databricks-new-metastore/3849887a-24ae-4b8e-a470-9d953589f80e/tables/fe201793-8483-4edd-90a7-d27332d1418a",
+    table_constraints=[],
+    table_id="fe201793-8483-4edd-90a7-d27332d1418a",
+    table_type=DatabricksTableType.MANAGED,
+    updated_at=1713519443052,
+    updated_by="test@open-metadata.org",
+    view_definition=None,
+    view_dependencies=None,
+)
+
+MOCK_TABLE = {
+    "id": "2d725b6e-1588-4814-9d8b-eff384cd1053",
+    "name": "DataSet Input",
+    "description": "this is a description for dataset input",
+    "rows": 99,
+    "columns": 10,
+    "schema": {
+        "columns": [
+            {"type": "DOUBLE", "name": "amount"},
+            {"type": "DOUBLE", "name": "bank_transfer_amount"},
+            {"type": "DOUBLE", "name": "coupon_amount"},
+            {"type": "DOUBLE", "name": "credit_card_amount"},
+        ]
+    },
+    "owner": {"id": 1027954122, "name": "Nihar Doshi"},
+    "dataCurrentAt": "2022-10-18T05:30:06Z",
+    "createdAt": "2022-10-17T05:52:21Z",
+    "updatedAt": "2022-10-18T05:30:07Z",
+    "pdpEnabled": False,
+    "policies": [
+        {
+            "id": 17,
+            "type": "open",
+            "name": "All Rows",
+            "filters": [],
+            "users": [],
+            "virtualUsers": [],
+            "groups": [],
+        }
+    ],
+}
+
+MOCK_TABLE_2 = {
+    "id": "3df43ed7-5f2f-46bb-9793-384c6374a81d",
+    "name": "growth data",
+    "description": "company growth data",
+    "rows": 5,
+    "columns": 2,
+    "schema": {
+        "columns": [
+            {"type": "ARRAY", "name": "quarters.result"},
+            {"type": "NUMBER", "name": "profit"},
+        ]
+    },
+    "owner": {"id": 6024954162, "name": "Sam"},
+    "dataCurrentAt": "2024-07-15T05:30:06Z",
+    "createdAt": "2024-07-15T05:52:21Z",
+    "updatedAt": "2024-07-15T05:30:07Z",
+}
+
+EXPTECTED_TABLE_2 = [
+    CreateTableRequest(
+        name="growth data",
+        displayName="growth data",
+        description="company growth data",
+        tableType=TableType.Regular.value,
+        columns=[
+            Column(
+                name="quarters.result",
+                dataType=DataType.ARRAY.value,
+            ),
+            Column(
+                name="profit",
+                dataType=DataType.NUMBER.value,
+            ),
+        ],
+        databaseSchema=FullyQualifiedEntityName("local_unitycatalog.hive_metastore.do_it_all_with_default_schema"),
+    )
+]
+
+EXPECTED_DATABASE_NAMES = ["hive_metastore"]
+EXPECTED_DATABASE_SCHEMA_NAMES = ["default", "information_schema", "new_schema"]
+
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="local_unitycatalog",
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.UnityCatalog,
+)
+
+MOCK_DATABASE = Database(
+    id="a4e2f4aa-10af-4d4b-a85b-5daad6f70720",
+    name="hive_metastore",
+    fullyQualifiedName="local_unitycatalog.hive_metastore",
+    displayName="hive_metastore",
+    description=Markdown(""),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
+)
+
+MOCK_DATABASE_SCHEMA = DatabaseSchema(
+    id="ec5be98f-917c-44be-b178-47b3237ef648",
+    name="do_it_all_with_default_schema",
+    fullyQualifiedName="domodatabase_source.do_it_all_with_default_config.do_it_all_with_default_schema",
+    service=EntityReference(id="ec5be98f-917c-44be-b178-47b3237ef648", type="database"),
+    database=EntityReference(
+        id="a4e2f4aa-10af-4d4b-a85b-5daad6f70720",
+        type="database",
+    ),
+)
+
+
+EXPTECTED_DATABASE_SCHEMA = [
+    CreateDatabaseSchemaRequest(
+        name="do_it_all_with_default_schema",
+        database="local_unitycatalog.hive_metastore",
+    )
+]
+
+
+EXPTECTED_TABLE = [
+    Either(
+        right=CreateTableRequest(
+            name=EntityName(root="complex_data"),
+            displayName=None,
+            description="this is a description for dataset input",
+            tableType=TableType.Regular,
+            columns=[
+                Column(
+                    name=ColumnName(root="id"),
+                    dataType=DataType.INT,
+                    dataLength=1,
+                    dataTypeDisplay="int",
+                    ordinalPosition=0,
+                    tags=None,
+                ),
+                Column(
+                    name=ColumnName(root="array_data"),
+                    dataType=DataType.ARRAY,
+                    arrayDataType=DataType.INT,
+                    dataLength=1,
+                    dataTypeDisplay="array<int>",
+                    ordinalPosition=1,
+                    tags=None,
+                ),
+                Column(
+                    name=ColumnName(root="map_data"),
+                    dataType=DataType.MAP,
+                    dataLength=1,
+                    dataTypeDisplay="map<string,int>",
+                    ordinalPosition=2,
+                    tags=None,
+                ),
+                Column(
+                    name=ColumnName(root="struct_data"),
+                    dataType=DataType.STRUCT,
+                    dataLength=1,
+                    dataTypeDisplay="struct<a:int,b:string,c:array<string>,d:struct<abc:int>>",
+                    ordinalPosition=3,
+                    tags=None,
+                    children=[
+                        Column(
+                            name=ColumnName(root="a"),
+                            dataType=DataType.INT,
+                            dataLength=None,
+                            dataTypeDisplay="int",
+                            tags=[],
+                        ),
+                        Column(
+                            name=ColumnName(root="b"),
+                            dataType=DataType.STRING,
+                            dataLength=None,
+                            dataTypeDisplay="string",
+                            tags=[],
+                        ),
+                        Column(
+                            name=ColumnName(root="c"),
+                            dataType=DataType.ARRAY,
+                            arrayDataType=DataType.STRING,
+                            dataLength=None,
+                            dataTypeDisplay="array<string>",
+                            tags=[],
+                        ),
+                        Column(
+                            name=ColumnName(root="d"),
+                            dataType=DataType.STRUCT,
+                            dataLength=None,
+                            dataTypeDisplay="struct<abc:int>",
+                            tags=[],
+                            children=[
+                                Column(
+                                    name=ColumnName(root="abc"),
+                                    dataType=DataType.INT,
+                                    dataLength=None,
+                                    dataTypeDisplay="int",
+                                    tags=[],
+                                )
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+            tableConstraints=[],
+            databaseSchema=FullyQualifiedEntityName(
+                root="local_unitycatalog.hive_metastore.do_it_all_with_default_schema"
+            ),
+            tags=None,
+            locationPath="s3://awsdatalake-testing/databricks-new-metastore/3849887a-24ae-4b8e-a470-9d953589f80e/tables/fe201793-8483-4edd-90a7-d27332d1418a",
+        ),
+        left=None,
+    )
+]
+
+
+class unitycatalogUnitTest(TestCase):  # noqa: N801
+    """
+    unitycatalog unit tests
+    """
+
+    @patch("metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection")
+    @patch("metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        test_connection,
+        mock_sqlalchemy_connection,
+    ) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+
+        mock_engine = MagicMock()
+        mock_sqlalchemy_connection.return_value = mock_engine
+
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
+        self.unitycatalog_source = UnitycatalogSource.create(
+            mock_unitycatalog_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.unitycatalog_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.unitycatalog_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+
+        self.unitycatalog_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+
+    @patch.object(UnitycatalogSource, "_process_table")
+    @patch.object(UnitycatalogSource, "sql_connection", create=True)
+    @patch("databricks.sdk.service.catalog.TablesAPI.list")
+    @patch("databricks.sdk.service.catalog.TablesAPI.get")
+    def test_get_tables_with_constraints(
+        self, mock_dbx_get_table, mock_dbx_list_table, mock_sql_connection, mock_process_table
+    ):
+        mock_tables_with_constraints = [
+            SimpleNamespace(
+                table_catalog="demo",
+                table_schema="default",
+                table_name="table_with_constraints",
+            )
+        ]
+
+        mock_sql_connection.execute.return_value = mock_tables_with_constraints
+        mock_dbx_list_table.return_value = [
+            TableInfo(
+                catalog_name="demo",
+                schema_name="default",
+                name="table_with_constraints",
+                table_type=DatabricksTableType.MANAGED,
+            ),
+            TableInfo(
+                catalog_name="demo",
+                schema_name="default",
+                name="table_no_constraints",
+                table_type=DatabricksTableType.MANAGED,
+            ),
+        ]
+        mock_dbx_get_table.return_value = TableInfo(
+            catalog_name="demo",
+            schema_name="default",
+            name="table_with_constraints",
+            table_type=DatabricksTableType.MANAGED,
+            table_constraints=[TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, referredColumns=["id"])],
+        )
+        mock_process_table.side_effect = [
+            [("table_with_constraints", TableType.Regular)],
+            [("table_no_constraints", TableType.Regular)],
+        ]
+
+        list(self.unitycatalog_source.get_tables_name_and_type())
+        # Verify that the get method was called for the table with constraints
+        mock_dbx_get_table.assert_called_once()
+
+    @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
+    def test_get_database_names_raw(self, mock_list):
+        mock_list.return_value = MOCK_CATALOG_INFO
+        assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
+
+    @patch("databricks.sdk.service.catalog.SchemasAPI.list")
+    def test_database_schema_names(self, mock_schema_list):
+        mock_schema_list.return_value = MOCK_SCHEMA_INFO
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
+
+    def test_yield_table(self):
+        table_list = []
+        self.unitycatalog_source.context.get().table_data = MOCK_TABLE_INFO
+        for table in self.unitycatalog_source.yield_table(("complex_data", "Regular")):
+            if isinstance(table, Either):
+                table_list.append(table)  # noqa: PERF401
+
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
+            self.assertEqual(expected, original)
+
+    def test_get_schema_definition(self):
+        # Check view definition
+        mock_mv_table = TableInfo(
+            catalog_name="demo",
+            schema_name="default",
+            name="test_mv",
+            table_type=DatabricksTableType.MATERIALIZED_VIEW,
+            view_definition="SELECT user_id, COUNT(*) FROM events GROUP BY user_id",
+        )
+
+        mv_result = self.unitycatalog_source.get_schema_definition(
+            table_name="test_mv",
+            table_type=TableType.MaterializedView,
+            table=mock_mv_table,
+        )
+
+        assert (
+            mv_result
+            == "CREATE MATERIALIZED VIEW `demo`.`default`.`test_mv` AS SELECT user_id, COUNT(*) FROM events GROUP BY user_id"
+        )
+
+        # Check schema definition when includeDDL is True
+        self.unitycatalog_source.source_config.includeDDL = True
+        mock_regular_table = TableInfo(
+            catalog_name="demo",
+            schema_name="default",
+            name="test_table",
+            table_type=DatabricksTableType.MANAGED,
+            data_source_format=DataSourceFormat.DELTA,
+        )
+
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = ["CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"]
+
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = mock_cursor
+
+        with patch.object(self.unitycatalog_source.engine, "connect", return_value=mock_connection):
+            table_with_ddl_result = self.unitycatalog_source.get_schema_definition(
+                table_name="test_table",
+                table_type=TableType.Regular,
+                table=mock_regular_table,
+            )
+
+        assert table_with_ddl_result == "CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"
+
+        # Check schema definition when includeDDL is False
+        self.unitycatalog_source.source_config.includeDDL = False
+
+        table_without_ddl_result = self.unitycatalog_source.get_schema_definition(
+            table_name="test_table",
+            table_type=TableType.Regular,
+            table=mock_regular_table,
+        )
+
+        assert table_without_ddl_result is None

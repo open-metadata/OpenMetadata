@@ -1,0 +1,61 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../variables.less';
+@import (reference) '../fonts.less';
+
+.feed-drawer {
+  .ant-drawer-header {
+    padding: 0;
+  }
+  .ant-drawer-body {
+    padding: var(--om-space-16);
+  }
+  .ant-drawer-title {
+    color: @text-color;
+    .text-sm(); // Using existing class: 14px font-size, 20px line-height
+    font-weight: @font-regular;
+  }
+  .ant-drawer-body {
+    overflow-x: hidden;
+  }
+}
+
+.ant-drawer-header {
+  border-bottom: none;
+}
+
+.custom-drawer-style {
+  .ant-drawer-footer {
+    box-shadow: 0px -13px 16px -4px var(--om-legacy-color-10-13-18-0-04),
+      0px -4px 6px -2px var(--om-legacy-color-10-13-18-0-04);
+    z-index: var(--om-z-1);
+  }
+  .ant-drawer-header {
+    box-shadow: 0px 9px 16px -4px var(--om-legacy-color-10-13-18-0-04);
+    z-index: var(--om-z-1);
+    .text-xl(); // Using existing class: 20px font-size, 30px line-height
+    font-weight: @font-semibold;
+    color: @grey-800;
+    display: flex;
+    align-items: center;
+
+    .drawer-close-icon {
+      width: 16px;
+      height: 16px;
+      color: @grey-700;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+    "name": "MongoDB",
+    "fullyQualifiedName": "MongoDB",
+    "displayName": "MongoDB Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of collections.",
+    "steps": [
+      {
+        "name": "CheckAccess",
+        "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+        "errorMessage": "Failed to connect to mongoDB, please validate the credentials",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetDatabases",
+        "description": "List all the databases available to the user.",
+        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+        "mandatory": true
+      },
+      {
+        "name": "GetCollections",
+        "description": "List all the collection available within a randomly chosen database available to the user.",
+        "errorMessage": "Failed to fetch collection, please validate if the user has `listCollection` privilege on available databases",
+        "mandatory": true
+      }
+    ]
+  }
+  
+  

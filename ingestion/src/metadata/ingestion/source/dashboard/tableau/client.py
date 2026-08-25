@@ -1,0 +1,491 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Wrapper module of TableauServerConnection client
+"""
+
+import math
+import traceback
+from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+
+import validators
+from tableauserverclient import (
+    Pager,
+    PersonalAccessTokenAuth,
+    ProjectItem,
+    RequestOptions,
+    Server,
+    TableauAuth,
+    ViewItem,
+)
+
+from metadata.ingestion.source.dashboard.tableau.models import (
+    CustomSQLTablesResponse,
+    DataSource,
+    TableauBaseModel,
+    TableauChart,
+    TableauDashboard,
+    TableauDatasources,
+    TableauDatasourcesConnection,
+    TableauOwner,
+)
+from metadata.ingestion.source.dashboard.tableau.queries import (
+    TABLEAU_DATASOURCES_QUERY,
+    TALEAU_GET_CUSTOM_SQL_QUERY,
+)
+from metadata.utils.logger import ometa_logger
+from metadata.utils.ssl_manager import SSLManager
+
+logger = ometa_logger()
+
+# GetSourceTables samples a few workbooks rather than reading the whole site. Every test
+# connection step shares one timeout, so the sample is capped. Breadth matters more than
+# depth here: the first workbook is often a sample one over a spreadsheet, whose names are
+# readable even when every database asset is withheld.
+SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
+MAX_SAMPLED_WORKBOOKS = 3
+
+
+class TableauWorkBookException(Exception):  # noqa: N818
+    """
+    Raise when Workbooks information is not retrieved from the Tableau APIs
+    """
+
+
+class TableauChartsException(Exception):  # noqa: N818
+    """
+    Raise when Charts information is not retrieved from the Tableau APIs
+    """
+
+
+class TableauOwnersNotFound(Exception):  # noqa: N818
+    """
+    Raise when Owner information is not retrieved from the Tableau APIs
+    """
+
+
+class TableauDataModelsException(Exception):  # noqa: N818
+    """
+    Raise when Data Source information is not retrieved from the Tableau Graphql Query
+    """
+
+
+class TableauUpstreamTablesRedacted(Exception):  # noqa: N818
+    """
+    Raise when the Metadata API returns a source table with its name withheld.
+
+    Tableau does not omit assets the account may not read. It returns them with the table
+    and database names nulled and only the identifiers left, so the table cannot be
+    resolved and its lineage is silently dropped for the whole run.
+    """
+
+
+class TableauClient:
+    """
+    Wrapper to TableauServerConnection
+    """
+
+    def __init__(
+        self,
+        tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],  # noqa: UP007
+        config,
+        verify_ssl: Union[bool, str],  # noqa: UP007
+        pagination_limit: int,
+        ssl_manager: Optional[SSLManager] = None,  # noqa: UP045
+    ):
+        self.tableau_server = Server(str(config.hostPort), use_server_version=True)
+        if config.apiVersion:
+            self.tableau_server.version = config.apiVersion
+        self.tableau_server.add_http_options({"verify": verify_ssl})
+        self.tableau_server.auth.sign_in(tableau_server_auth)
+        self.config = config
+        self.pagination_limit = pagination_limit
+        self.custom_sql_table_queries: Dict[str, List[str]] = {}  # noqa: UP006
+        self.owner_cache: Dict[str, TableauOwner] = {}  # noqa: UP006
+        self.all_projects: List[ProjectItem] = []  # noqa: UP006
+        self.ssl_manager = ssl_manager
+
+    def server_info(self):
+        return self.tableau_server.server_info.get()
+
+    def server_api_version(self) -> str:
+        return self.tableau_server.version
+
+    @property
+    def site_id(self) -> str:
+        return self.tableau_server.site_id
+
+    def get_tableau_owner(self, owner_id: Optional[str], include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+        """
+        Get tableau owner with optional include_owners flag
+        """
+        try:
+            if not include_owners or not owner_id:
+                return None
+            if owner_id in self.owner_cache:
+                return self.owner_cache[owner_id]
+            owner = self.tableau_server.users.get_by_id(owner_id)
+            if owner:
+                owner_obj = TableauOwner(id=str(owner.id), name=owner.name, email=owner.email)
+                self.owner_cache[owner_id] = owner_obj
+                return owner_obj
+        except Exception as err:
+            logger.debug(f"Failed to fetch owner details for ID {owner_id}: {str(err)}")  # noqa: RUF010
+        return None
+
+    def get_workbook_charts_and_user_count(
+        self,
+        views: list[ViewItem],
+        include_owners: bool = True,
+    ) -> Optional[Tuple[Optional[int], Optional[List[TableauChart]]]]:  # noqa: UP006, UP045
+        """
+        Fetches workbook charts and dashboard user view count
+        """
+        view_count = 0
+        charts: Optional[List[TableauChart]] = []  # noqa: UP006, UP045
+        for view in views or []:
+            try:
+                charts.append(
+                    TableauChart(
+                        id=str(view.id),
+                        name=view.name,
+                        tags=view.tags,
+                        owner=self.get_tableau_owner(view.owner_id, include_owners),
+                        contentUrl=view.content_url,
+                        sheetType=view.sheet_type,
+                    )
+                )
+                view_count += view.total_views
+            except AttributeError as e:
+                logger.debug(f"Failed to process view due to missing attribute: {str(e)}")  # noqa: RUF010
+                continue
+            except Exception as e:
+                logger.debug(f"Failed to process view: {str(e)}")  # noqa: RUF010
+                continue
+
+        return charts, view_count
+
+    def get_all_projects(self) -> None:
+        """
+        Get all projects from the tableau server
+        """
+        try:
+            logger.debug("Getting all projects from the tableau server")
+            all_projects: List[ProjectItem] = []  # noqa: UP006
+            for project in Pager(self.tableau_server.projects):
+                all_projects.append(project)  # noqa: PERF402
+            self.all_projects = all_projects
+        except Exception as e:
+            logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
+
+    def get_project_parents_by_id(self, project_id: str) -> Optional[str]:  # noqa: UP045
+        """
+        Get the parents of a project by id
+        """
+        try:
+            parent_projects = []
+            current_project_id = project_id
+
+            while current_project_id:
+                # Find project with current ID
+                project = next(
+                    (proj for proj in self.all_projects if str(proj.id) == str(current_project_id)),
+                    None,
+                )
+
+                if not project:
+                    break
+
+                parent_projects.append(project.name)
+
+                # Get parent ID and continue loop if exists
+                current_project_id = project.parent_id if hasattr(project, "parent_id") else None
+
+            if parent_projects:
+                parent_projects = ".".join(reversed(parent_projects))
+                return parent_projects  # noqa: RET504
+        except Exception as e:
+            logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: RUF010
+        return None
+
+    def get_workbook_count(self) -> int:
+        """Total workbooks available server-side via the pagination summary — a
+        single page-size-1 request, no full workbook materialization. This is the
+        pre-filter denominator for Dashboard progress."""
+        _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
+        return pagination_item.total_available
+
+    def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
+        """
+        Fetch all tableau workbooks
+        """
+        self.get_all_projects()
+        self.cache_custom_sql_tables()
+        for workbook in Pager(self.tableau_server.workbooks):
+            try:
+                self.tableau_server.workbooks.populate_views(workbook, usage=True)
+                charts, user_views = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
+                workbook = TableauDashboard(  # noqa: PLW2901
+                    id=str(workbook.id),
+                    name=workbook.name,
+                    project=TableauBaseModel(id=str(workbook.project_id), name=workbook.project_name),
+                    owner=self.get_tableau_owner(workbook.owner_id, include_owners),
+                    description=workbook.description,
+                    tags=workbook.tags,
+                    webpageUrl=workbook.webpage_url,
+                    charts=charts,
+                    user_views=user_views,
+                )
+                yield workbook
+            except AttributeError as err:
+                logger.warning(f"Failed to process workbook due to missing attribute: {str(err)}")  # noqa: RUF010
+                continue
+            except Exception as err:
+                logger.warning(f"Failed to process workbook: {str(err)}")  # noqa: RUF010
+                continue
+
+    def test_get_workbooks(self):
+        for workbook in Pager(self.tableau_server.workbooks):
+            if workbook.id is not None:
+                self.tableau_server.workbooks.populate_views(workbook, usage=True)
+                return workbook
+            break
+        raise TableauWorkBookException(
+            "Unable to fetch Dashboards from tableau\n"
+            "Please check if the user has permissions to access the Dashboards information"
+        )
+
+    def test_get_workbook_views(self, include_owners: bool = True):
+        workbook = self.test_get_workbooks()
+        charts, _ = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
+        if charts:
+            return True
+        raise TableauChartsException(
+            "Unable to fetch Charts from tableau\n"
+            "Please check if the user has permissions to access the Charts information"
+        )
+
+    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+        workbook = self.test_get_workbooks()
+        owners = self.get_tableau_owner(workbook.owner_id, include_owners)
+        if owners is not None:
+            return owners
+        raise TableauOwnersNotFound(
+            "Unable to fetch Dashboard Owners from tableau\n"
+            "Please check if the user has permissions to access the Owner information"
+        )
+
+    def test_site_url(self):
+        """
+        Method to test the site url and site name fields
+        """
+        validation = validators.url(self.config.siteName)
+        if validation:
+            raise ValueError(
+                f"""
+            The site url "{self.config.siteName}" is in incorrect format.
+            If "https://xxx.tableau.com/#/site/MarketingTeam/home" represents the homepage url for your tableau site,
+            the "MarketingTeam" from the url should be entered in the Site Name and Site Url fields.
+            """
+            )
+        return True
+
+    def test_get_datamodels(self):
+        """
+        Method to test the datamodels
+        """
+        workbook = self.test_get_workbooks()
+
+        if workbook.id is None:
+            raise TableauDataModelsException("Unable to get any workbooks to fetch tableau data sources")
+
+        # Take the 1st workbook's id and pass to the graphql query
+        data = self._query_datasources(dashboard_id=workbook.id, entities_per_page=1, offset=0)
+        if data:
+            return data
+        raise TableauDataModelsException(
+            "Unable to fetch Data Sources from tableau\n"
+            "Please check if the Tableau Metadata APIs are enabled for you Tableau instance\n"
+            "For more information on enabling the Tableau Metadata APIs follow the link below\n"
+            "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+            "#enable-the-tableau-metadata-api-for-tableau-server\n"
+        )
+
+    def _withheld_source_tables(self, workbook_id: str) -> List[str]:  # noqa: UP006
+        """
+        Names of the data sources on a workbook whose upstream tables cannot be resolved.
+
+        Mirrors _get_database_tables: a table with no name is still resolved through its
+        referencedByQueries, so only a table with neither is lineage that cannot be built.
+        """
+        datasources = self._query_datasources(
+            dashboard_id=workbook_id,
+            entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+            offset=0,
+        )
+        withheld = []
+        for datasource in (datasources.nodes if datasources else None) or []:
+            withheld.extend(
+                datasource.name or datasource.id
+                for table in datasource.upstreamTables or []
+                if not table.name and not table.referencedByQueries
+            )
+        return withheld
+
+    def test_get_source_tables(self):
+        """
+        Check that the Metadata API returns usable source tables.
+
+        Tableau withholds table and database names from accounts without Catalog
+        permissions on external assets, returning the table objects with only their
+        identifiers. Lineage to those tables cannot be built, so this is worth catching at
+        connection time instead of after a run that looks successful.
+
+        View is granted per external asset, so one withheld table is already lost lineage
+        even when others are readable. Reports the first sampled workbook that has one.
+
+        Passes when there is nothing to judge, meaning no sampled workbook declares a
+        source table at all, which is normal for file backed data sources.
+        """
+        sampled = 0
+
+        for workbook in Pager(self.tableau_server.workbooks):
+            if sampled >= MAX_SAMPLED_WORKBOOKS:
+                break
+            if workbook.id is None:
+                continue
+            sampled += 1
+
+            withheld = self._withheld_source_tables(workbook.id)
+            if withheld:
+                raise TableauUpstreamTablesRedacted(
+                    f"Tableau returned {len(withheld)} source table(s) with no name in workbook "
+                    f"[{workbook.name}], for data source(s): {', '.join(sorted(set(withheld))[:5])}"
+                )
+
+        if not sampled:
+            raise TableauWorkBookException(
+                "Unable to fetch Dashboards from tableau\n"
+                "Please check if the user has permissions to access the Dashboards information"
+            )
+        return True
+
+    def _query_datasources(
+        self, dashboard_id: str, entities_per_page: int, offset: int
+    ) -> Optional[TableauDatasources]:  # noqa: UP045
+        """
+        Method to query the graphql endpoint to get data sources
+        """
+        try:
+            datasources_graphql_result = self.tableau_server.metadata.query(
+                query=TABLEAU_DATASOURCES_QUERY.format(workbook_id=dashboard_id, first=entities_per_page, offset=offset)
+            )
+            if datasources_graphql_result and datasources_graphql_result.get("data"):
+                if datasources_graphql_result["data"].get("workbooks"):
+                    tableau_datasource_connection = TableauDatasourcesConnection(
+                        **datasources_graphql_result["data"]["workbooks"][0]
+                    )
+                    return tableau_datasource_connection.embeddedDatasourcesConnection
+                else:  # noqa: RET505
+                    logger.warning(
+                        f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "
+                        "If this is a recently created or updated workbook, it may take some time "
+                        f"to become available for querying via the GraphQL API. : \n graphql = {datasources_graphql_result}\n"
+                    )
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "\nSomething went wrong while connecting to Tableau Metadata APIs\n"
+                "Please check if the Tableau Metadata APIs are enabled for you Tableau instance\n"
+                "For more information on enabling the Tableau Metadata APIs follow the link below\n"
+                "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+                "#enable-the-tableau-metadata-api-for-tableau-server\n"
+            )
+        return None
+
+    def get_datasources(self, dashboard_id: str) -> Optional[List[DataSource]]:  # noqa: UP006, UP045
+        """
+        Paginate and get the list of all data sources of the workbook
+        """
+        try:
+            # Query the graphql endpoint once to get total count of data sources
+            tableau_datasource = self._query_datasources(dashboard_id=dashboard_id, entities_per_page=1, offset=1)
+            entities_per_page = min(50, self.pagination_limit)
+            indexes = math.ceil(tableau_datasource.totalCount / entities_per_page)
+
+            # Paginate the results
+            data_sources = []
+            for index in range(indexes):
+                offset = index * entities_per_page
+                tableau_datasource = self._query_datasources(
+                    dashboard_id=dashboard_id,
+                    entities_per_page=entities_per_page,
+                    offset=offset,
+                )
+                if tableau_datasource:
+                    data_sources.extend(tableau_datasource.nodes)
+            return data_sources  # noqa: TRY300
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Unable to fetch Data Sources")
+        return []
+
+    def get_custom_sql_table_queries(self, datasource_id: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+        """
+        Get custom SQL table queries for a specific dashboard/workbook ID
+        """
+        logger.debug(f"Getting custom SQL table queries for datasource {datasource_id}")
+
+        if datasource_id in self.custom_sql_table_queries:
+            logger.debug(f"Found cached queries for datasource {datasource_id}")
+            return self.custom_sql_table_queries[datasource_id]
+        logger.debug(f"No cached queries for datasource {datasource_id}")
+        return None
+
+    def cache_custom_sql_tables(self) -> None:
+        """
+        Fetch all custom SQL tables and cache their queries by workbook ID
+        """
+        try:
+            result = self.tableau_server.metadata.query(query=TALEAU_GET_CUSTOM_SQL_QUERY)
+            if not result:
+                logger.debug("No result returned from GraphQL query")
+                return
+
+            response = CustomSQLTablesResponse(**result)
+            if not response.data:
+                logger.debug("No data found in GraphQL response")
+                return
+
+            for tables in response.data.values():
+                for table in tables:
+                    if not (table.query and table.downstreamDatasources):
+                        logger.debug(f"Skipping table {table} - missing query or workbooks")
+                        continue
+
+                    query = table.query
+                    for datasource in table.downstreamDatasources:
+                        self.custom_sql_table_queries.setdefault(datasource.id, []).append(query)
+
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Unable to fetch Custom SQL Tables")
+
+    def sign_out(self) -> None:
+        self.tableau_server.auth.sign_out()
+        self.cleanup()
+
+    def cleanup(self) -> None:
+        """
+        Clean up temporary SSL files if they exist
+        """
+        if self.ssl_manager:
+            self.ssl_manager.cleanup_temp_files()

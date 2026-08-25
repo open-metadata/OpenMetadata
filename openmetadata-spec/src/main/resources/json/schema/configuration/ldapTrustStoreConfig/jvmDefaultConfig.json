@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/ldapTrustStoreConfig/jvmDefaultConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JVMDefaultConfig",
+  "description": "JVMDefault Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.JVMDefaultConfig",
+  "properties": {
+    "verifyHostname": {
+      "description": "list of host names to verify",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

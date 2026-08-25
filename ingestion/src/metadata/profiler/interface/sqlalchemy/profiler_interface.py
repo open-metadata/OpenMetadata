@@ -1,0 +1,602 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#  pylint: disable=arguments-differ
+
+"""
+Interfaces with database for all database engine
+supporting sqlalchemy abstraction layer
+"""
+
+import concurrent.futures
+import gc
+import math
+import threading
+import time
+import traceback
+from collections import defaultdict
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Type, Union  # noqa: UP035
+
+from sqlalchemy import Column, inspect, text
+from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.sql.elements import Label
+
+from metadata.generated.schema.entity.data.table import (
+    CustomMetricProfile,
+    SystemProfile,
+    Table,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.tests.customMetric import CustomMetric
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.api.models import ThreadPoolMetrics
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.metrics.core import HybridMetric, MetricTypes
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.count import Count
+from metadata.profiler.metrics.static.mean import Mean
+from metadata.profiler.metrics.static.stddev import StdDev
+from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.metrics.system.system import System, SystemMetricsRegistry
+from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
+from metadata.profiler.orm.functions.unique_count import UNIQUE_COUNT_GROUP_ALIAS
+from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.metric_filter import MetricFilter
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
+from metadata.utils.helpers import is_safe_sql_query
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
+thread_local = threading.local()
+
+OVERFLOW_ERROR_CODES = {
+    "snowflake": {100046, 100058},
+}
+MAX_THREADS = 20
+MIN_THREADS = 5
+
+
+def handle_query_exception(msg, exc, session):
+    """Handle exception for query runs"""
+    logger.debug(traceback.format_exc())
+    logger.warning(msg)
+    session.rollback()
+    raise RuntimeError(exc)
+
+
+class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
+    """
+    Interface to interact with registry supporting
+    sqlalchemy.
+    """
+
+    # pylint: disable=too-many-arguments
+    def __init__(
+        self,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
+        ometa_client: OpenMetadata,
+        entity: Table,
+        source_config: DatabaseServiceProfilerPipeline,
+        sampler: SamplerInterface,
+        thread_count: Optional[int],  # noqa: UP045
+        timeout_seconds: int = 43200,
+        **kwargs,
+    ):
+        """Instantiate SQA Interface object"""
+        self.session_factory = None
+        self.session = None
+
+        super().__init__(
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            source_config=source_config,
+            sampler=sampler,
+            thread_count=thread_count,
+            timeout_seconds=timeout_seconds,
+        )
+
+        self._table = self.sampler.raw_dataset
+        self.create_session()
+        self.system_metrics_class = SystemMetricsRegistry.get(self.session.get_bind().dialect)
+
+    def create_session(self):
+        self.session_factory = self._session_factory()
+        self.session = self.session_factory()
+
+    @property
+    def table(self):
+        return self._table
+
+    def _get_effective_thread_count(self, metric_funcs: List[ThreadPoolMetrics]) -> int:  # noqa: UP006
+        """Given the number of tasks to perform return a dynamic thread count.
+        If the thread count is explicitly set by the user, we will use that.
+
+        This method clamps user-provided values to [1, MAX_THREADS]. If thread_count
+        is falsy (None or 0), it will be auto-calculated based on task count.
+        """
+        # If user provided an explicit thread count, coerce and clamp it
+        if self._thread_count:
+            try:
+                user_count = int(self._thread_count)
+            except (TypeError, ValueError):
+                logger.warning("Provided threadCount is not an integer. Falling back to auto-calculation.")
+                user_count = None
+
+            if user_count is not None:
+                clamped = max(1, min(MAX_THREADS, user_count))
+                if clamped != user_count:
+                    logger.debug(f"Clamped threadCount from {user_count} to {clamped} (allowed range 1-{MAX_THREADS}).")
+                return clamped
+
+        # Auto-calculate based on task count
+        task_counts = len(MetricFilter.filter_empty_metrics(metric_funcs))
+        min_threads = min(MIN_THREADS, task_counts)
+        calculated = min(MAX_THREADS, max(min_threads, (task_counts // 3) or 1))
+        logger.debug(f"Calculated effective thread count: {calculated} for {task_counts} tasks.")
+
+        return int(calculated)
+
+    def _session_factory(self) -> scoped_session:
+        """Create thread safe session that will be automatically
+        garbage collected once the application thread ends
+        """
+        return create_and_bind_thread_safe_session(self.connection)
+
+    @staticmethod
+    def _compute_static_metrics_wo_sum(
+        metrics: List[Metrics],  # noqa: UP006
+        runner: QueryRunner,
+        session,
+        column: Column,
+    ):
+        """If we catch an overflow error, we will try to compute the static
+        metrics without the sum, mean and stddev
+
+        Returns:
+            _type_: _description_
+        """
+        try:
+            row = runner.select_first_from_sample(
+                *[
+                    metric(column).fn()
+                    for metric in metrics
+                    if not metric.is_window_metric() and metric not in {Sum, StdDev, Mean}
+                ]
+            )
+            return row._asdict()
+        except Exception as exc:
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
+        return None
+
+    def _compute_table_metrics(
+        self,
+        metrics: List[Metrics],  # noqa: UP006
+        runner: QueryRunner,
+        session,
+        *args,
+        **kwargs,
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        # pylint: disable=protected-access
+        try:
+            dialect = runner._session.get_bind().dialect.name
+            table_metric_computer: TableMetricComputer = TableMetricComputer(
+                dialect,
+                runner=runner,
+                metrics=metrics,
+                conn_config=self.service_connection_config,
+                entity=self.table_entity,
+            )
+            row = table_metric_computer.compute()
+            if row:
+                return row._asdict()
+            return None  # noqa: TRY300
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table_name}: {exc}"  # type: ignore
+            )
+            session.rollback()
+            raise RuntimeError(exc)  # noqa: B904
+
+    def _compute_static_metrics(
+        self,
+        metrics: List[Metrics],  # noqa: UP006
+        runner: QueryRunner,
+        column,
+        session,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        try:
+            row = runner.select_first_from_sample(
+                *[metric(column).fn() for metric in metrics if not metric.is_window_metric()],
+            )
+            return row._asdict()
+        except (ProgrammingError, DBAPIError) as exc:
+            return self._programming_error_static_metric(runner, column, exc, session, metrics)
+        except Exception as exc:
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
+        return None
+
+    def _compute_query_metrics(
+        self,
+        metric: Metrics,
+        runner: QueryRunner,
+        column,
+        session,
+        sample,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+
+        try:
+            col_metric = metric(column)
+            metric_query = col_metric.query(sample=sample, session=session)
+            if metric_query is None:
+                return None
+            if col_metric.metric_type == dict:  # noqa: E721
+                results = runner.select_all_from_query(metric_query)
+                data = {k: [result[k] for result in results] for k in results[0]._asdict()}
+                return {metric.name(): data}
+            if isinstance(metric_query, Label):
+                # hotfix to handle transition of unique count implementation
+                sample_column = sample.__table__.c[column.key] if hasattr(sample, "__table__") else sample.c[column.key]
+                subquery = (
+                    self.session.query(Count(sample_column).fn().label(UNIQUE_COUNT_GROUP_ALIAS))
+                    .select_from(sample)
+                    .group_by(sample_column)
+                    .subquery()
+                )
+
+                metric_query = self.session.query(metric_query).select_from(subquery)
+
+            row = runner.select_first_from_query(metric_query)
+            return row._asdict()
+        except ResourceClosedError as exc:
+            # if the query returns no results, we will get a ResourceClosedError from Druid
+            if (
+                # pylint: disable=protected-access
+                runner._session.get_bind().dialect.name != Dialects.Druid
+            ):
+                msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
+                handle_query_exception(msg, exc, session)
+        except Exception as exc:
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
+        return None
+
+    def _compute_window_metrics(
+        self,
+        metrics: List[Metrics],  # noqa: UP006
+        runner: QueryRunner,
+        column,
+        session,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionary of results
+        """
+
+        if not metrics:
+            return None
+        try:
+            row = runner.select_first_from_sample(
+                *[metric(column).fn() for metric in metrics],
+            )
+            if row:
+                return row._asdict()
+        except ProgrammingError as exc:
+            logger.info(f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}")
+        except Exception as exc:
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
+            handle_query_exception(msg, exc, session)
+        return None
+
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, session, *args, **kwargs):  # noqa: UP006
+        """Compute custom metrics
+
+        Args:
+            metrics (List[Metrics]): list of customMetrics
+            runner (_type_): runner
+        """
+        if not metrics:
+            return None
+
+        custom_metrics = []
+
+        for metric in metrics:
+            try:
+                if not is_safe_sql_query(metric.expression):
+                    raise RuntimeError(f"SQL expression is not safe\n\n{metric.expression}")  # noqa: TRY301
+
+                crs = session.execute(text(metric.expression))
+                row = crs.scalar()  # raise MultipleResultsFound if more than one row is returned
+                custom_metrics.append(CustomMetricProfile(name=metric.name.root, value=row))
+
+            except Exception as exc:
+                msg = f"Error trying to compute profile for {runner.table_name}.{metric.columnName}: {exc}"
+                logger.debug(traceback.format_exc())
+                logger.warning(msg)
+        if custom_metrics:
+            return {"customMetrics": custom_metrics}
+        return None
+
+    def _compute_system_metrics(
+        self,
+        metrics: Type[System],  # noqa: UP006
+        runner: QueryRunner,
+        *args,
+        **kwargs,
+    ) -> List[SystemProfile]:  # noqa: UP006
+        """Get system metric for tables. Override this in the interface if you want to use a metric source with
+        for other sources.
+
+        Args:
+            metric_type: type of metric
+            metrics: list of metrics to compute
+            session: SQA session object
+
+        Returns:
+            dictionnary of results
+        """
+        logger.debug(f"No implementation found for {self.session.get_bind().dialect.name} for {metrics.name()} metric")
+        return []
+
+    def _create_thread_safe_runner(self, session, column=None):
+        """Create thread safe runner"""
+        if not hasattr(thread_local, "runner"):
+            thread_local.runner = QueryRunner(
+                session=session,
+                dataset=self.sampler.get_dataset(column=column),
+                raw_dataset=self.sampler.raw_dataset,
+                partition_details=self.sampler.partition_details,
+                profile_sample_query=self.sampler.sample_query,
+            )
+            return thread_local.runner
+        thread_local.runner.dataset = self.sampler.get_dataset(column=column)
+        return thread_local.runner
+
+    def compute_metrics_in_thread(
+        self,
+        metric_func: ThreadPoolMetrics,
+    ):
+        """Run metrics in processor worker"""
+        logger.debug(f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}")
+        Session = self.session_factory  # pylint: disable=invalid-name  # noqa: N806
+        max_retries = 3
+        retry_count = 0
+        initial_backoff = 5
+        max_backoff = 30
+        row = None
+
+        while retry_count < max_retries:
+            with Session() as session:
+                self.set_session_tag(session)
+                self.set_catalog(session)
+                runner = self._create_thread_safe_runner(session, metric_func.column)
+                try:
+                    row = self._get_metric_fn[metric_func.metric_type.value](
+                        metric_func.metrics,
+                        runner=runner,
+                        session=session,
+                        column=metric_func.column,
+                        sample=runner.dataset,
+                    )
+                    if isinstance(row, dict):
+                        row = self._validate_nulls(row)
+                    if isinstance(row, list):
+                        row = [self._validate_nulls(r) if isinstance(r, dict) else r for r in row]
+
+                    # On success, log the scan and break out of the retry loop
+                    if metric_func.column is not None:
+                        column = metric_func.column.name
+                        self.status.scanned(
+                            f"{metric_func.table.__tablename__}.{column}__{metric_func.metric_type.value}"
+                        )
+                    else:
+                        self.status.scanned(f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}")
+                        column = None
+
+                    return row, column, metric_func.metric_type.value  # noqa: TRY300
+
+                except Exception as exc:
+                    dialect = session.get_bind().dialect
+                    if dialect.is_disconnect(exc, session.get_bind(), None):
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            backoff = min(initial_backoff * (2 ** (retry_count - 1)), max_backoff)
+                            logger.debug(
+                                f"Connection error detected, retrying ({retry_count}/{max_retries}) "
+                                f"after {backoff:.2f} seconds..."
+                            )
+                            session.rollback()
+                            time.sleep(backoff)
+                            continue
+                        logger.error(f"Max retries ({max_retries}) exceeded for disconnection")
+                    error = (
+                        f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
+                        f"metric_type.value: {exc}"
+                    )
+                    logger.error(error)
+                    self.status.failed_profiler(error, traceback.format_exc())
+                    break
+                finally:
+                    # Force garbage collection to help with memory management
+                    gc.collect()
+
+        # If we've exhausted all retries without success, return a tuple of None values
+        return None, None, None
+
+    @staticmethod
+    def _validate_nulls(row: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
+        """Detect if we are computing NaNs and replace them with None"""
+        for k, v in row.items():
+            if isinstance(v, float) and math.isnan(v):
+                logger.warning("NaN data detected and will be cast to null in OpenMetadata to maintain database parity")
+                row[k] = None
+        return row
+
+    # pylint: disable=use-dict-literal
+    def get_all_metrics(
+        self,
+        metric_funcs: list,
+    ):
+        """get all profiler metrics"""
+        thread_count = self._get_effective_thread_count(metric_funcs)
+        logger.debug(f"Computing metrics with {thread_count} threads.")
+        profile_results = {"table": dict(), "columns": defaultdict(dict)}  # noqa: C408
+        with CustomThreadPoolExecutor(max_workers=thread_count) as pool:
+            futures = [
+                pool.submit(
+                    self.compute_metrics_in_thread,
+                    metric_func,
+                )
+                for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
+            ]
+
+            for future in futures:
+                if future.cancelled():
+                    continue
+
+                try:
+                    profile, column, metric_type = future.result(timeout=self.timeout_seconds)
+                    if metric_type != MetricTypes.System.value and not isinstance(profile, dict):
+                        profile = dict()  # noqa: C408
+                    if metric_type == MetricTypes.Table.value:
+                        profile_results["table"].update(profile)
+                    elif metric_type == MetricTypes.System.value:
+                        profile_results["system"] = profile
+                    elif metric_type == MetricTypes.Custom.value and column is None:
+                        profile_results["table"].update(profile)
+                    else:
+                        profile_results["columns"][column].update(
+                            {
+                                "name": column,
+                                "timestamp": int(datetime.now().timestamp() * 1000),
+                                **profile,
+                            }
+                        )
+                except concurrent.futures.TimeoutError as exc:
+                    pool.shutdown39(wait=True, cancel_futures=True)
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
+                    raise concurrent.futures.TimeoutError  # noqa: B904
+                except KeyboardInterrupt:
+                    pool.shutdown39(wait=True, cancel_futures=True)
+                    raise
+
+        return profile_results
+
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        try:
+            return metric(column).fn(column_results)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            self.session.rollback()
+            return None
+
+    def get_hybrid_metrics(
+        self,
+        column: Column,
+        metric: Type[HybridMetric],  # noqa: UP006
+        column_results: Dict[str, Any],  # noqa: UP006
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metric: metric to compute
+            column_results: results of the column
+        Returns:
+            dictionnary of results
+        """
+        dataset = self.sampler.get_dataset(column=column)
+        try:
+            return metric(column).fn(dataset, column_results, self.session)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            self.session.rollback()
+            return None
+
+    def _programming_error_static_metric(self, runner, column, exc, _, __):
+        """
+        Override Programming Error for Static Metrics
+        """
+        raise exc
+
+    def get_columns(self):
+        """get columns from entity"""
+        return list(inspect(self.table).c)
+
+    def close(self):
+        """Clean up session"""
+        self.session.close()
+        self.connection.pool.dispose()

@@ -1,0 +1,779 @@
+{
+    "tests": [
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_address",
+            "testSuiteDescription": "This is an executable test suite linked to an entity",
+            "scheduleInterval": "0 0 * * MON",
+            "testCases": [
+                {
+                    "name": "table_column_count_equals",
+                    "description": "test the number of column in table",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableColumnCountToEqual",
+                    "parameterValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity3",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "table_column_count_equals",
+                    "description": "test the number of column in table",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim___reserved__colon____reserved__arrow__address>",
+                    "testDefinitionName": "tableColumnCountToEqual",
+                    "parameterValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity3",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "table_column_count_between",
+                    "description": "test the number of column in table is between x and y",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableColumnCountToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "minColValue",
+                            "value": "1"
+                        },
+                        {
+                            "name": "maxColValue",
+                            "value": "10"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christine_day7"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_value_max_to_be_between",
+                    "description": "test the value of a column is between x and y",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>",
+                    "testDefinitionName": "columnValueMaxToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "minValueForMaxInCol",
+                            "value": "50"
+                        },
+                        {
+                            "name": "maxValueForMaxInCol",
+                            "value": "100"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_values_to_match_regex",
+                    "description": "test value of a column match regex",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+                    "testDefinitionName": "columnValuesToMatchRegex",
+                    "parameterValues": [
+                        {
+                            "name": "regex",
+                            "value": "Doe.*"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity5"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity5",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity5",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_values_to_be_between",
+                    "description": "test the number of column in table is between x and y",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [],
+                    "useDynamicAssertion": true,
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity3",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_values_to_be_between_with_sample_rows",
+                    "description": "example of failing test with sample rows",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "minValue",
+                            "value": "90001"
+                        },
+                        {
+                            "name": "maxValue",
+                            "value": "96162"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_with_production",
+                    "description": "compare with production data",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        },
+                        {
+                            "name": "keyColumns",
+                            "value": "[\"address_id\"]"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_columns",
+                    "description": "compare with a table with different columns",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        }
+                    ],
+                    "resolutions": {}
+                }
+            ]
+        },
+        {
+            "testSuiteName": "postgres_sample.jaffle_shop.public.customers.testSuite",
+            "executableEntityReference": "postgres_sample.jaffle_shop.public.customers",
+            "testSuiteDescription": "dbt data quality tests for the customers final model in the jaffle_shop project",
+            "scheduleInterval": "0 6 * * *",
+            "testCases": [
+                {
+                    "name": "not_null_customers_customer_id",
+                    "description": "customer_id must not be null",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "unique_customers_customer_id",
+                    "description": "customer_id must be unique across all customers",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "accepted_values_customers_status",
+                    "description": "Orders referenced by customers must have valid statuses",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.customers>",
+                    "testDefinitionName": "tableRowCountToBeBetween",
+                    "parameterValues": [
+                        { "name": "minValue", "value": "1" },
+                        { "name": "maxValue", "value": "10000" }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity2" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity2", "assignee": "aaron_johnson0" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity2", "resolver": "aaron_johnson0" }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "testSuiteName": "postgres_sample.jaffle_shop.public.orders.testSuite",
+            "executableEntityReference": "postgres_sample.jaffle_shop.public.orders",
+            "testSuiteDescription": "dbt data quality tests for the orders final model in the jaffle_shop project",
+            "scheduleInterval": "0 6 * * *",
+            "testCases": [
+                {
+                    "name": "not_null_orders_order_id",
+                    "description": "order_id must not be null",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::order_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "unique_orders_order_id",
+                    "description": "order_id must be unique across all orders",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::order_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "accepted_values_orders_status",
+                    "description": "Order status must be one of: placed, shipped, completed, return_pending, returned",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::status>",
+                    "testDefinitionName": "columnValuesToBeInSet",
+                    "parameterValues": [
+                        {
+                            "name": "allowedValues",
+                            "value": "[\"placed\", \"shipped\", \"completed\", \"return_pending\", \"returned\"]"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity1", "assignee": "aaron_johnson0" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity1", "resolver": "aaron_johnson0" }
+                        ],
+                        "sequenceTwo": [
+                            { "testCaseResolutionStatusType": "New", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity1", "assignee": "christopher_campbell7" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity1", "resolver": "christopher_campbell7" }
+                        ]
+                    }
+                },
+                {
+                    "name": "relationships_orders_customer_id",
+                    "description": "Every order must reference a valid customer",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity2" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity2", "assignee": "christopher_campbell7" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity2", "resolver": "christopher_campbell7" }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "testSuiteName": "postgres_sample.jaffle_shop.public.stg_customers.testSuite",
+            "executableEntityReference": "postgres_sample.jaffle_shop.public.stg_customers",
+            "testSuiteDescription": "dbt data quality tests for the stg_customers staging model in the jaffle_shop project",
+            "scheduleInterval": "0 5 * * *",
+            "testCases": [
+                {
+                    "name": "not_null_stg_customers_customer_id",
+                    "description": "customer_id must not be null in the staging layer",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.stg_customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "unique_stg_customers_customer_id",
+                    "description": "customer_id must be unique in the staging layer",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.stg_customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "parameterValues": [],
+                    "resolutions": {}
+                }
+            ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_customer.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_customer",
+            "testSuiteDescription": "Data quality tests for the customer dimension table",
+            "scheduleInterval": "0 4 * * *",
+            "testCases": [
+                {
+                    "name": "table_row_count_to_be_between",
+                    "description": "customer dimension should have between 1000 and 10000 rows",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                    "testDefinitionName": "tableRowCountToBeBetween",
+                    "owners": ["amber_green0"],
+                    "parameterValues": [
+                        { "name": "minValue", "value": "1000" },
+                        { "name": "maxValue", "value": "10000" }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity2" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity2", "assignee": "amber_green0" }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_values_to_match_regex",
+                    "description": "customer email must be a valid email address",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer::columns::email>",
+                    "testDefinitionName": "columnValuesToMatchRegex",
+                    "owners": ["amber_green0", "adam_rodriguez9"],
+                    "parameterValues": [
+                        { "name": "regex", "value": "^[\\w.+-]+@[\\w-]+\\.[\\w.]+$" }
+                    ],
+                    "resolutions": {}
+                }
+            ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.fact_order.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.fact_order",
+            "testSuiteDescription": "Data quality tests for the order fact table",
+            "scheduleInterval": "0 3 * * *",
+            "testCases": [
+                {
+                    "name": "column_values_to_be_unique",
+                    "description": "order_id must be unique across all orders",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.fact_order::columns::order_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "owners": ["alexander_jackson5"],
+                    "parameterValues": [],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity1", "assignee": "alexander_jackson5" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity1", "resolver": "alexander_jackson5" }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_value_max_to_be_between",
+                    "description": "total_price should stay within the expected bounds",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.fact_order::columns::total_price>",
+                    "testDefinitionName": "columnValueMaxToBeBetween",
+                    "owners": ["alexander_jackson5", "amy_stephens4"],
+                    "parameterValues": [
+                        { "name": "minValueForMaxInCol", "value": "100" },
+                        { "name": "maxValueForMaxInCol", "value": "5000" }
+                    ],
+                    "resolutions": {}
+                }
+            ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.fact_sale.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.fact_sale",
+            "testSuiteDescription": "Data quality tests for the sale fact table",
+            "scheduleInterval": "30 3 * * *",
+            "testCases": [
+                {
+                    "name": "column_values_to_be_between",
+                    "description": "net_sales should be within the expected range",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.fact_sale::columns::net_sales>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "owners": ["ana_mckay7"],
+                    "parameterValues": [
+                        { "name": "minValue", "value": "0" },
+                        { "name": "maxValue", "value": "10000" }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity3" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity3", "assignee": "ana_mckay7" }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address_clean.testSuite",
+            "testSuiteDisplayName": "Lucene reserved characters (v2) [repro]",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_address_clean",
+            "testSuiteDescription": "Reproduces the data quality search 500 (query_shard_exception). Every test case here carries Lucene syntax in its displayName, so searching for any of them must return 200 and still match.",
+            "scheduleInterval": "0 0 * * MON",
+            "testCases": [
+                {
+                    "name": "lucene_pasted_url",
+                    "displayName": "https://localhost:8585/table/orders",
+                    "description": "Pasted URL - the original reproduction. The `:` and `//` alone produced the 500.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_angle_brackets",
+                    "displayName": "row count < 10 and > 2",
+                    "description": "Elasticsearch documents < and > as impossible to escape, so a denylist could never fix this one.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_reserved_word_not",
+                    "displayName": "NOT a real assertion",
+                    "description": "A reserved *word* rather than a character - no escaping denylist addresses this.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_double_pipe",
+                    "displayName": "shopify a||b addresses",
+                    "description": "Two unescaped pipes lex as the OR operator - the ES_RESERVED_CHARACTERS gap.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_parens_and_brackets",
+                    "displayName": "orders (v2) [archived]",
+                    "description": "Unbalanced parentheses and brackets in a display name.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_field_scoped_lookalike",
+                    "displayName": "dimension:value && customers",
+                    "description": "Looks like a Lucene field query but is free text - it must match literally, not filter.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_quote_caret_tilde",
+                    "displayName": "boosted^2 fuzzy~ \"unterminated",
+                    "description": "Boost, fuzzy and an unterminated phrase - each was a parse error on its own.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_trailing_backslash",
+                    "displayName": "windows path C:\\data\\shopify\\",
+                    "description": "A literal backslash: the escape-aware escaper silently dropped it, so the term matched nothing.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "substring_mid_token_probe",
+                    "displayName": "column_values_to_be_between_probe",
+                    "description": "Search 'alues' or 'tween' to prove mid-token substring matching survives without a wildcard.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean::columns::shop_id>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [
+                        { "name": "minValue", "value": "1" },
+                        { "name": "maxValue", "value": "99" }
+                    ],
+                    "resolutions": {}
+                }
+            ]
+        }
+    ]
+}

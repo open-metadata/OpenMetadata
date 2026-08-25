@@ -1,0 +1,74 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
+import { ROUTES } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
+
+export const GenericAuthenticator = forwardRef(
+  ({ children }: { children: ReactNode }, ref) => {
+    const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
+    const { handleSuccessfulLogout } = useAuthProvider();
+
+    const handleLogin = () => {
+      setIsAuthenticated(false);
+      setIsSigningUp(true);
+      const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
+      window.location.assign(`api/v1/auth/login?redirectUri=${redirectUri}`);
+    };
+
+    const handleLogout = async () => {
+      try {
+        await logoutUser();
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
+      }
+    };
+
+    const handleSilentSignIn = useCallback(async () => {
+      const resp = await renewToken();
+      await setOidcToken(resp.accessToken);
+
+      return resp;
+    }, []);
+
+    useImperativeHandle(ref, () => ({
+      invokeLogout: handleLogout,
+      renewIdToken: handleSilentSignIn,
+      invokeLogin: handleLogin,
+    }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // confidential / SAML flows.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(handleSilentSignIn);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [handleSilentSignIn]);
+
+    return <Fragment>{children}</Fragment>;
+  }
+);

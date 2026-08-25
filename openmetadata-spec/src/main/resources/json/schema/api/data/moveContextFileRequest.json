@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/moveContextFileRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MoveContextFileRequest",
+  "description": "Request schema for moving a Drive file to a new folder.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.MoveContextFileRequest",
+  "properties": {
+    "folder": {
+      "$ref": "../../type/entityReference.json",
+      "description": "The new parent folder for the file. When null or omitted the file is moved to the drive root."
+    }
+  },
+  "additionalProperties": false
+}

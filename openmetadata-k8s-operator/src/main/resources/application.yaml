@@ -1,0 +1,81 @@
+# OMJob Operator Application Configuration
+
+server:
+  port: 8080
+  shutdown: graceful
+
+# Management endpoints for health checks and metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /
+      path-mapping:
+        health: /health
+        info: /info
+        metrics: /metrics
+        prometheus: /prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  server:
+    port: 8081
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+# Logging configuration
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    org.openmetadata.operator: ${LOG_LEVEL:INFO}
+    io.javaoperatorsdk: ${LOG_LEVEL:INFO}
+    io.fabric8.kubernetes: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{omjob.name}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{omjob.name}] %logger{36} - %msg%n"
+
+# Java Operator SDK configuration
+javaoperatorsdk:
+  controllers:
+    omjob-controller:
+      reconciliation:
+        threads: ${RECONCILIATION_THREADS:5}
+      retry:
+        maxAttempts: 5
+        initialInterval: PT30S
+        intervalMultiplier: 2.0
+        maxInterval: PT5M
+
+# Application info
+info:
+  app:
+    name: "OMJob Operator"
+    description: "Kubernetes operator for guaranteed exit handler execution in OpenMetadata pipeline jobs"
+    version: "@project.version@"
+  build:
+    time: "@timestamp@"
+
+# Spring Boot configuration
+spring:
+  application:
+    name: omjob-operator
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+# Operator-specific configuration
+operator:
+  namespace: ${OPERATOR_NAMESPACE:}
+  metrics:
+    enabled: true
+  events:
+    enabled: true

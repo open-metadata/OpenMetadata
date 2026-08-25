@@ -1,0 +1,685 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import {
+  SERVICE_CREATOR_RULES,
+  SERVICE_VIEWER_RULES,
+} from '../../constant/permission';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import {
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
+import { updateDescription } from '../../utils/entity';
+import { visitServiceDetailsPage } from '../../utils/service';
+import {
+  advanceToServiceConnectionStep,
+  getAgentCard,
+  mockSuccessfulTestConnection,
+  selectServiceConnector,
+  testConnectionIfRequired,
+  waitForServiceConnectionForm,
+} from '../../utils/serviceIngestion';
+import { settingClick } from '../../utils/sidebar';
+
+const serviceOwnerPolicy = new PolicyClass();
+const serviceOwnerRole = new RolesClass();
+const serviceViewerPolicy = new PolicyClass();
+const serviceViewerRole = new RolesClass();
+const serviceOwnerUser = new UserClass();
+const anotherUser = new UserClass();
+const adminOwnedService = new DatabaseServiceClass(
+  `pw-admin-service-${uuid()}`
+);
+
+const pipelineTriggerPolicy = new PolicyClass();
+const pipelineTriggerRole = new RolesClass();
+const pipelineTriggerUser = new UserClass();
+const pipelineEditPolicy = new PolicyClass();
+const pipelineEditRole = new RolesClass();
+const pipelineEditUser = new UserClass();
+
+let ingestionPipelineName = '';
+
+const test = base.extend<{
+  serviceOwnerPage: Page;
+  anotherUserPage: Page;
+  pipelineTriggerPage: Page;
+  pipelineEditPage: Page;
+}>({
+  serviceOwnerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await serviceOwnerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  anotherUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await anotherUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  pipelineTriggerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await pipelineTriggerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  pipelineEditPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await pipelineEditUser.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
+const visitAgentCard = async (page: Page) => {
+  await redirectToHomePage(page);
+  await adminOwnedService.visitEntityPage(page);
+
+  await page.getByTestId('agents').click();
+
+  const metadataSubTab = page.getByTestId('metadata-sub-tab');
+  if (await metadataSubTab.isVisible()) {
+    await metadataSubTab.click();
+  }
+
+  const agentCard = getAgentCard(page, ingestionPipelineName);
+
+  await agentCard.waitFor();
+
+  return agentCard;
+};
+
+const openPipelineActions = async (page: Page) => {
+  const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
+  await actionButton.waitFor();
+
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
+  // every render, but the async per-FQN permission fetch can still be in
+  // flight when the menu is first opened — some items (edit-gated: redeploy,
+  // edit, pause/resume) are briefly absent. Close and reopen until the
+  // permission-gated items are present instead of polling a single stale
+  // open instance.
+  await expect
+    .poll(
+      async () => {
+        await actionButton.click();
+        await actionsDropdown.waitFor();
+        const hasReDeploy = await actionsDropdown
+          .getByTestId('re-deploy-button')
+          .isVisible()
+          .catch(() => false);
+        if (!hasReDeploy) {
+          await page.keyboard.press('Escape');
+          await actionsDropdown.waitFor({ state: 'hidden' });
+        }
+
+        return hasReDeploy;
+      },
+      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
+    )
+    .toBe(true);
+};
+
+test.describe(
+  'Service Creation with isOwner() Permissions',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.slow();
+
+    test.beforeAll('Setup prerequisites', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await serviceOwnerUser.create(apiContext, false);
+      await anotherUser.create(apiContext, false);
+
+      // Create policy and role for serviceOwnerUser (can create and manage owned services)
+      const creatorPolicyResponse = await serviceOwnerPolicy.create(
+        apiContext,
+        SERVICE_CREATOR_RULES
+      );
+      const creatorRoleResponse = await serviceOwnerRole.create(apiContext, [
+        creatorPolicyResponse.fullyQualifiedName,
+      ]);
+
+      // Create policy and role for anotherUser (view only)
+      const viewerPolicyResponse = await serviceViewerPolicy.create(
+        apiContext,
+        SERVICE_VIEWER_RULES
+      );
+      const viewerRoleResponse = await serviceViewerRole.create(apiContext, [
+        viewerPolicyResponse.fullyQualifiedName,
+      ]);
+
+      await serviceOwnerUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'replace',
+            path: '/roles',
+            value: [
+              {
+                id: creatorRoleResponse.id,
+                type: 'role',
+                name: creatorRoleResponse.name,
+              },
+            ],
+          },
+        ],
+      });
+
+      await anotherUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'replace',
+            path: '/roles',
+            value: [
+              {
+                id: viewerRoleResponse.id,
+                type: 'role',
+                name: viewerRoleResponse.name,
+              },
+            ],
+          },
+        ],
+      });
+
+      const adminServiceResponse = await adminOwnedService.create(apiContext);
+
+      await pipelineTriggerUser.create(apiContext);
+      await pipelineEditUser.create(apiContext);
+
+      // The Agents tab is only visible to service owners/admins. Both users are
+      // made owners so the tab is visible and isOwner() grants all operations on
+      // the ingestionPipeline entity. Deny rules then strip the specific
+      // operations we want to exclude per user.
+      await adminOwnedService.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            { id: pipelineTriggerUser.responseData.id, type: 'user' },
+            { id: pipelineEditUser.responseData.id, type: 'user' },
+          ],
+        },
+      ]);
+
+      const triggerPolicyResponse = await pipelineTriggerPolicy.create(
+        apiContext,
+        [
+          {
+            name: 'IngestionPipeline-Deny-EditAll-Rule',
+            resources: ['ingestionPipeline'],
+            operations: ['EditAll'],
+            effect: 'deny',
+          },
+        ]
+      );
+      const triggerRoleResponse = await pipelineTriggerRole.create(apiContext, [
+        triggerPolicyResponse.fullyQualifiedName,
+      ]);
+
+      const editPolicyResponse = await pipelineEditPolicy.create(apiContext, [
+        {
+          name: 'IngestionPipeline-Deny-Trigger-Rule',
+          resources: ['ingestionPipeline'],
+          operations: ['Trigger'],
+          effect: 'deny',
+        },
+      ]);
+      const editRoleResponse = await pipelineEditRole.create(apiContext, [
+        editPolicyResponse.fullyQualifiedName,
+      ]);
+
+      await pipelineTriggerUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: triggerRoleResponse.id,
+              type: 'role',
+              name: triggerRoleResponse.name,
+            },
+          },
+        ],
+      });
+
+      await pipelineEditUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: editRoleResponse.id,
+              type: 'role',
+              name: editRoleResponse.name,
+            },
+          },
+        ],
+      });
+
+      ingestionPipelineName = `pw-ingestion-perm-${uuid()}`;
+      const createPipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: ingestionPipelineName,
+            pipelineType: 'metadata',
+            service: {
+              id: adminServiceResponse.id,
+              type: 'databaseService',
+            },
+            sourceConfig: {
+              config: {
+                type: 'DatabaseMetadata',
+              },
+            },
+          },
+        }
+      );
+
+      expect(createPipelineResponse.status()).toBe(201);
+
+      const createdPipeline = await createPipelineResponse.json();
+      await apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+      );
+
+      await afterAction();
+    });
+    // Needed proper cleanup, while using multiple workers tests might act flaky
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await adminOwnedService.delete(apiContext);
+      await serviceOwnerRole.delete(apiContext);
+      await serviceOwnerPolicy.delete(apiContext);
+      await serviceViewerRole.delete(apiContext);
+      await serviceViewerPolicy.delete(apiContext);
+      await serviceOwnerUser.delete(apiContext);
+      await anotherUser.delete(apiContext);
+      await pipelineTriggerRole.delete(apiContext);
+      await pipelineTriggerPolicy.delete(apiContext);
+      await pipelineEditRole.delete(apiContext);
+      await pipelineEditPolicy.delete(apiContext);
+      await pipelineTriggerUser.delete(apiContext);
+      await pipelineEditUser.delete(apiContext);
+
+      await afterAction();
+    });
+
+    test('User with service creation permission can create a new database service', async ({
+      serviceOwnerPage: page,
+    }) => {
+      await redirectToHomePage(page);
+      await settingClick(page, GlobalSettingOptions.DATABASES);
+
+      await expect(page.getByTestId('add-service-button')).toBeVisible();
+
+      await page.getByTestId('add-service-button').click();
+
+      await selectServiceConnector(page, 'Mysql');
+
+      const serviceName = `pw-user-owned-service-${uuid()}`;
+      await mockSuccessfulTestConnection(page);
+      await page.locator('#service-name').fill(serviceName);
+      await advanceToServiceConnectionStep(page);
+
+      await page.locator('#root\\/username').fill('test_user');
+      await page.locator('#root\\/authType\\/password').fill('test_password');
+      await page.locator('#root\\/hostPort').fill('localhost:3306');
+
+      await testConnectionIfRequired(page);
+      await page.getByTestId('next-button').click();
+      await page.getByRole('button', { name: 'Create & Deploy' }).click();
+
+      await expect(page.getByTestId('entity-header-title')).toContainText(
+        serviceName
+      );
+
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('delete-button-title').click();
+      await page.getByTestId('confirm-button').click();
+
+      await toastNotification(
+        page,
+        /(deleted successfully!|Delete operation initiated)/
+      );
+    });
+
+    test('User can view but cannot modify services they do not own', async ({
+      serviceOwnerPage: page,
+    }) => {
+      await redirectToHomePage(page);
+
+      await adminOwnedService.visitEntityPage(page);
+
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
+
+      // Manage button is visible but rename/delete options should not be available
+      await page.getByTestId('manage-button').click();
+      await expect(
+        page.getByTestId('manage-dropdown-list-container')
+      ).toBeVisible();
+      await expect(page.getByTestId('rename-button')).not.toBeVisible();
+      await expect(page.getByTestId('delete-button')).not.toBeVisible();
+    });
+
+    test('User can update connection details of their own service', async ({
+      serviceOwnerPage: page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      const userOwnedService = new DatabaseServiceClass(
+        `pw-user-connection-test-${uuid()}`
+      );
+      await userOwnedService.create(apiContext);
+
+      await userOwnedService.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            {
+              id: serviceOwnerUser.responseData.id,
+              type: 'user',
+            },
+          ],
+        },
+      ]);
+
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await visitServiceDetailsPage(
+        page,
+        {
+          name: userOwnedService.entity.name,
+          type: GlobalSettingOptions.DATABASES,
+        },
+        false,
+        false
+      );
+
+      await page.getByRole('tab', { name: 'Connection' }).click();
+      await mockSuccessfulTestConnection(page);
+      await page.getByTestId('edit-connection-button').click();
+      await waitForServiceConnectionForm(page);
+
+      await page.locator('#root\\/username').clear();
+      await page.locator('#root\\/username').fill('updated_user');
+
+      const saveResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/services/databaseServices')
+      );
+
+      await testConnectionIfRequired(page);
+      await page.getByTestId('next-button').click();
+      await page.getByRole('button', { name: 'Save' }).click();
+      await saveResponse;
+
+      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+        await performAdminLogin(browser);
+      await userOwnedService.delete(cleanupContext);
+      await cleanupAfterAction();
+    });
+
+    test('Different user can view but cannot modify service owned by another user', async ({
+      serviceOwnerPage: ownerPage,
+      anotherUserPage: otherPage,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      const userOwnedService = new DatabaseServiceClass(
+        `pw-owner-isolation-test-${uuid()}`
+      );
+      await userOwnedService.create(apiContext);
+
+      await userOwnedService.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            {
+              id: serviceOwnerUser.responseData.id,
+              type: 'user',
+            },
+          ],
+        },
+      ]);
+
+      await afterAction();
+
+      await redirectToHomePage(ownerPage);
+      await visitServiceDetailsPage(
+        ownerPage,
+        {
+          name: userOwnedService.entity.name,
+          type: GlobalSettingOptions.DATABASES,
+        },
+        false
+      );
+
+      await expect(ownerPage.getByTestId('entity-header-name')).toBeVisible();
+      await expect(ownerPage.getByTestId('manage-button')).toBeVisible();
+
+      await redirectToHomePage(otherPage);
+      await userOwnedService.visitEntityPage(otherPage);
+
+      await expect(otherPage.getByTestId('entity-header-name')).toBeVisible();
+
+      // Manage button is visible but rename/delete options should not be available for non-owner
+      await otherPage.getByTestId('manage-button').click();
+      await expect(
+        otherPage.getByTestId('manage-dropdown-list-container')
+      ).toBeVisible();
+      await expect(otherPage.getByTestId('rename-button')).not.toBeVisible();
+      await expect(otherPage.getByTestId('delete-button')).not.toBeVisible();
+
+      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+        await performAdminLogin(browser);
+      await userOwnedService.delete(cleanupContext);
+      await cleanupAfterAction();
+    });
+
+    test('Owner can delete their own service', async ({
+      serviceOwnerPage: page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      const serviceToDelete = new DatabaseServiceClass(
+        `pw-delete-test-${uuid()}`
+      );
+      await serviceToDelete.create(apiContext);
+
+      await serviceToDelete.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            {
+              id: serviceOwnerUser.responseData.id,
+              type: 'user',
+            },
+          ],
+        },
+      ]);
+
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await visitServiceDetailsPage(
+        page,
+        {
+          name: serviceToDelete.entity.name,
+          type: GlobalSettingOptions.DATABASES,
+        },
+        false
+      );
+
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('delete-button-title').click();
+
+      const deleteResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/databaseServices') &&
+          response.request().method() === 'DELETE'
+      );
+
+      await page.getByTestId('confirm-button').click();
+
+      await deleteResponse;
+
+      await toastNotification(
+        page,
+        /(deleted successfully!|Delete operation initiated)/
+      );
+    });
+
+    test('Owner can update description of their service', async ({
+      serviceOwnerPage: page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      const serviceToUpdate = new DatabaseServiceClass(
+        `pw-description-test-${uuid()}`
+      );
+      await serviceToUpdate.create(apiContext);
+
+      await serviceToUpdate.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            {
+              id: serviceOwnerUser.responseData.id,
+              type: 'user',
+            },
+          ],
+        },
+      ]);
+
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await visitServiceDetailsPage(
+        page,
+        {
+          name: serviceToUpdate.entity.name,
+          type: GlobalSettingOptions.DATABASES,
+        },
+        false
+      );
+
+      await updateDescription(page, 'Updated service description');
+
+      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+        await performAdminLogin(browser);
+      await serviceToUpdate.delete(cleanupContext);
+      await cleanupAfterAction();
+    });
+
+    test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
+      pipelineTriggerPage: page,
+    }) => {
+      let agentCard = await visitAgentCard(page);
+
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
+
+      // Both users own the service, so isOwner() still grants Delete on the
+      // pipeline and the menu renders with that single item — only the
+      // EditAll-gated actions must be absent for a trigger-only user.
+      await agentCard.getByTestId('more-actions').click();
+
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('delete-button')).toBeVisible();
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeHidden();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeHidden();
+      await expect(actionsDropdown.getByTestId('pause-button')).toBeHidden();
+      await expect(actionsDropdown.getByTestId('resume-button')).toBeHidden();
+
+      await page.keyboard.press('Escape');
+
+      await expect(actionsDropdown).toBeHidden();
+
+      // The pipeline deployed in beforeAll may still be registering in
+      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
+      await expect
+        .poll(
+          async () => {
+            const triggerResponse = page.waitForResponse(
+              (response) =>
+                response
+                  .url()
+                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+                response.request().method() === 'POST'
+            );
+
+            await agentCard.getByTestId('run-agent-button').click();
+
+            const response = await triggerResponse;
+
+            if (response.status() !== 200) {
+              agentCard = await visitAgentCard(page);
+            }
+
+            return response.status();
+          },
+          { intervals: [3_000], timeout: 90_000 }
+        )
+        .toBe(200);
+    });
+
+    test('User with EditAll but not Trigger cannot run a pipeline', async ({
+      pipelineEditPage: page,
+    }) => {
+      await openPipelineActions(page);
+
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
+      await expect(
+        getAgentCard(page, ingestionPipelineName).getByTestId(
+          'run-agent-button'
+        )
+      ).toBeHidden();
+    });
+  }
+);

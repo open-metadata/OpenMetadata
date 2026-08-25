@@ -1,0 +1,301 @@
+package org.openmetadata.service.apps.scheduler;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.FailureContext;
+import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
+import org.openmetadata.service.apps.logging.AppRunLogAppender;
+import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.socket.WebSocketManager;
+import org.quartz.JobDataMap;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.quartz.JobListener;
+import org.slf4j.MDC;
+
+@Slf4j
+public class OmAppJobListener implements JobListener {
+  public static final String APP_CONFIG = "appConfig";
+  private final AppRepository repository;
+  private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
+  public static final String WEBSOCKET_STATUS_CHANNEL = "WebsocketStatusUpdateExtension";
+
+  public static final String APP_RUN_STATS = "AppRunStats";
+  public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
+  public static final String SERVICES_FIELD = "services";
+  public static final String APP_ID = "appId";
+  private static final String APP_RUN_LOG_ID = "appRunLogId";
+
+  protected OmAppJobListener() {
+    this.repository = new AppRepository();
+  }
+
+  /**
+   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Each field
+   * is filled independently and only if currently null:
+   *
+   * <ul>
+   *   <li>{@code endTime} defaults to {@code System.currentTimeMillis()} if absent.
+   *   <li>{@code executionTime} is computed from {@code endTime - startTime} if absent and both
+   *       endpoints are available — this means callers that pre-populated {@code endTime} (e.g.
+   *       from {@code job.getCompletedAt()}) still get an accurate {@code executionTime}.
+   * </ul>
+   *
+   * <p>The method is a no-op for non-terminal statuses, so it is safe to call from progress
+   * listeners that may persist before {@link #jobWasExecuted} runs. Without this, mid-flight
+   * writes by progress listeners (e.g. {@code QuartzProgressListener} firing {@code onJobFailed})
+   * would persist a terminal status to the DB without timings; if the job dies before {@code
+   * jobWasExecuted} fires, polling consumers would see {@code status=FAILED} with no
+   * {@code endTime} / {@code executionTime}.
+   */
+  public static void fillTerminalTimings(AppRunRecord record) {
+    if (record == null || record.getStatus() == null || !isTerminalStatus(record.getStatus())) {
+      return;
+    }
+    if (record.getEndTime() == null) {
+      record.withEndTime(System.currentTimeMillis());
+    }
+    if (record.getExecutionTime() == null
+        && record.getStartTime() != null
+        && record.getEndTime() != null) {
+      record.setExecutionTime(record.getEndTime() - record.getStartTime());
+    }
+  }
+
+  private static boolean isTerminalStatus(AppRunRecord.Status status) {
+    return switch (status) {
+      case SUCCESS, FAILED, ACTIVE_ERROR, STOPPED, COMPLETED -> true;
+      default -> false;
+    };
+  }
+
+  @Override
+  public String getName() {
+    return JOB_LISTENER_NAME;
+  }
+
+  @Override
+  public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
+    try {
+      String runType =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+      String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+      App jobApp =
+          repository.getByName(
+              null, appName, repository.getFields("bot"), Include.NON_DELETED, true);
+
+      // Debug logging to check if App ID is present
+      if (jobApp.getId() == null) {
+        LOG.info("App {} has null ID after findByName", appName);
+      } else {
+        LOG.info("App {} has ID: {}", appName, jobApp.getId());
+      }
+
+      ApplicationConfig appConfig =
+          JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
+      ApplicationConfig overrideConfig =
+          JsonUtils.convertValue(
+              jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
+              ApplicationConfig.class);
+      if (overrideConfig != null) {
+        appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
+      }
+
+      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+      JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
+      // Cache appId to avoid repeated repository lookups during status updates
+      dataMap.put(APP_ID, jobApp.getId());
+      long jobStartTime = System.currentTimeMillis();
+      AppRunRecord runRecord =
+          new AppRunRecord()
+              .withAppId(jobApp.getId())
+              .withAppName(jobApp.getName())
+              .withStartTime(jobStartTime)
+              .withTimestamp(jobStartTime)
+              .withRunType(runType)
+              .withStatus(AppRunRecord.Status.RUNNING)
+              .withScheduleInfo(jobApp.getAppSchedule())
+              .withConfig(JsonUtils.getMap(appConfig));
+
+      boolean update = false;
+      if (jobExecutionContext.isRecovering()) {
+        AppRunRecord latestRunRecord =
+            repository.getLatestExtensionById(
+                jobApp, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+        if (latestRunRecord != null) {
+          runRecord = latestRunRecord;
+        }
+        update = true;
+      }
+      // Put the Context in the Job Data Map
+      dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+      dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(appConfig));
+
+      // Start log capture via Logback appender with thread-name prefix matching.
+      // The main scheduler thread is captured via MDC; worker threads are captured
+      // by matching their thread name prefix (no MDC propagation needed).
+      String appRunId = String.valueOf(runRecord.getTimestamp());
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+      String validatedAppName = jobApp.getName();
+      MDC.put(AppRunLogAppender.MDC_APP_RUN_ID, appRunId);
+      MDC.put(AppRunLogAppender.MDC_APP_NAME, validatedAppName);
+      MDC.put(AppRunLogAppender.MDC_SERVER_ID, serverId);
+      MDC.put(AppRunLogAppender.MDC_APP_ID, jobApp.getId().toString());
+      String[] threadPrefixes = getThreadPrefixesForApp(validatedAppName);
+      AppRunLogAppender.startCapture(
+          appRunId, jobApp.getId().toString(), validatedAppName, serverId, threadPrefixes);
+      dataMap.put(APP_RUN_LOG_ID, appRunId);
+
+      // Insert new Record Run
+      pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
+    } catch (Exception e) {
+      LOG.error("OmAppJobListener.jobToBeExecuted failed unexpectedly", e);
+      cleanupLogCapture(jobExecutionContext);
+    }
+  }
+
+  @Override
+  public void jobExecutionVetoed(JobExecutionContext jobExecutionContext) {
+    cleanupLogCapture(jobExecutionContext);
+  }
+
+  @Override
+  public void jobWasExecuted(
+      JobExecutionContext jobExecutionContext, JobExecutionException jobException) {
+    try {
+      AppRunRecord runRecord =
+          JsonUtils.readOrConvertValue(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION),
+              AppRunRecord.class);
+      Stats jobStats =
+          JsonUtils.convertValue(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS), Stats.class);
+      long endTime = System.currentTimeMillis();
+      runRecord.withEndTime(endTime);
+      runRecord.setExecutionTime(endTime - runRecord.getStartTime());
+
+      if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
+        runRecord.setServices(
+            JsonUtils.convertObjects(
+                jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
+                EntityReference.class));
+      }
+
+      // Check if the job was stopped/interrupted
+      if (runRecord.getStatus() == AppRunRecord.Status.STOPPED
+          || runRecord.getStatus() == AppRunRecord.Status.STOP_IN_PROGRESS) {
+        runRecord.withStatus(AppRunRecord.Status.STOPPED);
+        SuccessContext context = new SuccessContext();
+        if (runRecord.getSuccessContext() != null) {
+          context = runRecord.getSuccessContext();
+        }
+        context.setStats(jobStats);
+        runRecord.setSuccessContext(context);
+      } else if (jobException == null
+          && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
+              || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
+        runRecord.withStatus(AppRunRecord.Status.SUCCESS);
+        SuccessContext context = new SuccessContext();
+        if (runRecord.getSuccessContext() != null) {
+          context = runRecord.getSuccessContext();
+        }
+        context.setStats(jobStats);
+        runRecord.setSuccessContext(context);
+      } else {
+        runRecord.withStatus(AppRunRecord.Status.FAILED);
+        FailureContext context = new FailureContext();
+        if (runRecord.getFailureContext() != null) {
+          context = runRecord.getFailureContext();
+        }
+        if (jobException != null) {
+          context.withFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.JOB)
+                  .withMessage(jobException.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(jobException)));
+        }
+
+        runRecord.setFailureContext(context);
+      }
+      // Push Update on WebSocket
+      String webSocketChannelName =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(WEBSOCKET_STATUS_CHANNEL);
+      if (!nullOrEmpty(webSocketChannelName) && WebSocketManager.getInstance() != null) {
+        WebSocketManager.getInstance()
+            .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
+      }
+
+      // Update App Run Record
+      pushApplicationStatusUpdates(jobExecutionContext, runRecord, true);
+    } catch (Exception e) {
+      LOG.error("OmAppJobListener.jobWasExecuted failed unexpectedly", e);
+    } finally {
+      cleanupLogCapture(jobExecutionContext);
+    }
+  }
+
+  public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
+    JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+    return JsonUtils.readOrConvertValue(
+        dataMap.get(SCHEDULED_APP_RUN_EXTENSION), AppRunRecord.class);
+  }
+
+  public void pushApplicationStatusUpdates(
+      JobExecutionContext context, AppRunRecord runRecord, boolean update) {
+    JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+    if (dataMap.containsKey(SCHEDULED_APP_RUN_EXTENSION)) {
+      // Update the Run Record in Data Map
+      dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+
+      // Push Updates to the Database
+      // Use cached appId to avoid repeated repository lookups that cause cache contention
+      UUID appId = (UUID) dataMap.get(APP_ID);
+      if (update) {
+        repository.updateAppStatus(appId, runRecord);
+      } else {
+        repository.addAppStatus(runRecord);
+      }
+    }
+  }
+
+  private static void cleanupLogCapture(JobExecutionContext context) {
+    try {
+      String appRunLogId = (String) context.getJobDetail().getJobDataMap().get(APP_RUN_LOG_ID);
+      String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
+      if (appRunLogId != null && appName != null) {
+        AppRunLogAppender.stopCapture(appName, appRunLogId);
+      }
+    } catch (Exception e) {
+      LOG.debug("Error stopping log capture", e);
+    }
+    MDC.remove(AppRunLogAppender.MDC_APP_RUN_ID);
+    MDC.remove(AppRunLogAppender.MDC_APP_NAME);
+    MDC.remove(AppRunLogAppender.MDC_SERVER_ID);
+    MDC.remove(AppRunLogAppender.MDC_APP_ID);
+  }
+
+  private static String[] getThreadPrefixesForApp(String appName) {
+    if (appName != null && appName.toLowerCase().contains("searchindex")) {
+      return new String[] {
+        "reindex-", "om-field-fetch-", "search-index-retry-",
+      };
+    }
+    return new String[0];
+  }
+}

@@ -1,0 +1,357 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
+"""
+
+import json
+import traceback
+from hashlib import md5
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
+    GCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
+)
+from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
+    StorageContainerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.storage.storage_service import (
+    OPENMETADATA_TEMPLATE_FILE_NAME,
+)
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.readers.file.base import ReadException
+from metadata.readers.file.config_source_factory import get_reader
+from metadata.utils import fqn
+from metadata.utils.datalake.datalake_utils import (
+    DataFrameColumnParser,
+    fetch_dataframe_first_chunk,
+    get_file_format_type,
+)
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
+
+logger = ingestion_logger()
+
+OBJECT_FILTERED_OUT_MESSAGE = "Object Filtered Out"
+
+
+class DatalakeSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Datalake Source
+    """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__()
+        self.config = config
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.metadata = metadata
+        self.service_connection = self.config.serviceConnection.root.config
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
+        self.table_constraints = None
+        self.database_source_state = set()
+        self.config_source = self.service_connection.configSource
+        with close_on_failure(self._connection):
+            self.test_connection()
+        self.reader = get_reader(config_source=self.config_source, client=self.client.client)
+
+    @classmethod
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DatalakeConnection = config.serviceConnection.root.config
+        if not isinstance(connection, DatalakeConnection):
+            raise InvalidSourceException(f"Expected DatalakeConnection, but got {connection}")
+        return cls(config, metadata)
+
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Default case with a single database.
+
+        It might come informed - or not - from the source.
+
+        Sources with multiple databases should overwrite this and
+        apply the necessary filters.
+        """
+        for database_name in self.client.get_database_names(self.service_connection):
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=database_name,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                (database_fqn if self.source_config.useFqnForFiltering else database_name),
+            ):
+                self.status.filter(database_fqn, "Database Filtered out")
+            else:
+                try:
+                    self.client.update_client_database(self.config_source, database_name)
+                    yield database_name
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Error trying to connect to database {database_name}: {exc}")
+
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink
+        """
+        if isinstance(self.config_source, GCSConfig):
+            database_name = self.client.project
+
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=FullyQualifiedEntityName(self.context.get().database_service),
+        )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
+
+    def get_database_schema_names(self) -> Iterable[str]:
+        """
+        return schema names
+
+        Errors are allowed to propagate so the topology producer wrapper
+        (`_run_node_producer`) records a clean StackTraceError. Do NOT yield an
+        Either(left=...) here: the framework treats each yielded item as a
+        schema-name string, and a yielded Either would surface downstream as a
+        masked ``TypeError: expected string or bytes-like object``.
+        """
+        for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
+            ):
+                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                continue
+
+            yield schema_name
+
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+        """
+        From topology.
+        Prepare a database schema request and pass it to the sink
+        """
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+        )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
+
+    def get_tables_name_and_type(  # pylint: disable=too-many-branches
+        self,
+    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+        """
+        Handle table and views.
+
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        bucket_name = self.context.get().database_schema
+        prefix = self.service_connection.prefix
+        try:
+            metadata_config_response = self.reader.read(
+                path=OPENMETADATA_TEMPLATE_FILE_NAME,
+                bucket_name=bucket_name,
+                verbose=False,
+            )
+            content = json.loads(metadata_config_response)
+            metadata_entry = StorageContainerConfig.model_validate(content)
+        except ReadException:
+            metadata_entry = None
+        if self.source_config.includeTables:
+            skip_cold_storage = getattr(self.service_connection, "skipColdStorage", False) or False
+            for key_name, file_size in self.client.get_table_names(
+                bucket_name, prefix, skip_cold_storage=skip_cold_storage
+            ):
+                table_name = self.standardize_table_name(bucket_name, key_name)
+
+                if self.filter_dl_table(table_name):
+                    continue
+                logger.info(f"Processing table: {table_name}")
+                file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
+
+                if table_name.endswith("/") or not file_extension:
+                    logger.debug(f"Object filtered due to unsupported file type: {key_name}")
+                    continue
+
+                yield table_name, TableType.Regular, file_extension, file_size
+
+    def yield_table(
+        self,
+        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+    ) -> Iterable[Either[CreateTableRequest]]:
+        """
+        From topology.
+        Prepare a table request and pass it to the sink.
+        Uses first chunk only for schema inference to avoid loading entire file.
+        """
+        table_name, table_type, table_extension, file_size = table_name_and_type
+        schema_name = self.context.get().database_schema
+        try:
+            table_constraints = None
+            data_frame, raw_data = fetch_dataframe_first_chunk(
+                config_source=self.config_source,
+                client=self.client.client,
+                file_fqn=DatalakeTableSchemaWrapper(
+                    key=table_name,
+                    bucket_name=schema_name,
+                    file_extension=table_extension,
+                    file_size=file_size,
+                ),
+                fetch_raw_data=True,
+                session=getattr(self.client, "session", None),
+            )
+            if data_frame:
+                data_frame = next(data_frame)
+                column_parser = DataFrameColumnParser.create(data_frame, table_extension, raw_data=raw_data)
+                columns = column_parser.get_columns()
+            else:
+                # If no data_frame (due to unsupported type), ignore
+                columns = None
+            if columns:
+                display_name = None
+                if len(table_name) > 256:
+                    display_name = table_name
+                    table_name = md5(table_name.encode()).hexdigest()
+                    logger.debug(
+                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
+                        f"as name and storing the full path in displayName: [{display_name}]"
+                    )
+                table_request = CreateTableRequest(
+                    name=table_name,
+                    displayName=display_name,
+                    tableType=table_type,
+                    columns=columns,
+                    tableConstraints=table_constraints if table_constraints else None,
+                    databaseSchema=FullyQualifiedEntityName(
+                        fqn.build(
+                            metadata=self.metadata,
+                            entity_type=DatabaseSchema,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
+                            schema_name=schema_name,
+                        )
+                    ),
+                    fileFormat=table_extension.value if table_extension else None,
+                )
+                yield Either(right=table_request)
+                self.register_record(table_request=table_request)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Table",
+                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
+        """We don't bring tag information"""
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def standardize_table_name(
+        self,
+        schema: str,
+        table: str,  # pylint: disable=unused-argument
+    ) -> str:
+        return table
+
+    def filter_dl_table(self, table_name: str):
+        """Filters Datalake Tables based on filterPattern"""
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            table_name=table_name,
+            skip_es_search=True,
+        )
+
+        if filter_by_table(
+            self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+            (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
+        ):
+            self.status.filter(
+                table_fqn,
+                OBJECT_FILTERED_OUT_MESSAGE,
+            )
+            return True
+        return False

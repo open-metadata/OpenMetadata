@@ -1,0 +1,51 @@
+{
+    "namespace": "openmetadata.kafka",
+    "name": "level",
+    "type": "record",
+    "fields": [
+        {
+            "name": "uid",
+            "type": "int"
+        },
+        {
+            "name": "somefield",
+            "type": "string"
+        },
+        {
+            "name": "options",
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "lvl2_record",
+                    "fields": [
+                        {
+                            "name": "item1_lvl2",
+                            "type": "string"
+                        },
+                        {
+                            "name": "item2_lvl2",
+                            "type": {
+                                "type": "array",
+                                "items": {
+                                    "type": "record",
+                                    "name": "lvl3_record",
+                                    "fields": [
+                                        {
+                                            "name": "item1_lvl3",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "name": "item2_lvl3",
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

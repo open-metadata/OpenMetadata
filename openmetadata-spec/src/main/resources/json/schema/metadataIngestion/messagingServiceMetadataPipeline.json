@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/messagingServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MessagingServiceMetadataPipeline",
+  "description": "MessagingService Metadata Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "messagingMetadataConfigType": {
+      "description": "Messaging Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["MessagingMetadata"],
+      "default": "MessagingMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/messagingMetadataConfigType",
+      "default": "MessagingMetadata"
+    },
+    "topicFilterPattern": {
+      "description": "Regex to only fetch topics that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Topic Filter Pattern"
+    },
+    "generateSampleData": {
+      "description": "Option to turn on/off generating sample data during metadata extraction.",
+      "type": "boolean",
+      "default": false,
+      "title": "Generate Sample Data"
+    },
+    "markDeletedTopics": {
+      "description": "Optional configuration to soft delete topics in OpenMetadata if the source topics are deleted. Also, if the topic is deleted, all the associated entities like sample data, lineage, etc., with that topic will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Topics"
+    },
+    "overrideMetadata":{
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

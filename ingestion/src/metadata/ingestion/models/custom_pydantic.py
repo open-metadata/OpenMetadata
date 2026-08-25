@@ -1,0 +1,304 @@
+#  Copyright 2022 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Pydantic classes overwritten defaults ones of code generation.
+
+This classes are used in the generated module, which should have NO
+dependencies against any other metadata package. This class should
+be self-sufficient with only pydantic at import time.
+"""
+
+import json
+import logging
+import os
+import threading
+from typing import Any, Callable, Dict, Literal, Optional, Union  # noqa: UP035
+
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict, WrapSerializer, model_validator
+from pydantic.main import IncEx
+from pydantic.types import SecretStr
+from pydantic_core.core_schema import SerializationInfo
+from typing_extensions import Annotated  # noqa: UP035
+
+from metadata.ingestion.models.custom_basemodel_validation import transform_entity_names
+
+logger = logging.getLogger("metadata")
+
+SECRET = "secret:"
+JSON_ENCODERS = "json_encoders"
+
+# model_rebuild() deletes __pydantic_core_schema__/__pydantic_validator__/__pydantic_serializer__
+# before regenerating them, and says so itself: "as model_rebuild() isn't thread-safe, concurrent
+# model instantiations can lead to the parent validator being used". Two ways that bites us. A
+# first build only deletes the core schema, since the validator and serializer mocks are skipped
+# by pydantic's isinstance(..., MockValSer) guard, so a racing thread loses the delete outright
+# ("AttributeError: __pydantic_core_schema__"). A force rebuild of an already built class deletes
+# the real objects, so a racing thread falls through the MRO onto PydanticBaseModel's own mocks.
+# Reentrant because building one schema can rebuild the nested models it references.
+_MODEL_REBUILD_LOCK = threading.RLock()
+
+
+class BaseModel(PydanticBaseModel):
+    """
+    Base model for OpenMetadata generated models.
+    Specified as `--base-class BASE_CLASS` in the generator.
+    """
+
+    # Lazy per-model schema build (~200MB less import RSS). Guarded by
+    # tests/unit/test_generated_models_defer_build.py. Env override is an ops
+    # kill-switch (redeploy-free), mirroring openai/anthropic's DEFER_PYDANTIC_BUILD.
+    # Read the env directly, NOT via metadata.config.settings: this base class must
+    # import only pydantic — routing it through a metadata package would risk a
+    # circular import at the root of the generated-model hierarchy.
+    model_config = ConfigDict(
+        defer_build=os.environ.get("OM_PYDANTIC_DEFER_BUILD", "true").lower() not in ("0", "false", "no", "off")
+    )
+
+    @classmethod
+    def model_rebuild(cls, *, _parent_namespace_depth: int = 2, **kwargs: Any) -> Optional[bool]:  # noqa: UP045
+        """Rebuild the pydantic-core schema, serialising concurrent builds of the same class."""
+        # Every rebuild funnels through here, including pydantic's own lazy repair from
+        # MockValSer.__getattr__ (see _mock_val_ser.set_model_mocks), which is otherwise unguarded
+        # and races the same way whenever threads first validate a deferred model directly.
+        if _parent_namespace_depth > 0:
+            # This override adds a frame between the caller and pydantic's own parent-frame walk.
+            _parent_namespace_depth += 1
+        with _MODEL_REBUILD_LOCK:
+            return super().model_rebuild(_parent_namespace_depth=_parent_namespace_depth, **kwargs)
+
+    def model_post_init(self, context: Any, /):
+        """
+        This function is used to parse the FilterPattern fields for the Connection classes.
+        This is needed because dict is defined in the JSON schema for the FilterPattern field,
+        but a FilterPattern object is required in the generated code.
+        """
+        # Build the schema of a model the first time one is instantiated. With
+        # defer_build a nested model's schema only ever gets inlined into its parent, so
+        # the class keeps the MockValSer that pydantic put on it in place of a real
+        # serializer (see _mock_val_ser.set_model_mocks). Serialization fallbacks read
+        # type(value).__pydantic_serializer__ straight off the class, which does not go
+        # through MockValSer.__getattr__ and so never triggers its lazy rebuild;
+        # pydantic-core then fails to convert the mock with
+        # "'MockValSer' object cannot be converted to 'SchemaSerializer'". Building here
+        # keeps the import-time saving, since importing a module instantiates nothing.
+        # _parent_namespace_depth=0: forward refs must resolve against the model's own
+        # module, not against whichever frame happened to instantiate it.
+        # Checked before calling so the steady-state path never touches the rebuild lock.
+        cls = type(self)
+        if not cls.__pydantic_complete__:
+            cls.model_rebuild(_parent_namespace_depth=0)
+
+        # pylint: disable=import-outside-toplevel
+        try:
+            if not self.__class__.__name__.endswith("Connection"):
+                # Only parse FilterPattern for Connection classes
+                return
+            if not hasattr(self, "__pydantic_fields__"):
+                return
+            for field in self.__pydantic_fields__:
+                if field.endswith("FilterPattern"):
+                    from metadata.generated.schema.type.filterPattern import (
+                        FilterPattern,
+                    )
+
+                    value = getattr(self, field)
+                    if isinstance(value, dict):
+                        setattr(self, field, FilterPattern(**value))
+        except Exception as exc:
+            logger.warning(f"Exception while parsing FilterPattern: {exc}")
+
+    @model_validator(mode="after")
+    def parse_name(self):  # pylint: disable=inconsistent-return-statements
+        """
+        Transform entity names using hybrid configuration system.
+        """
+        try:
+            return transform_entity_names(entity=self, model=type(self))
+        except Exception as exc:
+            logger.warning("Exception while parsing Basemodel: %s", exc)
+            return self
+
+    def model_dump_json(  # pylint: disable=too-many-arguments
+        self,
+        *,
+        mask_secrets: Optional[bool] = None,  # noqa: UP045
+        indent: Optional[int] = None,  # noqa: UP045
+        include: IncEx = None,
+        exclude: IncEx = None,
+        context: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+        by_alias: bool = False,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = False,
+        exclude_none: bool = True,
+        round_trip: bool = False,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",  # noqa: UP007
+        fallback: Optional[Callable[[Any], Any]] = None,  # noqa: UP045
+        serialize_as_any: bool = False,
+    ) -> str:
+        """
+        This is needed due to https://github.com/pydantic/pydantic/issues/8825
+
+        We also tried the suggested `serialize` method but it did not
+        work well with nested models.
+
+        This solution is covered in the `test_pydantic_v2` test comparing the
+        dump results from V1 vs. V2.
+
+        mask_secrets: bool - Can be overridedn by either passing it as an argument or setting it in the context.
+        With the following rules:
+            - if mask_secrets is not None, it will be used as is
+            - if mask_secrets is None and context is not None, it will be set to context.get("mask_secrets", True)
+            - if mask_secrets is None and context is None, it will be set to True
+
+        """
+        if mask_secrets is None:
+            mask_secrets = context.get("mask_secrets", True) if context else True
+        return json.dumps(
+            self.model_dump(
+                mode="json",
+                mask_secrets=mask_secrets,
+                include=include,
+                exclude=exclude,
+                context=context,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_none=exclude_none,
+                exclude_defaults=exclude_defaults,
+                round_trip=round_trip,
+                warnings=warnings,
+                serialize_as_any=serialize_as_any,
+            ),
+            ensure_ascii=True,
+        )
+
+    def model_dump(
+        self,
+        *,
+        mask_secrets: bool = False,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",  # noqa: UP007
+        **kwargs: Any,
+    ) -> Dict[str, Any]:  # noqa: UP006
+        if mask_secrets:
+            context = kwargs.pop("context", None) or {}
+            context["mask_secrets"] = True
+            kwargs["context"] = context
+
+        if "warnings" not in kwargs:
+            kwargs["warnings"] = warnings
+
+        return super().model_dump(**kwargs)
+
+
+class _CustomSecretStr(SecretStr):
+    """
+    Custom SecretStr class which use the configured Secrets Manager to retrieve the actual values.
+
+    If the secret string value starts with `config:` it will use the rest of the string as secret id to search for it
+    in the secrets store.
+
+    By default the secrets will be unmasked when dumping ot python objects and masked when dumping to json unless
+    explicitly set otherwise using the `mask_secrets` or `context` arguments.
+    """
+
+    def __repr__(self) -> str:
+        return f"SecretStr('{self}')"
+
+    def get_secret_value(self, skip_secret_manager: bool = False) -> str:
+        """
+        This function should only be called after the SecretsManager has properly
+        been initialized (e.g., after instantiating the ometa client).
+
+        Since the SecretsManagerFactory is a singleton, getting it here
+        will pick up the object with all the necessary info already in it.
+
+        A secret stored as ``null`` in the secrets manager resolves to ``None``.
+        We log it and fall back to an empty string so downstream callers that
+        expect a string (e.g. URL building with ``quote_plus``) do not crash.
+        """
+        # Importing inside function to avoid circular import error
+        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+            SecretsManagerFactory,
+        )
+
+        secret_value = self._secret_value
+        if (
+            not skip_secret_manager
+            and self._secret_value
+            and self._secret_value.startswith(SECRET)
+            and SecretsManagerFactory().get_secrets_manager()
+        ):
+            secret_id = self._secret_value.replace(SECRET, "")
+            logger.info(f"Getting secret value for {secret_id}")
+            try:
+                secret_value = SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
+            except Exception as exc:
+                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
+
+        if secret_value is None:
+            logger.warning("Resolved a null secret value; treating it as an empty string")
+            secret_value = ""
+        return secret_value
+
+
+def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
+    """
+    Handle the secret value in the model.
+    """
+    if not (info.context is not None and info.context.get("mask_secrets", False)):
+        # Serialization must preserve the raw stored value. For external secret
+        # references (`secret:<id>`) this keeps the reference intact instead of
+        # resolving it, so the payload sent to the server keeps the reference and
+        # is not silently turned into a plain secret. Resolution against the
+        # secrets manager happens at use-time through a direct get_secret_value()
+        # call (e.g. when building a connection).
+        #
+        # A CustomSecretStr field can still hold a plain pydantic SecretStr when
+        # code assigns one directly (e.g. connection builders setting an empty
+        # password). Only _CustomSecretStr accepts skip_secret_manager, so guard
+        # the call to avoid a TypeError on plain SecretStr values.
+        raw_value = (
+            value.get_secret_value(skip_secret_manager=True)
+            if isinstance(value, _CustomSecretStr)
+            else value.get_secret_value()
+        )
+        if info.mode == "json":
+            return raw_value
+        return handler(raw_value)
+    return str(value)  # use pydantic's logic to mask the secret
+
+
+CustomSecretStr = Annotated[_CustomSecretStr, WrapSerializer(handle_secret)]
+
+
+def format_validation_error(exc: Exception) -> str:
+    """Render a Pydantic ``ValidationError`` (v2) as a compact one-liner
+    suitable for log messages and workflow status warnings.
+
+    Each field error becomes ``field.path: message``, joined by ``; ``.
+    Falls back to ``str(exc)`` for non-Pydantic exceptions so callers
+    don't need to type-check.
+
+    Example output::
+
+        entries.0.dataPath: Field required; entries.1.structureFormat: Input should be a valid string
+    """
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        return "; ".join(f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}" for err in errors())
+    return str(exc)
+
+
+def ignore_type_decoder(type_: Any) -> None:
+    """Given a type_, add a custom decoder to the BaseModel
+    to ignore any decoding errors for that type_."""
+    # We don't import the constants from the constants module to avoid circular imports
+    BaseModel.model_config[JSON_ENCODERS][type_] = {lambda v: v.decode("utf-8", "ignore")}

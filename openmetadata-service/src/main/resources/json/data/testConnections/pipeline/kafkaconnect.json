@@ -1,0 +1,28 @@
+{
+    "name": "KafkaConnect",
+    "displayName": "KafkaConnect Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "GetClusterInfo",
+            "description":  "Validate that the API can properly reach the server.",
+            "errorMessage": "Failed to fetch Cluster info please validate the credentials or validate if user has access to fetch pipelines",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetPipelines",
+            "description":  "List all the pipelines available to the user by executing the get connectors query.",
+            "errorMessage": "Failed to fetch pipelines(connectors), please validate the credentials or validate if user has access to fetch pipelines",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetPlugins",
+            "description":  "List all the plugins available to the user by executing the get connectors plugins query.",
+            "errorMessage": "Failed to fetch plugins, please validate the credentials or validate if user has access to fetch plugins",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

@@ -1,0 +1,225 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../variables.less';
+
+.ant-table-wrapper {
+  .ant-table-thead {
+    tr > th {
+      font-weight: var(--om-font-weight-medium);
+      color: @grey-600;
+      border-right: none;
+      border-color: @border-color-1;
+    }
+    tr > td {
+      color: @text-color;
+    }
+    background: @grey-1;
+  }
+  .ant-table-body {
+    tr > td {
+      border-color: @border-color-1;
+    }
+  }
+  .ant-table-cell {
+    vertical-align: top;
+  }
+  .ant-table-bordered {
+    table {
+      border-color: @border-color-1;
+      tbody {
+        tr {
+          td {
+            .drag-icon {
+              visibility: hidden;
+            }
+
+            .expand-icon {
+              cursor: pointer;
+            }
+
+            .expand-cell-empty-icon-container {
+              width: 8px;
+              height: 12px;
+              display: inline-flex;
+            }
+          }
+        }
+        .ant-table-cell-row-hover {
+          .drag-icon {
+            visibility: initial;
+          }
+        }
+      }
+    }
+    .ant-table-container {
+      border: none;
+      overflow: hidden;
+
+      .ant-table-content {
+        .react-resizable {
+          display: contents;
+        }
+      }
+
+      .ant-table-content > table {
+        border-top: none;
+        tbody > tr {
+          td {
+            border-right: none;
+          }
+
+          &:last-child td {
+            border-bottom: none;
+
+            td {
+              border-bottom: 1px solid @border-color-1;
+            }
+          }
+        }
+        thead > tr {
+          th {
+            border-right: none;
+          }
+        }
+      }
+    }
+  }
+
+  .resizable-box {
+    position: absolute;
+  }
+}
+
+.ant-table.ant-table-small .ant-table-thead > tr > th:first-child {
+  padding-left: var(--om-space-16);
+}
+
+.ant-table.ant-table-small .ant-table-tbody > tr > td:first-child {
+  padding-left: var(--om-space-16);
+}
+
+.drop-over-background {
+  .drop-over-child {
+    td {
+      background: @active-color !important;
+      border: 2px dashed @primary-color;
+      border-left: transparent;
+
+      &:first-child {
+        border-left: 2px dashed @primary-color;
+      }
+      &:last-child {
+        border-right: 2px dashed @primary-color !important;
+      }
+    }
+  }
+}
+
+.drop-over-table {
+  .ant-table {
+    table {
+      border-collapse: collapse;
+      .ant-table-tbody {
+        border: 2px dashed @primary-color;
+
+        td {
+          background: @active-color !important;
+        }
+      }
+    }
+  }
+}
+
+// TableV2 whole-table drop highlight — driven by React Aria's native data-drop-target
+[data-drop-target] table:not(.ant-table) {
+  border-collapse: collapse;
+  tbody {
+    border: 2px dashed @primary-color;
+    tr td {
+      background: @active-color !important;
+    }
+  }
+}
+
+.align-table-filter-left {
+  .ant-table-filter-column {
+    flex-direction: row-reverse;
+    gap: var(--om-space-8);
+  }
+}
+
+// Setting the background color of the resizable column to  where dragger is located
+.ant-table.ant-table-bordered {
+  > .ant-table-container {
+    > .ant-table-content,
+    > .ant-table-header,
+    > .ant-table-body,
+    > .ant-table-summary {
+      > table {
+        > thead {
+          > tr {
+            > .resizable-container::before {
+              background-color: @border-color !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Hide the border of the columns except the resizable columns
+.ant-table-thead > tr {
+  // Regular header cells
+  > th:not(:last-child):not(.ant-table-selection-column):not(
+      .ant-table-row-expand-icon-cell
+    ):not([colspan])::before {
+    width: 0px;
+  }
+  // Resizable header cells
+  > .resizable-container:not(:last-child):not(.ant-table-selection-column):not(
+      .ant-table-row-expand-icon-cell
+    ):not([colspan])::before {
+    width: 1px;
+  }
+}
+
+// Table icons
+
+.table-action-icon {
+  width: 14px;
+  height: 14px;
+  color: @grey-600;
+  cursor: pointer;
+}
+
+.table-expand-icon {
+  margin-right: var(--om-space-8);
+  color: @text-color;
+  font-size: var(--om-font-size-xs);
+}
+
+.filter-icon {
+  color: @grey-600;
+}
+
+.filter-icon-active {
+  color: @primary-color;
+}
+
+.drag-icon {
+  width: 6px;
+  margin-right: var(--om-space-8);
+  color: @grey-4;
+}

@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storage/storageMetadataHttpConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Storage Metadata Http Config",
+  "description": "Storage Metadata Manifest file HTTP path config.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataHttpConfig",
+  "type": "object",
+  "properties": {
+    "manifestHttpPath": {
+      "title": "Storage Metadata Manifest HTTP Path",
+      "description": "Storage Metadata manifest http file path to extract locations to ingest from.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["manifestHttpPath"]
+}

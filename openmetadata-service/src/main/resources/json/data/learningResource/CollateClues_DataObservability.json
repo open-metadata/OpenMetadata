@@ -1,0 +1,16 @@
+{
+  "name": "CollateClues_DataObservability",
+  "displayName": "Collate Clues: Data Observability",
+  "description": "Learn how Data Observability helps you monitor and ensure the health of your data pipelines and assets.",
+  "resourceType": "Video",
+  "categories": ["Observability", "DataQuality"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=ZOe71H1EuQ8",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "dataObservability"},
+    {"pageId": "table", "componentId": "profiler"}
+  ],
+  "status": "Active"
+}

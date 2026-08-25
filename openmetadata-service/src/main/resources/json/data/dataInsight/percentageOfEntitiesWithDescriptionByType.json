@@ -1,0 +1,16 @@
+{
+  "name": "PercentageOfEntitiesWithDescriptionByType",
+  "fullyQualifiedName": "PercentageOfEntitiesWithDescriptionByType",
+  "displayName": "Percentage of Entities With Description",
+  "description": "Display the percentage of entities with description by type.",
+  "dataIndexType": "entity_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","chartDataType":"INT"},
+    {"name": "entityType", "displayName": "Entity Type", "chartDataType": "STRING"}
+  ],
+  "metrics": [
+    {"name": "completedDescriptionFraction", "displayName": "Percentage of Completed Description", "chartDataType": "PERCENTAGE"},
+    {"name": "completedDescription", "displayName": "Entities with Completed Description", "chartDataType": "NUMBER"},
+    {"name": "entityCount", "displayName": "Total Entities", "chartDataType": "INT"}
+  ]
+}

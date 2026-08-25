@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "address.proto";
+import "contact.proto";
+
+message Company {
+  string name = 1;
+  Address address = 2;
+  Contact contact = 3;
+}

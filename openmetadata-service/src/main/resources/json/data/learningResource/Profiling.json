@@ -1,0 +1,16 @@
+{
+  "name": "Profiling",
+  "description": "Discover how our data observability platform helps you monitor, trust, and optimize your data assets in minutes",
+  "resourceType": "Storylane",
+  "categories": ["Observability", "DataQuality"],
+  "source": {
+    "url": "https://collate.storylane.io/share/kzgrhtzoadmo"
+  },
+  "contexts": [
+    {"pageId": "profilerConfiguration"},
+    {"pageId": "dataQuality"},
+    {"pageId": "dataObservability"},
+    {"pageId": "table"}
+  ],
+  "status": "Active"
+}

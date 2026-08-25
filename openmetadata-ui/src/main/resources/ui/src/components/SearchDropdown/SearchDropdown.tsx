@@ -1,0 +1,526 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Divider,
+  Dropdown,
+  Input,
+  MenuItemProps,
+  MenuProps,
+  Radio,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
+import classNames from 'classnames';
+import { debounce, isEmpty, isUndefined } from 'lodash';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
+import { getSelectedOptionLabelString } from '../../utils/AdvancedSearchPureUtils';
+import {
+  generateSearchDropdownLabel,
+  getSearchDropdownLabels,
+} from '../../utils/AdvancedSearchUtils';
+import searchClassBase from '../../utils/SearchClassBase';
+import Loader from '../common/Loader/Loader';
+import './search-dropdown.less';
+import {
+  SearchDropdownOption,
+  SearchDropdownProps,
+} from './SearchDropdown.interface';
+const SearchDropdown: FC<SearchDropdownProps> = ({
+  dropdownClassName,
+  isSuggestionsLoading,
+  label,
+  options,
+  searchKey,
+  selectedKeys,
+  highlight = false,
+  showProfilePicture = false,
+  fixedOrderOptions = false,
+  onChange,
+  onGetInitialOptions,
+  onSearch,
+  index,
+  independent = false,
+  hideCounts = false,
+  hasNullOption = false,
+  showSelectedCounts = false,
+  triggerButtonSize = 'small',
+  hideSearchBar = false,
+  singleSelect = false,
+  immediateApply = false,
+  helperText,
+  getPopupContainer,
+}) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
+  const { t } = useTranslation();
+  // Used only to tear down open portal dropdowns during page navigation.
+  const { pathname } = useLocation();
+
+  const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
+
+  const nullLabelText = t('label.no-entity', { entity: label });
+
+  // derive menu props from options and selected keys
+  const menuOptions: MenuProps['items'] = useMemo(() => {
+    // Filtering out selected options. Immediate-apply facets exclude their
+    // own field from the aggregation, so a selected value may not be in the
+    // fetched options — keep it visible (and uncheckable) regardless. When the
+    // value IS present in the fetched options, render that copy so the selected
+    // row keeps its aggregation count and human-readable label instead of the
+    // raw key with a 0 count.
+    const selectedOptionsObj =
+      independent || immediateApply
+        ? selectedOptions.map(
+            (selectedOpt) =>
+              options.find((option) => option.key === selectedOpt.key) ??
+              selectedOpt
+          )
+        : options.filter((option) =>
+            selectedOptions.some(
+              (selectedOpt) => option.key === selectedOpt.key
+            )
+          );
+
+    if (fixedOrderOptions) {
+      return options.map((item) => ({
+        key: item.key,
+        label: generateSearchDropdownLabel(
+          item,
+          selectedOptionsObj.includes(item),
+          highlight ? searchText : '',
+          showProfilePicture,
+          hideCounts,
+          singleSelect
+        ),
+      }));
+    } else {
+      // Separating selected options to show on top
+      const selectedOptionKeys =
+        getSearchDropdownLabels(
+          selectedOptionsObj,
+          true,
+          highlight ? searchText : '',
+          showProfilePicture,
+          hideCounts,
+          singleSelect
+        ) || [];
+
+      // Filtering out unselected options
+      const unselectedOptions = options.filter(
+        (option) =>
+          !selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
+      );
+
+      // Labels for unselected options
+      const otherOptions =
+        getSearchDropdownLabels(
+          unselectedOptions,
+          false,
+          highlight ? searchText : '',
+          showProfilePicture,
+          hideCounts,
+          singleSelect
+        ) || [];
+
+      return [...selectedOptionKeys, ...otherOptions];
+    }
+  }, [
+    options,
+    selectedOptions,
+    fixedOrderOptions,
+    independent,
+    immediateApply,
+    searchText,
+    hideCounts,
+    singleSelect,
+    showProfilePicture,
+    highlight,
+  ]);
+
+  // Handle dropdown close
+  const handleDropdownClose = () => {
+    setIsDropDownOpen(false);
+  };
+
+  // Build the onChange payload (prepending the null option when selected) and emit it
+  const emitChange = (
+    updatedOptions: SearchDropdownOption[],
+    isNullSelected: boolean
+  ) => {
+    if (isNullSelected) {
+      onChange(
+        [
+          { key: NULL_OPTION_KEY, label: nullLabelText },
+          ...(singleSelect ? [] : updatedOptions),
+        ],
+        searchKey
+      );
+    } else {
+      onChange(updatedOptions, searchKey);
+    }
+  };
+
+  // handle menu item click
+  const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
+    const currentKey = info.key;
+    const option = options.find((op) => op.key === currentKey);
+    let updatedValues: SearchDropdownOption[];
+    let updatedNullSelected = nullOptionSelected;
+
+    if (singleSelect) {
+      const isAlreadySelected = selectedOptions.some(
+        (opt) => opt.key === currentKey
+      );
+      updatedValues = !isAlreadySelected && option ? [option] : [];
+      if (!isAlreadySelected && option) {
+        updatedNullSelected = false;
+        setNullOptionSelected(false);
+      }
+    } else {
+      const isAlreadySelected = selectedOptions.some(
+        (opt) => opt.key === currentKey
+      );
+      updatedValues = isAlreadySelected
+        ? selectedOptions.filter((opt) => opt.key !== currentKey)
+        : [...selectedOptions, ...(option ? [option] : [])];
+    }
+
+    setSelectedOptions(updatedValues);
+
+    if (immediateApply) {
+      emitChange(updatedValues, updatedNullSelected);
+      if (singleSelect) {
+        handleDropdownClose();
+      }
+    }
+  };
+
+  // handle clear all
+  const handleClear = () => {
+    setSelectedOptions([]);
+    if (immediateApply) {
+      emitChange([], nullOptionSelected);
+    }
+  };
+
+  // Keep the latest search handler in a ref so the debounced function can stay
+  // stable across renders. Creating debounce() inline on every render resets
+  // its internal timer, which silently defeats debouncing the moment the
+  // component re-renders mid-typing.
+  const handleSearchRef = useRef<(value: string) => void>(() => undefined);
+  useEffect(() => {
+    handleSearchRef.current = (value: string) => {
+      setSearchText(value);
+      onSearch(value, searchKey);
+    };
+  }, [onSearch, searchKey]);
+
+  const debouncedOnSearch = useMemo(
+    () => debounce((value: string) => handleSearchRef.current(value), 500),
+    []
+  );
+
+  // Cancel a pending trailing call on unmount so it can't fire onSearch /
+  // setSearchText after the dropdown is gone.
+  useEffect(() => () => debouncedOnSearch.cancel(), [debouncedOnSearch]);
+
+  // Close portal-based dropdowns when navigating to a different page.
+  useEffect(() => {
+    setIsDropDownOpen(false);
+    setSearchText('');
+    debouncedOnSearch.cancel();
+  }, [pathname, debouncedOnSearch]);
+
+  // A queued search must not resolve into a closed dropdown: consumers share
+  // one options state, so it would repaint whichever dropdown opened next.
+  // Keyed on the open flag to cover every close path (Escape, Close, Update).
+  useEffect(() => {
+    if (!isDropDownOpen) {
+      debouncedOnSearch.cancel();
+    }
+  }, [isDropDownOpen, debouncedOnSearch]);
+
+  // Handle null option change
+  const handleNullOptionChange = (checked: boolean) => {
+    setNullOptionSelected(checked);
+    let updatedValues = selectedOptions;
+    if (singleSelect && checked) {
+      updatedValues = [];
+      setSelectedOptions([]);
+    }
+    if (immediateApply) {
+      emitChange(updatedValues, checked);
+    }
+  };
+
+  // Handle update button click
+  const handleUpdate = () => {
+    emitChange(selectedOptions, nullOptionSelected);
+    handleDropdownClose();
+  };
+
+  // In immediate-apply mode the QUERY bar owns clearing.
+  const showClearAllBtn = useMemo(
+    () => !singleSelect && selectedOptions.length > 1 && !immediateApply,
+    [singleSelect, selectedOptions, immediateApply]
+  );
+
+  useEffect(() => {
+    const isNullOptionSelected = selectedKeys.some(
+      (item) => item.key === NULL_OPTION_KEY
+    );
+    setNullOptionSelected(isNullOptionSelected);
+  }, [isDropDownOpen]);
+
+  useEffect(() => {
+    setSelectedOptions(
+      selectedKeys.filter((item) => item.key !== NULL_OPTION_KEY)
+    );
+  }, [isDropDownOpen, selectedKeys]);
+
+  const getDropdownBody = useCallback(
+    (menuNode: ReactNode) => {
+      const entityLabel = index && tabsInfo[index]?.label;
+      const isDomainKey = searchKey?.startsWith('domain') ?? false;
+      if (isSuggestionsLoading) {
+        return (
+          <Row align="middle" className="p-y-sm" justify="center">
+            <Col>
+              <Loader size="small" />
+            </Col>
+          </Row>
+        );
+      }
+
+      return options.length > 0 || selectedOptions.length > 0 ? (
+        menuNode
+      ) : (
+        <Row align="middle" className="m-y-sm" justify="center">
+          <Col>
+            <Typography.Text className="m-x-sm">
+              {isDomainKey && entityLabel
+                ? t('message.no-domain-assigned-to-entity', {
+                    entity: entityLabel,
+                  })
+                : t('message.no-data-available')}
+            </Typography.Text>
+          </Col>
+        </Row>
+      );
+    },
+    [isSuggestionsLoading, options, selectedOptions, index, searchKey]
+  );
+
+  const dropdownCardComponent = useCallback(
+    (menuNode: ReactNode) => (
+      <Card
+        bodyStyle={{ padding: 0 }}
+        className={classNames('custom-dropdown-render', dropdownClassName, {
+          'immediate-apply-dropdown': immediateApply,
+        })}
+        data-testid="drop-down-menu">
+        <Space className="w-full" direction="vertical" size={0}>
+          {!hideSearchBar && (
+            <div className="p-t-sm p-x-sm">
+              <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search box when the dropdown opens
+                autoFocus
+                data-testid="search-input"
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  debouncedOnSearch(value);
+                }}
+              />
+            </div>
+          )}
+          {showClearAllBtn && (
+            <>
+              <Divider className="m-t-xs m-b-0" />
+              <Button
+                className="p-0 m-l-sm"
+                data-testid="clear-button"
+                type="link"
+                onClick={handleClear}>
+                {t('label.clear-entity', {
+                  entity: t('label.all'),
+                })}
+              </Button>
+            </>
+          )}
+          {!hideSearchBar && (
+            <Divider
+              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+            />
+          )}
+
+          {hasNullOption && (
+            <>
+              <div className="d-flex items-center m-x-sm m-y-xs gap-2">
+                {singleSelect ? (
+                  <Radio
+                    checked={nullOptionSelected}
+                    className="d-flex flex-1"
+                    data-testid="no-option-radio"
+                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
+                    {nullLabelText}
+                  </Radio>
+                ) : (
+                  <Checkbox
+                    checked={nullOptionSelected}
+                    className="d-flex flex-1"
+                    data-testid="no-option-checkbox"
+                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
+                    {nullLabelText}
+                  </Checkbox>
+                )}
+              </div>
+
+              <Divider className="m-y-0" />
+            </>
+          )}
+
+          {getDropdownBody(menuNode)}
+          {immediateApply ? (
+            helperText ? (
+              <div
+                className="p-x-sm p-y-xss search-dropdown-helper-text"
+                data-testid="search-dropdown-helper-text">
+                <Typography.Text className="text-xs" type="secondary">
+                  {helperText}
+                </Typography.Text>
+              </div>
+            ) : null
+          ) : (
+            <Space className="p-sm p-t-xss">
+              <Button
+                className="update-btn"
+                data-testid="update-btn"
+                size="small"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+              <Button
+                data-testid="close-btn"
+                size="small"
+                type="link"
+                onClick={handleDropdownClose}>
+                {t('label.close')}
+              </Button>
+            </Space>
+          )}
+        </Space>
+      </Card>
+    ),
+    [
+      label,
+      debouncedOnSearch,
+      dropdownClassName,
+      hasNullOption,
+      showClearAllBtn,
+      nullOptionSelected,
+      singleSelect,
+      handleNullOptionChange,
+      nullLabelText,
+      handleClear,
+      getDropdownBody,
+      handleUpdate,
+      handleDropdownClose,
+      hideSearchBar,
+      immediateApply,
+      helperText,
+    ]
+  );
+
+  return (
+    <Dropdown
+      destroyPopupOnHide
+      data-testid={searchKey}
+      dropdownRender={dropdownCardComponent}
+      getPopupContainer={getPopupContainer}
+      key={searchKey}
+      menu={{ items: menuOptions, onClick: handleMenuItemClick }}
+      open={isDropDownOpen}
+      transitionName=""
+      trigger={['click']}
+      onOpenChange={(visible) => {
+        visible &&
+          !isUndefined(onGetInitialOptions) &&
+          onGetInitialOptions(searchKey);
+        setIsDropDownOpen(visible);
+        setSearchText('');
+      }}>
+      <Tooltip
+        mouseLeaveDelay={0}
+        overlayClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
+        placement="top"
+        title={getSelectedOptionLabelString(selectedKeys, true)}
+        trigger="hover">
+        <Button
+          className="quick-filter-dropdown-trigger-btn"
+          data-testid={`search-dropdown-${searchKey}`}
+          size={triggerButtonSize}>
+          <Space data-testid={`search-dropdown-${label}`} size={4}>
+            <Space
+              className={classNames({
+                active: selectedKeys.length > 0,
+              })}
+              size={0}>
+              <Typography.Text className="filters-label font-medium">
+                {label}
+              </Typography.Text>
+              {selectedKeys.length > 0 && (
+                <span>
+                  {': '}
+                  <Typography.Text className="text-primary font-medium">
+                    {showSelectedCounts
+                      ? `(${selectedKeys.length})`
+                      : getSelectedOptionLabelString(selectedKeys)}
+                  </Typography.Text>
+                </span>
+              )}
+            </Space>
+            <DropDown className="flex self-center" height={12} width={12} />
+          </Space>
+        </Button>
+      </Tooltip>
+    </Dropdown>
+  );
+};
+
+export default SearchDropdown;

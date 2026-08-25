@@ -1,0 +1,81 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Workflow definition for the profiler
+"""
+
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
+)
+from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
+    MessagingServiceAutoClassificationPipeline,
+)
+from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
+    StorageServiceAutoClassificationPipeline,
+)
+from metadata.ingestion.api.steps import Processor
+from metadata.pii.constants import PII
+from metadata.pii.processor_factory import create_pii_processor
+from metadata.sampler.processor import SamplerProcessor
+from metadata.utils.logger import profiler_logger
+from metadata.workflow.profiler import ProfilerWorkflow
+
+logger = profiler_logger()
+
+
+class AutoClassificationWorkflow(ProfilerWorkflow):
+    """Auto Classification workflow implementation. Based on the Profiler logic with different steps"""
+
+    def set_steps(self):
+        # NOTE: Call test_connection to update host value before creating the source class
+        self.test_connection()
+
+        source_class = self._get_source_class()
+        self.source = source_class.create(self.config.model_dump(), self.metadata)
+
+        sink = self._get_sink()
+        sampler_processor = self._get_sampler_processor()
+
+        # Only instantiate the PII Processor on demand
+        source_config = self.config.source.sourceConfig.config
+
+        # Support both Database and Storage service auto-classification pipelines
+        if isinstance(
+            source_config,
+            (
+                DatabaseServiceAutoClassificationPipeline,
+                StorageServiceAutoClassificationPipeline,
+            ),
+        ):
+            if source_config.enableAutoClassification:
+                pii_processor = self._get_pii_processor()
+                self.steps = (sampler_processor, pii_processor, sink)
+            else:
+                self.steps = (sampler_processor, sink)
+        elif isinstance(source_config, MessagingServiceAutoClassificationPipeline):
+            if source_config.enableAutoClassification:
+                pii_processor = self._get_pii_processor()
+                self.steps = (sampler_processor, pii_processor, sink)
+            else:
+                self.steps = (sampler_processor, sink)
+        else:
+            logger.warning(
+                f"Unsupported source config type {type(source_config).__name__}. "
+                "Auto-classification workflow requires DatabaseServiceAutoClassificationPipeline, "
+                "StorageServiceAutoClassificationPipeline, or MessagingServiceAutoClassificationPipeline"
+            )
+            self.steps = (sampler_processor, sink)
+
+    def _get_pii_processor(self) -> Processor:
+        return create_pii_processor(self.metadata, self.config, classification_filter=[PII])
+
+    def _get_sampler_processor(self) -> Processor:
+        return SamplerProcessor.create(self.config.model_dump(), self.metadata)

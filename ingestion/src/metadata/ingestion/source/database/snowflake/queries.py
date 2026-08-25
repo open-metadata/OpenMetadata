@@ -1,0 +1,706 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+SQL Queries used during ingestion
+"""
+
+import textwrap
+
+SNOWFLAKE_GET_TABLE_NAMES = """
+    select
+        TABLE_NAME,
+        NULL as DELETED,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN IS_ICEBERG = 'YES' THEN 'ICEBERG TABLE'
+            ELSE TABLE_TYPE
+        END as TABLE_TYPE
+    from information_schema.tables
+    where TABLE_SCHEMA = '{schema}'
+    AND {include_transient_tables}
+    AND {include_views}
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
+select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN IS_ICEBERG = 'YES' THEN 'ICEBERG TABLE'
+            ELSE TABLE_TYPE
+        END as COMPUTED_TABLE_TYPE,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and {include_transient_tables}
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and {include_views}
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
+    """
+    SELECT
+      query_type "query_type",
+      query_text "query_text",
+      user_name "user_name",
+      database_name "database_name",
+      schema_name "schema_name",
+      start_time "start_time",
+      end_time "end_time",
+      total_elapsed_time "duration",
+      CREDITS_USED_CLOUD_SERVICES * {credit_cost} as "cost"
+    from {account_usage}.query_history
+    WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
+    {filters}
+    ORDER BY start_time
+    LIMIT {result_limit}
+    OFFSET {offset}
+    """
+)
+
+SNOWFLAKE_SESSION_TAG_QUERY = "ALTER SESSION SET QUERY_TAG='{query_tag}'"
+
+
+def set_session_tag_query(query_tag: str) -> str:
+    """Return the ALTER SESSION statement setting QUERY_TAG to the given value."""
+    # Snowflake reads backslash escapes inside the literal, so those double first;
+    # an unescaped quote would otherwise start a further ALTER SESSION assignment.
+    escaped = query_tag.replace("\\", "\\\\").replace("'", "''")
+    return SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=escaped)
+
+
+SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA = '{schema_name}'
+      and OBJECT_DELETED IS NULL
+"""
+)
+
+SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_NAME as SCHEMA_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA IS NULL
+      and OBJECT_NAME IS NOT NULL
+      and COLUMN_NAME IS NULL
+      and DOMAIN = 'SCHEMA'
+      and OBJECT_DELETED IS NULL
+"""
+)
+
+SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE as DATABASE_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA IS NULL
+      and OBJECT_NAME IS NULL
+      and COLUMN_NAME IS NULL
+      and DOMAIN = 'DATABASE'
+      and OBJECT_DELETED IS NULL
+"""
+)
+
+SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}' AND TABLE_TYPE = 'EXTERNAL TABLE'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+      and TABLE_SCHEMA = '{schema}'
+      and TABLE_TYPE = 'EXTERNAL TABLE'
+      and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
+AND IS_TRANSIENT != 'YES'
+AND IS_DYNAMIC != 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_TRANSIENT != 'YES'
+    AND IS_DYNAMIC != 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_VIEW_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'VIEW'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where  TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'VIEW'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_MVIEW_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'MATERIALIZED VIEW'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where  TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'MATERIALIZED VIEW'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STREAM = """
+SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STAGES = """
+SHOW STAGES IN SCHEMA "{schema}"
+"""
+
+# NOTE: the column names differ (intentionally) between the semantic catalog
+# views. INFORMATION_SCHEMA.SEMANTIC_VIEWS exposes CATALOG / SCHEMA / NAME,
+# whereas the child views (SEMANTIC_TABLES / SEMANTIC_DIMENSIONS / _FACTS /
+# _METRICS) expose SEMANTIC_VIEW_CATALOG / SEMANTIC_VIEW_SCHEMA /
+# SEMANTIC_VIEW_NAME. So `WHERE SCHEMA` here vs `WHERE SEMANTIC_VIEW_SCHEMA`
+# below is correct, not a mismatch.
+SNOWFLAKE_GET_SEMANTIC_VIEWS = """
+SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = '{schema}'
+"""
+
+# Semantic view objects (dimensions/facts/metrics), read from the matching
+# INFORMATION_SCHEMA.SEMANTIC_* catalog view via `{catalog_view}`.
+#
+# PRIMARY PATH. One round-trip per schema covers every semantic view in it, so the
+# query count scales with schemas rather than views. SEMANTIC_VIEW_NAME leads the
+# projection so rows can be grouped by view; the remaining columns match
+# ..._FOR_VIEW below so downstream row parsing is identical either way.
+SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA = """
+SELECT SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.{catalog_view}
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}'
+"""
+
+# FALLBACK ONLY. Used when the schema-wide query above fails with errno 90030
+# ("information schema query returned too much data"), which is the case a
+# schema-wide fetch cannot serve. One round-trip per view per catalog view.
+SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW = """
+SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.{catalog_view}
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
+"""
+
+# Database-qualified batch queries used by the lineage workflow to resolve
+# semantic view -> base table (and column) lineage across every schema/view in
+# a database in a single round-trip.
+SNOWFLAKE_GET_SEMANTIC_TABLES_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, NAME,
+       BASE_TABLE_CATALOG, BASE_TABLE_SCHEMA, BASE_TABLE_NAME
+FROM "{database}".information_schema.semantic_tables
+"""
+
+SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, EXPRESSION
+FROM "{database}".information_schema.{catalog_view}
+"""
+
+SNOWFLAKE_GET_TRANSIENT_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
+AND IS_TRANSIENT = 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_TRANSIENT = 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
+AND IS_DYNAMIC = 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from {account_usage}.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_DYNAMIC = 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
+    """
+  select
+    TABLE_SCHEMA "schema",
+    TABLE_NAME "table_name",
+    COMMENT "table_comment"
+from information_schema.TABLES
+where TABLE_SCHEMA <> 'INFORMATION_SCHEMA'
+and comment is not null
+"""
+)
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""
+
+
+SNOWFLAKE_GET_SCHEMA_COMMENTS = """
+SELECT
+      catalog_name DATABASE_NAME,
+      SCHEMA_NAME,
+      COMMENT
+FROM information_schema.schemata
+"""
+
+
+SNOWFLAKE_GET_DATABASE_COMMENTS = """
+select DATABASE_NAME,COMMENT from information_schema.databases
+"""
+
+SNOWFLAKE_GET_EXTERNAL_LOCATIONS = """
+SHOW EXTERNAL TABLES IN DATABASE "{database_name}"
+"""
+
+SNOWFLAKE_TEST_FETCH_TAG = """
+select TAG_NAME from {account_usage}.tag_references limit 1
+"""
+
+SNOWFLAKE_TEST_GET_QUERIES = """
+SELECT query_text from {account_usage}.query_history limit 1
+"""
+
+SNOWFLAKE_TEST_GET_TABLES = """
+SELECT TABLE_NAME FROM "{database_name}".information_schema.tables
+WHERE TABLE_SCHEMA <> 'INFORMATION_SCHEMA' LIMIT 100
+"""
+
+SNOWFLAKE_TEST_GET_VIEWS = """
+SELECT TABLE_NAME FROM "{database_name}".information_schema.views
+WHERE TABLE_SCHEMA <> 'INFORMATION_SCHEMA' LIMIT 100
+"""
+
+SNOWFLAKE_TEST_GET_STREAMS = """
+SHOW STREAMS IN DATABASE "{database_name}"
+"""
+
+SNOWFLAKE_TEST_GET_SCHEMAS = """
+SHOW SCHEMAS IN DATABASE "{database_name}"
+"""
+
+SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
+
+# Account-wide schema listing in a single round-trip (one connection, no
+# per-database reconnect). Returns one row per schema with a `database_name`
+# column. NOTE: SHOW is capped at 10k rows and truncates silently (no error is
+# raised), so accounts with more than 10k schemas get an under-counted total and
+# the DatabaseSchema progress bar may exceed 100%. This is a display-only
+# approximation and does not affect what actually gets ingested.
+SNOWFLAKE_GET_SCHEMATA = "SHOW TERSE SCHEMAS IN ACCOUNT"
+
+SNOWFLAKE_GET_SCHEMA_COLUMNS = """
+SELECT /* sqlalchemy:_get_schema_columns */
+        ic.table_name,
+        ic.column_name,
+        ic.data_type,
+        ic.character_maximum_length,
+        ic.numeric_precision,
+        ic.numeric_scale,
+        ic.is_nullable,
+        ic.column_default,
+        ic.is_identity,
+        ic.comment,
+        ic.identity_start,
+        ic.identity_increment,
+        ic.ordinal_position
+    FROM information_schema.columns ic
+    WHERE ic.table_schema=:table_schema
+    ORDER BY ic.ordinal_position
+"""
+
+SNOWFLAKE_GET_ORGANIZATION_NAME = "SELECT CURRENT_ORGANIZATION_NAME() AS NAME"
+
+SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT_NAME() AS ACCOUNT"
+
+SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select
+table_name as table_name,
+created as created_at
+from {account_usage}.tables
+where table_schema = '{schema_name}'
+and table_catalog = '{database_name}'
+"""
+)
+
+SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS = textwrap.dedent(
+    """
+SELECT
+  PROCEDURE_NAME AS name,
+  PROCEDURE_OWNER AS owner,
+  PROCEDURE_LANGUAGE AS language,
+  PROCEDURE_DEFINITION AS definition,
+  ARGUMENT_SIGNATURE AS signature,
+  COMMENT as comment,
+  'StoredProcedure' as procedure_type
+FROM {account_usage}.PROCEDURES
+WHERE PROCEDURE_CATALOG = '{database_name}'
+  AND PROCEDURE_SCHEMA = '{schema_name}'
+  AND DELETED IS NULL
+
+UNION ALL
+
+SELECT
+  FUNCTION_NAME AS name,
+  FUNCTION_OWNER AS owner,
+  FUNCTION_LANGUAGE AS language,
+  FUNCTION_DEFINITION AS definition,
+  ARGUMENT_SIGNATURE AS signature,
+  COMMENT as comment,
+  'UDF' as procedure_type
+FROM {account_usage}.FUNCTIONS
+WHERE FUNCTION_CATALOG = '{database_name}'
+  AND FUNCTION_SCHEMA = '{schema_name}'
+  AND DELETED IS NULL
+    """
+)
+
+SNOWFLAKE_DESC_STORED_PROCEDURE = "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
+
+SNOWFLAKE_DESC_FUNCTION = "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
+
+SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY AS (
+    SELECT
+      QUERY_TEXT,
+      SESSION_ID,
+      START_TIME,
+      END_TIME
+    FROM {account_usage}.QUERY_HISTORY SP
+    WHERE QUERY_TYPE = 'CALL'
+      AND START_TIME >= '{start_date}'
+      AND QUERY_TEXT <> ''
+      AND QUERY_TEXT IS NOT NULL
+),
+Q_HISTORY AS (
+    SELECT
+      QUERY_TYPE,
+      QUERY_TEXT,
+      SESSION_ID,
+      START_TIME,
+      END_TIME,
+      TOTAL_ELAPSED_TIME/1000 AS DURATION,
+      USER_NAME,
+      SCHEMA_NAME,
+      DATABASE_NAME
+    FROM {account_usage}.QUERY_HISTORY SP
+    WHERE QUERY_TYPE <> 'CALL'
+      AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+      AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      AND START_TIME >= '{start_date}'
+      AND (
+        QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
+        OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
+    )
+)
+SELECT
+  Q.QUERY_TYPE AS QUERY_TYPE,
+  Q.DATABASE_NAME AS QUERY_DATABASE_NAME,
+  Q.SCHEMA_NAME AS QUERY_SCHEMA_NAME,
+  SP.QUERY_TEXT AS PROCEDURE_TEXT,
+  SP.START_TIME AS PROCEDURE_START_TIME,
+  SP.END_TIME AS PROCEDURE_END_TIME,
+  Q.START_TIME AS QUERY_START_TIME,
+  Q.DURATION AS QUERY_DURATION,
+  Q.QUERY_TEXT AS QUERY_TEXT,
+  Q.USER_NAME AS QUERY_USER_NAME
+FROM SP_HISTORY SP
+JOIN Q_HISTORY Q
+  ON SP.SESSION_ID = Q.SESSION_ID
+ AND (
+   Q.START_TIME BETWEEN SP.START_TIME AND SP.END_TIME
+   OR Q.END_TIME BETWEEN SP.START_TIME AND SP.END_TIME
+   )
+ORDER BY PROCEDURE_START_TIME DESC
+    """
+)
+
+SNOWFLAKE_GET_TABLE_DDL = """
+SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
+"""
+
+SNOWFLAKE_GET_VIEW_DEFINITION = """
+SELECT table_name "view_name",
+    table_schema "schema",
+    view_definition "view_def"
+FROM information_schema.views
+WHERE view_definition is not null
+"""
+
+SNOWFLAKE_GET_VIEW_DDL = """
+SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
+"""
+
+SNOWFLAKE_GET_STREAM_DEFINITION = """
+SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
+"""
+
+SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION = """
+SELECT GET_DDL('SEMANTIC_VIEW','{semantic_view_name}') AS \"text\"
+"""
+
+SNOWFLAKE_QUERY_LOG_QUERY = """
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        QUERY_TYPE,
+        START_TIME,
+        DATABASE_NAME,
+        SCHEMA_NAME,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED
+    FROM {account_usage_schema}."QUERY_HISTORY"
+    WHERE
+    start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+    AND QUERY_TEXT ILIKE '%{tablename}%'
+    AND QUERY_TYPE IN (
+        '{insert}',
+        '{update}',
+        '{delete}',
+        '{merge}'
+    )
+    AND EXECUTION_STATUS = 'SUCCESS';
+"""
+
+SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
+    SELECT
+        name AS TABLE_NAME,
+        refresh_start_time AS START_TIME,
+        statistics:numInsertedRows::INT AS ROWS_INSERTED,
+        statistics:numDeletedRows::INT AS ROWS_DELETED
+    FROM
+        {account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY
+    WHERE
+        state = 'SUCCEEDED'
+        AND name ILIKE '%{tablename}%'
+        AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
+"""
+
+SNOWFLAKE_ACCESS_HISTORY_PROBE = """
+SELECT 1 FROM {account_usage}.ACCESS_HISTORY LIMIT 1
+"""
+
+SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
+    """
+    WITH access_history_filtered AS (
+        SELECT
+            ah.QUERY_ID,
+            ah.QUERY_START_TIME,
+            ah.DIRECT_OBJECTS_ACCESSED,
+            ah.OBJECTS_MODIFIED,
+            qh.QUERY_TEXT
+        FROM {account_usage}.ACCESS_HISTORY ah
+        LEFT JOIN {account_usage}.QUERY_HISTORY qh
+            ON ah.QUERY_ID = qh.QUERY_ID
+            AND qh.START_TIME
+                BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+            AND qh.EXECUTION_STATUS = 'SUCCESS'
+        WHERE ah.QUERY_START_TIME
+            BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+    ),
+    table_edges AS (
+        SELECT
+            upstream.value:"objectName"::STRING AS UPSTREAM_TABLE,
+            upstream.value:"objectDomain"::STRING AS UPSTREAM_DOMAIN,
+            downstream.value:"objectName"::STRING AS DOWNSTREAM_TABLE,
+            downstream.value:"objectDomain"::STRING AS DOWNSTREAM_DOMAIN,
+            MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME) AS QUERY_ID,
+            MAX_BY(ah.QUERY_TEXT, ah.QUERY_START_TIME) AS QUERY_TEXT
+        FROM access_history_filtered ah,
+             LATERAL FLATTEN(input => ah.DIRECT_OBJECTS_ACCESSED) upstream,
+             LATERAL FLATTEN(input => ah.OBJECTS_MODIFIED) downstream
+        WHERE upstream.value:"objectDomain"::STRING IN
+                ('Table', 'View', 'Materialized view', 'Dynamic table', 'External table', 'Iceberg table')
+          AND downstream.value:"objectDomain"::STRING IN
+                ('Table', 'View', 'Materialized view', 'Dynamic table', 'External table', 'Iceberg table')
+          AND upstream.value:"objectName"::STRING IS NOT NULL
+          AND downstream.value:"objectName"::STRING IS NOT NULL
+          AND upstream.value:"objectName"::STRING != downstream.value:"objectName"::STRING
+        GROUP BY
+            upstream.value:"objectName"::STRING,
+            upstream.value:"objectDomain"::STRING,
+            downstream.value:"objectName"::STRING,
+            downstream.value:"objectDomain"::STRING
+    ),
+    column_edges_grouped AS (
+        SELECT
+            downstream.value:"objectName"::STRING AS DOWNSTREAM_TABLE,
+            direct_source.value:"objectName"::STRING AS UPSTREAM_TABLE,
+            ARRAY_AGG(DISTINCT OBJECT_CONSTRUCT(
+                'd', downstream_col.value:"columnName"::STRING,
+                'u', direct_source.value:"columnName"::STRING
+            )) AS COLUMN_PAIRS
+        FROM access_history_filtered ah,
+             LATERAL FLATTEN(input => ah.OBJECTS_MODIFIED) downstream,
+             LATERAL FLATTEN(input => downstream.value:"columns", outer => true) downstream_col,
+             LATERAL FLATTEN(input => downstream_col.value:"directSources", outer => true) direct_source
+        WHERE direct_source.value:"objectName"::STRING IS NOT NULL
+          AND direct_source.value:"columnName"::STRING IS NOT NULL
+          AND downstream.value:"objectName"::STRING IS NOT NULL
+          AND downstream_col.value:"columnName"::STRING IS NOT NULL
+          AND direct_source.value:"objectName"::STRING != downstream.value:"objectName"::STRING
+        GROUP BY
+            downstream.value:"objectName"::STRING,
+            direct_source.value:"objectName"::STRING
+    )
+    SELECT * FROM (
+        SELECT
+            te.UPSTREAM_TABLE,
+            te.UPSTREAM_DOMAIN,
+            te.DOWNSTREAM_TABLE,
+            te.DOWNSTREAM_DOMAIN,
+            te.QUERY_ID,
+            te.QUERY_TEXT,
+            ce.COLUMN_PAIRS
+        FROM table_edges te
+        LEFT JOIN column_edges_grouped ce
+            ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
+            AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
+    )
+    {filter_condition}
+    """
+)
+
+SNOWFLAKE_COPY_HISTORY_LINEAGE = textwrap.dedent(
+    """
+    SELECT
+        TABLE_CATALOG_NAME AS DOWNSTREAM_DATABASE,
+        TABLE_SCHEMA_NAME AS DOWNSTREAM_SCHEMA,
+        TABLE_NAME AS DOWNSTREAM_TABLE,
+        STAGE_LOCATION,
+        MAX(LAST_LOAD_TIME) AS LAST_LOAD_TIME,
+        COUNT(*) AS LOAD_COUNT
+    FROM {account_usage}.COPY_HISTORY
+    WHERE LAST_LOAD_TIME
+        BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+        AND STATUS = 'Loaded'
+        AND STAGE_LOCATION IS NOT NULL
+        AND TABLE_NAME IS NOT NULL
+    GROUP BY DOWNSTREAM_DATABASE, DOWNSTREAM_SCHEMA, DOWNSTREAM_TABLE, STAGE_LOCATION
+    """
+)

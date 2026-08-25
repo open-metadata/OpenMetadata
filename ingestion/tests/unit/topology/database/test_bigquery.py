@@ -1,0 +1,1148 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+bigquery unit tests
+"""
+
+# pylint: disable=line-too-long
+import types
+from copy import deepcopy
+from types import SimpleNamespace
+from typing import ClassVar, Dict  # noqa: UP035
+from unittest import TestCase
+from unittest.mock import MagicMock, Mock, patch
+
+from sqlalchemy import Integer, String
+
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Table,
+    TableConstraint,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
+from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+    BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
+)
+from metadata.utils.lru_cache import LRUCache
+
+mock_bq_config = {
+    "source": {
+        "type": "bigquery",
+        "serviceName": "local_bigquery",
+        "serviceConnection": {
+            "config": {
+                "type": "BigQuery",
+                "billingProjectId": "my-gcp-billing-project",
+                "credentials": {
+                    "gcpConfig": {
+                        "type": "service_account",
+                        "projectId": "my-gcp-project",
+                        "privateKeyId": "private_key_id",
+                        # this is a valid key that was generated on a local machine and is not used for any real project
+                        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAw3vHG9fDIkcYB0xi2Mv4fS2gUzKR9ZRrcVNeKkqGFTT71AVB\nOzgIqYVe8b2aWODuNye6sipcrqTqOt05Esj+sxhk5McM9bE2RlxXC5QH/Bp9zxMP\n/Yksv9Ov7fdDt/loUk7sTXvI+7LDJfmRYU6MtVjyyLs7KpQIB2xBWEToU1xZY+v0\ndRC1NA+YWc+FjXbAiFAf9d4gXkYO8VmU5meixVh4C8nsjokEXk0T/HEItpZCxadk\ndZ7LKUE/HDmWCO2oNG6sCf4ET2crjSdYIfXuREopX1aQwnk7KbI4/YIdlRz1I369\nAz3+Hxlf9lLJVH3+itN4GXrR9yWWKWKDnwDPbQIDAQABAoIBAQC3X5QuTR7SN8iV\niBUtc2D84+ECSmza5shG/UJW/6N5n0Mf53ICgBS4GNEwiYCRISa0/ILIgK6CcVb7\nsuvH8F3kWNzEMui4TO0x4YsR5GH9HkioCCS224frxkLBQnL20HIIy9ok8Rpe6Zjg\nNZUnp4yczPyqSeA9l7FUbTt69uDM2Cx61m8REOpFukpnYLyZGbmNPYmikEO+rq9r\nwNID5dkSeVuQYo4MQdRavOGFUWvUYXzkEQ0A6vPyraVBfolESX8WaLNVjic7nIa3\nujdSNojnJqGJ3gslntcmN1d4JOfydc4bja4/NdNlcOHpWDGLzY1QnaDe0Koxn8sx\nLT9MVD2NAoGBAPy7r726bKVGWcwqTzUuq1OWh5c9CAc4N2zWBBldSJyUdllUq52L\nWTyva6GRoRzCcYa/dKLLSM/k4eLf9tpxeIIfTOMsvzGtbAdm257ndMXNvfYpxCfU\nK/gUFfAUGHZ3MucTHRY6DTkJg763Sf6PubA2fqv3HhVZDK/1HGDtHlTPAoGBAMYC\npdV7O7lAyXS/d9X4PQZ4BM+P8MbXEdGBbPPlzJ2YIb53TEmYfSj3z41u9+BNnhGP\n4uzUyAR/E4sxrA2+Ll1lPSCn+KY14WWiVGfWmC5j1ftdpkbrXstLN8NpNYzrKZwx\njdR0ZkwvZ8B5+kJ1hK96giwWS+SJxJR3TohcQ18DAoGAJSfmv2r//BBqtURnHrd8\nwq43wvlbC8ytAVg5hA0d1r9Q4vM6w8+vz+cuWLOTTyobDKdrG1/tlXrd5r/sh9L0\n15SIdkGm3kPTxQbPNP5sQYRs8BrV1tEvoao6S3B45DnEBwrdVN42AXOvpcNGoqE4\nuHpahyeuiY7s+ZV8lZdmxSsCgYEAolr5bpmk1rjwdfGoaKEqKGuwRiBX5DHkQkxE\n8Zayt2VOBcX7nzyRI05NuEIMrLX3rZ61CktN1aH8fF02He6aRaoE/Qm9L0tujM8V\nNi8WiLMDeR/Ifs3u4/HAv1E8v1byv0dCa7klR8J257McJ/ID4X4pzcxaXgE4ViOd\nGOHNu9ECgYEApq1zkZthEQymTUxs+lSFcubQpaXyf5ZC61cJewpWkqGDtSC+8DxE\nF/jydybWuoNHXymnvY6QywxuIooivbuib6AlgpEJeybmnWlDOZklFOD0abNZ+aNO\ndUk7XVGffCakXQ0jp1kmZA4lGsYK1h5dEU5DgXqu4UYJ88Vttax2W+Y=\n-----END RSA PRIVATE KEY-----\n",
+                        "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
+                        "clientId": "1234",
+                        "authUri": "https://accounts.google.com/o/oauth2/auth",
+                        "tokenUri": "https://oauth2.googleapis.com/token",
+                        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        "clientX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                    }
+                },
+            },
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata", "includeTags": False}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "bigquery"},
+        }
+    },
+}
+
+MOCK_DB_NAME = "random-project-id"
+MOCK_SCHEMA_NAME = "test_omd"
+MOCK_TABLE_NAME = "customer_products"
+EXPECTED_URL = "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2stest_omd!3scustomer_products"
+
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name="bigquery_source_test",
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Hive,
+)
+
+MOCK_DATABASE_SCHEMA = DatabaseSchema(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name="sample_schema",
+    fullyQualifiedName="bigquery_source_test.random-project-id.sample_schema",
+    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="database"),
+    database=EntityReference(
+        id="a58b1856-729c-493b-bc87-6d2269b43ec0",
+        type="database",
+    ),
+)
+
+MOCK_TABLE = Table(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name=EntityName("customers"),
+    displayName=None,
+    description="description\nwith new line",
+    tableType="Regular",
+    columns=[
+        Column(
+            name="customer_id",
+            dataType="INT",
+            dataLength=1,
+            dataTypeDisplay="INTEGER",
+            constraint="PRIMARY_KEY",
+        ),
+        Column(
+            name="first_name",
+            dataType="STRING",
+            dataLength=1,
+            dataTypeDisplay="VARCHAR",
+            constraint="NULL",
+        ),
+        Column(
+            name="last_name",
+            dataType="STRING",
+            dataLength=1,
+            dataTypeDisplay="VARCHAR",
+            constraint="NULL",
+        ),
+    ],
+    tableConstraints=[],
+    databaseSchema=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"),
+    tags=[],
+    sourceUrl=SourceUrl(
+        "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+    ),
+)
+
+EXPECTED_DATABASE = [
+    CreateDatabaseRequest(
+        name=EntityName("random-project-id"),
+        tags=[],
+        service=FullyQualifiedEntityName("bigquery_source_test"),
+        default=False,
+        sourceUrl=SourceUrl("https://console.cloud.google.com/bigquery?project=random-project-id"),
+    )
+]
+EXPTECTED_DATABASE_SCHEMA = [
+    CreateDatabaseSchemaRequest(
+        name=EntityName("sample_schema"),
+        description="Some description with it's own\nnew line",
+        database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
+        sourceUrl=SourceUrl(
+            "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m4!1m3!3m2!1srandom-project-id!2ssample_schema"
+        ),
+    )
+]
+
+MOCK_TABLE_NAMES = [
+    ("customers", "Regular", None),
+    ("orders", "Regular", "description\nwith new line"),
+]
+
+MOCK_COLUMN_DATA = [
+    [
+        {
+            "name": "customer_id",
+            "type": Integer(),
+            "nullable": True,
+            "comment": None,
+            "default": None,
+            "precision": None,
+            "scale": None,
+            "max_length": None,
+            "system_data_type": "INTEGER",
+            "is_complex": False,
+            "policy_tags": None,
+        },
+        {
+            "name": "first_name",
+            "type": String(),
+            "nullable": True,
+            "comment": None,
+            "default": None,
+            "precision": None,
+            "scale": None,
+            "max_length": None,
+            "system_data_type": "VARCHAR",
+            "is_complex": False,
+            "policy_tags": None,
+        },
+        {
+            "name": "last_name",
+            "type": String(),
+            "nullable": True,
+            "comment": None,
+            "default": None,
+            "precision": None,
+            "scale": None,
+            "max_length": None,
+            "system_data_type": "VARCHAR",
+            "is_complex": False,
+            "policy_tags": None,
+        },
+    ],
+    [
+        {
+            "name": "order_id",
+            "type": Integer(),
+            "nullable": True,
+            "comment": None,
+            "default": None,
+            "precision": None,
+            "scale": None,
+            "max_length": None,
+            "system_data_type": "INTEGER",
+            "is_complex": False,
+            "policy_tags": None,
+        },
+        {
+            "name": "customer_id",
+            "type": Integer(),
+            "nullable": True,
+            "comment": None,
+            "default": None,
+            "precision": None,
+            "scale": None,
+            "max_length": None,
+            "system_data_type": "INTEGER",
+            "is_complex": False,
+            "policy_tags": None,
+        },
+        {
+            "name": "status",
+            "type": String(),
+            "nullable": True,
+            "comment": None,
+            "default": None,
+            "precision": None,
+            "scale": None,
+            "max_length": None,
+            "system_data_type": "VARCHAR",
+            "is_complex": False,
+            "policy_tags": None,
+        },
+    ],
+]
+
+MOCK_PK_CONSTRAINT: Dict[str, Dict] = {  # noqa: UP006
+    "customers": dict({"constrained_columns": ("customer_id",)}),  # noqa: C418
+    "orders": dict({"constrained_columns": ()}),  # noqa: C418
+}
+
+MOCK_FK_CONSTRAINT = {
+    "customers": [],
+    "orders": [
+        {
+            "name": "orders.fk$1",
+            "referred_schema": "demo_dbt_jaffle",
+            "referred_table": "customers",
+            "constrained_columns": ["customer_id"],
+            "referred_columns": ["customer_id"],
+        }
+    ],
+}
+
+EXPECTED_TABLE = [
+    [
+        CreateTableRequest(
+            name=EntityName("customers"),
+            tableType="Regular",
+            columns=[
+                Column(
+                    name="customer_id",
+                    dataType="INT",
+                    dataLength=1,
+                    dataTypeDisplay="INTEGER",
+                    constraint="PRIMARY_KEY",
+                    tags=None,
+                ),
+                Column(
+                    name="first_name",
+                    dataType="STRING",
+                    dataLength=1,
+                    dataTypeDisplay="VARCHAR",
+                    constraint="NULL",
+                    tags=None,
+                ),
+                Column(
+                    name="last_name",
+                    dataType="STRING",
+                    dataLength=1,
+                    dataTypeDisplay="VARCHAR",
+                    constraint="NULL",
+                    tags=None,
+                ),
+            ],
+            tableConstraints=[],
+            databaseSchema=FullyQualifiedEntityName(root="bigquery_source_test.random-project-id.sample_schema"),
+            tags=[],
+            sourceUrl=SourceUrl(
+                "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3scustomers"
+            ),
+        )
+    ],
+    [
+        CreateTableRequest(
+            name=EntityName("orders"),
+            description="description\nwith new line",
+            tableType="Regular",
+            columns=[
+                Column(
+                    name="order_id",
+                    dataType="INT",
+                    dataLength=1,
+                    dataTypeDisplay="INTEGER",
+                    constraint="NULL",
+                    tags=None,
+                ),
+                Column(
+                    name="customer_id",
+                    dataType="INT",
+                    dataLength=1,
+                    dataTypeDisplay="INTEGER",
+                    constraint="NULL",
+                    tags=None,
+                ),
+                Column(
+                    name="status",
+                    dataType="STRING",
+                    dataLength=1,
+                    dataTypeDisplay="VARCHAR",
+                    constraint="NULL",
+                    tags=None,
+                ),
+            ],
+            tableConstraints=[
+                TableConstraint(
+                    constraintType="FOREIGN_KEY",
+                    columns=["customer_id"],
+                    referredColumns=[
+                        FullyQualifiedEntityName(
+                            root="bigquery_source_test.random-project-id.sample_schema.customers.customer_id"
+                        )
+                    ],
+                )
+            ],
+            databaseSchema=FullyQualifiedEntityName(root="bigquery_source_test.random-project-id.sample_schema"),
+            tags=[],
+            sourceUrl=SourceUrl(
+                "https://console.cloud.google.com/bigquery?project=random-project-id&ws=!1m5!1m4!4m3!1srandom-project-id!2ssample_schema!3sorders"
+            ),
+        )
+    ],
+]
+
+
+MOCK_TABLE_CONSTRAINT = [
+    [],
+    [
+        TableConstraint(
+            constraintType="FOREIGN_KEY",
+            columns=["customer_id"],
+            referredColumns=[
+                FullyQualifiedEntityName("bigquery_source_test.random-project-id.sample_schema.customers.customer_id")
+            ],
+        )
+    ],
+]
+
+
+class BigqueryUnitTest(TestCase):
+    """
+    Implements the necessary methods to extract
+    Bigquery Unit Test
+    """
+
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
+    def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        get_connection.return_value = Mock()
+        test_connection.return_value = False
+        set_project_id.return_value = "random-project-id"
+        self.config = parse_workflow_config_gracefully(mock_bq_config)
+        self.metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.thread_id = self.bq_source.context.get_current_thread_id()
+        self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.bq_source._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema: []
+        self.bq_source._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.bq_source._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema: []
+        self.bq_source._inspector_map[self.thread_id].get_columns = lambda table_name, schema, db_name: []
+        self.bq_source.client = Mock()
+
+    def test_source_url(self):
+        self.assertEqual(
+            self.bq_source.get_source_url(
+                database_name=MOCK_DB_NAME,
+                schema_name=MOCK_SCHEMA_NAME,
+                table_name=MOCK_TABLE_NAME,
+                table_type=TableType.Regular,
+            ),
+            EXPECTED_URL,
+        )
+
+    def test_region_life_cycle_query_selects_last_modified(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+            database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME, region="EU"
+        )
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertIn("storage_last_modified_time as updated_at", query)
+        self.assertIn("`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE", query)
+
+    def test_dataset_life_cycle_query_is_created_only(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME)
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertNotIn("TABLE_STORAGE", query)
+
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels")
+    def test_yield_database(self, get_database_tag_labels):
+        get_database_tag_labels.return_value = []
+        assert EXPECTED_DATABASE == [either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)]  # noqa: SIM300
+
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description")
+    def test_yield_database_schema(self, get_schema_description):
+        get_schema_description.return_value = "Some description with it's own\nnew line"
+        assert EXPTECTED_DATABASE_SCHEMA == [  # noqa: SIM300
+            either.right for either in self.bq_source.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
+        ]
+
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_tag_labels")
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_table_partition_details")
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService._get_foreign_constraints")
+    def test_get_columns_with_constraints(self, _get_foreign_constraints, get_table_partition_details, get_tag_labels):
+        """
+        Test different constraint type ingested as expected
+        """
+
+        get_tag_labels.return_value = []
+        get_table_partition_details.return_value = False, None
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+
+        for i, table in enumerate(MOCK_TABLE_NAMES):
+            _get_foreign_constraints.return_value = MOCK_TABLE_CONSTRAINT[i]
+            self.bq_source.inspector.get_pk_constraint = (
+                lambda table_name, schema: MOCK_PK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop  # noqa: B023
+            )
+            self.bq_source.inspector.get_foreign_keys = (
+                lambda table_name, schema: MOCK_FK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop  # noqa: B023
+            )
+            self.bq_source._get_columns_internal = lambda schema_name, table_name, db_name, inspector, table_type,: (
+                MOCK_COLUMN_DATA[i]  # noqa: B023
+            )  # pylint: disable=cell-var-from-loop
+
+            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {"text": table[2]}  # pylint: disable=cell-var-from-loop  # noqa: B023
+
+            # Mock the BigQuery client get_table method for clustering fields
+            mock_table = Mock()
+            mock_table.clustering_fields = []  # Empty list to avoid constraint creation
+            self.bq_source.client.get_table = lambda fqn: mock_table  # noqa: B023
+            assert EXPECTED_TABLE[i] == [either.right for either in self.bq_source.yield_table((table[0], table[1]))]
+
+    def test_topology_runner_error_handling(self):
+        """
+        TopologyRunnerMixin._run_node_post_process and _run_node_producer both
+        record any exception as a status failure (not just log it) and yield
+        nothing on error, but yield normally on success.
+
+        Base class methods are called directly via TopologyRunnerMixin to bypass
+        any subclass overrides.
+        """
+        from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+        from metadata.ingestion.models.topology import NodeStage, TopologyNode
+
+        _dummy_stage = NodeStage(type_=DatabaseSchema, processor="dummy")
+
+        # --- post_process: error is recorded as status failure ---
+        node = TopologyNode(
+            producer="get_schemas",
+            stages=[_dummy_stage],
+            post_process=["failing_post_process"],
+        )
+
+        def failing_post_process():
+            raise RuntimeError("something went wrong")
+
+        self.bq_source.failing_post_process = failing_post_process
+        initial_failures = len(self.bq_source.status.failures)
+
+        results = list(TopologyRunnerMixin._run_node_post_process(self.bq_source, node))
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == initial_failures + 1
+        assert self.bq_source.status.failures[-1].name == "Post Process failing_post_process"
+
+        # --- post_process: success yields entity normally ---
+        sentinel = object()
+        success_pp_node = TopologyNode(
+            producer="get_schemas",
+            stages=[_dummy_stage],
+            post_process=["successful_post_process"],
+        )
+
+        def successful_post_process():
+            yield sentinel
+
+        self.bq_source.successful_post_process = successful_post_process
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(TopologyRunnerMixin._run_node_post_process(self.bq_source, success_pp_node))
+
+        assert results == [sentinel]
+        assert len(self.bq_source.status.failures) == failures_before
+
+        # --- node_producer: error is recorded as status failure ---
+        error_producer_node = TopologyNode(
+            producer="failing_producer",
+            stages=[_dummy_stage],
+        )
+
+        def failing_producer():
+            raise RuntimeError("producer failed")
+
+        self.bq_source.failing_producer = failing_producer
+        initial_failures = len(self.bq_source.status.failures)
+
+        results = list(TopologyRunnerMixin._run_node_producer(self.bq_source, error_producer_node))
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == initial_failures + 1
+        assert self.bq_source.status.failures[-1].name == "Producer failing_producer"
+
+        # --- node_producer: success yields entity normally ---
+        sentinel2 = object()
+        success_producer_node = TopologyNode(
+            producer="successful_producer",
+            stages=[_dummy_stage],
+        )
+
+        def successful_producer():
+            yield sentinel2
+
+        self.bq_source.successful_producer = successful_producer
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(TopologyRunnerMixin._run_node_producer(self.bq_source, success_producer_node))
+
+        assert results == [sentinel2]
+        assert len(self.bq_source.status.failures) == failures_before
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+
+        mock_engine = MagicMock()
+        self.bq_source.engine = mock_engine
+
+        # Mock rows
+        row1 = {
+            "name": "sp_include",
+            "definition": "def1",
+            "language": "SQL",
+        }
+        row2 = {
+            "name": "sp_exclude",
+            "definition": "def2",
+            "language": "SQL",
+        }
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
+
+    def test_stored_procedures_queries_include_function_routine_type(self):
+        """
+        BigQuery routines include user-defined FUNCTIONs in addition to
+        PROCEDURE and TABLE FUNCTION. Both query constants must filter on
+        all three routine_types so user-defined functions are ingested.
+        """
+        for query in (
+            BIGQUERY_GET_STORED_PROCEDURES,
+            BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+        ):
+            assert "'PROCEDURE'" in query
+            assert "'TABLE FUNCTION'" in query
+            assert "'FUNCTION'" in query
+
+    def test_get_stored_procedures_ingests_user_defined_functions(self):
+        """
+        User-defined functions (routine_type = FUNCTION) returned by the
+        INFORMATION_SCHEMA.ROUTINES query are yielded alongside procedures
+        and table functions.
+        """
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.storedProcedureFilterPattern = None
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+
+        proc_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        table_fn_row = {
+            "name": "my_table_fn",
+            "definition": "SELECT 1",
+            "language": "SQL",
+        }
+        udf_row = {
+            "name": "my_udf",
+            "definition": "RETURN x + 1",
+            "language": "SQL",
+        }
+
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [
+            proc_row,
+            table_fn_row,
+            udf_row,
+        ]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        names = {r.name for r in results}
+        assert names == {"my_proc", "my_table_fn", "my_udf"}
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "'FUNCTION'" in query_str
+
+    @patch("metadata.utils.credentials.auth.default")
+    def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
+        """
+        Test usageLocation is correctly passed to BigQuery client and added to engine URL
+        """
+        from google.auth.credentials import Credentials
+
+        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+            BigQueryConnection,
+        )
+        from metadata.ingestion.source.database.bigquery.helper import (
+            get_inspector_details,
+        )
+
+        mock_credentials = Mock(spec=Credentials)
+        mock_auth_default.return_value = (mock_credentials, "test-project")
+
+        config_with_location = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
+        config_with_location["usageLocation"] = "eu"
+
+        service_connection = BigQueryConnection.model_validate(config_with_location)
+
+        result = get_inspector_details(database_name="test-project", service_connection=service_connection)
+        assert "location=eu" in str(result.engine.url)
+        assert result.client._location == "eu"
+
+        config_without_location = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
+        config_without_location["usageLocation"] = None
+
+        service_connection_null = BigQueryConnection.model_validate(config_without_location)
+
+        result_null = get_inspector_details(database_name="test-project", service_connection=service_connection_null)
+        assert "location=eu" not in str(result_null.engine.url)
+        assert result_null.client._location is None
+
+
+class BigqueryLineageSourceTest(TestCase):
+    """
+    Implements the necessary methods to extract
+    Bigquery Lineage Test
+    """
+
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection")
+    @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        set_project_id_lineage,  # pylint: disable=unused-argument
+        test_connection,  # pylint: disable=unused-argument
+        get_connection,  # pylint: disable=unused-argument
+    ) -> None:
+        super().__init__(methodName)
+
+        mock_credentials_path_bq_config = deepcopy(mock_bq_config)
+        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
+            "path": "credentials.json",
+            "projectId": "my-gcp-project",
+        }
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_credentials_path_bq_config)
+        self.bq_query_parser = BigqueryLineageSource(
+            self.config.source, self.config.workflowConfig.openMetadataServerConfig
+        )
+
+    def test_get_engine_without_project_id_specified(self):
+        for engine in self.bq_query_parser.get_engine():
+            assert engine is self.bq_query_parser.engine
+
+
+class TestBigqueryRegionAwareQueries:
+    """
+    Tests for region-aware INFORMATION_SCHEMA queries in the BigQuery connector.
+
+    Covers get_stored_procedures and _prefetch_table_ddls, which must route queries
+    to the correct GCP region when a dataset lives outside the engine's default location.
+    """
+
+    def setup_method(self):
+        patcher_test_conn = patch(
+            "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
+        )
+        patcher_set_project = patch(
+            "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
+        )
+        patcher_get_conn = patch(
+            "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
+            return_value=Mock(),
+        )
+        self._patchers = [patcher_test_conn, patcher_set_project, patcher_get_conn]
+        for p in self._patchers:
+            p.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.bq_source.client = Mock()
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.includeDDL = True
+
+    def teardown_method(self):
+        for p in self._patchers:
+            p.stop()
+
+    def _make_engine_mock(self, rows):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = rows
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        return mock_engine, mock_conn
+
+    def _set_dataset_location(self, location):
+        mock_dataset = Mock()
+        mock_dataset.location = location
+        self.bq_source.client.get_dataset.return_value = mock_dataset
+        self.bq_source._dataset_obj_cache.clear()
+
+    # --- get_stored_procedures ---
+
+    def test_get_stored_procedures_uses_region_aware_query(self):
+        """Region-aware query is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+        sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        mock_engine, mock_conn = self._make_engine_mock([sp_row])
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "my_proc"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-EU" in query_str
+
+    def test_get_stored_procedures_falls_back_without_location(self):
+        """Dataset-scoped query is used when dataset location is None."""
+        self._set_dataset_location(None)
+        sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        mock_engine, mock_conn = self._make_engine_mock([sp_row])
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert len(results) == 1
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+        assert MOCK_DATABASE_SCHEMA.name.root in query_str
+
+    def test_get_stored_procedures_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to dataset-scoped query and returns results."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._dataset_obj_cache.clear()
+        sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        mock_engine, mock_conn = self._make_engine_mock([sp_row])
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "my_proc"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+
+    def test_get_stored_procedures_returns_empty_when_dataset_not_found(self):
+        """When both client.get_dataset and SQL execution fail, returns empty without a producer failure."""
+        self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
+        self.bq_source._dataset_obj_cache.clear()
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("404 Not found in location US")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == failures_before
+
+    def test_get_stored_procedures_returns_empty_when_query_fails(self):
+        """When SQL execution raises, returns empty without recording a producer failure."""
+        self._set_dataset_location("US")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("connection error")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == failures_before
+
+    # --- _prefetch_table_ddls ---
+
+    def test_prefetch_table_ddls_uses_region_aware_query(self):
+        """Region-aware DDL query is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+        ddl_row = Mock()
+        ddl_row.table_name = "my_table"
+        ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
+        mock_engine, mock_conn = self._make_engine_mock([ddl_row])
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-EU" in query_str
+
+    def test_prefetch_table_ddls_falls_back_without_location(self):
+        """Dataset-scoped DDL query is used when dataset location is None."""
+        self._set_dataset_location(None)
+        ddl_row = Mock()
+        ddl_row.table_name = "my_table"
+        ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
+        mock_engine, mock_conn = self._make_engine_mock([ddl_row])
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+        assert MOCK_DATABASE_SCHEMA.name.root in query_str
+
+    def test_prefetch_table_ddls_skipped_when_disabled(self):
+        """When includeDDL is False, the method returns early without any API calls."""
+        self.bq_source.source_config.includeDDL = False
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        self.bq_source.client.get_dataset.assert_not_called()
+        assert self.bq_source._table_ddl_cache == {}
+
+    def test_prefetch_table_ddls_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to dataset-scoped query and populates cache."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._dataset_obj_cache.clear()
+        ddl_row = Mock()
+        ddl_row.table_name = "my_table"
+        ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
+        mock_engine, mock_conn = self._make_engine_mock([ddl_row])
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache["my_table"] == "CREATE TABLE my_table (id INT64)"
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "region-" not in query_str
+
+    def test_prefetch_table_ddls_cache_empty_when_dataset_not_found(self):
+        """When both client.get_dataset and SQL execution fail, cache stays empty and no exception propagates."""
+        self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
+        self.bq_source._dataset_obj_cache.clear()
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("404 Not found in location US")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache == {}
+
+    def test_prefetch_table_ddls_cache_empty_when_query_fails(self):
+        """When SQL execution raises, cache stays empty and no exception propagates."""
+        self._set_dataset_location("US")
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = Exception("connection error")
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert self.bq_source._table_ddl_cache == {}
+
+    # --- get_life_cycle_query ---
+
+    def test_life_cycle_query_uses_region_aware_query(self):
+        """Region-scoped query (with TABLE_STORAGE) is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE" in query
+        assert "storage_last_modified_time as updated_at" in query
+
+    def test_life_cycle_query_falls_back_without_location(self):
+        """Dataset-scoped created-only query is used when dataset location is None."""
+        self._set_dataset_location(None)
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "region-" not in query
+        assert "TABLE_STORAGE" not in query
+        assert "creation_time as created_at" in query
+
+    def test_life_cycle_query_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to the dataset-scoped created-only query."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._dataset_obj_cache.clear()
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "TABLE_STORAGE" not in query
+        assert "creation_time as created_at" in query
+
+
+class _EvictedOnReadCache(LRUCache):
+    """An LRUCache whose entries vanish between the lookup and the read.
+
+    Stands in for another ingestion thread evicting the key in that window, which is not
+    reproducible deterministically with real threads.
+    """
+
+    def get(self, key):
+        raise KeyError(key)
+
+
+class TestBigqueryPerSchemaCaching:
+    """
+    The dataset/table object caches must be keyed per schema.
+
+    The databaseSchema topology node emits tags and the schema entity *before* its table
+    child node runs, so a cache that is only invalidated by the table producer hands the
+    previous dataset's description and labels to the next schema.
+    """
+
+    # dataset_id -> (description, labels)
+    DATASETS: ClassVar[dict] = {
+        "clean_identity_resolution": ("Clean Identity Resolution data", {"tier": "bronze"}),
+        "clean_mac": ("Clean MAC data", {"tier": "silver"}),
+        "clean_recon": ("Clean recon data", {"tier": "gold"}),
+    }
+
+    def setup_method(self):
+        self._patchers = [
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
+            patch(
+                "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
+                return_value=Mock(),
+            ),
+        ]
+        for p in self._patchers:
+            p.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        # The table node repopulates the dataset cache after invalidating it (DDL prefetch here;
+        # the lifecycle and stored-procedure stages do the same), which is what strands the
+        # previous schema's dataset in the cache for the next schema.
+        self.bq_source.source_config.includeDDL = True
+        self.bq_source.source_config.includeTags = True
+
+        self.bq_source.client = Mock()
+        self.bq_source.client.get_dataset.side_effect = self._get_dataset
+        self.bq_source.client.list_tables.return_value = []
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = []
+        self.bq_source.engine = MagicMock()
+        self.bq_source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        self.bq_source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+    def teardown_method(self):
+        for p in self._patchers:
+            p.stop()
+
+    def _get_dataset(self, dataset_ref: str):
+        description, labels = self.DATASETS[dataset_ref.rsplit(".", maxsplit=1)[-1]]
+        return SimpleNamespace(description=description, labels=labels, location="US")
+
+    def _walk_schema_then_tables(self, schema_name: str):
+        """Mimic the topology: schema stages first, then the table node producer."""
+        self.bq_source.context.get().__dict__["database_schema"] = schema_name
+        dataset_for_tags = self.bq_source.get_dataset_obj(schema_name)
+        description = self.bq_source.get_schema_description(schema_name)
+        list(self.bq_source.query_table_names_and_types(schema_name))
+        return description, dataset_for_tags.labels
+
+    def test_each_schema_gets_its_own_description(self):
+        """Descriptions must not shift onto the following schema."""
+        ingested = {schema: self._walk_schema_then_tables(schema)[0] for schema in self.DATASETS}
+
+        assert ingested == {schema: desc for schema, (desc, _) in self.DATASETS.items()}
+
+    def test_each_schema_gets_its_own_dataset_labels(self):
+        """Dataset labels feed schema tags; a stale dataset object invents tags that do not exist."""
+        ingested = {schema: self._walk_schema_then_tables(schema)[1] for schema in self.DATASETS}
+
+        assert ingested == {schema: labels for schema, (_, labels) in self.DATASETS.items()}
+
+    def test_dataset_obj_is_fetched_once_per_schema(self):
+        """The cache must still spare repeat API calls for the same schema."""
+        for _ in range(3):
+            self.bq_source.get_dataset_obj("clean_mac")
+
+        assert self.bq_source.client.get_dataset.call_count == 1
+
+    def test_table_obj_cache_is_scoped_per_schema(self):
+        """Same-named tables in different schemas must not share a cached table object."""
+        table_objs = {}
+        for schema in ("clean_mac", "clean_recon"):
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source.client.get_table.return_value = SimpleNamespace(
+                labels={"schema": schema}, description=f"{schema} events"
+            )
+            table_objs[schema] = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_objs["clean_mac"].labels == {"schema": "clean_mac"}
+        assert table_objs["clean_recon"].labels == {"schema": "clean_recon"}
+
+    def test_table_obj_is_fetched_once_per_table(self):
+        """The cache must still spare repeat API calls for the same schema and table."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+
+        for _ in range(3):
+            self.bq_source.get_table_obj(table_name="events")
+
+        assert self.bq_source.client.get_table.call_count == 1
+
+    def test_interleaved_schemas_keep_their_own_description(self):
+        """
+        The schema node is multi-threaded, so two schemas can be in flight at once.
+        Interleaving their stages must not let one schema's dataset serve the other.
+        """
+        schemas = ["clean_mac", "clean_recon"]
+
+        for schema in schemas:
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source.get_dataset_obj(schema)
+
+        descriptions = {schema: self.bq_source.get_schema_description(schema) for schema in schemas}
+
+        assert descriptions == {schema: self.DATASETS[schema][0] for schema in schemas}
+
+    def test_dataset_obj_survives_entry_evicted_before_read(self):
+        """
+        LRUCache locks each operation separately, so a concurrent put that triggers
+        eviction can drop the key after we looked it up but before we read it. Reading
+        must fall back to a fetch rather than raising KeyError at the caller.
+        """
+        self.bq_source._dataset_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._dataset_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac", object())
+
+        dataset_obj = self.bq_source.get_dataset_obj("clean_mac")
+
+        assert dataset_obj.description == "Clean MAC data"
+
+    def test_table_obj_survives_entry_evicted_before_read(self):
+        """Same eviction window as the dataset cache, for the table object cache."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+        self.bq_source._table_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._table_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac.events", object())
+
+        table_obj = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_obj.description == "events"

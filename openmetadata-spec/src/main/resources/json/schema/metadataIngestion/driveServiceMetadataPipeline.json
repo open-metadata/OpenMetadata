@@ -1,0 +1,122 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/driveServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DriveServiceMetadataPipeline",
+  "description": "DriveService Metadata Pipeline Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.DriveServiceMetadataPipeline",
+  "definitions": {
+    "driveMetadataConfigType": {
+      "description": "Drive Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["DriveMetadata"],
+      "default": "DriveMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/driveMetadataConfigType",
+      "default": "DriveMetadata"
+    },
+    "markDeletedDirectories": {
+      "description": "Optional configuration to soft delete directories in OpenMetadata if the source directories are deleted. Also, if the directory is deleted, all the associated entities like files, spreadsheets, worksheets, lineage, etc., with that directory will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Directories"
+    },
+    "markDeletedFiles": {
+      "description": "Optional configuration to soft delete files in OpenMetadata if the source files are deleted. Also, if the file is deleted, all the associated entities like lineage, etc., with that file will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Files"
+    },
+    "markDeletedSpreadsheets": {
+      "description": "Optional configuration to soft delete spreadsheets in OpenMetadata if the source spreadsheets are deleted. Also, if the spreadsheet is deleted, all the associated entities like worksheets, lineage, etc., with that spreadsheet will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Spreadsheets"
+    },
+    "markDeletedWorksheets": {
+      "description": "Optional configuration to soft delete worksheets in OpenMetadata if the source worksheets are deleted. Also, if the worksheet is deleted, all the associated entities like lineage, etc., with that worksheet will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Worksheets"
+    },
+    "includeDirectories": {
+      "description": "Optional configuration to turn off fetching metadata for directories.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Directories"
+    },
+    "includeFiles": {
+      "description": "Optional configuration to turn off fetching metadata for files.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Files"
+    },
+    "includeSpreadsheets": {
+      "description": "Optional configuration to turn off fetching metadata for spreadsheets.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Spreadsheets"
+    },
+    "includeWorksheets": {
+      "description": "Optional configuration to turn off fetching metadata for worksheets.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Worksheets"
+    },
+    "includeTags": {
+      "description": "Optional configuration to toggle the tags ingestion.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Tags"
+    },
+    "includeOwners": {
+      "title": "Include Owners",
+      "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",
+      "type": "boolean",
+      "default": false
+    },
+    "overrideMetadata": {
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name) instead of raw name (e.g. file_name)",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
+    },
+    "directoryFilterPattern": {
+      "description": "Regex to only include/exclude directories that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Directory Filter Pattern"
+    },
+    "fileFilterPattern": {
+      "description": "Regex to only include/exclude files that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "File Filter Pattern"
+    },
+    "spreadsheetFilterPattern": {
+      "description": "Regex to only include/exclude spreadsheets that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Spreadsheet Filter Pattern"
+    },
+    "worksheetFilterPattern": {
+      "description": "Regex to only include/exclude worksheets that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Worksheet Filter Pattern"
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to parallelize Drive ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads"
+    }
+  },
+  "additionalProperties": false
+}

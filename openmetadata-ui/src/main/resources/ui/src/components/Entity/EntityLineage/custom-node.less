@@ -1,0 +1,754 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+@lineage-border: var(--om-legacy-color-b1b1b7);
+@lineage-collapse-header: var(--om-color-gray-50);
+
+.ant-btn.ant-btn-background-ghost.expand-btn {
+  background-color: white;
+  box-shadow: none;
+
+  &:hover {
+    background-color: white;
+  }
+}
+
+.react-flow__node {
+  box-shadow: none;
+}
+
+// Node default state
+.lineage-node {
+  width: 100%;
+  max-width: 400px; //  Max width of Lineage Node, in case of long columns names
+  border: 1px solid @lineage-border;
+  border-radius: var(--om-radius-10);
+  overflow: hidden;
+
+  .lineage-expand-icon {
+    width: 12px;
+    height: 12px;
+    color: inherit;
+  }
+
+  .profiler-item {
+    margin-right: var(--om-space-4);
+    border-radius: var(--om-radius-sm);
+
+    &.medium {
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      font-size: var(--om-font-size-sm);
+    }
+
+    &.small {
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      font-size: var(--om-font-size-xs);
+    }
+
+    &.green {
+      border: 1px solid var(--om-legacy-color-23aa66);
+    }
+
+    &.amber {
+      border: 1px solid var(--om-color-warning-600);
+    }
+
+    &.red {
+      border: 1px solid var(--om-color-error-600);
+    }
+  }
+
+  .lineage-node-content {
+    .label-container {
+      .custom-node-label-container {
+        width: 100%;
+
+
+        .entity-header-name {
+          .node-service-type::after {
+            content: '|';
+            margin-left: var(--om-space-6);
+          }
+
+          svg {
+            width: 18px;
+            color: @grey-4;
+          }
+        }
+
+        .entity-label-container {
+          padding: var(--om-space-8) var(--om-space-16) 0 var(--om-space-16);
+
+          .entity-service-icon svg {
+            height: 32px;
+            width: 32px;
+            margin-bottom: var(--om-space-6);
+          }
+
+          .entity-service-icon img {
+            height: 32px;
+            width: 32px;
+            margin-bottom: var(--om-space-6);
+          }
+
+          &.with-footer::after {
+            display: block;
+            width: 100%;
+            height: 1px;
+
+            background: @grey-200;
+            content: '';
+          }
+        }
+
+        .entity-footer {
+          display: flex;
+          justify-content: space-between;
+          gap: var(--om-space-20);
+          padding: var(--om-space-8) var(--om-space-16);
+
+          &__entity-type-and-dropdown {
+            display: flex;
+            gap: var(--om-space-6);
+          }
+
+          &__test-summary-and-filter {
+            display: flex;
+            gap: var(--om-space-6);
+          }
+
+          .test-summary-and-mapping {
+            display: flex;
+            gap: var(--om-space-5);
+          }
+
+          .children-info-dropdown-label {
+            min-width: fit-content;
+            padding: var(--om-space-2) @size-xs var(--om-space-2) @size-sm;
+            border: none;
+            border-radius: var(--om-radius-lg);
+            box-shadow: none;
+
+            background-color: @primary-1;
+            color: @blue-7;
+            font-size: var(--om-font-size-xs);
+            font-weight: var(--om-font-weight-medium);
+            line-height: 18px;
+            text-transform: none;
+            cursor: pointer;
+
+            &:hover {
+              box-shadow: none;
+              background-color: @primary-1;
+              color: @blue-7;
+            }
+
+            &::after {
+              margin-left: @size-xxs;
+              width: @size-sm;
+              height: @size-sm;
+              content: '';
+            }
+
+            &.collapsed::after {
+              background: no-repeat center / contain
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            }
+
+            &.expanded::after {
+              background: no-repeat center / contain
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'/></svg>");
+            }
+          }
+
+          .only-show-columns-with-lineage-filter-button {
+            cursor: pointer;
+            border: 1px solid transparent;
+            width: 25px;
+            height: 25px;
+
+            svg {
+              width: 14px;
+            }
+
+            &.active {
+              background-color: @primary-1;
+              color: @blue-7;
+            }
+
+            &:disabled:hover {
+              cursor: not-allowed;
+            }
+          }
+        }
+      }
+    }
+
+    .column-container {
+      min-height: 48px;
+      padding: var(--om-space-12);
+      padding-top: 0;
+      background-color: @grey-9;
+
+      .inside-current-page-item {
+        margin-top: 0;
+        display: block;
+
+        .custom-node-header-column-tracing {
+          display: block;
+        }
+      }
+
+      .outside-current-page-item:has(.custom-node-column-container) {
+        display: none;
+      }
+
+      .outside-current-page-item:has(.custom-node-header-column-tracing) {
+        display: block;
+        margin-top: 0;
+      }
+
+      .outside-current-page-items:has(.custom-node-header-column-tracing) {
+        border-top: 1px solid silver;
+        margin-top: var(--om-space-8);
+        padding-top: var(--om-space-8);
+      }
+
+      .lineage-collapse-column.ant-collapse {
+        border: none;
+        border-radius: 0;
+
+        .ant-collapse-header {
+          padding: var(--om-space-4);
+          font-size: var(--om-font-size-xs);
+          display: inherit; // to fix the overflow issue of parent column node, which has children.
+        }
+
+        .ant-collapse-content-box {
+          padding: var(--om-space-4);
+        }
+
+        .ant-collapse-item {
+          border: none;
+          border-radius: 0;
+        }
+      }
+
+      .custom-node-column-container {
+        padding: var(--om-space-6) var(--om-space-8);
+        background-color: inherit;
+        position: relative;
+        font-size: var(--om-font-size-xs);
+        font-weight: var(--om-font-weight-regular);
+        border: 1px solid @grey-1;
+        border-left: 6px solid transparent;
+        border-radius: var(--om-radius-sm);
+        border-top-left-radius: var(--om-radius-md);
+        border-bottom-left-radius: var(--om-radius-md);
+
+        .custom-node-column-row {
+          display: flex;
+          align-items: center;
+          gap: var(--om-space-12);
+        }
+
+        .custom-node-summary {
+          flex: 0 0 80px;
+        }
+
+        .custom-node-name-container {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          text-align: left;
+          gap: var(--om-space-4);
+
+          .custom-node-name-icon {
+            width: 14px;
+            display: flex;
+          }
+
+          .custom-node-column-label {
+            width: 100%;
+            display: block;
+          }
+        }
+
+        .custom-node-constraint {
+          padding-left: var(--om-space-4);
+          padding-right: var(--om-space-12);
+        }
+
+        .ant-skeleton-element {
+          .ant-skeleton-button-sm {
+            height: 32px; // Height of the skeleton button, to match the height of the column name
+          }
+        }
+      }
+
+      &:not(.any-column-selected) {
+        .custom-node-column-container {
+          &:hover {
+            background-color: @primary-1;
+            border-left-color: @primary-6;
+          }
+        }
+      }
+    }
+  }
+
+  &.columns-expanded {
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: @grey-9;
+          }
+        }
+      }
+    }
+  }
+
+  &.custom-node-header-active {
+    background-color: var(--om-color-brand-50);
+
+    .lineage-node-content {
+      .label-container {
+        background-color: var(--om-color-brand-50);
+
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: var(--om-color-brand-50);
+          }
+        }
+      }
+    }
+
+    .lineage-node-badge-container {
+      background-color: var(--om-color-brand-50);
+    }
+
+    &.columns-expanded {
+      background-color: @primary-1;
+
+      .lineage-node-content {
+        .label-container {
+          background-color: @primary-1;
+
+          .custom-node-label-container {
+            .entity-footer {
+              background-color: var(--om-color-brand-50);
+            }
+          }
+        }
+
+        .column-container {
+          background-color: var(--om-color-brand-50);
+        }
+      }
+
+      .lineage-node-badge-container {
+        background-color: @primary-1;
+      }
+    }
+  }
+
+  &.custom-node-header-active.data-quality-failed-custom-node-header {
+    background-color: var(--om-color-error-25);
+
+    .lineage-node-content {
+      .label-container {
+        background-color: var(--om-color-error-25);
+
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: var(--om-color-error-25);
+          }
+        }
+      }
+    }
+
+    .lineage-node-badge-container {
+      background-color: var(--om-color-error-25);
+      border-color: var(--om-color-error-600);
+    }
+
+    &.columns-expanded {
+      background-color: var(--om-color-error-100);
+
+      .lineage-node-badge-container {
+        background-color: var(--om-color-error-100);
+      }
+
+      .lineage-node-content {
+        .label-container {
+          background-color: var(--om-color-error-100);
+
+          .custom-node-label-container {
+            .entity-footer {
+              background-color: var(--om-color-error-25);
+            }
+          }
+        }
+
+        .column-container {
+          background-color: var(--om-color-error-25);
+        }
+      }
+    }
+  }
+
+  &.custom-node-header-tracing {
+    .lineage-node-badge-container {
+      border-color: @primary-color;
+    }
+  }
+
+  .lineage-node-content {
+    .label-container {
+      .custom-node-label-container {
+        .entity-label-container {
+          &::after {
+            content: none;
+          }
+        }
+      }
+    }
+
+    .column-container {
+      .custom-node-column-container.custom-node-header-column-tracing {
+        background-color: @primary-1;
+        border-left-color: @primary-6;
+
+        &:hover {
+          background-color: @primary-1;
+        }
+      }
+
+      &.any-column-selected {
+        .custom-node-column-container.custom-node-header-column-tracing {
+          background-color: @indigo-100;
+          border-left-color: @indigo-600;
+
+          &:hover {
+            background-color: @indigo-100;
+            border-left-color: @indigo-600;
+          }
+        }
+      }
+
+      &.creating-edge {
+        .custom-node-column-container:not(
+            .custom-node-header-column-tracing
+          ):hover {
+          background-color: @primary-1;
+          border-left-color: @primary-6;
+        }
+      }
+    }
+  }
+}
+
+.lineage-base-node {
+  border-top-left-radius: var(--om-radius-none);
+
+  .lineage-node-badge-container {
+    position: absolute;
+    top: -14px;
+    left: 0px;
+    width: 68px;
+    height: 15px;
+
+    border: 1px solid var(--om-legacy-color-b1b1b7);
+    border-bottom: 0px;
+    border-top-left-radius: var(--om-radius-10);
+    border-top-right-radius: var(--om-radius-10);
+
+    background: var(--om-color-white);
+
+    .lineage-node-badge {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: var(--om-space-4);
+
+      width: 60px;
+      padding: var(--om-space-2);
+      border-radius: var(--om-radius-7);
+
+      background-color: var(--om-color-brand-700);
+      color: white;
+
+      font-size: var(--om-font-size-xs);
+      font-weight: var(--om-font-weight-medium);
+
+      &::before {
+        display: inline-block;
+        width: 12px;
+        height: 13px;
+
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='13' viewBox='0 0 12 13' fill='none'><path d='M4.5 11.5V6.5H7.5V11.5M1.5 5L6 1.5L10.5 5V10.5C10.5 10.7652 10.3946 11.0196 10.2071 11.2071C10.0196 11.3946 9.76522 11.5 9.5 11.5H2.5C2.23478 11.5 1.98043 11.3946 1.79289 11.2071C1.60536 11.0196 1.5 10.7652 1.5 10.5V5Z' stroke='%23EFF8FF' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+        background-repeat: no-repeat;
+        background-size: contain;
+
+        content: '';
+      }
+
+      &::after {
+        content: 'Base';
+      }
+    }
+  }
+
+  .lineage-node-content {
+    margin-top: var(--om-space-10);
+  }
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background-color: @white !important;
+}
+
+.react-flow__node-load-more {
+  padding: 0 !important;
+  box-shadow: none !important;
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-md);
+}
+
+// Node hovered state
+.react-flow__node-load-more.selectable:hover,
+.react-flow__node-default.selectable:hover,
+.react-flow__node-input.selectable:hover,
+.react-flow__node-output.selectable:hover,
+.react-flow__node-group.selectable:hover {
+  .lineage-node-handle {
+    border-color: @primary-color;
+  }
+
+  .lineage-node {
+    border-color: @primary-color;
+
+    .lineage-node-badge-container {
+      border-color: var(--om-legacy-color-356fe7);
+    }
+  }
+
+  .data-quality-failed-custom-node-header {
+    border-color: @red-3;
+
+    .lineage-node-badge-container {
+      border-color: @red-3;
+    }
+
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container {
+          &:hover {
+            background-color: var(--om-color-error-50);
+            color: var(--om-color-orange-dark-700);
+            border-left-color: var(--om-color-error-600);
+
+            .profiler-item {
+              color: black;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .custom-node-header-active.data-quality-failed-custom-node-header {
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container {
+          &:hover {
+            background-color: var(--om-color-error-50);
+            border-left-color: var(--om-color-error-600);
+          }
+        }
+      }
+    }
+  }
+}
+
+.lineage-node {
+  &.data-quality-failed-custom-node-header,
+  &.custom-node-header-active.data-quality-failed-custom-node-header {
+    .lineage-node-content {
+      .column-container {
+        .custom-node-column-container.custom-node-header-column-tracing {
+          border-color: var(--om-color-error-600);
+          background-color: var(--om-color-white);
+          color: black;
+        }
+      }
+    }
+  }
+}
+
+.react-flow__handle.connectable {
+  background-color: @text-color;
+}
+
+.react-flow {
+  .lineage-node-handle.react-flow__handle-left {
+    left: -10px;
+  }
+
+  .lineage-node-handle.react-flow__handle-right {
+    right: -10px;
+  }
+
+  .lineage-node-handle-expand-all {
+    display: flex;
+    align-items: center;
+    width: max-content !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    border-radius: var(--om-radius-sm) !important;
+    border-color: @lineage-border !important;
+    background: @white !important;
+    top: min(58px, 50%) !important;
+
+    gap: var(--om-space-1);
+    border: 1px solid;
+    transition: transform var(--om-duration-200) ease;
+
+    &.react-flow__handle-right {
+      left: 100%;
+      transform: translate(-50%, -50%);
+
+      &:hover {
+        transform: translate(-10px, -50%);
+      }
+    }
+
+    &.react-flow__handle-left {
+      left: -10px;
+
+      &:hover {
+        flex-direction: row-reverse;
+        transform: translate(calc(-100% + 20px), -50%);
+      }
+    }
+
+    svg {
+      color: @grey-4;
+      cursor: pointer;
+      padding: var(--om-space-1);
+      width: 18px;
+      height: 18px;
+      border-radius: var(--om-radius-3);
+
+      &:hover {
+        color: @primary-color;
+        background-color: var(--om-color-brand-50);
+      }
+    }
+
+    .lineage-expand-icons-separator::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 2px;
+      width: 1px;
+      height: 14px;
+      background: @blue-20;
+      transform: translateX(-50%);
+    }
+  }
+}
+
+.react-flow .lineage-node-handle {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  border-radius: 20% !important;
+  border-color: @lineage-border !important;
+  background: @white !important;
+  top: 60px !important; // Need to show handles on top half
+  top: min(58px, 50%) !important;
+
+  svg {
+    color: @text-grey-muted;
+  }
+}
+
+.react-flow .lineage-column-node-handle {
+  width: 30px;
+  border-radius: 0;
+  border-color: @lineage-border;
+  background: transparent;
+  top: 5px;
+  height: 25px;
+  transform: none;
+  border: none;
+  z-index: var(--om-z-1); // Adding as column text and data type should be behind handles
+
+  &.react-flow__handle-left {
+    left: -10px;
+  }
+
+  &.react-flow__handle-right {
+    right: 0;
+  }
+}
+
+.custom-node-column-container-tooltip {
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+
+  svg {
+    width: 16px;
+  }
+
+  svg:first-child {
+    border-right: 1px solid @grey-15;
+    width: 22px;
+    padding-right: var(--om-space-6);
+  }
+}
+
+.custom-node-deleted-icon {
+  border-radius: var(--om-radius-sm);
+  border: 1px solid @error-color;
+  background-color: var(--tw-color-bg-primary);
+}
+
+.manage-node {
+  position: absolute;
+  top: 10px;
+  right: 4px;
+}
+
+.react-flow__edge :hover {
+  stroke: @primary-color;
+}

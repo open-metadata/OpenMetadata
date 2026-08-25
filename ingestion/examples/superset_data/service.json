@@ -1,0 +1,11 @@
+{
+	"name": "sample_superset",
+	"serviceType": "Superset",
+	"description": "Supset Service",
+  	"sourceUrl": "http://localhost:8088",
+	"connection": {
+		"provider": "db",
+		"username": "admin",
+		"password": "admin"
+	}
+}

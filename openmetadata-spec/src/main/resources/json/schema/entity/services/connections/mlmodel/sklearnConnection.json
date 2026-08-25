@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/mlmodel/sklearnConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SklearnConnection",
+  "description": "Sklearn Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.mlmodel.SklearnConnection",
+  "definitions": {
+    "sklearnType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Sklearn"],
+      "default": "Sklearn"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sklearnType",
+      "default": "Sklearn"
+    },
+    "mlModelFilterPattern": {
+      "description": "Regex to only fetch MlModels with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default ML Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

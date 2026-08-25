@@ -1,0 +1,4650 @@
+"""
+Test dbt
+"""
+
+import json
+import uuid
+from copy import deepcopy
+from datetime import datetime
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import TestCase
+from unittest.mock import MagicMock, PropertyMock, patch
+
+from collate_dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+)
+from pydantic import AnyUrl
+
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.domains.domain import Domain
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.tests.basic import TestCaseStatus
+from metadata.generated.schema.type import entityReference
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+from metadata.ingestion.source.database.dbt.dbt_utils import (
+    build_upstream_name_map,
+    build_upstream_node,
+    convert_java_to_python_format,
+    find_domain_by_name,
+    find_entity_by_type_and_fqn,
+    format_domain_reference,
+    format_entity_reference,
+    format_validation_error_message,
+    generate_entity_link,
+    get_corrected_name,
+    get_data_model_path,
+    get_dbt_compiled_query,
+    get_dbt_raw_query,
+    get_dbt_test_primary_table_fqn,
+    get_manifest_column_name,
+    get_snapshot_effective_schema_and_database,
+    validate_custom_property_value,
+    validate_date_time_format,
+    validate_email_format,
+    validate_enum_value,
+    validate_table_structure,
+    validate_time_interval,
+)
+from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
+from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.tag_utils import get_tag_labels
+from metadata.utils.time_utils import datetime_to_timestamp
+
+logger = ingestion_logger()
+
+DBT_TEST_UNIQUE_ID = "test.jaffle_shop.not_null_orders_order_id.cf6c17daed"
+DBT_TEST_TABLE_FQN = "snowflake.jaffle_shop.public.orders"
+
+
+def _run_result_payload(status, message, completed_at, unique_id=DBT_TEST_UNIQUE_ID, failures=None):
+    """
+    Build a run_results.json payload shaped like a real dbt artifact, including
+    the ``failures`` key that dbt emits but OpenMetadata strips before parsing.
+
+    ``completed_at=None`` drops the timing block, which is how a result with no
+    usable ``execute`` timestamp reaches the timestamp fallback path.
+    """
+    timing = (
+        [
+            {
+                "name": "compile",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+            {
+                "name": "execute",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+        ]
+        if completed_at
+        else []
+    )
+    return {
+        "metadata": {
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+            "dbt_version": "1.11.0",
+            "generated_at": completed_at or "2026-07-24T09:00:00.000000Z",
+            "invocation_id": str(uuid.uuid4()),
+            "env": {},
+        },
+        "results": [
+            {
+                "status": status,
+                "timing": timing,
+                "thread_id": "Thread-1",
+                "execution_time": 0.42,
+                "adapter_response": {},
+                "message": message,
+                "failures": failures,
+                "unique_id": unique_id,
+            }
+        ],
+        "elapsed_time": 1.5,
+        "args": {"which": "test"},
+    }
+
+
+def _parse_run_results_like_production(payload):
+    """
+    Run a raw run_results.json payload through the exact pre-processing the
+    connector applies (``remove_run_result_non_required_keys``) before parsing,
+    so tests see the same attributes production code sees.
+    """
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
+
+    DbtServiceSource.remove_run_result_non_required_keys(MagicMock(spec=DbtServiceSource), run_results=[payload])
+    return parse_run_results(payload)
+
+
+mock_dbt_config = {
+    "source": {
+        "type": "dbt",
+        "serviceName": "dbt_test",
+        "sourceConfig": {
+            "config": {
+                "type": "DBT",
+                "dbtConfigSource": {
+                    "dbtConfigType": "local",
+                    "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
+                    "dbtManifestFilePath": "sample/dbt_files/manifest.json",
+                    "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",
+                    "dbtSourcesFilePath": "sample/dbt_files/sources.json",
+                },
+                "dbtUpdateOwners": True,
+            }
+        },
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "loggerLevel": "DEBUG",
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "enableVersionValidation": False,
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
+                "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
+                "2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXB"
+                "iEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fN"
+                "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
+                "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        },
+    },
+}
+
+MOCK_SAMPLE_MANIFEST_V4_V5_V6 = "resources/datasets/manifest_v4_v5_v6.json"
+
+MOCK_SAMPLE_MANIFEST_V7 = "resources/datasets/manifest_v7.json"
+
+MOCK_SAMPLE_MANIFEST_V8 = "resources/datasets/manifest_v8.json"
+
+MOCK_SAMPLE_MANIFEST_VERSIONLESS = "resources/datasets/manifest_versionless.json"
+
+MOCK_SAMPLE_MANIFEST_VERSIONLESS_BROKEN_EXPOSURES = "resources/datasets/manifest_versionless_broken_exposures.json"
+
+
+MOCK_SAMPLE_MANIFEST_NULL_DB = "resources/datasets/manifest_null_db.json"
+
+MOCK_SAMPLE_MANIFEST_TEST_NODE = "resources/datasets/manifest_test_node.json"
+
+MOCK_SAMPLE_MANIFEST_SNAPSHOT = "resources/datasets/manifest_snapshot.json"
+
+EXPECTED_DATA_MODEL_FQNS = [
+    "dbt_test.dev.dbt_jaffle.customers",
+    "dbt_test.dev.dbt_jaffle.orders",
+    "dbt_test.dev.dbt_jaffle.stg_customers",
+    "dbt_test.dev.dbt_jaffle.customers_null_db",
+]
+
+EXPECTED_DATA_MODELS = [
+    DataModel(
+        modelType="DBT",
+        description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
+        path="sample/customers/root/path/models/customers.sql",
+        rawSql="sample customers raw code",
+        resourceType="model",
+        sql="sample customers compile code",
+        upstream=[],
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    name=None,
+                    fullyQualifiedName="aaron_johnson0",
+                    description=None,
+                    displayName=None,
+                    deleted=None,
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                    ),
+                )
+            ]
+        ),
+        tags=[
+            TagLabel(
+                tagFQN="dbtTags.model_tag_one",
+                description=None,
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            ),
+            TagLabel(
+                tagFQN="dbtTags.model_tag_two",
+                description=None,
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
+                description=None,
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            ),
+        ],
+        columns=[
+            Column(
+                name="customer_id",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="This is a unique identifier for a customer",
+            ),
+            Column(
+                name="first_name",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Customer's first name. PII.",
+            ),
+            Column(
+                name="last_name",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Customer's last name. PII.",
+            ),
+        ],
+        generatedAt=None,
+    )
+]
+
+EXPECTED_DATA_MODEL_NULL_DB = [
+    DataModel(
+        modelType="DBT",
+        description=None,
+        path="sample/customers_null_db/root/path/models/staging/customers_null_db.sql",
+        rawSql="sample customers_null_db raw_code",
+        resourceType="model",
+        sql="sample customers_null_db compiled code",
+        upstream=[],
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    name=None,
+                    fullyQualifiedName="aaron_johnson0",
+                    description=None,
+                    displayName=None,
+                    deleted=None,
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                    ),
+                )
+            ]
+        ),
+        tags=[],
+        columns=[
+            Column(
+                name="customer_id",
+                displayName=None,
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="This is a unique identifier for an customer",
+            )
+        ],
+        generatedAt=None,
+    ),
+]
+
+EXPECTED_DATA_MODEL_VERSIONLESS = [
+    DataModel(
+        modelType="DBT",
+        resourceType="model",
+        dbtSourceProject="jaffle_shop",
+        description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
+        path="models/customers.sql",
+        rawSql="sample customers raw code",
+        sql="sample customers compile code",
+        upstream=[
+            "dbt_test.dev.dbt_jaffle.customers",
+            "dbt_test.dev.dbt_jaffle.customers",
+            "dbt_test.dev.dbt_jaffle.customers",
+        ],
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    fullyQualifiedName="aaron_johnson0",
+                    href=AnyUrl("http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538"),
+                )
+            ]
+        ),
+        tags=[
+            TagLabel(
+                tagFQN="dbtTags.model_tag_one",
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+            ),
+            TagLabel(
+                tagFQN="dbtTags.model_tag_two",
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+            ),
+        ],
+        columns=[
+            Column(
+                name="customer_id",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="This is a unique identifier for a customer",
+            ),
+            Column(
+                name="first_name",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Customer's first name. PII.",
+            ),
+            Column(
+                name="last_name",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Customer's last name. PII.",
+            ),
+            Column(
+                name="first_order",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Date (UTC) of a customer's first order",
+            ),
+            Column(
+                name="most_recent_order",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Date (UTC) of a customer's most recent order",
+            ),
+            Column(
+                name="number_of_orders",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Count of the number of orders a customer has placed",
+            ),
+            Column(
+                name="total_order_amount",
+                dataType="UNKNOWN",
+                dataLength=1,
+                description="Total value (AUD) of a customer's orders",
+            ),
+        ],
+    )
+]
+
+EXPECTED_EXPOSURE_ENTITIES = [
+    Dashboard(
+        id=uuid.uuid4(),
+        name="looker_dashboard",
+        service=entityReference.EntityReference(id=uuid.uuid4(), type="dashboard"),
+    ),
+    MlModel(
+        id=uuid.uuid4(),
+        name="mlflow_model",
+        algorithm="lr",
+        service=entityReference.EntityReference(id=uuid.uuid4(), type="mlModel"),
+    ),
+    APIEndpoint(
+        id=uuid.uuid4(),
+        name="createTable",
+        endpointURL="http://localhost:8000",
+        service=entityReference.EntityReference(id=uuid.uuid4(), type="apiEndpoint"),
+    ),
+]
+
+MOCK_OWNER = EntityReferenceList(
+    root=[
+        EntityReference(
+            id="cb2a92f5-e935-4ad7-911c-654280046538",
+            type="user",
+            name=None,
+            fullyQualifiedName="aaron_johnson0",
+            description=None,
+            displayName=None,
+            deleted=None,
+            href=AnyUrl(
+                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+            ),
+        )
+    ]
+)
+
+MOCK_USER = EntityReference(
+    id="70064aef-f085-4658-a11a-b5f46568e980",
+    name="aaron_johnson0",
+    type="user",
+    href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
+    fullyQualifiedName="aaron_johnson0",
+)
+
+MOCK_TABLE_ENTITIES = [
+    Table(
+        id=uuid.uuid4(),
+        name="customers",
+        databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        fullyQualifiedName="dbt_test.dev.dbt_jaffle.customers",
+        columns=[],
+    )
+]
+
+MOCK_NULL_DB_TABLE = [
+    Table(
+        id=uuid.uuid4(),
+        name="customers_null_db",
+        databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        fullyQualifiedName="dbt_test.dev.dbt_jaffle.customers_null_db",
+        columns=[],
+    ),
+]
+
+MOCK_TAG_LABELS = [
+    TagLabel(
+        tagFQN="dbtTags.tag1",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Classification,
+    ),
+    TagLabel(
+        tagFQN='dbtTags."tag2.name"',
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Classification,
+    ),
+    TagLabel(
+        tagFQN="dbtTags.tag3",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Classification,
+    ),
+]
+
+MOCK_GLOASSARY_LABELS = [
+    TagLabel(
+        tagFQN="Test_Glossary.term_one",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Glossary,
+    ),
+    TagLabel(
+        tagFQN="Test_Glossary.term_two.nested_term.more_nested_term",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Glossary,
+    ),
+]
+
+
+class DbtUnitTest(TestCase):
+    """
+    Implements the necessary methods to extract
+    dbt Unit Test
+    """
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_dbt_config)
+        self.dbt_source_obj = DbtSource.create(
+            mock_dbt_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        set_loggers_level("DEBUG")
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_dbt_manifest_v4_v5_v6(self, es_search_from_fqn, get_dbt_owner):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.side_effect = MOCK_TABLE_ENTITIES
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_V4_V5_V6,
+            expected_records=2,
+            expected_data_models=EXPECTED_DATA_MODELS,
+        )
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_dbt_manifest_v7(self, es_search_from_fqn, get_dbt_owner):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.side_effect = MOCK_TABLE_ENTITIES
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_V7,
+            expected_records=2,
+            expected_data_models=EXPECTED_DATA_MODELS,
+        )
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_manifest_v8(self, get_tag_label, es_search_from_fqn, get_dbt_owner):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="dbtTags.model_tag_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN="dbtTags.model_tag_two",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_V8,
+            expected_records=2,
+            expected_data_models=EXPECTED_DATA_MODELS,
+        )
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_manifest_versionless(self, get_tag_label, es_search_from_fqn, get_dbt_owner):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="dbtTags.model_tag_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN="dbtTags.model_tag_two",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_VERSIONLESS,
+            expected_records=12,
+            expected_data_models=EXPECTED_DATA_MODEL_VERSIONLESS,
+        )
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_dbt_manifest_null_db(self, es_search_from_fqn, get_dbt_owner):
+        get_dbt_owner.return_value = MOCK_OWNER
+        es_search_from_fqn.return_value = MOCK_NULL_DB_TABLE
+        self.execute_test(
+            MOCK_SAMPLE_MANIFEST_NULL_DB,
+            expected_records=2,
+            expected_data_models=EXPECTED_DATA_MODEL_NULL_DB,
+        )
+
+    def test_dbt_get_corrected_name(self):
+        self.assertEqual("dbt_jaffle", get_corrected_name(name="dbt_jaffle"))
+        self.assertIsNone(get_corrected_name(name="None"))
+        self.assertIsNone(get_corrected_name(name="null"))
+        self.assertIsNotNone(get_corrected_name(name="dev"))
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_get_dbt_tag_labels(self, get_tag_label):
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="dbtTags.tag1",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN='dbtTags."tag2.name"',
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN="dbtTags.tag3",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+
+        mocked_metadata = MagicMock()
+        result = get_tag_labels(
+            metadata=mocked_metadata,
+            classification_name="dbtTags",
+            tags=["tag1", "tag2.name", "tag3"],
+            include_tags=True,
+        )
+        self.assertListEqual(result, MOCK_TAG_LABELS)
+
+    def test_dbt_get_data_model_path(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V8)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = get_data_model_path(manifest_node=manifest_node)
+        self.assertEqual("sample/customers/root/path/models/customers.sql", result)
+
+    def test_dbt_generate_entity_link(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("test.jaffle_shop.unique_orders_order_id.fed79b3a6e")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"],
+            result,
+        )
+
+    def test_dbt_generate_entity_link_with_column(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("test.jaffle_shop.unique_orders_order_id.fed79b3a6e")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertTrue(len(result) > 0)
+        self.assertIn("::columns::order_id>", result[0])
+
+    def test_dbt_generate_entity_link_without_column(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("test.jaffle_shop.unique_orders_order_id.fed79b3a6e")
+        if hasattr(manifest_node, "column_name"):
+            delattr(manifest_node, "column_name")
+        kwargs = getattr(getattr(manifest_node, "test_metadata", None), "kwargs", None)
+        if isinstance(kwargs, dict):
+            kwargs.pop("column_name", None)
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertTrue(len(result) > 0)
+        self.assertNotIn("::columns::", result[0])
+        self.assertIn("<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers>", result[0])
+
+    def test_dbt_generate_entity_link_column_from_test_metadata_kwargs(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("test.jaffle_shop.unique_orders_order_id.fed79b3a6e")
+        if hasattr(manifest_node, "column_name"):
+            delattr(manifest_node, "column_name")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"],
+            result,
+        )
+
+    def _get_relationships_test_node(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+
+        return dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.relationships_orders_customer_id__customer_id__ref_customers_.c6ec7f58f2"
+        )
+
+    def test_dbt_relationships_test_resolves_to_child_table_when_aliased(self):
+        """A relationships test must land on the model holding the foreign key even when
+        the upstream FQNs are built from a dbt alias that differs from the model name."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.ORDERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS", "orders": "svc.db.sch.ORDERS"},
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::svc.db.sch.ORDERS::columns::customer_id>"],
+            result,
+        )
+
+    def test_dbt_relationships_test_excludes_referenced_table_without_name_map(self):
+        """Without a name map the `to:` table must still be excluded rather than
+        falling back to depends_on[0], which dbt orders parent-first."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.ORDERS"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::svc.db.sch.ORDERS::columns::customer_id>"],
+            result,
+        )
+
+    def test_dbt_relationships_test_resolves_child_table_by_name(self):
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.customers", "svc.db.sch.orders"],
+            "upstream_by_name": {"customers": "svc.db.sch.customers", "orders": "svc.db.sch.orders"},
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::svc.db.sch.orders::columns::customer_id>"],
+            result,
+        )
+
+    def test_dbt_test_primary_table_fqn_single_upstream(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("test.jaffle_shop.unique_orders_order_id.fed79b3a6e")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        self.assertEqual(
+            "local_redshift_dbt2.dev.dbt_jaffle.stg_customers",
+            get_dbt_test_primary_table_fqn(dbt_test),
+        )
+
+    def test_dbt_test_primary_table_fqn_relationships(self):
+        """Test results must be recorded against the child table only, not every upstream."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.ORDERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS", "orders": "svc.db.sch.ORDERS"},
+            "results": "",
+        }
+        self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
+
+    def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
+        """A model and a source table can share a dbt name; the bare name must not
+        silently resolve to whichever happened to be indexed last."""
+        name_map = build_upstream_name_map(
+            [
+                UpstreamNode(name="orders", qualified_name="jaffle_shop.orders", fqn="svc.db.sch.orders"),
+                UpstreamNode(name="orders", qualified_name="raw.orders", fqn="svc.db.raw.orders"),
+            ]
+        )
+        self.assertIsNone(name_map["orders"])
+        self.assertEqual("svc.db.sch.orders", name_map["jaffle_shop.orders"])
+        self.assertEqual("svc.db.raw.orders", name_map["raw.orders"])
+
+    def test_build_upstream_name_map_keeps_unambiguous_names(self):
+        name_map = build_upstream_name_map(
+            [
+                UpstreamNode(name="orders", qualified_name="jaffle_shop.orders", fqn="svc.db.sch.orders"),
+                UpstreamNode(name="customers", qualified_name="jaffle_shop.customers", fqn="svc.db.sch.customers"),
+            ]
+        )
+        self.assertEqual("svc.db.sch.orders", name_map["orders"])
+        self.assertEqual("svc.db.sch.customers", name_map["customers"])
+
+    def test_dbt_relationships_test_resolves_via_source_namespace(self):
+        """When a model and a source table share a name, the source() namespace must
+        disambiguate rather than the lookup collapsing to one of them."""
+        manifest_node = SimpleNamespace(
+            name="relationships_orders_customer_id",
+            column_name="customer_id",
+            test_metadata=SimpleNamespace(
+                name="relationships",
+                kwargs={
+                    "to": "source('raw', 'orders')",
+                    "field": "id",
+                    "column_name": "customer_id",
+                    "model": "{{ get_where_subquery(ref('jaffle_shop', 'orders')) }}",
+                },
+            ),
+        )
+        source_node = UpstreamNode(name="orders", qualified_name="raw.orders", fqn="svc.db.raw.orders")
+        model_node = UpstreamNode(name="orders", qualified_name="jaffle_shop.orders", fqn="svc.db.sch.orders")
+
+        # Asserted for both orderings so the result cannot depend on which entry the
+        # name map happened to index last
+        for upstream_nodes in ([source_node, model_node], [model_node, source_node]):
+            dbt_test = {
+                "manifest_node": manifest_node,
+                "upstream": [node.fqn for node in upstream_nodes],
+                "upstream_by_name": build_upstream_name_map(upstream_nodes),
+                "results": "",
+            }
+            self.assertEqual("svc.db.sch.orders", get_dbt_test_primary_table_fqn(dbt_test))
+
+    def test_build_upstream_node_namespaces_source_and_model(self):
+        model_node = SimpleNamespace(name="orders", package_name="jaffle_shop")
+        self.assertEqual(
+            "jaffle_shop.orders",
+            build_upstream_node(model_node, "svc.db.sch.orders").qualified_name,
+        )
+        source_node = SimpleNamespace(name="orders", package_name="jaffle_shop", source_name="raw")
+        self.assertEqual(
+            "raw.orders",
+            build_upstream_node(source_node, "svc.db.raw.orders").qualified_name,
+        )
+
+    def test_get_manifest_column_name(self):
+        self.assertEqual(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "MY_COLUMN"}),
+                )
+            ),
+            "MY_COLUMN",
+        )
+        self.assertEqual(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name="top",
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "kw"}),
+                )
+            ),
+            "top",
+        )
+        self.assertIsNone(get_manifest_column_name(SimpleNamespace(column_name=None)))
+        # SQL expressions in kwargs (e.g. Redshift's || concatenation operator)
+        # must not be used as column identifiers — they contain characters that
+        # are forbidden by the entityLink Pydantic pattern.
+        self.assertIsNone(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "date || '-' || order_id"}),
+                )
+            )
+        )
+        # Verify other forbidden chars (<, >) are also filtered
+        self.assertIsNone(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "col<value>"}),
+                )
+            )
+        )
+
+    def test_dbt_compiled_query(self):
+        expected_query = "sample customers compile code"
+
+        # Test the compiled queries with v8 manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V8)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = get_dbt_compiled_query(mnode=manifest_node)
+        self.assertEqual(expected_query, result)
+
+        # Test the compiled queries with v4 v5 v6 manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V4_V5_V6)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = get_dbt_compiled_query(mnode=manifest_node)
+        self.assertEqual(expected_query, result)
+
+    def test_dbt_raw_query(self):
+        expected_query = "sample customers raw code"
+
+        # Test the raw queries with v8 manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V8)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = get_dbt_raw_query(mnode=manifest_node)
+        self.assertEqual(expected_query, result)
+
+        # Test the raw queries with v4 v5 v6 manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V4_V5_V6)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = get_dbt_raw_query(mnode=manifest_node)
+        self.assertEqual(expected_query, result)
+
+        # Test the raw queries with versionless manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = get_dbt_raw_query(mnode=manifest_node)
+        self.assertEqual(expected_query, result)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_dbt_owner(self, get_reference_by_name):
+        """
+        This test requires having the sample data properly indexed
+        """
+        get_reference_by_name.return_value = MOCK_USER
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V8)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=manifest_node, catalog_node=None)
+        self.assertEqual("70064aef-f085-4658-a11a-b5f46568e980", result.id.root.__str__())
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_priority_1_openmetadata_owner(self, get_reference_by_name):
+        """
+        Test Priority 1: meta.openmetadata.owner (new format)
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with openmetadata.owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": "test_owner"}}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(name="test_owner", is_owner=True)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_priority_2_old_format_owner(self, get_reference_by_name):
+        """
+        Test Priority 2: meta.owner (old format) when openmetadata.owner is not present
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with old format owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"owner": "old_format_owner"}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(name="old_format_owner", is_owner=True)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_priority_3_catalog_node_owner(self, get_reference_by_name):
+        """
+        Test Priority 3: catalog_node.metadata.owner when manifest node owners are not present
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        # Create mock catalog node with owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = "catalog_owner"
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=mock_catalog_node)
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(name="catalog_owner", is_owner=True)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_priority_order(self, get_reference_by_name):
+        """
+        Test that priorities are respected in order: openmetadata.owner > meta.owner > catalog.owner
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node with both openmetadata.owner and meta.owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": "priority_1_owner"},
+            "owner": "priority_2_owner",
+        }
+
+        # Create mock catalog node with owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = "priority_3_owner"
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=mock_catalog_node)
+
+        # Should use priority 1 (openmetadata.owner)
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(name="priority_1_owner", is_owner=True)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_list_owners(self, get_reference_by_name):
+        """
+        Test handling of list of owners
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with list of owners
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": ["owner1", "owner2", "owner3"]}}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        self.assertIsNone(result)
+        self.assertEqual(get_reference_by_name.call_count, 1)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_list_owners_partial_failure(self, get_reference_by_name):
+        """
+        Test handling of list of owners where some owners are not found
+        """
+        # First two owners found, third one not found
+        get_reference_by_name.side_effect = [MOCK_USER, MOCK_USER, None]
+
+        # Create a mock manifest node with list of owners
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": ["owner1", "owner2", "owner3"]}}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        self.assertIsNone(result)
+        self.assertEqual(get_reference_by_name.call_count, 1)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_catalog_node_exception(self, get_reference_by_name):
+        """
+        Test handling of catalog node access exception
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        # Create mock catalog node that raises exception when accessing metadata.owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = PropertyMock(side_effect=AttributeError("No attribute"))
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=mock_catalog_node)
+
+        # Should return None due to exception
+        self.assertIsNone(result)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_no_owner_found(self, get_reference_by_name):
+        """
+        Test when no owner is found in any source
+        """
+        get_reference_by_name.return_value = None
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        # Should return None
+        self.assertIsNone(result)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_email_lookup(self, get_reference_by_name):
+        """
+        Test email lookup when name lookup fails
+        """
+        # First call (name lookup) returns None, second call (email lookup) returns user
+        get_reference_by_name.side_effect = [None, MOCK_USER]
+
+        # Mock get_reference_by_email method
+        with patch.object(
+            self.dbt_source_obj.metadata,
+            "get_reference_by_email",
+            return_value=MOCK_USER,
+        ):
+            mock_manifest_node = MagicMock()
+            mock_manifest_node.meta = {"openmetadata": {"owner": "test@example.com"}}
+
+            result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+            self.assertEqual(result, MOCK_USER)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_general_exception(self, get_reference_by_name):
+        """
+        Test handling of general exceptions in get_dbt_owner
+        """
+        get_reference_by_name.side_effect = Exception("General error")
+
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": "test_owner"}}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        # Should return None due to exception
+        self.assertIsNone(result)
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_none_manifest_node(self, get_reference_by_name):
+        """
+        Test handling when manifest_node is None
+        """
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=None, catalog_node=None)
+
+        # Should return None
+        self.assertIsNone(result)
+        # Should not call get_reference_by_name
+        get_reference_by_name.assert_not_called()
+
+    @patch("metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name")
+    def test_get_dbt_owner_empty_meta(self, get_reference_by_name):
+        """
+        Test handling when manifest_node.meta is empty or None
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Test with empty meta
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        # Should return None since no owner found
+        self.assertIsNone(result)
+
+        # Test with None meta
+        mock_manifest_node.meta = None
+
+        result = self.dbt_source_obj.get_dbt_owner(manifest_node=mock_manifest_node, catalog_node=None)
+
+        # Should return None since no owner found
+        self.assertIsNone(result)
+
+    def execute_test(self, mock_manifest, expected_records, expected_data_models):
+        dbt_files, dbt_objects = self.get_dbt_object_files(mock_manifest)
+        self.check_dbt_validate(dbt_files=dbt_files, expected_records=expected_records)
+        self.check_yield_datamodel(dbt_objects=dbt_objects, expected_data_models=expected_data_models)
+
+    def get_dbt_object_files(self, mock_manifest):
+        mock_file_path = Path(__file__).parent / mock_manifest
+        with open(mock_file_path) as file:  # noqa: PTH123
+            mock_data: dict = json.load(file)
+        self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=mock_data)
+        dbt_files = DbtFiles(dbt_manifest=mock_data)
+        dbt_objects = DbtObjects(
+            dbt_catalog=parse_catalog(dbt_files.dbt_catalog) if dbt_files.dbt_catalog else None,
+            dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
+            dbt_run_results=[parse_run_results(dbt_files.dbt_run_results)] if dbt_files.dbt_run_results else None,
+        )
+        return dbt_files, dbt_objects
+
+    def check_dbt_validate(self, dbt_files, expected_records):
+        with self.assertLogs(level="DEBUG", logger=logger) as captured:
+            self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
+        self.assertEqual(len(captured.records), expected_records)
+        for record in captured.records:
+            self.assertNotIn("Error", record.getMessage())
+            self.assertNotIn("Unable", record.getMessage())
+
+    def check_yield_datamodel(self, dbt_objects, expected_data_models):
+        data_model_list = []
+        yield_data_models = self.dbt_source_obj.yield_data_models(dbt_objects=dbt_objects)
+        for data_model_link in yield_data_models:
+            if isinstance(data_model_link, Either) and data_model_link.right:
+                self.assertIn(
+                    data_model_link.right.table_entity.fullyQualifiedName.root,
+                    EXPECTED_DATA_MODEL_FQNS,
+                )
+                self.check_process_dbt_owners(data_model_link.right)
+                data_model_list.append(data_model_link.right.datamodel)
+
+        for _, (expected, original) in enumerate(zip(expected_data_models, data_model_list)):  # noqa: B905
+            self.assertEqual(expected, original)
+
+    def check_process_dbt_owners(self, data_model_link):
+        process_dbt_owners = self.dbt_source_obj.process_dbt_owners(data_model_link)
+        for entity in process_dbt_owners:
+            entity_owner = entity.right.new_entity.owners
+            self.assertEqual(entity_owner, MOCK_OWNER)
+
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_upstream_nodes_for_lineage(self, es_search_from_fqn):
+        expected_upstream_nodes = [
+            "model.jaffle_shop.stg_customers",
+            "model.jaffle_shop.stg_orders",
+            "model.jaffle_shop.stg_payments",
+        ]
+        es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
+
+        # Test the raw queries with V4 V5 V6 manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V4_V5_V6)
+        upstream_nodes = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers").depends_on.nodes
+        self.assertEqual(expected_upstream_nodes, upstream_nodes)
+
+        # Test the raw queries with V7 manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V7)
+        upstream_nodes = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers").depends_on.nodes
+        self.assertEqual(expected_upstream_nodes, upstream_nodes)
+
+        # Test the raw queries with VERSIONLESS manifest
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+        upstream_nodes = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers").depends_on.nodes
+
+        self.assertEqual(expected_upstream_nodes, upstream_nodes)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_glossary_tiers(self, get_tag_label):
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="Test_Glossary.term_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+            TagLabel(
+                tagFQN="Test_Glossary.term_two.nested_term.more_nested_term",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+        ]
+
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_V8)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("model.jaffle_shop.customers")
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_node.meta, table_fqn="test.schema.customers"
+        )
+
+        self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_classification_tags(self, get_tag_label):
+        """Test processing classification tags from dbt meta.openmetadata.tags"""
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            TagLabel(
+                tagFQN="PersonalData.Email",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+
+        # Create mock manifest meta with classification tags
+        manifest_meta = {"openmetadata": {"tags": ["PII.Sensitive", "PersonalData.Email"]}}
+
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+
+        expected_tags = [
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=TagSource.Classification,
+            ),
+            TagLabel(
+                tagFQN="PersonalData.Email",
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=TagSource.Classification,
+            ),
+        ]
+
+        self.assertEqual(dbt_meta_tags, expected_tags)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_classification_tags_quoted_table_level(self, get_tag_label):
+        """Table-level tags with quoted names containing dots are parsed correctly"""
+        expected_tag = TagLabel(
+            tagFQN='PII."22.8.5.1"',
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_meta = {"openmetadata": {"tags": ['PII."22.8.5.1"']}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+
+        assert dbt_meta_tags == [expected_tag]
+        call_kwargs = get_tag_label.call_args
+        assert call_kwargs.kwargs["classification_name"] == "PII"
+        assert call_kwargs.kwargs["tag_name"] == '"22.8.5.1"'
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_combined_meta_tags(self, get_tag_label):
+        """Test processing combined glossary, tier, and classification tags"""
+        get_tag_label.side_effect = [
+            # Glossary term
+            TagLabel(
+                tagFQN="Test_Glossary.term_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+            # Tier tag
+            TagLabel(
+                tagFQN="Tier.Tier1",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            # Classification tags
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+
+        # Create mock manifest meta with all types of tags
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Test_Glossary.term_one"],
+                "tier": "Tier.Tier1",
+                "tags": ["PII.Sensitive"],
+            }
+        }
+
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+
+        # Should have 3 tags: 1 glossary + 1 tier + 1 classification
+        self.assertEqual(len(dbt_meta_tags), 3)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_glossary_and_tier_processed_when_include_tags_false(self, get_tag_label):
+        """Glossary and tier must be ingested even when includeTags=False; only
+        classification tags from openmetadata.tags should be suppressed."""
+        from unittest.mock import patch as _patch
+
+        glossary_label = TagLabel(
+            tagFQN="Test_Glossary.term_one",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Glossary.value,
+        )
+        tier_label = TagLabel(
+            tagFQN="Tier.Tier1",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.side_effect = [glossary_label, tier_label]
+
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Test_Glossary.term_one"],
+                "tier": "Tier.Tier1",
+                "tags": ["PII.Sensitive"],
+            }
+        }
+
+        with _patch.object(self.dbt_source_obj.source_config, "includeTags", False):
+            result = self.dbt_source_obj.process_dbt_meta(
+                manifest_meta=manifest_meta,
+                table_fqn="test_service.test_db.test_schema.test_table",
+            )
+
+        assert len(result) == 2
+        assert glossary_label in result
+        assert tier_label in result
+
+    def test_dbt_classification_tags_edge_cases(self):
+        """Test edge cases for classification tags processing"""
+
+        # Test with empty tags list
+        manifest_meta = {"openmetadata": {"tags": []}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+        self.assertEqual(dbt_meta_tags, [])
+
+        # Test with invalid tag format (no dot separator)
+        # These should be silently skipped
+        manifest_meta = {
+            "openmetadata": {"tags": ["InvalidTag"]}  # Missing classification part
+        }
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+        # Should return empty list as invalid tags are skipped
+        self.assertEqual(dbt_meta_tags, [])
+
+        # Test with None tags
+        manifest_meta = {"openmetadata": {"tags": None}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+        self.assertEqual(dbt_meta_tags, [])
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags(self, get_tag_label):
+        """Test that meta.openmetadata.tags on dbt columns are resolved and applied"""
+        expected_tag = TagLabel(
+            tagFQN="PII.Sensitive",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_column = SimpleNamespace(
+            name="email_address",
+            tags=[],
+            meta={"openmetadata": {"tags": ["PII.Sensitive"]}},
+            description="User email",
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"email_address": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+
+        assert len(columns) == 1
+        assert expected_tag in columns[0].tags
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags_invalid_format(self, get_tag_label):
+        """Tags without a classification separator are silently skipped"""
+        get_tag_label.return_value = None
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ["InvalidTagNoSeparator"]}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+
+        assert len(columns) == 1
+        assert columns[0].tags == []
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags_quoted(self, get_tag_label):
+        """Quoted tag names containing dots (e.g. PII."22.8.5.1") are parsed correctly"""
+        expected_tag = TagLabel(
+            tagFQN='PII."22.8.5.1"',
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_column = SimpleNamespace(
+            name="ip_col",
+            tags=[],
+            meta={"openmetadata": {"tags": ['PII."22.8.5.1"']}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"ip_col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+
+        assert len(columns) == 1
+        assert expected_tag in columns[0].tags
+        call_kwargs = get_tag_label.call_args
+        assert call_kwargs.kwargs["classification_name"] == "PII"
+        assert call_kwargs.kwargs["tag_name"] == '"22.8.5.1"'
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_process_dbt_meta_bad_tag_does_not_abort_meta(self, mock_fqn, get_tag_label):
+        """A malformed tag FQN must not prevent glossary terms from being processed"""
+        from antlr4.error.Errors import ParseCancellationException
+
+        mock_fqn.FQN_SEPARATOR = "."
+        mock_fqn.split.side_effect = ParseCancellationException("bad fqn")
+
+        expected_glossary = TagLabel(
+            tagFQN="Glossary.Term1",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Glossary.value,
+        )
+        get_tag_label.return_value = expected_glossary
+
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Glossary.Term1"],
+                "tags": ['malformed."unclosed'],
+            }
+        }
+        result = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="svc.db.schema.table",
+        )
+        assert expected_glossary in result
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_parse_data_model_columns_bad_tag_does_not_drop_column(self, mock_fqn):
+        """A malformed tag FQN must not cause the entire column to be skipped"""
+        from antlr4.error.Errors import ParseCancellationException
+
+        mock_fqn.FQN_SEPARATOR = "."
+        mock_fqn.split.side_effect = ParseCancellationException("bad fqn")
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ['malformed."unclosed']}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+        assert len(columns) == 1
+        assert columns[0].tags == []
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_parse_data_model_columns_skips_split_when_include_tags_false(self, mock_fqn):
+        """fqn.split must not be called for meta.openmetadata.tags when includeTags=False"""
+        from unittest.mock import patch as _patch
+
+        mock_fqn.FQN_SEPARATOR = "."
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ["PII.Sensitive"]}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        with _patch.object(self.dbt_source_obj.source_config, "includeTags", False):
+            columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+        mock_fqn.split.assert_not_called()
+        assert len(columns) == 1
+
+    def test_parse_exposure_node_exposure_absent(self):
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)
+
+        parsed_exposures = [
+            self.dbt_source_obj.parse_exposure_node(node) for _, node in dbt_objects.dbt_manifest.exposures.items()
+        ]
+
+        assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_parse_exposure_node_exposure_happy_path(self, get_by_name):
+        get_by_name.side_effect = EXPECTED_EXPOSURE_ENTITIES
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+
+        parsed_exposures = [
+            self.dbt_source_obj.parse_exposure_node(node) for _, node in dbt_objects.dbt_manifest.exposures.items()
+        ]
+
+        assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 3
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_parse_exposure_node_exposure_broken_exposures(self, get_by_name):
+        """
+        Test on data where there is one exposure with missing open_metadata_fqn and one with unsupported type.
+        """
+        get_by_name.side_effect = EXPECTED_EXPOSURE_ENTITIES
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_VERSIONLESS_BROKEN_EXPOSURES)
+
+        parsed_exposures = [
+            self.dbt_source_obj.parse_exposure_node(node) for _, node in dbt_objects.dbt_manifest.exposures.items()
+        ]
+
+        assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0
+
+    # Test Domain functionality
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.format_domain_reference")
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
+    def test_get_dbt_domain_success(self, mock_find_domain, mock_format_domain):
+        """
+        Test successful domain extraction from meta.openmetadata.domain
+        """
+        test_uuid = str(uuid.uuid4())
+
+        mock_domain = MagicMock()
+        mock_find_domain.return_value = mock_domain
+
+        mock_format_domain.return_value = {
+            "id": test_uuid,
+            "type": "domain",
+            "name": "Finance",
+            "fullyQualifiedName": "Finance",
+        }
+
+        manifest_node = MagicMock()
+        manifest_node.meta = {"openmetadata": {"domain": "Finance"}}
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(str(result.id.root), test_uuid)
+        self.assertEqual(result.type, "domain")
+        self.assertEqual(result.name, "Finance")
+        mock_find_domain.assert_called_once_with(self.dbt_source_obj.metadata, "Finance")
+        mock_format_domain.assert_called_once_with(mock_domain)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_domain_by_name")
+    def test_get_dbt_domain_not_found(self, mock_find_domain):
+        """
+        Test when domain is specified but not found in OpenMetadata
+        """
+        mock_find_domain.return_value = None
+
+        manifest_node = MagicMock()
+        manifest_node.meta = {"openmetadata": {"domain": "NonExistentDomain"}}
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNone(result)
+
+    def test_get_dbt_domain_no_meta(self):
+        """
+        Test when manifest node has no meta field
+        """
+        manifest_node = MagicMock()
+        manifest_node.meta = None
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNone(result)
+
+    def test_get_dbt_domain_no_openmetadata_section(self):
+        """
+        Test when meta exists but no openmetadata section
+        """
+        manifest_node = MagicMock()
+        manifest_node.meta = {"some_field": "value"}
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNone(result)
+
+    # Test custom_properties validation utilities
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_find_domain_by_name(self, mock_get_by_name):
+        """
+        Test domain lookup by name
+        """
+        mock_domain = MagicMock()
+        mock_domain.id = "domain-456"
+        mock_domain.name = "Marketing"
+        mock_get_by_name.return_value = mock_domain
+
+        result = find_domain_by_name(self.dbt_source_obj.metadata, "Marketing")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "Marketing")
+        mock_get_by_name.assert_called_once_with(entity=Domain, fqn="Marketing")
+
+    def test_format_domain_reference(self):
+        """
+        Test formatting of domain reference
+        """
+        mock_domain = MagicMock()
+        mock_domain.id.root = "domain-789"
+        mock_domain.name = "Sales"
+        mock_domain.fullyQualifiedName.root = "Sales"
+
+        result = format_domain_reference(mock_domain)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["id"], "domain-789")
+        self.assertEqual(result["type"], "domain")
+        self.assertEqual(result["name"], "Sales")
+        self.assertEqual(result["fullyQualifiedName"], "Sales")
+
+    def test_format_domain_reference_with_exception(self):
+        """
+        Test domain reference formatting with malformed domain
+        """
+
+        # Test with None
+        result = format_domain_reference(None)
+        self.assertIsNone(result)
+
+        # Test with an object that will cause AttributeError
+        class BadDomain:
+            def __getattr__(self, name):
+                raise AttributeError(f"No attribute {name}")
+
+        bad_domain = BadDomain()
+        result = format_domain_reference(bad_domain)
+        self.assertIsNone(result)
+
+        # Test with empty object
+        empty_obj = object()
+        result = format_domain_reference(empty_obj)
+        self.assertIsNone(result)
+
+    # Test loading OMD custom properties definitions
+
+    def test_load_omd_custom_properties_success(self):
+        """
+        Test loading of OMD custom properties definitions
+        """
+        mock_response = {
+            "customProperties": [
+                {
+                    "name": "dataRetentionDays",
+                    "propertyType": {"name": "integer"},
+                    "description": "Data retention period",
+                },
+                {
+                    "name": "businessOwner",
+                    "propertyType": {"name": "entityReference"},
+                    "description": "Business owner",
+                },
+            ]
+        }
+
+        original_get = self.dbt_source_obj.metadata.client.get
+        self.dbt_source_obj.metadata.client.get = MagicMock(return_value=mock_response)
+        self.dbt_source_obj.omd_custom_properties = {}
+
+        self.dbt_source_obj._load_omd_custom_properties()
+
+        self.assertEqual(len(self.dbt_source_obj.omd_custom_properties), 2)
+        self.assertIn("dataRetentionDays", self.dbt_source_obj.omd_custom_properties)
+        self.assertIn("businessOwner", self.dbt_source_obj.omd_custom_properties)
+
+        self.dbt_source_obj.metadata.client.get = original_get
+
+    def test_load_omd_custom_properties_error(self):
+        """
+        Test loading OMD custom properties with API error
+        """
+        original_get = self.dbt_source_obj.metadata.client.get
+        self.dbt_source_obj.metadata.client.get = MagicMock(side_effect=Exception("API Error"))
+        self.dbt_source_obj.omd_custom_properties = {}
+
+        self.dbt_source_obj._load_omd_custom_properties()
+
+        self.assertEqual(len(self.dbt_source_obj.omd_custom_properties), 0)
+
+        self.dbt_source_obj.metadata.client.get = original_get
+
+    # Test Domain processing functionality
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_domain")
+    def test_process_dbt_domain_success(self, mock_patch_domain, mock_find_domain):
+        """
+        Test successful processing of DBT domain with new implementation
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        # Mock domain entity
+        mock_domain_entity = MagicMock()
+        mock_domain_entity.id.root = str(uuid.uuid4())
+        mock_domain_entity.name.root = "Finance"
+        mock_domain_entity.fullyQualifiedName.root = "Finance"
+
+        mock_find_domain.return_value = mock_domain_entity
+        mock_patch_domain.return_value = mock_table
+
+        # Set up extracted domains
+        self.dbt_source_obj.extracted_domains = {"service.db.schema.table1": "Finance"}
+
+        self.dbt_source_obj.process_dbt_domain(data_model_link)
+
+        mock_find_domain.assert_called_once()
+        mock_patch_domain.assert_called_once()
+
+    def test_process_dbt_domain_no_domain(self):
+        """
+        Test processing when no domain is set
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        self.dbt_source_obj.extracted_domains = {}
+
+        self.dbt_source_obj.process_dbt_domain(data_model_link)
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
+    def test_process_dbt_domain_entity_not_found(self, mock_find_domain):
+        """
+        Test when domain entity is not found
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        mock_find_domain.return_value = None
+
+        self.dbt_source_obj.extracted_domains = {"service.db.schema.table1": "NonExistentDomain"}
+
+        self.dbt_source_obj.process_dbt_domain(data_model_link)
+
+    # Test Custom Properties processing functionality
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
+    def test_process_dbt_custom_properties_success(self, mock_patch_custom_properties):
+        """
+        Test successful processing of custom properties with new implementation
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+        mock_table.id = str(uuid.uuid4())
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        # Set up OMD custom properties
+        self.dbt_source_obj.omd_custom_properties = {
+            "dataRetentionDays": {
+                "name": "dataRetentionDays",
+                "propertyType": {"name": "integer"},
+            },
+            "businessOwner": {
+                "name": "businessOwner",
+                "propertyType": {"name": "string"},
+            },
+        }
+
+        custom_properties = {"dataRetentionDays": 90, "businessOwner": "john.doe"}
+
+        self.dbt_source_obj.extracted_custom_properties = {"service.db.schema.table1": custom_properties}
+
+        mock_patch_custom_properties.return_value = mock_table
+
+        self.dbt_source_obj.process_dbt_custom_properties(data_model_link)
+
+        mock_patch_custom_properties.assert_called_once()
+
+    def test_process_dbt_custom_properties_no_properties(self):
+        """
+        Test processing when no custom properties are set
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        self.dbt_source_obj.extracted_custom_properties = {}
+
+        self.dbt_source_obj.process_dbt_custom_properties(data_model_link)
+
+    def test_validate_custom_properties_success(self):
+        """
+        Test successful validation of custom properties
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        self.dbt_source_obj.omd_custom_properties = {
+            "dataRetentionDays": {
+                "name": "dataRetentionDays",
+                "propertyType": {"name": "integer"},
+            },
+            "businessOwner": {
+                "name": "businessOwner",
+                "propertyType": {"name": "string"},
+            },
+        }
+
+        custom_properties = {
+            "dataRetentionDays": 90,
+            "businessOwner": "john.doe",
+        }
+
+        result = self.dbt_source_obj._validate_custom_properties(mock_table, custom_properties)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result["dataRetentionDays"], 90)
+        self.assertEqual(result["businessOwner"], "john.doe")
+
+    def test_validate_custom_properties_type_mismatch(self):
+        """
+        Test validation with type mismatches
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        self.dbt_source_obj.omd_custom_properties = {
+            "dataRetentionDays": {
+                "name": "dataRetentionDays",
+                "propertyType": {"name": "integer"},
+            }
+        }
+
+        custom_properties = {"dataRetentionDays": "ninety"}
+
+        result = self.dbt_source_obj._validate_custom_properties(mock_table, custom_properties)
+
+        self.assertIsNone(result)
+
+    def test_validate_custom_properties_unknown_property(self):
+        """
+        Test validation with unknown custom property
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        self.dbt_source_obj.omd_custom_properties = {}
+
+        custom_properties = {"unknownProperty": "value"}
+
+        result = self.dbt_source_obj._validate_custom_properties(mock_table, custom_properties)
+
+        self.assertIsNone(result)
+
+    # New comprehensive tests for custom property validation
+
+    def test_validate_email_format_valid(self):
+        """Test valid email format"""
+        self.assertTrue(validate_email_format("user@example.com"))
+        self.assertTrue(validate_email_format("first.last+tag@domain.co.uk"))
+
+    def test_validate_email_format_invalid(self):
+        """Test invalid email format"""
+        self.assertFalse(validate_email_format("notanemail"))
+        self.assertFalse(validate_email_format("@example.com"))
+        self.assertFalse(validate_email_format("user@"))
+
+    def test_convert_java_to_python_format(self):
+        """Test Java to Python date format conversion"""
+        self.assertEqual(convert_java_to_python_format("yyyy-MM-dd"), "%Y-%m-%d")
+        self.assertEqual(convert_java_to_python_format("yyyy-MM-dd HH:mm:ss"), "%Y-%m-%d %H:%M:%S")
+        self.assertEqual(convert_java_to_python_format("MMM dd, yyyy"), "%b %d, %Y")
+
+    def test_validate_date_time_format_valid(self):
+        """Test valid date/time format"""
+        is_valid, error = validate_date_time_format("2024-01-15", "yyyy-MM-dd", "date-cp")
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+
+        is_valid, error = validate_date_time_format("2024-01-15 14:30:00", "yyyy-MM-dd HH:mm:ss", "dateTime-cp")
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+
+    def test_validate_date_time_format_invalid(self):
+        """Test invalid date/time format"""
+        is_valid, error = validate_date_time_format("15-01-2024", "yyyy-MM-dd", "date-cp")
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_validate_enum_single_value_valid(self):
+        """Test single enum value validation"""
+        config = {"values": ["option1", "option2", "option3"], "multiSelect": False}
+        is_valid, error, value = validate_enum_value("option1", config)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(value, "option1")
+
+    def test_validate_enum_single_value_invalid(self):
+        """Test invalid single enum value"""
+        config = {"values": ["option1", "option2"], "multiSelect": False}
+        is_valid, error, value = validate_enum_value("invalid", config)  # noqa: RUF059
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_validate_enum_multi_select_all_valid(self):
+        """Test multi-select enum with all valid values"""
+        config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
+        is_valid, error, value = validate_enum_value(["opt1", "opt2"], config)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(value, ["opt1", "opt2"])
+
+    def test_validate_enum_multi_select_partial_valid(self):
+        """Test multi-select enum with some invalid values (should filter)"""
+        config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
+        is_valid, error, value = validate_enum_value(["opt1", "invalid", "opt2"], config)
+        self.assertTrue(is_valid)
+        self.assertIsNotNone(error)
+        self.assertEqual(value, ["opt1", "opt2"])
+
+    def test_validate_enum_multi_select_all_invalid(self):
+        """Test multi-select enum with all invalid values"""
+        config = {"values": ["opt1", "opt2"], "multiSelect": True}
+        is_valid, error, value = validate_enum_value(["bad1", "bad2"], config)  # noqa: RUF059
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_validate_table_structure_valid(self):
+        """Test valid table structure"""
+        config = {"columns": ["col1", "col2", "col3"]}
+        value = {
+            "columns": ["col1", "col2", "col3"],
+            "rows": [
+                {"col1": "val1", "col2": "val2", "col3": "val3"},
+                {"col1": "val4", "col2": "val5", "col3": "val6"},
+            ],
+        }
+        is_valid, error = validate_table_structure(value, config)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+
+    def test_validate_table_structure_extra_columns(self):
+        """Test table with extra columns"""
+        config = {"columns": ["col1", "col2"]}
+        value = {"columns": ["col1", "col2", "col3"]}
+        is_valid, error = validate_table_structure(value, config)
+        self.assertFalse(is_valid)
+        self.assertIn("Extra columns", error)
+
+    def test_validate_table_structure_missing_columns(self):
+        """Test table with missing columns"""
+        config = {"columns": ["col1", "col2", "col3"]}
+        value = {"columns": ["col1", "col2"]}
+        is_valid, error = validate_table_structure(value, config)
+        self.assertFalse(is_valid)
+        self.assertIn("Missing columns", error)
+
+    def test_validate_time_interval_valid(self):
+        """Test valid time interval"""
+        value = {"start": 1000000000, "end": 2000000000}
+        is_valid, error, result = validate_time_interval(value)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(result, value)
+
+    def test_validate_time_interval_invalid_start_after_end(self):
+        """Test time interval with start after end"""
+        value = {"start": 2000000000, "end": 1000000000}
+        is_valid, error, result = validate_time_interval(value)  # noqa: RUF059
+        self.assertFalse(is_valid)
+        self.assertIn("Start time", error)
+
+    def test_validate_time_interval_missing_fields(self):
+        """Test time interval with missing fields"""
+        value = {"start": 1000000000}
+        is_valid, error, result = validate_time_interval(value)  # noqa: RUF059
+        self.assertFalse(is_valid)
+        self.assertIn("Missing required", error)
+
+    def test_validate_custom_property_value_string_type(self):
+        """Test string type validation and conversion"""
+        is_valid, error, value = validate_custom_property_value("testProp", "string", None, "test value")
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(value, "test value")
+
+    def test_validate_custom_property_value_integer_type(self):
+        """Test integer type validation"""
+        is_valid, error, value = validate_custom_property_value("testProp", "integer", None, 42)
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 42)
+
+        is_valid, error, value = validate_custom_property_value("testProp", "integer", None, "not an int")
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_validate_custom_property_value_number_type(self):
+        """Test number type validation"""
+        is_valid, error, value = validate_custom_property_value("testProp", "number", None, 3.14)
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 3.14)
+
+        is_valid, error, value = validate_custom_property_value("testProp", "number", None, 42)  # noqa: RUF059
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 42.0)
+
+    def test_validate_custom_property_value_email_type(self):
+        """Test email type validation"""
+        is_valid, error, value = validate_custom_property_value("testProp", "email", None, "user@example.com")
+        self.assertTrue(is_valid)
+        self.assertEqual(value, "user@example.com")
+
+        is_valid, error, value = validate_custom_property_value("testProp", "email", None, "invalid-email")  # noqa: RUF059
+        self.assertFalse(is_valid)
+
+    def test_validate_custom_property_value_date_cp_type(self):
+        """Test date-cp type validation"""
+        is_valid, error, value = validate_custom_property_value("testProp", "date-cp", "yyyy-MM-dd", "2024-01-15")  # noqa: RUF059
+        self.assertTrue(is_valid)
+        self.assertEqual(value, "2024-01-15")
+
+    def test_validate_custom_property_value_timestamp_type(self):
+        """Test timestamp type validation"""
+        is_valid, error, value = validate_custom_property_value("testProp", "timestamp", None, 1640995200000)
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 1640995200000)
+
+        is_valid, error, value = validate_custom_property_value("testProp", "timestamp", None, "not a timestamp")  # noqa: RUF059
+        self.assertFalse(is_valid)
+
+    def test_validate_custom_property_value_duration_type(self):
+        """Test duration type validation"""
+        is_valid, error, value = validate_custom_property_value("testProp", "duration", None, "P23DT23H")
+        self.assertTrue(is_valid)
+        self.assertEqual(value, "P23DT23H")
+
+        is_valid, error, value = validate_custom_property_value("testProp", "duration", None, "23DT23H")  # noqa: RUF059
+        self.assertFalse(is_valid)
+
+    def test_validate_custom_property_value_enum_type(self):
+        """Test enum type validation with filtering"""
+        config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
+        is_valid, error, value = validate_custom_property_value("testProp", "enum", config, ["opt1", "invalid", "opt2"])  # noqa: RUF059
+        self.assertTrue(is_valid)
+        self.assertEqual(value, ["opt1", "opt2"])
+
+    def test_validate_custom_property_value_none_value(self):
+        """Test None value handling"""
+        is_valid, error, value = validate_custom_property_value("testProp", "string", None, None)  # noqa: RUF059
+        self.assertFalse(is_valid)
+        self.assertIn("cannot be None", error)
+
+    def test_format_validation_error_message(self):
+        """Test error message formatting"""
+        msg = format_validation_error_message("testField", "string", "invalid_value", "Some error detail")
+        self.assertIn("testField", msg)
+        self.assertIn("string", msg)
+        self.assertIn("Some error detail", msg)
+        self.assertIn("invalid_value", msg)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_type_and_fqn")
+    def test_find_entity_by_type_and_fqn_success(self, mock_find):
+        """Test entity lookup by type and FQN"""
+        mock_entity = MagicMock()
+        mock_entity.id.root = "entity-123"
+        mock_entity.name.root = "test_table"
+
+        # Test directly with OpenMetadata client
+        with patch.object(self.dbt_source_obj.metadata, "get_by_name", return_value=mock_entity):
+            result = find_entity_by_type_and_fqn(self.dbt_source_obj.metadata, "table", "service.db.schema.test_table")
+            self.assertIsNotNone(result)
+
+    def test_format_entity_reference(self):
+        """Test entity reference formatting"""
+        mock_entity = MagicMock()
+        mock_entity.id.root = "entity-456"
+        mock_entity.name.root = "test_user"
+        mock_entity.fullyQualifiedName.root = "test_user"
+        mock_entity.displayName.root = "Test User"
+        mock_entity.description.root = "A test user"
+
+        result = format_entity_reference(mock_entity, "user")
+
+        self.assertEqual(result["id"], "entity-456")
+        self.assertEqual(result["type"], "user")
+        self.assertEqual(result["name"], "test_user")
+        self.assertEqual(result["fullyQualifiedName"], "test_user")
+        self.assertEqual(result["displayName"], "Test User")
+        self.assertEqual(result["description"], "A test user")
+
+    def test_dbt_source_project_name(self):
+        """
+        Test that the DBT source project name is correctly set in the data model
+        """
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+
+        # Get expected data models
+        yield_data_models = self.dbt_source_obj.yield_data_models(dbt_objects=dbt_objects)
+
+        for data_model_link in yield_data_models:
+            if isinstance(data_model_link, Either) and data_model_link.right:
+                data_model = data_model_link.right.datamodel
+
+                # Check that the dbtSourceProject field is correctly set
+                self.assertEqual(
+                    data_model.dbtSourceProject,
+                    "jaffle_shop",
+                    "DBT source project should be set to 'jaffle_shop'",
+                )
+
+                # Verify the field exists and is not None
+                self.assertIsNotNone(
+                    data_model.dbtSourceProject,
+                    "dbtSourceProject field should not be None",
+                )
+
+    def test_remove_manifest_non_required_keys_strips_constraint_extra_keys(self):
+        """
+        Regression test: extra keys in constraint objects should be removed from each
+        constraint dict, not from the column dict that contains those constraints.
+        Before the fix, the code iterated over column-level keys and deleted any that
+        weren't in REQUIRED_CONSTRAINT_KEYS, wiping column fields like description,
+        meta, and the constraints list itself — causing false version bumps on every
+        subsequent dbt ingestion run.
+        """
+        manifest = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {
+                "model.project.orders": {
+                    "name": "orders",
+                    "resource_type": "model",
+                    "schema": "public",
+                    "columns": {
+                        "order_id": {
+                            "name": "order_id",
+                            "description": "Primary key for orders",
+                            "meta": {"pii": False},
+                            "tags": ["primary"],
+                            "constraints": [
+                                {
+                                    "type": "not_null",
+                                    "name": "order_id_not_null",
+                                    "expression": None,
+                                    "warn_unenforced": False,
+                                    "warn_unsupported": False,
+                                    "custom_undocumented_key": "should_be_removed",
+                                }
+                            ],
+                        },
+                        "status": {
+                            "name": "status",
+                            "description": "Order status",
+                            "meta": {},
+                            "tags": [],
+                            "constraints": None,
+                        },
+                    },
+                }
+            },
+            "sources": {},
+            "exposures": {},
+        }
+
+        self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=manifest)
+
+        order_id_col = manifest["nodes"]["model.project.orders"]["columns"]["order_id"]
+        status_col = manifest["nodes"]["model.project.orders"]["columns"]["status"]
+
+        # Column-level keys must be preserved — the bug stripped them
+        assert order_id_col["description"] == "Primary key for orders"
+        assert order_id_col["meta"] == {"pii": False}
+        assert order_id_col["tags"] == ["primary"]
+        assert order_id_col["constraints"] is not None
+
+        # Extra key inside constraint should be removed
+        constraint = order_id_col["constraints"][0]
+        assert "custom_undocumented_key" not in constraint
+
+        # Required constraint keys must be preserved
+        assert constraint["type"] == "not_null"
+        assert constraint["name"] == "order_id_not_null"
+        assert constraint["expression"] is None
+        assert constraint["warn_unenforced"] is False
+        assert constraint["warn_unsupported"] is False
+
+        # Column without constraints gets constraints set to None
+        assert status_col["constraints"] is None
+        assert status_col["description"] == "Order status"
+
+    def test_constants_required_constraint_keys(self):
+        """Test REQUIRED_CONSTRAINT_KEYS constant"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            REQUIRED_CONSTRAINT_KEYS,
+        )
+
+        expected_keys = [
+            "type",
+            "name",
+            "expression",
+            "warn_unenforced",
+            "warn_unsupported",
+        ]
+        self.assertEqual(REQUIRED_CONSTRAINT_KEYS, expected_keys)
+
+    def test_constants_required_results_keys(self):
+        """Test REQUIRED_RESULTS_KEYS constant"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            REQUIRED_RESULTS_KEYS,
+        )
+
+        expected_keys = {
+            "status",
+            "timing",
+            "thread_id",
+            "execution_time",
+            "message",
+            "adapter_response",
+            "unique_id",
+        }
+        self.assertEqual(REQUIRED_RESULTS_KEYS, expected_keys)
+
+    def test_constants_required_node_keys(self):
+        """Test REQUIRED_NODE_KEYS constant"""
+        from metadata.ingestion.source.database.dbt.constants import REQUIRED_NODE_KEYS
+
+        expected_keys = {
+            "schema_",
+            "schema",
+            "freshness",
+            "name",
+            "resource_type",
+            "path",
+            "unique_id",
+            "source_name",
+            "source_description",
+            "source_meta",
+            "loader",
+            "identifier",
+            "relation_name",
+            "fqn",
+            "alias",
+            "checksum",
+            "config",
+            "column_name",
+            "test_metadata",
+            "original_file_path",
+            "root_path",
+            "database",
+            "tags",
+            "description",
+            "columns",
+            "meta",
+            "owner",
+            "created_at",
+            "group",
+            "sources",
+            "compiled",
+            "docs",
+            "version",
+            "latest_version",
+            "package_name",
+            "depends_on",
+            "compiled_code",
+            "compiled_sql",
+            "raw_code",
+            "raw_sql",
+            "language",
+        }
+        self.assertEqual(REQUIRED_NODE_KEYS, expected_keys)
+
+    def test_constants_none_keywords_list(self):
+        """Test NONE_KEYWORDS_LIST constant"""
+        from metadata.ingestion.source.database.dbt.constants import NONE_KEYWORDS_LIST
+
+        expected_keywords = ["none", "null"]
+        self.assertEqual(NONE_KEYWORDS_LIST, expected_keywords)
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
+    def test_override_lineage_config_captured(self, test_connection):
+        """Test that overrideLineage config is properly captured"""
+        test_connection.return_value = False
+
+        # Test with overrideLineage set to True
+        config_with_override = deepcopy(mock_dbt_config)
+        config_with_override["source"]["sourceConfig"]["config"]["overrideLineage"] = True
+
+        config = OpenMetadataWorkflowConfig.model_validate(config_with_override)
+        dbt_source = DbtSource.create(
+            config_with_override["source"],
+            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+        )
+
+        self.assertTrue(dbt_source.source_config.overrideLineage)
+
+        # Test default (when not set) is False
+        self.assertFalse(self.dbt_source_obj.source_config.overrideLineage)
+
+    def test_constants_exposure_type_map(self):
+        """Test ExposureTypeMap constant"""
+        from metadata.ingestion.source.database.dbt.constants import ExposureTypeMap
+
+        self.assertIn("dashboard", ExposureTypeMap)
+        self.assertIn("ml", ExposureTypeMap)
+        self.assertIn("application", ExposureTypeMap)
+
+        dashboard_mapping = ExposureTypeMap["dashboard"]
+        self.assertEqual(dashboard_mapping["entity_type"], Dashboard)
+        self.assertEqual(dashboard_mapping["entity_type_name"], "dashboard")
+
+        ml_mapping = ExposureTypeMap["ml"]
+        self.assertEqual(ml_mapping["entity_type"], MlModel)
+        self.assertEqual(ml_mapping["entity_type_name"], "mlmodel")
+
+        app_mapping = ExposureTypeMap["application"]
+        self.assertEqual(app_mapping["entity_type"], APIEndpoint)
+        self.assertEqual(app_mapping["entity_type_name"], "apiEndpoint")
+
+    def test_parse_upstream_nodes_source_schema_handling(self):
+        """Test that source nodes get schema name '*' in upstream parsing"""
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        mock_source_node = MagicMock()
+        mock_source_node.resource_type = DbtCommonEnum.SOURCE.value
+        mock_source_node.database = "test_db"
+        mock_source_node.schema_ = "test_schema"
+        mock_source_node.name = "test_source"
+
+        mock_model_node = MagicMock()
+        mock_model_node.depends_on.nodes = ["source.test.test_source"]
+
+        manifest_entities = {"source.test.test_source": mock_source_node}
+
+        with patch.object(  # noqa: SIM117
+            self.dbt_source_obj,
+            "_get_table_entity",
+            return_value=MOCK_TABLE_ENTITIES[0],
+        ):
+            with patch.object(
+                self.dbt_source_obj,
+                "is_filtered",
+                return_value=MagicMock(is_filtered=False),
+            ):
+                with patch(
+                    "metadata.ingestion.source.database.dbt.dbt_utils.get_dbt_model_name",
+                    return_value="test_source",
+                ):
+                    with patch(
+                        "metadata.ingestion.source.database.dbt.dbt_utils.get_corrected_name",
+                        side_effect=lambda x: x,
+                    ):
+                        with patch("metadata.utils.fqn.build") as mock_fqn_build:
+                            mock_fqn_build.return_value = "test.*.test_schema.test_source"
+
+                            self.dbt_source_obj.parse_upstream_nodes(manifest_entities, mock_model_node)
+
+                            # Verify that schema_name="*" was used for source node
+                            calls = mock_fqn_build.call_args_list
+                            schema_name_used = None
+                            for call in calls:
+                                if "schema_name" in call[1]:
+                                    schema_name_used = call[1]["schema_name"]
+                                    break
+                            self.assertEqual(schema_name_used, "test_schema")
+
+    def test_yield_data_models_processes_sources_key(self):
+        """Test that yield_data_models processes both nodes and sources keys from manifest"""
+        mock_manifest = MagicMock()
+        mock_manifest.sources = {"source.test.table1": MagicMock()}
+        mock_manifest.nodes = {"model.test.table2": MagicMock()}
+        mock_manifest.exposures = {"exposure.test.dashboard1": MagicMock()}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest = mock_manifest
+        mock_dbt_objects.dbt_catalog = None
+        mock_dbt_objects.dbt_run_results = None
+        mock_dbt_objects.dbt_sources = None
+
+        # Verify that manifest_entities includes both sources and nodes
+        for data_model in self.dbt_source_obj.yield_data_models(mock_dbt_objects):  # noqa: B007
+            pass
+
+        # The method should process entities from sources, nodes, and exposures
+        # We expect the context to be populated with the combined entities
+        self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "data_model_links"))
+        self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "exposures"))
+        self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "dbt_tests"))
+
+    def test_yield_data_models_source_node_schema_handling(self):
+        """Test that source nodes has correct schema name in yield_data_models"""
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        # Create a mock source node
+        mock_source_node = MagicMock()
+        mock_source_node.resource_type = DbtCommonEnum.SOURCE.value
+        mock_source_node.database = "test_db"
+        mock_source_node.schema_ = "actual_schema"
+        mock_source_node.name = "test_source"
+        mock_source_node.description = "Test source description"
+        mock_source_node.tags = []
+        mock_source_node.meta = {}
+
+        manifest_entities = {"source.test.test_source": mock_source_node}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest.sources = manifest_entities
+        mock_dbt_objects.dbt_manifest.nodes = {}
+        mock_dbt_objects.dbt_manifest.exposures = {}
+        mock_dbt_objects.dbt_catalog = None
+        mock_dbt_objects.dbt_run_results = None
+        mock_dbt_objects.dbt_sources = None
+
+        with patch.object(  # noqa: SIM117
+            self.dbt_source_obj,
+            "is_filtered",
+            return_value=MagicMock(is_filtered=False),
+        ):
+            with patch.object(
+                self.dbt_source_obj,
+                "_get_table_entity",
+                return_value=MOCK_TABLE_ENTITIES[0],
+            ):
+                with patch(
+                    "metadata.ingestion.source.database.dbt.dbt_utils.get_dbt_model_name",
+                    return_value="test_source",
+                ):
+                    with patch(
+                        "metadata.ingestion.source.database.dbt.dbt_utils.get_corrected_name",
+                        side_effect=lambda x: x,
+                    ):
+                        with patch("metadata.utils.fqn.build") as mock_fqn_build:
+                            mock_fqn_build.return_value = "test_service.test_db.*.test_source"
+
+                            # Process the source node
+                            list(self.dbt_source_obj.yield_data_models(mock_dbt_objects))
+
+                            # Verify that schema_name="*" was used for source node
+                            calls = mock_fqn_build.call_args_list
+                            schema_name_used = None
+                            for call in calls:
+                                if "schema_name" in call[1]:
+                                    schema_name_used = call[1]["schema_name"]
+                                    break
+                            self.assertEqual(schema_name_used, "actual_schema")
+
+    @patch("metadata.utils.tag_utils.get_ometa_tag_and_classification")
+    @patch("metadata.utils.fqn.build")
+    def test_yield_dbt_tags_deduplication(self, mock_fqn_build, mock_get_ometa_tag_and_classification):
+        """Test that duplicate tags are deduplicated before FQN building"""
+        mock_fqn_build.side_effect = lambda _, __, classification_name, tag_name: f"{classification_name}.{tag_name}"
+        mock_get_ometa_tag_and_classification.return_value = []
+
+        mock_node_1 = MagicMock()
+        mock_node_1.resource_type = "model"
+        mock_node_1.tags = ["tag1", "tag2", "tag3"]
+        mock_node_1.columns = {}
+
+        mock_node_2 = MagicMock()
+        mock_node_2.resource_type = "model"
+        mock_node_2.tags = ["tag2", "tag3", "tag4"]
+        mock_node_2.columns = {}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest.nodes = {
+            "model.test.table1": mock_node_1,
+            "model.test.table2": mock_node_2,
+        }
+        mock_dbt_objects.dbt_manifest.sources = {}
+
+        list(self.dbt_source_obj.yield_dbt_tags(mock_dbt_objects))
+
+        call_args = mock_fqn_build.call_args_list
+        tag_names_used = [call[1]["tag_name"] for call in call_args]
+
+        self.assertEqual(len(tag_names_used), 4)
+        self.assertEqual(set(tag_names_used), {"tag1", "tag2", "tag3", "tag4"})
+
+    @patch("metadata.utils.tag_utils.get_ometa_tag_and_classification")
+    @patch("metadata.utils.fqn.build")
+    def test_yield_dbt_tags_column_deduplication(self, mock_fqn_build, mock_get_ometa_tag_and_classification):
+        """Test that duplicate tags from columns are deduplicated"""
+        mock_fqn_build.side_effect = lambda _, __, classification_name, tag_name: f"{classification_name}.{tag_name}"
+        mock_get_ometa_tag_and_classification.return_value = []
+
+        mock_column_1 = MagicMock()
+        mock_column_1.tags = ["col_tag1", "col_tag2"]
+
+        mock_column_2 = MagicMock()
+        mock_column_2.tags = ["col_tag2", "col_tag3"]
+
+        mock_node = MagicMock()
+        mock_node.resource_type = "model"
+        mock_node.tags = ["model_tag", "col_tag1"]
+        mock_node.columns = {"column1": mock_column_1, "column2": mock_column_2}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest.nodes = {"model.test.table1": mock_node}
+        mock_dbt_objects.dbt_manifest.sources = {}
+
+        list(self.dbt_source_obj.yield_dbt_tags(mock_dbt_objects))
+
+        call_args = mock_fqn_build.call_args_list
+        tag_names_used = [call[1]["tag_name"] for call in call_args]
+
+        self.assertEqual(len(tag_names_used), 4)
+        self.assertEqual(set(tag_names_used), {"model_tag", "col_tag1", "col_tag2", "col_tag3"})
+
+    @patch("metadata.utils.tag_utils.get_ometa_tag_and_classification")
+    @patch("metadata.utils.fqn.build")
+    def test_yield_dbt_tags_empty_list(self, mock_fqn_build, mock_get_ometa_tag_and_classification):
+        """Test that empty tag list is handled correctly"""
+        mock_get_ometa_tag_and_classification.return_value = []
+
+        mock_node = MagicMock()
+        mock_node.resource_type = "model"
+        mock_node.tags = []
+        mock_node.columns = {}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest.nodes = {"model.test.table1": mock_node}
+        mock_dbt_objects.dbt_manifest.sources = {}
+
+        list(self.dbt_source_obj.yield_dbt_tags(mock_dbt_objects))
+
+        mock_fqn_build.assert_not_called()
+
+    @patch("metadata.utils.tag_utils.get_ometa_tag_and_classification")
+    @patch("metadata.utils.fqn.build")
+    def test_yield_dbt_tags_skip_resource_types(self, mock_fqn_build, mock_get_ometa_tag_and_classification):
+        """Test that skipped resource types are not processed"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            SkipResourceTypeEnum,
+        )
+
+        mock_fqn_build.side_effect = lambda _, __, classification_name, tag_name: f"{classification_name}.{tag_name}"
+        mock_get_ometa_tag_and_classification.return_value = []
+
+        mock_node_skip = MagicMock()
+        mock_node_skip.resource_type = SkipResourceTypeEnum.TEST.value
+        mock_node_skip.tags = ["skip_tag"]
+        mock_node_skip.columns = {}
+
+        mock_node_process = MagicMock()
+        mock_node_process.resource_type = "model"
+        mock_node_process.tags = ["process_tag"]
+        mock_node_process.columns = {}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest.nodes = {
+            "test.test.skip": mock_node_skip,
+            "model.test.process": mock_node_process,
+        }
+        mock_dbt_objects.dbt_manifest.sources = {}
+
+        list(self.dbt_source_obj.yield_dbt_tags(mock_dbt_objects))
+
+        call_args = mock_fqn_build.call_args_list
+        tag_names_used = [call[1]["tag_name"] for call in call_args]
+
+        self.assertEqual(len(tag_names_used), 1)
+        self.assertEqual(tag_names_used[0], "process_tag")
+
+    def test_dbt_snapshot_columns_none(self):
+        """parse_data_model_columns returns [] without raising when manifest columns is None."""
+        manifest_node = SimpleNamespace(columns=None)
+        columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+        assert columns == []
+
+    def test_dbt_snapshot_target_schema_override(self):
+        """Snapshot config.target_schema and target_database take precedence over node-level fields."""
+        manifest_node = SimpleNamespace(
+            schema_="jaffle_shop",
+            database="dev",
+            config=SimpleNamespace(target_schema="snapshots", target_database="warehouse"),
+        )
+        location = get_snapshot_effective_schema_and_database(manifest_node)
+        assert location.schema_ == "snapshots"
+        assert location.database == "warehouse"
+
+    def test_dbt_snapshot_no_target_schema_override(self):
+        """When target_schema/target_database are None the node-level values are used."""
+        manifest_node = SimpleNamespace(
+            schema_="jaffle_shop",
+            database="dev",
+            config=SimpleNamespace(target_schema=None, target_database=None),
+        )
+        location = get_snapshot_effective_schema_and_database(manifest_node)
+        assert location.schema_ == "jaffle_shop"
+        assert location.database == "dev"
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_dbt_snapshot_datamodel(self, es_search_from_fqn, get_dbt_owner):
+        """Snapshot nodes with columns=null and target_schema produce a DataModelLink, not an error."""
+        get_dbt_owner.return_value = None
+        es_search_from_fqn.return_value = [
+            Table(
+                id=uuid.uuid4(),
+                name="snap_orders",
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+                fullyQualifiedName="dbt_test.dev.snapshots.snap_orders",
+                columns=[],
+            )
+        ]
+
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_SNAPSHOT)
+        data_model_links = []
+        errors = []
+        for result in self.dbt_source_obj.yield_data_models(dbt_objects=dbt_objects):
+            if isinstance(result, Either) and result.right:
+                data_model_links.append(result.right)
+            elif isinstance(result, Either) and result.left:
+                errors.append(result.left)
+
+        assert errors == [], f"Expected no errors but got: {errors}"
+        assert len(data_model_links) == 1
+        snapshot_dm = data_model_links[0].datamodel
+        assert snapshot_dm.resourceType == "snapshot"
+        assert snapshot_dm.columns == []
+
+    def test_parse_upstream_nodes_snapshot_target_schema(self):
+        """A model that depends_on a snapshot with target_schema override must resolve lineage using the effective schema."""
+        snap_key = "snapshot.jaffle_shop.snap_orders"
+        model_key = "model.jaffle_shop.orders"
+
+        snapshot_node = SimpleNamespace(
+            resource_type="snapshot",
+            name="snap_orders",
+            database="dev",
+            schema_="raw",
+            config=SimpleNamespace(target_schema="snapshots", target_database=None),
+            config_materialized=None,
+            depends_on=SimpleNamespace(nodes=[]),
+        )
+
+        model_node = SimpleNamespace(
+            resource_type="model",
+            name="orders",
+            database="dev",
+            schema_="public",
+            config=SimpleNamespace(target_schema=None, target_database=None),
+            config_materialized=None,
+            depends_on=SimpleNamespace(nodes=[snap_key]),
+        )
+
+        manifest_entities = {snap_key: snapshot_node, model_key: model_node}
+
+        expected_fqn = "dbt_test.dev.snapshots.snap_orders"
+
+        def fake_get_table_entity(table_fqn):
+            if table_fqn == expected_fqn:
+                return MagicMock()
+            return None
+
+        with patch.object(self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity):  # noqa: SIM117
+            with patch.object(
+                self.dbt_source_obj,
+                "is_filtered",
+                return_value=MagicMock(is_filtered=False),
+            ):
+                with patch(
+                    "metadata.ingestion.source.database.dbt.metadata.get_dbt_model_name",
+                    return_value="snap_orders",
+                ):
+                    with patch(
+                        "metadata.ingestion.source.database.dbt.metadata.get_corrected_name",
+                        side_effect=lambda x: x,
+                    ):
+                        with patch(
+                            "metadata.ingestion.source.database.dbt.metadata.fqn.build",
+                            side_effect=lambda *args, **kwargs: (
+                                f"dbt_test.{kwargs.get('database_name')}.{kwargs.get('schema_name')}.{kwargs.get('table_name')}"
+                            ),
+                        ):
+                            result = self.dbt_source_obj.parse_upstream_nodes(manifest_entities, model_node)
+
+        assert result == [expected_fqn], f"Expected lineage to resolve via target_schema 'snapshots', got: {result}"
+
+    def test_dbt_entity_link_with_mixed_case_columns_issue_24636(self):
+        """
+        Test for issue #24636: dbt test case ingestion fails with relationship tests.
+
+        Root cause: dbt relationship tests have multiple upstream dependencies, but the
+        order varies by database engine (Snowflake first, Unity Catalog last). Previously,
+        code iterated over ALL upstream tables, causing column validation errors when
+        the referenced table didn't have the same column names.
+
+        Fix: Extract primary table from test_metadata.kwargs['model'] explicitly,
+        which is order-independent and works across all database engines.
+        """
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+
+        # Test case 1: Relationship test with kwargs['model'] extraction (main code path)
+        # This test exercises the primary fix for issue #24636
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_"
+        )
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table
+                "unity.catalog.schema.un_person_base",  # Referenced table
+            ],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        # Should return only one entity link (for the primary table)
+        self.assertEqual(len(result), 1, "Should only create one entity link for primary table")
+        # Link should be to the primary table extracted from kwargs['model']
+        self.assertIn("un_rueckerstattungen_medis_base", result[0])
+        self.assertIn("::columns::PersonNr>", result[0])
+        self.assertNotIn("un_person_base", result[0])
+
+        # Test case 2: Verify kwargs['model'] path works with REVERSED upstream order
+        # This proves the fix is order-independent (the bug in #24636)
+        dbt_test_reversed = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_person_base",  # Referenced table FIRST
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table LAST
+            ],
+            "results": "",
+        }
+        result_reversed = generate_entity_link(dbt_test=dbt_test_reversed)
+        # Should still return the primary table, proving kwargs['model'] extraction works
+        self.assertEqual(
+            len(result_reversed),
+            1,
+            "Should return primary table regardless of upstream order",
+        )
+        self.assertIn("un_rueckerstattungen_medis_base", result_reversed[0])
+        self.assertIn("::columns::PersonNr>", result_reversed[0])
+        self.assertNotIn("un_person_base", result_reversed[0])
+
+        # Test case 3: Fallback to first upstream when kwargs['model'] is unavailable
+        # This tests the fallback path (lines 720-722)
+        manifest_node_fallback = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        dbt_test_fallback = {
+            "manifest_node": manifest_node_fallback,
+            "upstream": [
+                "unity.catalog.schema.un_abrechnungsposition_cur",  # First table
+                "unity.catalog.schema.un_person_base",  # Second table
+            ],
+            "results": "",
+        }
+        result_fallback = generate_entity_link(dbt_test=dbt_test_fallback)
+        # Should fall back to first upstream since model pattern doesn't match
+        self.assertEqual(len(result_fallback), 1)
+        self.assertIn("un_abrechnungsposition_cur", result_fallback[0])
+
+
+class TestDownloadDbtFiles(TestCase):
+    """
+    Test cases for download_dbt_files function to verify manifest enforcement
+    """
+
+    def test_download_dbt_files_manifest_found(self):
+        """Test that download_dbt_files yields DbtFiles when manifest is found"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_MANIFEST_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}, "sources": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {"/path/to/dbt": [f"/path/to/dbt/{DBT_MANIFEST_FILE_NAME}"]}
+
+            result = list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertIsNotNone(result[0].dbt_manifest)
+
+    def test_download_dbt_files_no_manifest_raises_exception(self):
+        """Test that download_dbt_files raises DBTConfigException when no manifest found"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            # Only catalog file, no manifest
+            blob_grouped = {"/path/to/dbt": [f"/path/to/dbt/{DBT_CATALOG_FILE_NAME}"]}
+
+            with self.assertRaises(DBTConfigException) as context:
+                list(
+                    download_dbt_files(
+                        blob_grouped_by_directory=blob_grouped,
+                        config=MagicMock(),
+                        client=None,
+                        bucket_name=None,
+                    )
+                )
+
+            self.assertIn("No valid dbt manifest.json found", str(context.exception))
+
+    def test_download_dbt_files_empty_directory_raises_exception(self):
+        """Test that download_dbt_files raises DBTConfigException for empty blob directory"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        # Empty blob grouped dictionary
+        blob_grouped = {}
+
+        with self.assertRaises(DBTConfigException) as context:
+            list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+        self.assertIn("No valid dbt manifest.json found", str(context.exception))
+        self.assertIn("No dbt artifacts found", str(context.exception))
+
+    def test_download_dbt_files_multiple_dirs_one_manifest_succeeds(self):
+        """Test that download_dbt_files succeeds when at least one directory has manifest"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+            DBT_MANIFEST_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}, "sources": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {
+                # First directory has only catalog (will fail)
+                "/path/to/dbt1": [f"/path/to/dbt1/{DBT_CATALOG_FILE_NAME}"],
+                # Second directory has manifest (will succeed)
+                "/path/to/dbt2": [f"/path/to/dbt2/{DBT_MANIFEST_FILE_NAME}"],
+            }
+
+            result = list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+            # Should have one successful result from the directory with manifest
+            self.assertEqual(len(result), 1)
+            self.assertIsNotNone(result[0].dbt_manifest)
+
+    def test_download_dbt_files_multiple_dirs_no_manifest_raises(self):
+        """Test that download_dbt_files raises when no directory has manifest"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            # Neither directory has manifest
+            blob_grouped = {
+                "/path/to/dbt1": [f"/path/to/dbt1/{DBT_CATALOG_FILE_NAME}"],
+                "/path/to/dbt2": [f"/path/to/dbt2/{DBT_CATALOG_FILE_NAME}"],
+            }
+
+            with self.assertRaises(DBTConfigException) as context:
+                list(
+                    download_dbt_files(
+                        blob_grouped_by_directory=blob_grouped,
+                        config=MagicMock(),
+                        client=None,
+                        bucket_name=None,
+                    )
+                )
+
+            self.assertIn("No valid dbt manifest.json found", str(context.exception))
+
+    def test_download_dbt_files_collects_errors(self):
+        """Test that download_dbt_files collects and reports errors from failed directories"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {
+                "/path/to/dbt1": [f"/path/to/dbt1/{DBT_CATALOG_FILE_NAME}"],
+                "/path/to/dbt2": [f"/path/to/dbt2/{DBT_CATALOG_FILE_NAME}"],
+            }
+
+            with self.assertRaises(DBTConfigException) as context:
+                list(
+                    download_dbt_files(
+                        blob_grouped_by_directory=blob_grouped,
+                        config=MagicMock(),
+                        client=None,
+                        bucket_name=None,
+                    )
+                )
+
+            error_message = str(context.exception)
+            # Should contain error details from both directories
+            self.assertIn("Manifest file not found at:", error_message)
+
+    def test_download_dbt_files_with_all_artifacts(self):
+        """Test download_dbt_files with all dbt artifacts present"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+            DBT_MANIFEST_FILE_NAME,
+            DBT_RUN_RESULTS_FILE_NAME,
+            DBT_SOURCES_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}, "sources": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {
+                "/path/to/dbt": [
+                    f"/path/to/dbt/{DBT_MANIFEST_FILE_NAME}",
+                    f"/path/to/dbt/{DBT_CATALOG_FILE_NAME}",
+                    f"/path/to/dbt/{DBT_RUN_RESULTS_FILE_NAME}.json",
+                    f"/path/to/dbt/{DBT_SOURCES_FILE_NAME}",
+                ]
+            }
+
+            result = list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertIsNotNone(result[0].dbt_manifest)
+            self.assertIsNotNone(result[0].dbt_catalog)
+            self.assertIsNotNone(result[0].dbt_run_results)
+            self.assertIsNotNone(result[0].dbt_sources)
+
+
+class TestGetLatestResult(TestCase):
+    """
+    Test _get_latest_result picks the most recent result by execute
+    completed_at when the same unique_id appears in multiple run_results files.
+    """
+
+    @staticmethod
+    def _make_result(unique_id, completed_at, status="pass"):
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = completed_at
+        result = MagicMock()
+        result.unique_id = unique_id
+        result.timing = [timing]
+        result.status = MagicMock(value=status)
+        return result
+
+    @staticmethod
+    def _make_dbt_objects(run_results_list):
+        run_results = []
+        for results in run_results_list:
+            rr = MagicMock()
+            rr.results = results
+            run_results.append(rr)
+        dbt_objects = MagicMock()
+        dbt_objects.dbt_run_results = run_results
+        return dbt_objects
+
+    def test_single_match_returned(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        result_a = self._make_result("test.pkg.my_test", "2026-02-12T10:00:00.000000Z")
+        dbt_objects = self._make_dbt_objects([[result_a]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, result_a)
+
+    def test_no_match_returns_none(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        result_a = self._make_result("test.pkg.other", "2026-02-12T10:00:00.000000Z")
+        dbt_objects = self._make_dbt_objects([[result_a]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.missing")
+        self.assertIsNone(got)
+
+    def test_picks_latest_across_files(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        old_result = self._make_result("test.pkg.my_test", "2026-02-12T10:00:00.000000Z", "pass")
+        new_result = self._make_result("test.pkg.my_test", "2026-02-12T14:00:00.000000Z", "fail")
+        dbt_objects = self._make_dbt_objects([[old_result], [new_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)
+
+    def test_picks_latest_regardless_of_order(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        new_result = self._make_result("test.pkg.my_test", "2026-02-12T14:00:00.000000Z", "fail")
+        old_result = self._make_result("test.pkg.my_test", "2026-02-12T10:00:00.000000Z", "pass")
+        dbt_objects = self._make_dbt_objects([[new_result], [old_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)
+
+    def test_falls_back_to_first_when_no_timestamps(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        result_a = self._make_result("test.pkg.my_test", None, "pass")
+        result_b = self._make_result("test.pkg.my_test", None, "fail")
+        dbt_objects = self._make_dbt_objects([[result_a], [result_b]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, result_a)
+
+    def test_datetime_objects_handled(self):
+        from datetime import datetime
+
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        old_result = self._make_result("test.pkg.my_test", datetime(2026, 2, 12, 10, 0, 0), "pass")
+        new_result = self._make_result("test.pkg.my_test", datetime(2026, 2, 12, 14, 0, 0), "fail")
+        dbt_objects = self._make_dbt_objects([[old_result], [new_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)
+
+    def test_nanosecond_timestamp_parsed_across_files(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        old_result = self._make_result("test.pkg.my_test", "2026-07-22T09:27:12.123456789Z", "pass")
+        new_result = self._make_result("test.pkg.my_test", "2026-07-22T09:27:12.987654321Z", "fail")
+        dbt_objects = self._make_dbt_objects([[old_result], [new_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)
+
+
+class TestGetLatestResultPrefersExecutedResults:
+    """
+    Regression coverage for the second half of issue #29824.
+
+    A project that keeps both a ``dbt test`` artifact and a later
+    ``dbt docs generate`` artifact has the same test unique_id in both files.
+    Picking purely by ``execute.completed_at`` hands back the compile-only stub
+    from the docs run, and the real pass/fail result is discarded before
+    add_dbt_test_result() ever sees it.
+    """
+
+    @staticmethod
+    def _dbt_objects(*results_specs):
+        run_results = [
+            _parse_run_results_like_production(
+                _run_result_payload(status=status, message=message, completed_at=completed_at)
+            )
+            for status, message, completed_at in results_specs
+        ]
+        return DbtObjects(dbt_manifest=None, dbt_run_results=run_results)
+
+    def test_executed_result_wins_over_later_compile_only_stub(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "pass"
+
+    def test_executed_result_wins_when_stub_is_listed_first(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T07:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_still_wins_among_executed_results(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_stub_is_still_returned_when_nothing_was_executed(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.timing[1].completed_at == datetime.fromisoformat("2026-07-24T09:00:00+00:00")
+
+    def test_no_match_returns_none(self):
+        dbt_objects = self._dbt_objects(("pass", None, "2026-07-24T07:00:00.000000Z"))
+
+        assert DbtSource._get_latest_result(dbt_objects, "test.jaffle_shop.does_not_exist") is None
+
+    def test_executed_result_wins_when_no_timestamp_is_usable(self):
+        """
+        With no ``execute`` timing to rank by, selection falls back to the first
+        candidate. That fallback must run over executed results only, otherwise a
+        stub listed first still wins.
+        """
+        dbt_objects = self._dbt_objects(
+            ("success", None, None),
+            ("fail", "Got 3 results, configured to fail if != 0", None),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_result_survives_end_to_end_through_add_dbt_test_result(self):
+        """
+        The user-visible symptom: with a later docs-generate artifact present,
+        no test case result reaches OpenMetadata at all.
+        """
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        source = TestAddDbtTestResultNullMessage._make_source()
+        source.add_dbt_test_result(TestAddDbtTestResultNullMessage._make_dbt_test(selected))
+
+        kwargs = TestAddDbtTestResultNullMessage._sent_call(source)
+        assert kwargs["test_results"].testCaseStatus == TestCaseStatus.Success
+        assert kwargs["test_results"].timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 7, 0, 0), milliseconds=True
+        )
+
+
+class TestGetBlobsGroupedByDir(TestCase):
+    """
+    Test cases for get_blobs_grouped_by_dir to verify streaming support,
+    correct filtering, and debug logging.
+    """
+
+    def test_accepts_generator_input(self):
+        """Test that get_blobs_grouped_by_dir works with a generator (lazy iterable)"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        def blob_generator():
+            yield "project1/manifest.json"
+            yield "project1/catalog.json"
+            yield "project2/manifest.json"
+
+        result = get_blobs_grouped_by_dir(blobs=blob_generator())
+
+        self.assertEqual(len(result), 2)
+        self.assertIn("project1", result)
+        self.assertIn("project2", result)
+        self.assertEqual(len(result["project1"]), 2)
+        self.assertEqual(len(result["project2"]), 1)
+
+    def test_filters_only_dbt_artifacts(self):
+        """Test that non-dbt files are excluded from grouping"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "project1/manifest.json",
+            "project1/catalog.json",
+            "project1/run_results.json",
+            "project1/sources.json",
+            "project1/some_other_file.csv",
+            "project1/data/large_dataset.parquet",
+            "project1/README.md",
+        ]
+
+        result = get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result["project1"]), 4)
+
+    def test_empty_input(self):
+        """Test with empty iterable"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        result = get_blobs_grouped_by_dir(blobs=iter([]))
+
+        self.assertEqual(len(result), 0)
+
+    def test_groups_by_directory(self):
+        """Test that blobs are correctly grouped by their parent directory"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "team_a/dbt_project/manifest.json",
+            "team_a/dbt_project/catalog.json",
+            "team_b/analytics/manifest.json",
+            "team_b/analytics/run_results.json",
+            "team_c/models/manifest.json",
+        ]
+
+        result = get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result["team_a/dbt_project"]), 2)
+        self.assertEqual(len(result["team_b/analytics"]), 2)
+        self.assertEqual(len(result["team_c/models"]), 1)
+
+    def test_logs_scan_statistics(self):
+        """Test that debug log includes correct scan statistics"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "dir1/manifest.json",
+            "dir1/catalog.json",
+            "dir1/random_file.txt",
+            "dir2/manifest.json",
+            "dir2/another_file.csv",
+        ]
+
+        with patch("metadata.ingestion.source.database.dbt.dbt_config.logger") as mock_logger:
+            get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+            mock_logger.debug.assert_called_once()
+            log_message = mock_logger.debug.call_args[0][0]
+            self.assertIn("Scanned 5 blobs", log_message)
+            self.assertIn("found 3 dbt artifacts", log_message)
+            self.assertIn("2 directories", log_message)
+
+    def test_does_not_materialize_generator(self):
+        """Test that the generator is consumed lazily, not converted to a list"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        consumed_items = []
+
+        def tracking_generator():
+            for item in [
+                "dir/manifest.json",
+                "dir/other.txt",
+                "dir/catalog.json",
+            ]:
+                consumed_items.append(item)
+                yield item
+
+        get_blobs_grouped_by_dir(blobs=tracking_generator())
+
+        # All items should be consumed (the function fully iterates)
+        # but they should not all be held in memory simultaneously as a list
+        self.assertEqual(len(consumed_items), 3)
+
+    def test_multiple_run_results_matched(self):
+        """Test that multiple run_results files (with different prefixes) are matched"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "project/run_results.json",
+            "project/run_results_2024.json",
+            "project/run_results_latest.json",
+        ]
+
+        result = get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+        self.assertEqual(len(result["project"]), 3)
+
+
+class TestStorageStreamingBehavior(TestCase):
+    """
+    Test cases to verify that GCS, S3, and Azure handlers pass lazy
+    iterables to get_blobs_grouped_by_dir (not materialized lists).
+    """
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.set_google_credentials")
+    def test_gcs_passes_generator_to_grouping(self, mock_set_creds, mock_get_blobs, mock_download):
+        """Test that GCS handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
+        from types import GeneratorType
+
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+            DbtGcsConfig,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+        # Get the registered handler for DbtGcsConfig directly
+        gcs_handler = get_dbt_details.dispatch(DbtGcsConfig)
+
+        mock_blob_1 = MagicMock()
+        mock_blob_1.name = "project/manifest.json"
+        mock_blob_2 = MagicMock()
+        mock_blob_2.name = "project/catalog.json"
+
+        mock_bucket = MagicMock()
+        mock_bucket.name = "test-bucket"
+
+        mock_client = MagicMock()
+        mock_client.get_bucket.return_value = mock_bucket
+        mock_client.list_blobs.return_value = iter([mock_blob_1, mock_blob_2])
+
+        mock_get_blobs.return_value = {}
+        mock_download.return_value = iter([])
+
+        config = MagicMock()
+        config.dbtPrefixConfig.dbtBucketName = "test-bucket"
+        config.dbtPrefixConfig.dbtObjectPrefix = None
+
+        with patch("google.cloud.storage.Client", return_value=mock_client):
+            list(gcs_handler(config))
+
+        # Verify get_blobs_grouped_by_dir was called
+        mock_get_blobs.assert_called_once()
+        # Verify the blobs argument is a generator, not a list
+        blobs_arg = mock_get_blobs.call_args[1]["blobs"]
+        self.assertIsInstance(blobs_arg, GeneratorType)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
+    def test_s3_passes_generator_to_grouping(self, mock_get_blobs, mock_download):
+        """Test that S3 handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
+        from types import GeneratorType
+
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
+            DbtS3Config,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+        # Get the registered handler for DbtS3Config directly
+        s3_handler = get_dbt_details.dispatch(DbtS3Config)
+
+        mock_get_blobs.return_value = {}
+        mock_download.return_value = iter([])
+
+        config = MagicMock()
+        config.dbtPrefixConfig.dbtBucketName = "test-bucket"
+        config.dbtPrefixConfig.dbtObjectPrefix = None
+
+        mock_client = MagicMock()
+        mock_client.get_paginator.return_value.paginate.return_value = iter(
+            [{"Contents": [{"Key": "project/manifest.json"}, {"Key": "project/catalog.json"}]}]
+        )
+
+        with patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient") as mock_aws:
+            mock_aws.return_value.get_client.return_value = mock_client
+            list(s3_handler(config))
+
+        mock_get_blobs.assert_called_once()
+        blobs_arg = mock_get_blobs.call_args[1]["blobs"]
+        self.assertIsInstance(blobs_arg, GeneratorType)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
+    def test_azure_passes_generator_to_grouping(self, mock_get_blobs, mock_download):
+        """Test that Azure handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
+        from types import GeneratorType
+
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
+            DbtAzureConfig,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+        # Get the registered handler for DbtAzureConfig directly
+        azure_handler = get_dbt_details.dispatch(DbtAzureConfig)
+
+        mock_blob_1 = MagicMock()
+        mock_blob_1.name = "project/manifest.json"
+        mock_blob_2 = MagicMock()
+        mock_blob_2.name = "project/catalog.json"
+
+        mock_container = MagicMock()
+        mock_container.container_name = "test-container"
+        mock_container.list_blobs.return_value = iter([mock_blob_1, mock_blob_2])
+
+        mock_client = MagicMock()
+        mock_client.get_container_client.return_value = mock_container
+
+        mock_get_blobs.return_value = {}
+        mock_download.return_value = iter([])
+
+        config = MagicMock()
+        config.dbtPrefixConfig.dbtBucketName = "test-container"
+        config.dbtPrefixConfig.dbtObjectPrefix = None
+
+        with patch("metadata.ingestion.source.database.dbt.dbt_config.AzureClient") as mock_azure:
+            mock_azure.return_value.create_blob_client.return_value = mock_client
+            list(azure_handler(config))
+
+        mock_get_blobs.assert_called_once()
+        blobs_arg = mock_get_blobs.call_args[1]["blobs"]
+        self.assertIsInstance(blobs_arg, GeneratorType)
+
+
+class TestFilterLatestPerProject:
+    """Tests for _filter_latest_per_project and _has_date_pattern"""
+
+    def test_empty_dict(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        result = _filter_latest_per_project({})
+        assert result == {}
+
+    def test_single_directory_returns_unchanged(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {"project/target_2025-04-19": ["project/target_2025-04-19/manifest.json"]}
+        result = _filter_latest_per_project(grouped)
+        assert result == grouped
+
+    def test_picks_latest_dated_dir_per_project(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "projectA/target_2025-04-19_18:07:16": [
+                "projectA/target_2025-04-19_18:07:16/manifest.json",
+                "projectA/target_2025-04-19_18:07:16/catalog.json",
+            ],
+            "projectA/target_2025-04-20_10:00:00": [
+                "projectA/target_2025-04-20_10:00:00/manifest.json",
+            ],
+            "projectA/target_2025-04-18_08:00:00": [
+                "projectA/target_2025-04-18_08:00:00/manifest.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "projectA/target_2025-04-20_10:00:00" in result
+
+    def test_multiple_projects_each_keeps_latest(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "projectA/target_2025-04-19": ["projectA/target_2025-04-19/manifest.json"],
+            "projectA/target_2025-04-20": ["projectA/target_2025-04-20/manifest.json"],
+            "projectB/target_2025-04-15": ["projectB/target_2025-04-15/manifest.json"],
+            "projectB/target_2025-04-21": ["projectB/target_2025-04-21/manifest.json"],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 2
+        assert "projectA/target_2025-04-20" in result
+        assert "projectB/target_2025-04-21" in result
+        assert "projectA/target_2025-04-19" not in result
+        assert "projectB/target_2025-04-15" not in result
+
+    def test_non_dated_sibling_dirs_all_kept(self):
+        """Directories without date patterns should all be kept even under the same parent."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "dbt_files/dbt_project_one": [
+                "dbt_files/dbt_project_one/manifest.json",
+                "dbt_files/dbt_project_one/catalog.json",
+            ],
+            "dbt_files/dbt_new_projects/dbt_project_two": [
+                "dbt_files/dbt_new_projects/dbt_project_two/manifest.json",
+                "dbt_files/dbt_new_projects/dbt_project_two/catalog.json",
+            ],
+            "dbt_files/dbt_new_projects/dbt_project_three": [
+                "dbt_files/dbt_new_projects/dbt_project_three/manifest.json",
+                "dbt_files/dbt_new_projects/dbt_project_three/catalog.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 3
+        assert "dbt_files/dbt_project_one" in result
+        assert "dbt_files/dbt_new_projects/dbt_project_two" in result
+        assert "dbt_files/dbt_new_projects/dbt_project_three" in result
+
+    def test_mixed_dated_and_non_dated_dirs(self):
+        """Dated dirs get filtered to latest; non-dated dirs are always kept."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "projectA/target_2025-04-19": ["projectA/target_2025-04-19/manifest.json"],
+            "projectA/target_2025-04-20": ["projectA/target_2025-04-20/manifest.json"],
+            "projectB/some_static_dir": ["projectB/some_static_dir/manifest.json"],
+            "projectB/another_static_dir": ["projectB/another_static_dir/manifest.json"],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 3
+        assert "projectA/target_2025-04-20" in result
+        assert "projectA/target_2025-04-19" not in result
+        assert "projectB/some_static_dir" in result
+        assert "projectB/another_static_dir" in result
+
+    def test_root_level_non_dated_dirs_kept(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "dir_a": ["dir_a/manifest.json"],
+            "dir_b": ["dir_b/manifest.json"],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 2
+        assert "dir_a" in result
+        assert "dir_b" in result
+
+    def test_deeply_nested_dated_dirs(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "org/team/projectA/run_2025-01-01": ["org/team/projectA/run_2025-01-01/manifest.json"],
+            "org/team/projectA/run_2025-06-15": ["org/team/projectA/run_2025-06-15/manifest.json"],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "org/team/projectA/run_2025-06-15" in result
+
+    def test_root_level_dated_dirs_filtered_to_latest(self):
+        """Root-level dated dirs (no parent) should be grouped together and filtered."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "target_2025-04-18": ["target_2025-04-18/manifest.json"],
+            "target_2025-04-19": ["target_2025-04-19/manifest.json"],
+            "target_2025-04-20": [
+                "target_2025-04-20/manifest.json",
+                "target_2025-04-20/catalog.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "target_2025-04-20" in result
+        assert "target_2025-04-18" not in result
+        assert "target_2025-04-19" not in result
+
+    def test_has_date_pattern(self):
+        from metadata.ingestion.source.database.dbt.dbt_config import _has_date_pattern
+
+        assert _has_date_pattern("project/target_2025-04-19") is True
+        assert _has_date_pattern("project/target_2025-04-19_18:07:16") is True
+        assert _has_date_pattern("project/run_2024-12-31") is True
+        assert _has_date_pattern("2025-01-01") is True
+        assert _has_date_pattern("project/dbt_project_one") is False
+        assert _has_date_pattern("project/some_static_dir") is False
+        assert _has_date_pattern("dir_a") is False
+
+
+class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
+    """
+    Tests that add_dbt_test_result() skips entries that were compiled but
+    never executed (produced by dbt jobs that only run ``dbt run``).
+
+    When multiple dbt Cloud jobs share the same project a ``dbt run`` job
+    populates run_results.json with test nodes that have status="success" but
+    message=null because no SQL was actually executed.  These compiled-only
+    entries must not be ingested as real test case results.
+    """
+
+    @staticmethod
+    def _make_dbt_source():
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        # A real instance, so the result builders run for real rather than being
+        # mocked away - a spec'd mock would return a mock TestCaseResult and the
+        # assertions below would hold no matter what the handler does.
+        source = DbtSource.__new__(DbtSource)
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.context = MagicMock()
+        source.context.get.return_value.run_results_generate_time = None
+        return source
+
+    @staticmethod
+    def _make_manifest_node(name="test_not_null_orders_id"):
+        node = MagicMock()
+        node.name = name
+        return node
+
+    @staticmethod
+    def _make_test_result(status, message, timing=None):
+        result = MagicMock()
+        result.status = MagicMock(value=status)
+        result.message = message
+        result.timing = timing or []
+        result.unique_id = f"test.pkg.{status}"
+        return result
+
+    def _make_dbt_test(self, status, message, timing=None, upstream=None):
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(status=status, message=message, timing=timing),
+            DbtCommonEnum.UPSTREAM.value: upstream or [],
+        }
+
+    @staticmethod
+    def _make_parsed_test_result(status, message):
+        run_results = parse_run_results(
+            {
+                "metadata": {
+                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+                    "dbt_version": "1.11.6",
+                    "generated_at": "2026-03-27T07:01:00.000000Z",
+                    "invocation_id": "00000000-0000-0000-0000-000000000000",
+                    "env": {},
+                },
+                "results": [
+                    {
+                        "status": status,
+                        "timing": [
+                            {
+                                "name": "execute",
+                                "started_at": "2026-03-27T07:00:00.000000Z",
+                                "completed_at": "2026-03-27T07:00:01.000000Z",
+                            }
+                        ],
+                        "thread_id": "Thread-1",
+                        "execution_time": 1.0,
+                        "message": message,
+                        "adapter_response": {},
+                        "unique_id": "test.pkg.test_not_null_orders_id",
+                    }
+                ],
+                "elapsed_time": 1.0,
+                "args": {},
+            }
+        )
+        return run_results.results[0]
+
+    def test_compiled_only_null_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message=None.
+        Must not call add_test_case_results.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=None))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_compiled_only_empty_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message="" (empty string).
+        Empty string is falsy — must also be skipped.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=""))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_real_pass_result_is_ingested(self):
+        """
+        Real test pass: status=pass. Ingested, but result stays None (#29645).
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(status="pass", message="Pass", timing=[timing]),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        self.assertIsNone(test_case_result.result)
+
+    def test_real_pass_result_with_null_message_is_ingested(self):
+        """
+        Real test pass: status=pass, message=None.
+        Must call add_test_case_results exactly once.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(status="pass", message=None, timing=[timing]),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_parsed_pass_result_with_null_message_is_ingested(self):
+        """
+        Real dbt artifact result: status=pass, message=None.
+        Must be ingested after parsing run_results.json.
+        """
+        from metadata.generated.schema.tests.basic import TestCaseStatus
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_parsed_test_result(status="pass", message=None),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        assert test_case_result.testCaseStatus == TestCaseStatus.Success
+        assert test_case_result.testResultValue[0].value == "1"
+
+    def test_real_failure_result_is_ingested(self):
+        """
+        Real test failure: status=fail, message populated.
+        Must not be skipped by the compiled-only guard.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="fail",
+                message="Got 3 results, configured to fail if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        self.assertEqual(test_case_result.result, "Got 3 results, configured to fail if != 0")
+
+    def test_real_warn_result_is_ingested(self):
+        """
+        Real test warn: status=warn, message populated.
+        Must not be skipped.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="warn",
+                message="Got 1 result, configured to warn if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
+
+    def test_nanosecond_timestamp_is_parsed(self):
+        """
+        dbt-fusion outputs 9-digit nanosecond timestamps like
+        2026-07-22T09:27:12.979492347Z which don't match %f (6-digit).
+        The fix strips trailing digits to 6-digit precision.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-07-22T09:27:12.979492347Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="pass",
+                message="Pass",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+
+class TestAddDbtTestResultNullMessage:
+    """
+    Regression coverage for issue #29824.
+
+    dbt only fills ``message`` on failure/warn for many adapters, so a genuine
+    executed data test is reported as ``status="pass", message=null``. The
+    compiled-only guard added by #26812 keyed off ``message`` alone and so
+    dropped those real results, which is why dbt test results stopped showing
+    up after the 1.13.0 upgrade.
+    """
+
+    @staticmethod
+    def _make_source():
+        source = MagicMock(spec=DbtSource)
+        # add_dbt_test_result only dispatches; the compiled-only guard and the
+        # result building live in the builders, so they have to be the real
+        # implementations or the mock would answer for the behaviour under test.
+        for name in (
+            "add_dbt_test_result",
+            "_build_run_result_test_case_result",
+            "_build_freshness_test_case_result",
+            "_resolve_dbt_test_timestamp",
+        ):
+            setattr(source, name, getattr(DbtSource, name).__get__(source, DbtSource))
+        for name in ("_map_dbt_test_status", "_get_freshness_result_details"):
+            setattr(source, name, getattr(DbtSource, name))
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.context = MagicMock()
+        source.context.get.return_value = SimpleNamespace(run_results_generate_time=None)
+        return source
+
+    @staticmethod
+    def _sent_call(source):
+        """
+        add_dbt_test_result swallows every exception into status.failed(), so an
+        unhandled error would otherwise look identical to a deliberate skip.
+        """
+        assert source.status.failed.call_args_list == [], source.status.failed.call_args_list
+        calls = source.metadata.add_test_case_results.call_args_list
+        assert len(calls) == 1, "expected exactly one test case result sent to OpenMetadata"
+        return calls[0].kwargs
+
+    @staticmethod
+    def _make_dbt_test(run_result):
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: SimpleNamespace(
+                name="not_null_orders_order_id",
+                column_name="order_id",
+                test_metadata=SimpleNamespace(
+                    name="not_null",
+                    kwargs={"column_name": "order_id", "model": "ref('orders')"},
+                ),
+            ),
+            DbtCommonEnum.RESULTS.value: run_result,
+            DbtCommonEnum.UPSTREAM.value: [DBT_TEST_TABLE_FQN],
+            DbtCommonEnum.UPSTREAM_BY_NAME.value: {"orders": DBT_TEST_TABLE_FQN},
+        }
+
+    def _ingest(self, status, message):
+        payload = _run_result_payload(status=status, message=message, completed_at="2026-07-24T09:00:00.000000Z")
+        run_result = _parse_run_results_like_production(payload).results[0]
+        source = self._make_source()
+        source.add_dbt_test_result(self._make_dbt_test(run_result))
+        return source
+
+    def test_failures_key_is_stripped_before_parsing(self):
+        """
+        `failures` is not in REQUIRED_RESULTS_KEYS, so it cannot be used to tell
+        an executed test from a compiled-only stub: `status` is the only signal left.
+        """
+        payload = _run_result_payload(
+            status="pass", message=None, completed_at="2026-07-24T09:00:00.000000Z", failures=0
+        )
+        run_result = _parse_run_results_like_production(payload).results[0]
+
+        assert getattr(run_result, "failures", None) is None
+        assert run_result.status.value == "pass"
+
+    def test_passing_test_with_null_message_is_ingested(self):
+        kwargs = self._sent_call(self._ingest(status="pass", message=None))
+
+        test_case_result = kwargs["test_results"]
+        assert kwargs["test_case_fqn"] == f"{DBT_TEST_TABLE_FQN}.order_id.not_null_orders_order_id"
+        assert test_case_result.testCaseStatus == TestCaseStatus.Success
+        assert test_case_result.result is None
+        assert [value.value for value in test_case_result.testResultValue] == ["1"]
+        assert test_case_result.timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 9, 0, 0), milliseconds=True
+        )
+
+    def test_compiled_only_success_with_null_message_is_still_skipped(self):
+        source = self._ingest(status="success", message=None)
+
+        source.metadata.add_test_case_results.assert_not_called()
+        assert source.status.failed.call_args_list == []
+
+    def test_failing_test_with_null_message_is_ingested(self):
+        test_case_result = self._sent_call(self._ingest(status="fail", message=None))["test_results"]
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert [value.value for value in test_case_result.testResultValue] == ["0"]
+
+    def test_warning_test_with_null_message_is_ingested(self):
+        test_case_result = self._sent_call(self._ingest(status="warn", message=None))["test_results"]
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+
+
+class TestRemoveManifestNonRequiredKeys(TestCase):
+    """
+    Tests for DbtServiceSource.remove_manifest_non_required_keys.
+
+    The fix ensures that non-required keys whose original value is a list are
+    cleared to ``[]`` rather than ``{}``.  Setting a list-typed field to ``{}``
+    causes Pydantic validation to fail when the manifest is later parsed,
+    because a dict is not a valid list value.
+    """
+
+    @staticmethod
+    def _make_source():
+        from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
+
+        source = MagicMock(spec=DbtServiceSource)
+        source.remove_manifest_non_required_keys = DbtServiceSource.remove_manifest_non_required_keys.__get__(
+            source, DbtServiceSource
+        )
+        return source
+
+    def test_list_typed_non_required_key_is_cleared_to_empty_list(self):
+        """
+        A non-required key whose value is a list must be replaced with ``[]``,
+        not ``{}``.  The original bug set it to ``{}`` which caused Pydantic to
+        raise a validation error when the manifest was later parsed.
+        """
+        source = self._make_source()
+        manifest_dict = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {},
+            "sources": {},
+            "exposures": {},
+            "disabled": [{"name": "some_disabled_model"}],
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["disabled"] == []
+
+    def test_dict_typed_non_required_key_is_cleared_to_empty_dict(self):
+        """
+        A non-required key whose value is a dict must be replaced with ``{}``.
+        """
+        source = self._make_source()
+        manifest_dict = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {},
+            "sources": {},
+            "exposures": {},
+            "parent_map": {"model.pkg.foo": ["model.pkg.bar"]},
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["parent_map"] == {}
+
+    def test_required_keys_are_preserved(self):
+        """
+        The required keys (nodes, sources, metadata, exposures) must not be
+        touched by the cleanup.
+        """
+        source = self._make_source()
+        nodes = {"model.pkg.foo": {"name": "foo", "unique_id": "model.pkg.foo"}}
+        sources = {"source.pkg.bar": {"name": "bar", "unique_id": "source.pkg.bar"}}
+        metadata = {"dbt_schema_version": "v1"}
+        exposures = {"exposure.pkg.baz": {"name": "baz"}}
+        manifest_dict = {
+            "metadata": metadata,
+            "nodes": nodes,
+            "sources": sources,
+            "exposures": exposures,
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["nodes"] is nodes
+        assert manifest_dict["sources"] is sources
+        assert manifest_dict["metadata"] is metadata
+        assert manifest_dict["exposures"] is exposures
+
+    def test_multiple_non_required_keys_of_mixed_types(self):
+        """
+        When a manifest contains several non-required keys of different types
+        they must all be cleared to the correct empty value for their type.
+        """
+        source = self._make_source()
+        manifest_dict = {
+            "metadata": {},
+            "nodes": {},
+            "sources": {},
+            "exposures": {},
+            "disabled": ["item1", "item2"],
+            "parent_map": {"a": "b"},
+            "child_map": {"x": "y"},
+            "group_map": [],
+        }
+        source.remove_manifest_non_required_keys(manifest_dict)
+
+        assert manifest_dict["disabled"] == []
+        assert manifest_dict["parent_map"] == {}
+        assert manifest_dict["child_map"] == {}
+        assert manifest_dict["group_map"] == []
+
+
+class TestDbtLineageUnresolvedUpstream:
+    """create_dbt_lineage / create_dbt_exposures_lineage must report dropped edges."""
+
+    def _source(self):
+        source = MagicMock(spec=DbtSource)
+        source.status = MagicMock()
+        source.source_config = MagicMock(overrideLineage=False)
+        source.reported_unresolved_upstreams = set()
+        return source
+
+    def test_unresolved_upstream_records_a_status_warning(self):
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+
+        results = list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert results == []
+        source.status.warning.assert_called_once()
+        _key, reason = source.status.warning.call_args[0]
+        assert "svc.db.sch.raw_orders" in reason
+        assert "svc.db.sch.orders" in reason
+
+    def test_resolved_upstream_emits_no_warning(self):
+        source = self._source()
+        from_entity = MagicMock()
+        from_entity.id.root = uuid.uuid4()
+        source._get_table_entity.return_value = from_entity
+
+        to_entity = MagicMock()
+        to_entity.id.root = uuid.uuid4()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.datamodel.sql = None
+
+        results = list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert len(results) == 1
+        assert results[0].right is not None
+        source.status.warning.assert_not_called()
+
+    def test_unresolved_upstream_does_not_over_assert_the_cause(self):
+        """_get_table_entity returns None for a search outage too, so the reason must not
+        claim the table was never ingested."""
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+
+        list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        _key, reason = source.status.warning.call_args[0]
+        assert "could not be resolved" not in reason
+        assert "lookup itself failed" in reason
+
+    def test_same_missing_upstream_is_reported_once_per_run(self):
+        """A never-ingested source database is referenced by every model in the project;
+        one warning per (model x upstream) buries everything else in the report."""
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        for model in ("orders", "customers", "payments"):
+            to_entity = MagicMock()
+            to_entity.fullyQualifiedName.root = f"svc.db.sch.{model}"
+            data_model_link = MagicMock()
+            data_model_link.table_entity = to_entity
+            data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+            list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert source.status.warning.call_count == 1
+        assert source.reported_unresolved_upstreams == {"svc.db.sch.raw_orders"}
+
+    def test_distinct_missing_upstreams_are_each_reported(self):
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders", "svc.db.sch.raw_customers"]
+
+        list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert source.status.warning.call_count == 2
+
+
+class TestAddDbtTestResultFailureReporting:
+    """The outer handler must report, not swallow at debug."""
+
+    def _source(self):
+        from datetime import datetime
+
+        source = DbtSource.__new__(DbtSource)
+        source.status = MagicMock()
+        source.metadata = MagicMock()
+        source.context = MagicMock()
+        source.context.get.return_value.run_results_generate_time = datetime(2026, 7, 29, 9, 0, 0)
+        return source
+
+    def _dbt_test(self):
+        manifest_node = MagicMock()
+        manifest_node.name = "not_null_orders_id"
+        manifest_node.column_name = None
+        manifest_node.test_metadata = None
+        result = MagicMock()
+        result.message = "FAIL 3"
+        result.status.value = "fail"
+        result.unique_id = "test.demo.not_null_orders_id"
+        result.timing = []
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+            DbtCommonEnum.RESULTS.value: result,
+            DbtCommonEnum.UPSTREAM.value: ["svc.db.sch.orders"],
+        }
+
+    def test_api_error_is_recorded_as_failed(self):
+        source = self._source()
+        source.metadata.add_test_case_results.side_effect = APIError({"code": 500, "message": "boom"})
+
+        DbtSource.add_dbt_test_result(source, self._dbt_test())
+
+        source.status.failed.assert_called_once()
+        recorded = source.status.failed.call_args[0][0]
+        assert "not_null_orders_id" in recorded.name
+        assert isinstance(recorded.error, str)
+
+    def test_conflict_409_is_not_recorded_as_failed(self):
+        source = self._source()
+        source.metadata.add_test_case_results.side_effect = APIError({"code": 409, "message": "already exists"})
+
+        DbtSource.add_dbt_test_result(source, self._dbt_test())
+
+        source.status.failed.assert_not_called()
+
+    def test_malformed_input_does_not_raise_from_the_handler(self):
+        source = self._source()
+
+        DbtSource.add_dbt_test_result(source, "not-a-dict")
+
+        source.status.failed.assert_called_once()
+        recorded = source.status.failed.call_args[0][0]
+        assert "unknown" in recorded.name
+
+
+class TestAddDbtSourceFreshnessResults:
+    """
+    `dbt source freshness` writes sources.json, whose result objects are a different
+    shape from run_results.json: they carry no `message`, and the runtime-error variant
+    carries no `timing` either.  Both shapes flow through add_dbt_test_result(), so every
+    case here goes through the real parser rather than a mock that would answer to any
+    attribute - the gap that let issue #31376 ship.
+    """
+
+    SOURCES_FILE = Path(__file__).parent / "resources" / "dbt_ingest" / "sources_v3.json"
+
+    @classmethod
+    def _parsed_sources(cls):
+        from collate_dbt_artifacts_parser.parser import parse_sources
+
+        with cls.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            return parse_sources(json.load(sources_file))
+
+    @classmethod
+    def _result_for(cls, status):
+        sources = cls._parsed_sources()
+        result = next(item for item in sources.results if item.status.value == status)
+        return result, sources.metadata.generated_at
+
+    @staticmethod
+    def _source(sources_generate_time, run_results_generate_time=None, search_across_databases=False):
+        source = DbtSource.__new__(DbtSource)
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.context = MagicMock()
+        source.config = MagicMock()
+        source.config.serviceName = "snowflake_svc"
+        source.source_config = MagicMock()
+        source.source_config.searchAcrossDatabases = search_across_databases
+        source.context.get.return_value.dbt_tests = {}
+        source.context.get.return_value.sources_generate_time = sources_generate_time
+        source.context.get.return_value.run_results_generate_time = run_results_generate_time
+        return source
+
+    @staticmethod
+    def _es_lookup(*known_fqns):
+        """
+        An es_search_from_fqn that resolves only the tables the warehouse actually has.
+
+        fqn.build() for a Table runs its own ES lookup, so a mock with a flat return_value
+        echoes the mocked entity back whatever table name it was asked for - which silently
+        defeats any assertion about which name we looked up.  Matching on the search string
+        keeps those assertions honest, and lets a wildcard service resolve elsewhere the way
+        searchAcrossDatabases does.
+        """
+        from metadata.generated.schema.entity.data.table import Table
+
+        def _search(*_args, fqn_search_string, **_kwargs):
+            for known in known_fqns:
+                service, _, rest = known.partition(".")
+                searched_service, _, searched_rest = fqn_search_string.partition(".")
+                if searched_rest == rest and searched_service in (service, "*"):
+                    return [
+                        Table(
+                            id=uuid.uuid4(),
+                            name=known.split(".")[-1],
+                            columns=[],
+                            fullyQualifiedName=known,
+                        )
+                    ]
+            return []
+
+        return _search
+
+    @staticmethod
+    def _freshness_dbt_test(dbt_test_result):
+        manifest_node = MagicMock()
+        manifest_node.name = "orders_freshness"
+        manifest_node.column_name = None
+        manifest_node.test_metadata = None
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+            DbtCommonEnum.RESULTS.value: dbt_test_result,
+            DbtCommonEnum.UPSTREAM.value: ["svc.db.raw.orders"],
+            DbtCommonEnum.IS_FRESHNESS.value: True,
+        }
+
+    def _ingest(self, status, run_results_generate_time=None):
+        """Run one freshness status end to end and return the emitted TestCaseResult."""
+        dbt_test_result, generated_at = self._result_for(status)
+        source = self._source(generated_at, run_results_generate_time)
+
+        source.add_dbt_test_result(self._freshness_dbt_test(dbt_test_result))
+
+        source.status.failed.assert_not_called()
+        source.metadata.add_test_case_results.assert_called_once()
+        return source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+
+    def test_fixture_matches_the_shapes_that_break_the_handler(self):
+        """
+        Guards the fixture itself: if a parser upgrade starts emitting `message` or
+        `timing` on these, the rest of this class stops testing anything.
+        """
+        results = {item.status.value: item for item in self._parsed_sources().results}
+
+        assert set(results) == {"pass", "warn", "error", "runtime error"}
+        assert all(not hasattr(item, "message") for item in results.values())
+        assert not hasattr(results["runtime error"], "timing")
+        assert results["pass"].timing
+
+    def test_freshness_pass_is_ingested_as_success(self):
+        test_case_result = self._ingest("pass")
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Success
+        assert test_case_result.testResultValue[0].value == "1"
+        # matches the "execute" timing entry, 2026-08-12T06:00:00Z
+        assert test_case_result.timestamp.root == 1786514400000
+        assert test_case_result.result is None
+
+    def test_freshness_error_is_ingested_as_failed_with_staleness_detail(self):
+        test_case_result = self._ingest("error")
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
+        assert "72.0 hours old" in test_case_result.result
+        assert "error_after=24 hour" in test_case_result.result
+
+    def test_freshness_warn_is_ingested_with_staleness_detail(self):
+        test_case_result = self._ingest("warn")
+
+        # `warn` is neither a dbt success nor a dbt failure status, so it keeps the
+        # pre-1.13.0 fall-through to Aborted.
+        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert "18.0 hours old" in test_case_result.result
+        assert "warn_after=12 hour" in test_case_result.result
+
+    def test_freshness_runtime_error_is_ingested_with_the_adapter_error(self):
+        test_case_result = self._ingest("runtime error")
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert "SQL compilation error" in test_case_result.result
+
+    def test_freshness_runtime_error_falls_back_to_the_sources_generated_at(self):
+        """
+        The runtime-error shape has no timing.  On a freshness-only ingestion there is no
+        run_results.json to borrow a timestamp from, so it must use sources.json's own
+        generated_at or the result is dropped as unparseable.
+        """
+        test_case_result = self._ingest("runtime error", run_results_generate_time=None)
+
+        # sources.json generated_at, 2026-08-12T06:00:05Z
+        assert test_case_result.timestamp.root == 1786514405000
+
+    def test_freshness_result_without_a_usable_timestamp_is_skipped(self):
+        dbt_test_result, _ = self._result_for("runtime error")
+        source = self._source(sources_generate_time=None)
+
+        source.add_dbt_test_result(self._freshness_dbt_test(dbt_test_result))
+
+        source.metadata.add_test_case_results.assert_not_called()
+        source.status.failed.assert_not_called()
+
+    def test_run_result_shape_still_routes_to_the_run_result_builder(self):
+        """
+        A run_results.json test carries `message` and must keep the compiled-only guard;
+        the freshness builder would ingest it instead.
+        """
+        run_result = TestAddDbtTestResultSkipsCompiledOnly._make_parsed_test_result(status="success", message=None)
+        manifest_node = MagicMock()
+        manifest_node.name = "not_null_orders_id"
+        manifest_node.column_name = None
+        manifest_node.test_metadata = None
+        source = self._source(sources_generate_time="2026-08-12T06:00:05.000000Z")
+
+        source.add_dbt_test_result(
+            {
+                DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+                DbtCommonEnum.RESULTS.value: run_result,
+                DbtCommonEnum.UPSTREAM.value: ["svc.db.sch.orders"],
+            }
+        )
+
+        source.metadata.add_test_case_results.assert_not_called()
+        source.status.failed.assert_not_called()
+
+    @staticmethod
+    def _manifest_source_node():
+        """A dbt source node exactly as dbt writes it into manifest.json (no depends_on)."""
+        from collate_dbt_artifacts_parser.parsers.manifest.manifest_v12 import Sources
+
+        return Sources(
+            database="RAW_DB",
+            schema="RAW",
+            name="orders",
+            resource_type="source",
+            package_name="jaffle_shop",
+            path="models/sources.yml",
+            original_file_path="models/sources.yml",
+            unique_id="source.jaffle_shop.raw.orders",
+            fqn=["jaffle_shop", "raw", "orders"],
+            source_name="raw",
+            source_description="",
+            loader="",
+            identifier="orders",
+            loaded_at_field="_loaded_at",
+            freshness={
+                "warn_after": {"count": 12, "period": "hour"},
+                "error_after": {"count": 24, "period": "hour"},
+                "filter": None,
+            },
+        )
+
+    def test_freshness_wiring_from_add_dbt_sources_through_to_the_result(self):
+        """
+        Drives the real producer instead of hand-feeding UPSTREAM.  A dbt source has no
+        depends_on, so resolving upstreams like a test node does yields [] and the result
+        is dropped before it is ever sent - the test case has no table to attach to.
+        """
+        manifest_node = self._manifest_source_node()
+        sources = self._parsed_sources()
+        source = self._source(sources.metadata.generated_at)
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup("snowflake_svc.RAW_DB.RAW.orders")
+
+        dbt_test = self._add_source_and_get_test(source, manifest_node, sources)
+
+        assert dbt_test[DbtCommonEnum.UPSTREAM.value] == ["snowflake_svc.RAW_DB.RAW.orders"]
+        assert dbt_test[DbtCommonEnum.IS_FRESHNESS.value] is True
+        # the freshness test case is named after the source table, not the source
+        assert dbt_test[DbtCommonEnum.MANIFEST_NODE.value].name == "orders_freshness"
+
+        # and the entity link the test case is created from now resolves
+        assert generate_entity_link(dbt_test) == ["<#E::table::snowflake_svc.RAW_DB.RAW.orders>"]
+
+        source.add_dbt_test_result(dbt_test)
+
+        source.status.failed.assert_not_called()
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_freshness_is_skipped_when_the_source_table_is_not_in_openmetadata(self):
+        manifest_node = self._manifest_source_node()
+        sources = self._parsed_sources()
+        source = self._source(sources.metadata.generated_at)
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup()
+
+        assert self._add_source_and_get_test(source, manifest_node, sources) is None
+        assert source.context.get.return_value.dbt_tests == {}
+
+    def _add_source_and_get_test(self, source, manifest_node, sources):
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
+
+        source.add_dbt_sources(
+            manifest_node.unique_id,
+            manifest_node=manifest_node,
+            dbt_objects=DbtObjects(dbt_manifest=MagicMock(), dbt_sources=sources),
+        )
+        return source.context.get.return_value.dbt_tests.get(manifest_node.unique_id + "_freshness")
+
+    def test_source_fqn_uses_the_physical_identifier_not_the_logical_name(self):
+        """
+        dbt lets a source declare `identifier` independently of `name`, and the warehouse
+        table - so the OpenMetadata entity - is named after `identifier`.  Building the FQN
+        from `name` looks up a table that does not exist and drops the freshness test.
+        """
+        manifest_node = self._manifest_source_node()
+        manifest_node.name = "logical_orders"
+        manifest_node.identifier = "physical_orders"
+        sources = self._parsed_sources()
+        source = self._source(sources.metadata.generated_at)
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup("snowflake_svc.RAW_DB.RAW.physical_orders")
+
+        dbt_test = self._add_source_and_get_test(source, manifest_node, sources)
+
+        assert dbt_test is not None, "freshness test was dropped - the FQN used the logical name"
+        assert dbt_test[DbtCommonEnum.UPSTREAM.value] == ["snowflake_svc.RAW_DB.RAW.physical_orders"]
+        # the test case is still named after the logical source name
+        assert dbt_test[DbtCommonEnum.MANIFEST_NODE.value].name == "logical_orders_freshness"
+
+    def test_source_fqn_follows_the_entity_found_across_services(self):
+        """
+        With searchAcrossDatabases the lookup retries against every service, so the table it
+        finds may live under a different one than the ingestion is configured for.  The test
+        case has to attach to the entity that was found, not to the FQN we guessed.
+        """
+        manifest_node = self._manifest_source_node()
+        sources = self._parsed_sources()
+        source = self._source(sources.metadata.generated_at, search_across_databases=True)
+        source.config.serviceName = "configured_svc"
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup("actual_svc.RAW_DB.RAW.orders")
+
+        dbt_test = self._add_source_and_get_test(source, manifest_node, sources)
+
+        assert dbt_test[DbtCommonEnum.UPSTREAM.value] == ["actual_svc.RAW_DB.RAW.orders"]
+        assert generate_entity_link(dbt_test) == ["<#E::table::actual_svc.RAW_DB.RAW.orders>"]
+
+        source.add_dbt_test_result(dbt_test)
+
+        source.status.failed.assert_not_called()
+        assert (
+            source.metadata.add_test_case_results.call_args.kwargs["test_case_fqn"]
+            == "actual_svc.RAW_DB.RAW.orders.orders_freshness"
+        )

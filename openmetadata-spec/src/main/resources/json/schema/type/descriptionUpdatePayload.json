@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/type/descriptionUpdatePayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DescriptionUpdatePayload",
+  "description": "Payload for Description Update tasks.",
+  "javaType": "org.openmetadata.schema.type.DescriptionUpdatePayload",
+  "type": "object",
+  "properties": {
+    "fieldPath": {
+      "description": "Path to the field being updated (e.g., 'columns.customer_id.description' or just 'description' for entity-level).",
+      "type": "string"
+    },
+    "currentDescription": {
+      "description": "Current description value.",
+      "type": "string"
+    },
+    "newDescription": {
+      "description": "Proposed new description value.",
+      "type": "string"
+    },
+    "source": {
+      "description": "Source of the update request.",
+      "type": "string",
+      "enum": ["User", "Agent", "AutoPilot", "Ingestion"],
+      "default": "User"
+    },
+    "confidence": {
+      "description": "Confidence score for AI-generated descriptions (0-100).",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    }
+  },
+  "required": ["newDescription"],
+  "additionalProperties": false
+}

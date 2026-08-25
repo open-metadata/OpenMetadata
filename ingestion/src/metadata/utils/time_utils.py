@@ -1,0 +1,223 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Time utility functions
+"""
+
+from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
+from math import floor
+from typing import Optional, Union
+
+from pytz import timezone
+
+from metadata.generated.schema.type.basic import Timestamp
+from metadata.utils.deprecation import deprecated
+from metadata.utils.helpers import datetime_to_ts
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
+
+
+def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone_str: str = "UTC") -> int:
+    """Convert a datetime object to timestamp integer.
+
+    Args:
+        datetime_value (_type_): datetime object
+        milliseconds (bool, optional): make it a milliseconds timestamp. Defaults to False.
+        timezone_str (str, optional): timezone string. Defaults to "UTC".
+
+    Returns:
+        int : timestamp in seconds or milliseconds
+    """
+    tz = timezone(timezone_str)
+    if not getattr(datetime_value, "timestamp", None):
+        raise TypeError(f"Object of type {type(datetime_value).__name__} has not method `timestamp()`")
+
+    if datetime_value.tzinfo is None:
+        datetime_value = tz.localize(datetime_value)
+    else:
+        datetime_value = datetime_value.astimezone(tz)
+    tmsap = datetime_value.timestamp()
+    if milliseconds:
+        return int(tmsap * 1000)
+    return int(tmsap)
+
+
+def timestamp_to_datetime(ts: Timestamp, timezone_str: str = "UTC") -> datetime:
+    """Convert a timestamp to datetime object in UTC.
+
+    Args:
+        ts (Timestamp): timestamp
+
+    Returns:
+        datetime: datetime object
+    """
+    return datetime.fromtimestamp(ts.root / 1000, tz=timezone(timezone_str))
+
+
+# pylint: disable=too-many-arguments
+def get_beginning_of_day_timestamp_mill(
+    days=0,
+    seconds=0,
+    microseconds=0,
+    milliseconds=0,
+    minutes=0,
+    hours=0,
+    weeks=0,
+    timezone_str: str = "UTC",
+) -> Optional[int]:  # noqa: UP045
+    """Get the beginning of day timestamp
+
+    Args:
+        days (int, optional): delay in days. Defaults to 0.
+        seconds (int, optional): delay in seconds. Defaults to 0.
+        microseconds (int, optional): delay in microseconds. Defaults to 0.
+        milliseconds (int, optional): delay in milliseconds. Defaults to 0.
+        minutes (int, optional): delay in minutes. Defaults to 0.
+        hours (int, optional): delay in hours. Defaults to 0.
+        weeks (int, optional): delay in weeks. Defaults to 0.
+        timezone_str (str, optional): timezone string. Defaults to "UTC".
+
+    Returns:
+        int: timestamp milliseconds
+    """
+    tz = timezone(timezone_str)
+    now_tz = datetime.now(tz)
+    delta = timedelta(
+        weeks=weeks,
+        days=days,
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds,
+        microseconds=microseconds,
+        milliseconds=milliseconds,
+    )
+    datetime_value = datetime.combine(now_tz - delta, time.min)
+    return datetime_to_ts(tz.localize(datetime_value))
+
+
+# pylint: disable=too-many-arguments
+def get_end_of_day_timestamp_mill(
+    days=0,
+    seconds=0,
+    microseconds=0,
+    milliseconds=0,
+    minutes=0,
+    hours=0,
+    weeks=0,
+    timezone_str: str = "UTC",
+) -> Optional[int]:  # noqa: UP045
+    """Get the end of day timestamp
+
+    Args:
+        days (int, optional): delay in days. Defaults to 0.
+        seconds (int, optional): delay in seconds. Defaults to 0.
+        microseconds (int, optional): delay in microseconds. Defaults to 0.
+        milliseconds (int, optional): delay in milliseconds. Defaults to 0.
+        minutes (int, optional): delay in minutes. Defaults to 0.
+        hours (int, optional): delay in hours. Defaults to 0.
+        weeks (int, optional): delay in weeks. Defaults to 0.
+        timezone_str (str, optional): timezone string. Defaults to "UTC".
+
+    Returns:
+        int: timestamp milliseconds
+    """
+    tz = timezone(timezone_str)
+    now_tz = datetime.now(tz)
+    delta = timedelta(
+        weeks=weeks,
+        days=days,
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds,
+        microseconds=microseconds,
+        milliseconds=milliseconds,
+    )
+
+    datetime_value = datetime.combine(now_tz - delta, time.max)
+    return datetime_to_ts(tz.localize(datetime_value))
+
+
+def convert_timestamp(timestamp: str) -> Union[int, float]:  # noqa: UP007
+    """convert timestamp to int
+    Args:
+        timestamp (str):
+    Retunrs:
+        int
+    """
+    if len(timestamp) < 13:  # check for ms timestamp
+        return int(timestamp)
+    return float(timestamp) / 1000
+
+
+def utc_from_timestamp(ts: Union[int, float]) -> datetime:  # noqa: UP007
+    """Convert a Unix timestamp to a naive UTC datetime.
+
+    Returns a timezone-naive datetime in UTC. This is safe across
+    Python 3.10-3.12 (avoids the deprecated datetime.utcfromtimestamp)
+    and returns naive datetimes to stay compatible with database query
+    results which are typically timezone-naive.
+    """
+    return datetime.fromtimestamp(ts, tz=dt_timezone.utc).replace(tzinfo=None)
+
+
+@deprecated("Use `datetime_to_timestamp` instead", "1.7.0")
+def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:  # noqa: UP007
+    """convert timestamp to milliseconds
+    Args:
+        timestamp (int):
+    Returns:
+        int
+    """
+    if len(str(round(timestamp))) == 13:
+        return timestamp
+    return round(timestamp * 1000)
+
+
+def timedelta_to_string(td: timedelta):
+    """Convert timedelta to human readable string
+
+    Example:
+        >>> timedelta_to_string(timedelta(days=1, hours=2, minutes=3, seconds=4))
+        '1 days 2 hours 3 minutes 4 seconds (total seconds: 93784.0)'
+
+    Args:
+        td (timedelta): timedelta object
+
+    Returns:
+        str: human readable string
+    """
+    res = []
+    current = td
+    if current.days:
+        res.append(f"{floor(td.days)} day")
+        if current.days > 1:
+            res[-1] += "s"
+        current -= timedelta(days=floor(td.days))
+    hours = current.seconds // 3600
+    if hours:
+        res.append(f"{hours} hour")
+        if hours > 1:
+            res[-1] += "s"
+        current -= timedelta(hours=hours)
+    minutes = current.seconds // 60
+    if minutes:
+        res.append(f"{minutes} minute")
+        if minutes > 1:
+            res[-1] += "s"
+        current -= timedelta(minutes=minutes)
+    res.append(f"{current.seconds} second")
+    if current.seconds != 1:
+        res[-1] += "s"
+    total_seconds = "total seconds: " + str(td.total_seconds())
+    return " ".join(res) + f" ({total_seconds})"

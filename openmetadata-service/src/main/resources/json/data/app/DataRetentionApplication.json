@@ -1,0 +1,14 @@
+{
+  "name": "DataRetentionApplication",
+  "displayName": "Data Retention",
+  "appConfiguration": {
+    "changeEventRetentionPeriod": 7,
+    "activityThreadsRetentionPeriod": 60,
+    "profileDataRetentionPeriod": 1440,
+    "testCaseResultsRetentionPeriod": 1440
+  },
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 * * 0"
+  }
+}

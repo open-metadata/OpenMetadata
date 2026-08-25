@@ -1,0 +1,225 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { render, screen } from '@testing-library/react';
+import {
+  TaskType as ThreadTaskType,
+  Thread,
+} from '../../../../generated/entity/feed/thread';
+import { Task } from '../../../../generated/entity/tasks/task';
+import {
+  getTaskDetailPath,
+  getTaskDetailPathFromTask,
+} from '../../../../utils/TaskNavigationUtils';
+import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
+
+const mockProps = {
+  active: true,
+  payload: [
+    {
+      stroke: '#7147E8',
+      strokeWidth: 1,
+      fill: '#fff',
+      dataKey: 'minValueLength',
+      name: 'minValueLength',
+      color: '#7147E8',
+      value: 36,
+      payload: {
+        name: 'Jan 3, 2024, 6:45 PM',
+        status: 'Failed',
+        minValueLength: 12,
+        maxValueLength: 24,
+        passedRows: 4,
+        failedRows: 2,
+        passedRowsPercentage: '60%',
+        failedRowsPercentage: '40%',
+      },
+    },
+  ],
+};
+const mockPropsWithFreshness = {
+  active: true,
+  payload: [
+    {
+      stroke: '#7147E8',
+      strokeOpacity: 1,
+      strokeWidth: 1,
+      fill: '#fff',
+      dataKey: 'freshness',
+      name: 'freshness',
+      color: '#7147E8',
+      value: 224813364.39,
+      payload: {
+        name: 1748045364386,
+        status: 'Failed',
+        freshness: 224813364.39,
+      },
+    },
+  ],
+};
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
+  formatDateTimeLong: jest
+    .fn()
+    .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
+  convertSecondsToHumanReadableFormat: jest
+    .fn()
+    .mockReturnValue('7Y 2M 22d 9m 24s'),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockReturnValue(1709424034000),
+  getEndOfDayInMillis: jest.fn().mockReturnValue(1709510434000),
+  getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
+}));
+
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  getTaskDetailPath: jest.fn().mockReturnValue('/legacy/issues'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/test-case/issues'),
+  getTaskDisplayId: jest.fn().mockReturnValue('244'),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
+}));
+
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockReturnValue(null),
+}));
+jest.mock('../../../../utils/HistoryUtils', () => ({
+  ...jest.requireActual('../../../../utils/HistoryUtils'),
+  formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
+}));
+
+describe('Test TestSummaryCustomTooltip component', () => {
+  it('should display a compact task-first incident link', async () => {
+    const incidentId = '9c479412-ebdf-4ad0-b1db-c030a7857492';
+    const task = {
+      id: incidentId,
+      taskId: 'TASK-00244',
+    } as Task;
+
+    render(
+      <TestSummaryCustomTooltip
+        active
+        payload={[
+          {
+            payload: {
+              incidentId,
+              name: 1748045364386,
+              status: 'Failed',
+              task,
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByTestId('incident')).toHaveTextContent('#244');
+    expect(screen.queryByText(incidentId)).not.toBeInTheDocument();
+    expect(getTaskDetailPathFromTask).toHaveBeenCalledWith(task);
+  });
+
+  it('should preserve legacy thread incident details', async () => {
+    const thread: Thread = {
+      about: '<#E::testCase::service.database.schema.table.testCase>',
+      id: 'thread-id',
+      message: 'Resolve the test failure',
+      task: {
+        assignees: [],
+        id: 42,
+        type: ThreadTaskType.RequestTestCaseFailureResolution,
+      },
+    };
+
+    render(
+      <TestSummaryCustomTooltip
+        active
+        payload={[
+          {
+            payload: {
+              name: 1748045364386,
+              status: 'Failed',
+              task: thread,
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByTestId('incident')).toHaveTextContent('#42');
+    expect(getTaskDetailPath).toHaveBeenCalledWith(thread);
+  });
+
+  it('should render', async () => {
+    render(<TestSummaryCustomTooltip {...mockProps} />);
+
+    expect(
+      await screen.findByTestId('test-summary-tooltip-container')
+    ).toBeInTheDocument();
+    expect((await screen.findByTestId('status')).textContent).toBe('Failed');
+    expect((await screen.findByTestId('minValueLength')).textContent).toBe(
+      '12'
+    );
+    expect((await screen.findByTestId('maxValueLength')).textContent).toBe(
+      '24'
+    );
+    expect((await screen.findByTestId('rows-passed')).textContent).toBe('4/6');
+    expect((await screen.findByTestId('rows-failed')).textContent).toBe('2/6');
+    expect(
+      (await screen.findByTestId('passedRowsPercentage')).textContent
+    ).toBe('60%');
+    expect(
+      (await screen.findByTestId('failedRowsPercentage')).textContent
+    ).toBe('40%');
+    expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  it('should display freshness values in seconds', async () => {
+    render(<TestSummaryCustomTooltip {...mockPropsWithFreshness} />);
+
+    expect((await screen.findByTestId('status')).textContent).toBe('Failed');
+    expect((await screen.findByTestId('freshness')).textContent).toBe(
+      '7Y 2M 22d 9m 24s'
+    );
+  });
+
+  describe('incident fallback', () => {
+    it('should not expose the incident UUID when task metadata is unavailable', () => {
+      const incidentId = 'incident-123';
+      const propsWithIncident = {
+        active: true,
+        payload: [
+          {
+            payload: {
+              name: 1748045364386,
+              status: 'Failed',
+              incidentId,
+            },
+          },
+        ],
+      };
+
+      render(<TestSummaryCustomTooltip {...propsWithIncident} />);
+
+      expect(screen.queryByTestId('incident')).not.toBeInTheDocument();
+      expect(screen.queryByText(incidentId)).not.toBeInTheDocument();
+    });
+  });
+});

@@ -1,0 +1,18 @@
+{
+	"type": "airflow",
+	"serviceName": "sample_airflow",
+	"serviceConnection": {
+		"config": {
+			"type": "Airflow",
+			"hostPort": "http://localhost:8080",
+			"connection": {
+				"type": "Backend"
+			}
+		}
+	},
+	"sourceConfig": {
+		"config": {
+			"includeLineage": true
+		}
+	}
+}

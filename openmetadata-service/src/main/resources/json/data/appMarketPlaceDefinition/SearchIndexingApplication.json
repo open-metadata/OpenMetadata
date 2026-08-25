@@ -1,0 +1,34 @@
+{
+  "name": "SearchIndexingApplication",
+  "displayName": "Search Indexing",
+  "description": "OpenMetadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
+  "features": "Sync OpenMetadata and Elastic Search with staged index promotion.",
+  "appType": "internal",
+  "appScreenshots": ["SearchIndexPic1"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
+  "runtime": {
+    "enabled": true
+  },
+  "supportsInterrupt": true,
+  "appConfiguration": {
+    "entities": [
+      "all"
+    ],
+    "batchSize": "100",
+    "payLoadSize": 104857600,
+    "producerThreads": 1,
+    "queueSize": 100,
+    "consumerThreads": 1,
+    "maxConcurrentRequests": 100,
+    "maxRetries": 3,
+    "initialBackoff": 1000,
+    "maxBackoff": 10000,
+    "searchIndexMappingLanguage": "EN"
+  }
+}

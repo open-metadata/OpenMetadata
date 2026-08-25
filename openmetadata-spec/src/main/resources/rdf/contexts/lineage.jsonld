@@ -1,0 +1,97 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Lineage": {
+        "@id": "om:Lineage",
+        "@type": "om:Entity"
+      },
+      "LineageEdge": {
+        "@id": "om:LineageEdge",
+        "@type": "prov:Derivation"
+      },
+      "ColumnLineage": {
+        "@id": "om:ColumnLineage",
+        "@type": "prov:Derivation"
+      },
+
+      "entity": {
+        "@id": "om:lineageEntity",
+        "@type": "@id"
+      },
+      "nodes": {
+        "@id": "om:hasLineageNode",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "upstreamEdges": {
+        "@id": "prov:wasDerivedFrom",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "downstreamEdges": {
+        "@id": "prov:wasInfluencedBy",
+        "@type": "@id",
+        "@container": "@set"
+      },
+
+      "fromEntity": {
+        "@id": "prov:entity",
+        "@type": "@id"
+      },
+      "toEntity": {
+        "@id": "prov:hadDerivation",
+        "@type": "@id"
+      },
+      "lineageDetails": {
+        "@id": "om:hasLineageDetails",
+        "@type": "@id"
+      },
+
+      "sqlQuery": {
+        "@id": "om:sqlQuery",
+        "@type": "xsd:string"
+      },
+      "source": {
+        "@id": "om:lineageSource",
+        "@type": "xsd:string"
+      },
+      "pipeline": {
+        "@id": "prov:wasGeneratedBy",
+        "@type": "@id"
+      },
+      "description": {
+        "@id": "dct:description",
+        "@type": "xsd:string"
+      },
+
+      "columnsLineage": {
+        "@id": "om:hasColumnLineage",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "fromColumns": {
+        "@id": "om:fromColumns",
+        "@type": "xsd:string",
+        "@container": "@list"
+      },
+      "toColumn": {
+        "@id": "om:toColumn",
+        "@type": "xsd:string"
+      },
+      "function": {
+        "@id": "om:transformFunction",
+        "@type": "xsd:string"
+      },
+
+      "upstream": {
+        "@id": "om:upstream",
+        "@type": "@id"
+      },
+      "downstream": {
+        "@id": "om:downstream",
+        "@type": "@id"
+      }
+    }
+  ]
+}

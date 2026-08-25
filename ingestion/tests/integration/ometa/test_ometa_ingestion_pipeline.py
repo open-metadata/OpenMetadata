@@ -1,0 +1,128 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Test how we create and update status in Ingestion Pipelines
+"""
+
+import pytest
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+    PipelineState,
+    PipelineStatus,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    IngestionStatus,
+    StackTraceError,
+    StepSummary,
+)
+from metadata.ingestion.api.status import TruncatedStackTraceError
+
+
+class TestOMetaIngestionPipelineAPI:
+    """
+    Ingestion Pipeline API integration tests.
+    Tests pipeline status creation and error handling.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - workflow: MetadataWorkflow (module scope)
+    """
+
+    def test_create_ingestion_pipeline(self, workflow):
+        """
+        We can create an ingestion pipeline
+        """
+        ingestion_pipeline: IngestionPipeline = workflow.ingestion_pipeline
+        assert ingestion_pipeline is not None
+        assert ingestion_pipeline.name.root == "ingestion"
+
+    def test_add_status(self, metadata, workflow):
+        """
+        We can add status to the ingestion pipeline
+        """
+        ingestion_pipeline: IngestionPipeline = workflow.ingestion_pipeline
+        assert ingestion_pipeline is not None
+
+        ingestion_status = IngestionStatus(
+            [
+                StepSummary(
+                    name="source",
+                    failures=[
+                        StackTraceError(
+                            name="error",
+                            error="error",
+                            stackTrace="stackTrace",
+                        )
+                    ],
+                )
+            ]
+        )
+
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(PipelineState.success)
+        pipeline_status.status = ingestion_status
+
+        metadata.create_or_update_pipeline_status(ingestion_pipeline.fullyQualifiedName.root, pipeline_status)
+
+        real_pipeline_status: PipelineStatus = metadata.get_pipeline_status(
+            ingestion_pipeline.fullyQualifiedName.root, workflow.run_id
+        )
+        assert real_pipeline_status.pipelineState == PipelineState.success
+
+        too_long_status = IngestionStatus(
+            [
+                StepSummary(
+                    name="source",
+                    failures=[
+                        StackTraceError(
+                            name="error",
+                            error="error" * 20_000_000,
+                            stackTrace="stackTrace",
+                        )
+                    ],
+                )
+            ]
+        )
+
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(PipelineState.success)
+        pipeline_status.status = too_long_status
+
+        with pytest.raises(Exception) as exc:
+            metadata.create_or_update_pipeline_status(ingestion_pipeline.fullyQualifiedName.root, pipeline_status)
+
+        assert (
+            "exceeds the maximum allowed" in str(exc.value)
+            or "Connection aborted." in str(exc.value)
+            or "Invalid request" in str(exc.value)
+        )
+
+        truncated_long_status = IngestionStatus(
+            [
+                StepSummary(
+                    name="source",
+                    failures=[
+                        TruncatedStackTraceError(
+                            name="error",
+                            error="error" * 20_000_000,
+                            stackTrace="stackTrace",
+                        )
+                    ],
+                )
+            ]
+        )
+
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(PipelineState.success)
+        pipeline_status.status = truncated_long_status
+
+        res = metadata.create_or_update_pipeline_status(ingestion_pipeline.fullyQualifiedName.root, pipeline_status)
+
+        assert res["entityFullyQualifiedName"] == ingestion_pipeline.fullyQualifiedName.root

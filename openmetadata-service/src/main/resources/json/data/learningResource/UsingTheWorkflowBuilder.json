@@ -1,0 +1,13 @@
+{
+  "name": "Using the Workflow Builder",
+  "description": "Learn how Collate's visual workflow builder can transform your data management and classification processes.",
+  "resourceType": "Storylane",
+  "categories": ["DataGovernance"],
+  "source": {
+    "url": "https://collate.storylane.io/share/cptk0b9oaytv"
+  },
+  "contexts": [
+    {"pageId": "governanceWorkflows"}
+  ],
+  "status": "Active"
+}

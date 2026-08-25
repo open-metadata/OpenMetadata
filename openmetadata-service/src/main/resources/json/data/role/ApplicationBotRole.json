@@ -1,0 +1,17 @@
+{
+  "name": "ApplicationBotRole",
+  "displayName": "Application bot role",
+  "description": "Role corresponding to a Application bot.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "ApplicationBotPolicy"
+    }
+  ]
+}

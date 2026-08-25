@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/metabaseConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetabaseConnection",
+  "description": "Metabase Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.MetabaseConnection",
+  "definitions": {
+    "metabaseType": {
+      "description": "Metabase service type",
+      "type": "string",
+      "enum": ["Metabase"],
+      "default": "Metabase"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/metabaseType",
+      "default": "Metabase"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Metabase. Required for basic authentication.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Metabase. Required for basic authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "apiKey": {
+      "title": "API Token",
+      "description": "API token to connect to Metabase. Use this instead of username/password for token-based authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and Port of the Metabase instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Chart Filter Pattern"
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Data Model Filter Pattern"
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Project Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort"]
+}

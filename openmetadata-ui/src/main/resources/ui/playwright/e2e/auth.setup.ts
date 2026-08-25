@@ -1,0 +1,315 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { test as setup } from '@playwright/test';
+import { mkdir, writeFile } from 'fs/promises';
+import {
+  EDIT_DESCRIPTION_RULE,
+  EDIT_GLOSSARY_TERM_RULE,
+  EDIT_TAGS_RULE,
+  VIEW_ONLY_RULE,
+} from '../constant/permission';
+import { AdminClass } from '../support/user/AdminClass';
+import { UserClass } from '../support/user/UserClass';
+import {
+  disableEtagConditionalReads,
+  getApiContext,
+  getToken,
+  uuid,
+} from '../utils/common';
+import { loginAsAdmin } from '../utils/initialSetup';
+
+/**
+ * Opt every E2E session out of client-side conditional (If-None-Match) reads.
+ *
+ * The server ETag only covers the entity's version/updatedAt, so it does not change for
+ * relationship-only or child mutations (followers, votes, customMetrics, testSuite). A refetch
+ * racing such a mutation can be answered "not modified" and render a stale body, which surfaces
+ * as flaky assertions across the suite. Setting the flag here persists it into storageState, so
+ * every spec in both OpenMetadata and Collate inherits it without a per-test helper.
+ */
+const adminFile = 'playwright/.auth/admin.json';
+const dataConsumerFile = 'playwright/.auth/dataConsumer.json';
+const dataStewardFile = 'playwright/.auth/dataSteward.json';
+const editDescriptionFile = 'playwright/.auth/editDescription.json';
+const editTagsFile = 'playwright/.auth/editTags.json';
+const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
+const viewOnlyFile = 'playwright/.auth/viewOnly.json';
+const ownerFile = 'playwright/.auth/owner.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
+
+const userUUID = uuid();
+
+// Create and setup all users
+const dataConsumer = new UserClass({
+  firstName: 'PW ',
+  lastName: `DataConsumer ${userUUID}`,
+  email: `pw-data-consumer-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+const dataSteward = new UserClass({
+  firstName: 'PW ',
+  lastName: `DataSteward ${userUUID}`,
+  email: `pw-data-steward-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+const editDescriptionUser = new UserClass({
+  firstName: 'PW ',
+  lastName: `EditDescription ${userUUID}`,
+  email: `pw-edit-description-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+const editTagsUser = new UserClass({
+  firstName: 'PW ',
+  lastName: `EditTags ${userUUID}`,
+  email: `pw-edit-tags-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+const editGlossaryTermUser = new UserClass({
+  firstName: 'PW ',
+  lastName: `EditGlossaryTerm ${userUUID}`,
+  email: `pw-edit-glossary-term-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+const viewOnlyUser = new UserClass({
+  firstName: 'PW ',
+  lastName: `ViewOnly ${userUUID}`,
+  email: `pw-view-only-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+const ownerUser = new UserClass({
+  firstName: 'PW ',
+  lastName: `Owner ${userUUID}`,
+  email: `pw-owner-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
+
+setup('authenticate all users', async ({ browser }) => {
+  setup.setTimeout(120 * 1000);
+  // Create separate pages for each user
+  const [
+    adminPage,
+    dataConsumerPage,
+    dataStewardPage,
+    editDescriptionPage,
+    editTagsPage,
+    editGlossaryTermPage,
+    viewOnlyPage,
+    ownerPage,
+  ] = await Promise.all([
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+  ]);
+
+  try {
+    // Create admin page and context
+    const admin = new AdminClass();
+
+    await loginAsAdmin(adminPage, admin);
+
+    // Create a new page to login with admin user after token expiry is set to 4 hours
+    // This is done to avoid logging out the user to get the new token
+    const newAdminPage = await browser.newPage();
+    await admin.login(newAdminPage);
+
+    await newAdminPage.waitForURL('**/my-data');
+
+    await mkdir('playwright/.auth', { recursive: true });
+    await writeFile(
+      adminApiTokenFile,
+      JSON.stringify({ token: await getToken(newAdminPage) }),
+      { mode: 0o600 }
+    );
+
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    // TODO(collate#4484): Remove this block once the auth-config env reconcile bug is fixed.
+    // AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER is ignored on an existing/upgraded DB
+    // (the authenticationConfiguration settings row is seeded once and never reconciled),
+    // so the per-user session cap stays at the default of 5. That evicts the long-lived
+    // storageState session and causes 401 "Invalid session" on reused bearer tokens.
+    // Raise it at runtime via the security-config endpoint as a temporary workaround.
+    // Uses GET + PUT (not PATCH): PATCH /security/config runs a validator that rejects
+    // the basic-auth provider, whereas PUT persists + reloads without it. The unused
+    // oidc/ldap/saml blocks are nulled before the PUT because PUT's bean validation
+    // rejects their empty stubs (@NotNull ldap host/port/...); nulling them also avoids
+    // re-persisting the OIDC secret / LDAP password that GET returns masked. Basic auth
+    // does not use these blocks. Guarded to provider === 'basic'.
+    // https://github.com/open-metadata/openmetadata-collate/issues/4484
+    const securityConfigResponse = await apiContext.get(
+      '/api/v1/system/security/config'
+    );
+    if (!securityConfigResponse.ok()) {
+      // 404 == older build without the endpoint, tolerate it. Any other non-2xx
+      // (401/403/5xx) is a real failure that would otherwise silently leave the
+      // cap at 5, so surface it instead of skipping.
+      if (securityConfigResponse.status() !== 404) {
+        throw new Error(
+          `collate#4484 workaround: GET security config failed - HTTP ${securityConfigResponse.status()} ${await securityConfigResponse.text()}`
+        );
+      }
+    } else {
+      const securityConfig = await securityConfigResponse.json();
+      const authConfig = securityConfig?.authenticationConfiguration;
+      if (
+        authConfig?.provider === 'basic' &&
+        authConfig?.maxActiveSessionsPerUser !== 1000
+      ) {
+        authConfig.maxActiveSessionsPerUser = 1000;
+        authConfig.oidcConfiguration = null;
+        authConfig.ldapConfiguration = null;
+        authConfig.samlConfiguration = null;
+        const putResponse = await apiContext.put(
+          '/api/v1/system/security/config',
+          { data: securityConfig }
+        );
+        if (!putResponse.ok()) {
+          throw new Error(
+            `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${putResponse.status()} ${await putResponse.text()}`
+          );
+        }
+      }
+    }
+
+    // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
+    await Promise.allSettled([
+      dataConsumer.create(apiContext, false),
+      dataSteward.create(apiContext, false),
+      editDescriptionUser.create(apiContext, false),
+      editTagsUser.create(apiContext, false),
+      editGlossaryTermUser.create(apiContext, false),
+      viewOnlyUser.create(apiContext, false),
+      ownerUser.create(apiContext, false),
+    ]);
+
+    // Set up roles and policies, Using allSettled to avoid failing the setup if one of the users fails to create
+    await Promise.allSettled([
+      dataConsumer.setDataConsumerRole(apiContext),
+      dataSteward.setDataStewardRole(apiContext),
+      editDescriptionUser.setCustomRulePolicy(
+        apiContext,
+        EDIT_DESCRIPTION_RULE,
+        'PW%Edit-Description'
+      ),
+      editTagsUser.setCustomRulePolicy(
+        apiContext,
+        EDIT_TAGS_RULE,
+        'PW%Edit-Tags'
+      ),
+      editGlossaryTermUser.setCustomRulePolicy(
+        apiContext,
+        EDIT_GLOSSARY_TERM_RULE,
+        'PW%Edit-Glossary-Term'
+      ),
+      viewOnlyUser.setCustomRulePolicy(
+        apiContext,
+        VIEW_ONLY_RULE,
+        'PW%View-Only'
+      ),
+      ownerUser.setDataConsumerRole(apiContext),
+    ]);
+
+    // Wait for indexedDB databases to be available
+    await adminPage.waitForFunction(() => indexedDB.databases());
+
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for auth state to be persisted to indexedDB
+    await adminPage.waitForTimeout(2000);
+
+    // Save admin state
+    await disableEtagConditionalReads(newAdminPage);
+    await newAdminPage
+      .context()
+      .storageState({ path: adminFile, indexedDB: true });
+
+    // Save states for each user sequentially to avoid file operation conflicts
+    await dataConsumer.login(dataConsumerPage);
+    await disableEtagConditionalReads(dataConsumerPage);
+    await dataConsumerPage
+      .context()
+      .storageState({ path: dataConsumerFile, indexedDB: true });
+
+    await dataSteward.login(dataStewardPage);
+    await disableEtagConditionalReads(dataStewardPage);
+    await dataStewardPage
+      .context()
+      .storageState({ path: dataStewardFile, indexedDB: true });
+
+    await editDescriptionUser.login(editDescriptionPage);
+    await disableEtagConditionalReads(editDescriptionPage);
+    await editDescriptionPage
+      .context()
+      .storageState({ path: editDescriptionFile, indexedDB: true });
+
+    await editTagsUser.login(editTagsPage);
+    await disableEtagConditionalReads(editTagsPage);
+    await editTagsPage
+      .context()
+      .storageState({ path: editTagsFile, indexedDB: true });
+
+    await editGlossaryTermUser.login(editGlossaryTermPage);
+    await disableEtagConditionalReads(editGlossaryTermPage);
+    await editGlossaryTermPage
+      .context()
+      .storageState({ path: editGlossaryTermFile, indexedDB: true });
+
+    await viewOnlyUser.login(viewOnlyPage);
+    await disableEtagConditionalReads(viewOnlyPage);
+    await viewOnlyPage
+      .context()
+      .storageState({ path: viewOnlyFile, indexedDB: true });
+
+    await ownerUser.login(ownerPage);
+    await disableEtagConditionalReads(ownerPage);
+    await ownerPage
+      .context()
+      .storageState({ path: ownerFile, indexedDB: true });
+
+    await afterAction();
+
+    if (newAdminPage) {
+      await newAdminPage.close();
+    }
+  } catch (error) {
+    console.error('Error during authentication setup:', error);
+
+    throw error;
+  } finally {
+    // Close pages sequentially to avoid conflicts
+    if (dataConsumerPage) {
+      await dataConsumerPage.close();
+    }
+    if (dataStewardPage) {
+      await dataStewardPage.close();
+    }
+    if (editDescriptionPage) {
+      await editDescriptionPage.close();
+    }
+    if (editTagsPage) {
+      await editTagsPage.close();
+    }
+    if (editGlossaryTermPage) {
+      await editGlossaryTermPage.close();
+    }
+    if (viewOnlyPage) {
+      await viewOnlyPage.close();
+    }
+    if (ownerPage) {
+      await ownerPage.close();
+    }
+  }
+});

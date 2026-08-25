@@ -1,0 +1,464 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Button, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty, isString } from 'lodash';
+import Qs from 'qs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  APICollectionSource,
+  APIEndpointSource,
+  ChartSource,
+  ColumnSource,
+  DashboardDataModelSource,
+  DashboardSource,
+  DatabaseSchemaSource,
+  DatabaseSource,
+  DataProductSource,
+  DirectorySource,
+  FileSource,
+  GlossarySource,
+  KnowledgePageSource,
+  MetricSource,
+  MlModelSource,
+  Option,
+  PipelineSource,
+  SearchIndexSource,
+  SearchSuggestions,
+  SpreadsheetSource,
+  StoredProcedureSource,
+  SuggestionsObject,
+  TableSource,
+  TagSource,
+  TopicSource,
+  WorksheetSource,
+} from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { SearchIndex } from '../../enums/search.enum';
+import { ContainerSearchSource } from '../../interface/search.interface';
+import { searchQuery } from '../../rest/searchAPI';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
+import searchClassBase from '../../utils/SearchClassBase';
+import {
+  filterOptionsByIndex,
+  getGroupLabel,
+  getSuggestionElement,
+} from '../../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../../utils/StringUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
+import './suggestions.less';
+
+type SuggestionProp = {
+  searchText: string;
+  searchCriteria?: SearchIndex;
+  isOpen: boolean;
+  setIsOpen: (value: boolean) => void;
+  isNLPActive?: boolean;
+  onSearchTextUpdate?: (text: string) => void;
+};
+
+const Suggestions = ({
+  searchText,
+  setIsOpen,
+  searchCriteria,
+  isNLPActive = false,
+  onSearchTextUpdate,
+}: SuggestionProp) => {
+  const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [options, setOptions] = useState<Array<Option>>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionsObject>({
+    tableSuggestions: [],
+    columnSuggestions: [],
+    topicSuggestions: [],
+    dashboardSuggestions: [],
+    pipelineSuggestions: [],
+    mlModelSuggestions: [],
+    containerSuggestions: [],
+    glossaryTermSuggestions: [],
+    databaseSuggestions: [],
+    databaseSchemaSuggestions: [],
+    searchIndexSuggestions: [],
+    tagSuggestions: [],
+    storedProcedureSuggestions: [],
+    dataModelSuggestions: [],
+    dataProductSuggestions: [],
+    chartSuggestions: [],
+    apiEndpointSuggestions: [],
+    apiCollectionSuggestions: [],
+    metricSuggestions: [],
+    directorySuggestions: [],
+    fileSuggestions: [],
+    spreadsheetSuggestions: [],
+    worksheetSuggestions: [],
+    knowledgeArticleSuggestions: [],
+  });
+
+  const {
+    tableSuggestions,
+    topicSuggestions,
+    dashboardSuggestions,
+    pipelineSuggestions,
+    mlModelSuggestions,
+    containerSuggestions,
+    glossaryTermSuggestions,
+    databaseSuggestions,
+    databaseSchemaSuggestions,
+    searchIndexSuggestions,
+    tagSuggestions,
+    storedProcedureSuggestions,
+    dataModelSuggestions,
+    dataProductSuggestions,
+    chartSuggestions,
+    apiEndpointSuggestions,
+    apiCollectionSuggestions,
+    metricSuggestions,
+    columnSuggestions,
+  } = suggestions;
+
+  const updateSuggestions = (options: Array<Option>) => {
+    setSuggestions(() => ({
+      tableSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TABLE
+      ) as TableSource[],
+      columnSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.COLUMN
+      ) as ColumnSource[],
+      topicSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TOPIC
+      ) as TopicSource[],
+      dashboardSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DASHBOARD
+      ) as DashboardSource[],
+      pipelineSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.PIPELINE
+      ) as PipelineSource[],
+      mlModelSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.MLMODEL
+      ) as MlModelSource[],
+      containerSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.CONTAINER
+      ) as ContainerSearchSource[],
+      glossaryTermSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.GLOSSARY_TERM
+      ) as GlossarySource[],
+      databaseSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATABASE
+      ) as DatabaseSource[],
+      databaseSchemaSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATABASE_SCHEMA
+      ) as DatabaseSchemaSource[],
+      searchIndexSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.SEARCH_INDEX
+      ) as SearchIndexSource[],
+      tagSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.TAG
+      ) as TagSource[],
+      storedProcedureSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.STORED_PROCEDURE
+      ) as StoredProcedureSource[],
+      dataModelSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DASHBOARD_DATA_MODEL
+      ) as DashboardDataModelSource[],
+      dataProductSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATA_PRODUCT
+      ) as DataProductSource[],
+      chartSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.CHART
+      ) as ChartSource[],
+      apiEndpointSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.API_ENDPOINT
+      ) as APIEndpointSource[],
+      apiCollectionSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.API_COLLECTION
+      ) as APICollectionSource[],
+      metricSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.METRIC
+      ) as MetricSource[],
+      directorySuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DIRECTORY
+      ) as DirectorySource[],
+      fileSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.FILE
+      ) as FileSource[],
+      spreadsheetSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.SPREADSHEET
+      ) as SpreadsheetSource[],
+      worksheetSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.WORKSHEET
+      ) as WorksheetSource[],
+      knowledgeArticleSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.KNOWLEDGE_PAGE_INDEX
+      ) as KnowledgePageSource[],
+    }));
+  };
+
+  const quickFilter = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
+
+    return isString(parsedSearch.quickFilter)
+      ? JSON.parse(parsedSearch.quickFilter)
+      : {};
+  }, [location.search]);
+
+  const getSuggestionsForIndex = (
+    suggestions: SearchSuggestions,
+    searchIndex: SearchIndex
+  ) => {
+    if (suggestions.length === 0) {
+      return null;
+    }
+
+    return (
+      <div data-testid={`group-${searchIndex}`}>
+        {getGroupLabel(searchIndex)}
+        {suggestions.map((suggestion: SearchSuggestions[number]) => {
+          return getSuggestionElement(suggestion, () => setIsOpen(false));
+        })}
+      </div>
+    );
+  };
+
+  const getEntitiesSuggestions = () => {
+    return (
+      <div
+        className="global-search-suggestion-box"
+        data-testid="global-search-suggestion-box"
+        role="none">
+        {[
+          { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
+          { suggestions: columnSuggestions, searchIndex: SearchIndex.COLUMN },
+          { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
+          {
+            suggestions: dashboardSuggestions,
+            searchIndex: SearchIndex.DASHBOARD,
+          },
+          {
+            suggestions: pipelineSuggestions,
+            searchIndex: SearchIndex.PIPELINE,
+          },
+          { suggestions: mlModelSuggestions, searchIndex: SearchIndex.MLMODEL },
+          {
+            suggestions: containerSuggestions,
+            searchIndex: SearchIndex.CONTAINER,
+          },
+          {
+            suggestions: searchIndexSuggestions,
+            searchIndex: SearchIndex.SEARCH_INDEX,
+          },
+          {
+            suggestions: storedProcedureSuggestions,
+            searchIndex: SearchIndex.STORED_PROCEDURE,
+          },
+          {
+            suggestions: dataModelSuggestions,
+            searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          },
+          {
+            suggestions: glossaryTermSuggestions,
+            searchIndex: SearchIndex.GLOSSARY_TERM,
+          },
+          {
+            suggestions: databaseSuggestions,
+            searchIndex: SearchIndex.DATABASE,
+          },
+          {
+            suggestions: databaseSchemaSuggestions,
+            searchIndex: SearchIndex.DATABASE_SCHEMA,
+          },
+          { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
+          {
+            suggestions: dataProductSuggestions,
+            searchIndex: SearchIndex.DATA_PRODUCT,
+          },
+          {
+            suggestions: chartSuggestions,
+            searchIndex: SearchIndex.CHART,
+          },
+          {
+            suggestions: apiCollectionSuggestions,
+            searchIndex: SearchIndex.API_COLLECTION,
+          },
+          {
+            suggestions: apiEndpointSuggestions,
+            searchIndex: SearchIndex.API_ENDPOINT,
+          },
+          {
+            suggestions: metricSuggestions,
+            searchIndex: SearchIndex.METRIC,
+          },
+          {
+            suggestions: suggestions.directorySuggestions,
+            searchIndex: SearchIndex.DIRECTORY,
+          },
+          {
+            suggestions: suggestions.fileSuggestions,
+            searchIndex: SearchIndex.FILE,
+          },
+          {
+            suggestions: suggestions.spreadsheetSuggestions,
+            searchIndex: SearchIndex.SPREADSHEET,
+          },
+          {
+            suggestions: suggestions.worksheetSuggestions,
+            searchIndex: SearchIndex.WORKSHEET,
+          },
+          {
+            suggestions: suggestions.knowledgeArticleSuggestions,
+            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+          },
+          ...searchClassBase.getEntitiesSuggestions(options ?? []),
+        ].map(({ suggestions, searchIndex }) =>
+          getSuggestionsForIndex(suggestions, searchIndex)
+        )}
+      </div>
+    );
+  };
+
+  const fetchSearchData = useCallback(async () => {
+    if (isNLPActive) {
+      setIsLoading(false);
+
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const res = await searchQuery({
+        query: escapeESReservedCharacters(searchText),
+        searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
+        queryFilter: quickFilter,
+        pageSize: PAGE_SIZE_BASE,
+        includeDeleted: false,
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
+      });
+
+      setOptions(res.hits.hits as unknown as Option[]);
+      updateSuggestions(res.hits.hits as unknown as Option[]);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isNLPActive, quickFilter, searchText, searchCriteria]);
+
+  useEffect(() => {
+    if (searchText && !isTourOpen) {
+      fetchSearchData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [fetchSearchData, searchText, isTourOpen]);
+
+  // Add a function to render AI query suggestions
+  const renderAIQuerySuggestions = () => {
+    const aiQueries = [
+      'Tables owned by marketing',
+      'Tables with Tier1 classification',
+      'Find dashboards tagged with PII.Sensitive',
+      'Topics with schema fields containing address',
+      'Tables tagged with tier1 or tier2',
+    ];
+
+    return (
+      <div data-testid="ai-query-suggestions">
+        <Typography.Text strong className="m-b-sm d-block">
+          {t('label.ai-queries')}
+        </Typography.Text>
+        {aiQueries.map((query) => (
+          <Button
+            block
+            className="m-b-md w-100 text-left d-flex items-center p-0"
+            data-testid="nlp-suggestions-button"
+            icon={
+              <div className="nlp-button w-6 h-6 flex-center m-r-md">
+                <IconSuggestionsBlue />
+              </div>
+            }
+            key={query}
+            type="text"
+            onClick={() => onSearchTextUpdate?.(query)}>
+            {query}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  // Add a condition to show AI query suggestions when searchText is empty and isNLPActive is true
+  if (isEmpty(searchText) && isNLPActive) {
+    return renderAIQuerySuggestions();
+  }
+
+  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
+    return (
+      <Typography.Text>
+        <Transi18next
+          i18nKey="message.please-enter-to-find-data-assets"
+          renderElement={<strong />}
+          values={{
+            keyword: `"${searchText}"`,
+          }}
+        />
+      </Typography.Text>
+    );
+  }
+
+  return getEntitiesSuggestions();
+};
+
+export default Suggestions;

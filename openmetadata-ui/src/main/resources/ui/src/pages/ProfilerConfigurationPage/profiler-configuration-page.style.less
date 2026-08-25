@@ -1,0 +1,72 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.profiler-configuration-page-container {
+  margin: @margin-md auto 0;
+  padding: @padding-mlg;
+  background-color: var(--tw-color-bg-primary);
+  border-radius: @border-rad-sm;
+
+  .profiler-configuration-collapse {
+    border: none;
+    border-radius: @border-rad-sm;
+
+    &.ant-collapse > .ant-collapse-item {
+      border-bottom: none;
+    }
+
+    .ant-collapse-content {
+      border: 1px solid @grey-200;
+      border-bottom-right-radius: @border-rad-sm;
+      border-bottom-left-radius: @border-rad-sm;
+    }
+
+    .ant-collapse-header {
+      background-color: @grey-50;
+      .page-header-container .heading {
+        font-size: @font-size-base;
+      }
+    }
+
+    &.ant-collapse > .ant-collapse-item:last-child > .ant-collapse-header {
+      border-radius: @border-rad-sm;
+    }
+    .ant-collapse-item:last-child > .ant-collapse-content {
+      border-bottom-right-radius: @border-rad-sm;
+      border-bottom-left-radius: @border-rad-sm;
+    }
+
+    .ant-collapse-content-box {
+      padding: @padding-lg;
+    }
+  }
+
+  .ant-form-item {
+    margin: 0;
+  }
+
+  .ant-card {
+    border-radius: var(--om-radius-10);
+  }
+
+  .matrix-collapse-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: @padding-mlg @padding-lg 0;
+    margin-right: -@padding-lg;
+    margin-left: -@padding-lg;
+    border-top: 1px solid @grey-200;
+  }
+}

@@ -1,0 +1,1712 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.resources;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.json.JsonPatch;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
+import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.aicontext.AIContextBuilder;
+import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.csv.BulkImportVersioning;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.BulkAssetsOperationResponse;
+import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.DeleteEntityResponse;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.RestUtil.DeleteResponse;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
+import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.RestoreEntityResponse;
+import org.openmetadata.service.util.ValidatorUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
+
+@Slf4j
+@LatencyPhase
+public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+  protected final Class<T> entityClass;
+  protected final String entityType;
+  protected final Set<String> allowedFields;
+  @Getter protected final K repository;
+  protected final Authorizer authorizer;
+  protected final Limits limits;
+  protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
+
+  protected EntityResource(String entityType, Authorizer authorizer, Limits limits) {
+    this.entityType = entityType;
+    this.repository = (K) Entity.getEntityRepository(entityType);
+    this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
+    allowedFields = repository.getAllowedFields();
+    this.authorizer = authorizer;
+    this.limits = limits;
+    addViewOperation(
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
+    Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
+  }
+
+  /** Method used for initializing a resource, such as creating default policies, roles, etc. */
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {}
+
+  /**
+   * Method used for upgrading a resource such as adding new fields to entities, etc. that can't be done in bootstrap
+   * migrate
+   */
+  public void upgrade() {
+    // Nothing to do in the default implementation
+  }
+
+  public final Fields getFields(String fields) {
+    return repository.getFields(fields);
+  }
+
+  protected T addHref(UriInfo uriInfo, T entity) {
+    try (var ignored = RequestLatencyContext.phase("addHref")) {
+      Entity.withHref(uriInfo, entity.getOwners());
+      Entity.withHref(uriInfo, entity.getFollowers());
+      Entity.withHref(uriInfo, entity.getExperts());
+      Entity.withHref(uriInfo, entity.getReviewers());
+      Entity.withHref(uriInfo, entity.getChildren());
+      Entity.withHref(uriInfo, entity.getDomains());
+      Entity.withHref(uriInfo, entity.getDataProducts());
+      return entity;
+    }
+  }
+
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return null;
+  }
+
+  public final ResultList<T> addHref(UriInfo uriInfo, ResultList<T> list) {
+    try (var ignored = RequestLatencyContext.phase("addHref")) {
+      listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
+      return list;
+    }
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after) {
+    Fields fields = getFields(fieldsParam);
+    OperationContext listOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContext resourceContext = filter.getResourceContext(entityType);
+    return listInternal(
+        uriInfo,
+        securityContext,
+        fields,
+        filter,
+        limitParam,
+        before,
+        after,
+        listOperationContext,
+        resourceContext);
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    RestUtil.validateCursors(before, after);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Add Domain Filter
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
+    // List
+    ResultList<T> resultList;
+    if (before != null) { // Reverse paging
+      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else { // Forward paging or first page
+      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    return addHref(uriInfo, resultList);
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      List<AuthRequest> authRequests) {
+    RestUtil.validateCursors(before, after);
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    // Add Domain Filter
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
+    // List
+    ResultList<T> resultList;
+    if (before != null) { // Reverse paging
+      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else { // Forward paging or first page
+      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+    return addHref(uriInfo, resultList);
+  }
+
+  protected ResultList<T> searchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      String query,
+      int limit,
+      int offset) {
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
+    if (!nullOrEmpty(query)) {
+      filter.addQueryParam("nameFilter", query);
+    }
+
+    ResultList<T> resultList =
+        repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
+    return addHref(uriInfo, resultList);
+  }
+
+  public ResultList<T> listInternalFromSearch(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      List<AuthRequest> authRequests)
+      throws IOException {
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    return repository.listFromSearchWithOffset(
+        uriInfo,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
+        queryString,
+        securityContext);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, null);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include,
+      String includeRelations) {
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
+    return getInternal(
+        uriInfo,
+        securityContext,
+        id,
+        fields,
+        relationIncludes,
+        operationContext,
+        getResourceContextById(id, relationIncludes, fields));
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      Fields fields,
+      Include include,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    return getInternal(
+        uriInfo,
+        securityContext,
+        id,
+        fields,
+        RelationIncludes.fromInclude(include),
+        operationContext,
+        resourceContext);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
+    return addHref(
+        uriInfo,
+        authorized != null
+            ? authorized
+            : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * Returns the entity the authorization decision already loaded, reduced to the caller's
+   * projection, or null when policy evaluation never resolved it.
+   *
+   * <p>A GET builds its context from the same field set it serves, so the authorization load is a
+   * superset of the response projection and re-reading it would fetch the same row twice. That
+   * coupling is not enforced by the type system — the terminal overloads are public and a caller
+   * could pass a projection the context never loaded — so it is checked here rather than assumed:
+   * anything not covered falls back to a normal load. Fields the caller did not request are cleared
+   * so the payload is identical to a freshly loaded entity.
+   */
+  @SuppressWarnings("unchecked")
+  private T reuseAuthorizedEntity(
+      UriInfo uriInfo, ResourceContextInterface resourceContext, Fields fields) {
+    EntityInterface resolved = resourceContext == null ? null : resourceContext.getResolvedEntity();
+    boolean coversProjection =
+        resolved != null && resourceContext.getLoadedFields().containsAll(fields.getFieldList());
+    T result = null;
+    if (coversProjection && entityClass.isInstance(resolved)) {
+      result = (T) resolved;
+      repository.clearFieldsInternal(result, fields);
+      // clearFieldsInternal does not reset certification, and the authorization load always
+      // requests it, so an entity resolved for the decision would carry it into a response that
+      // never asked for it. Mirror the rule a normal read applies: present only when the caller
+      // requested tags or certification.
+      if (!fields.contains(Entity.FIELD_TAGS) && !fields.contains(Entity.FIELD_CERTIFICATION)) {
+        result.setCertification(null);
+      }
+      // The authorization load runs without a UriInfo, so the entity carries no self link yet.
+      result = repository.withHref(uriInfo, result);
+    }
+    return result;
+  }
+
+  /**
+   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured *and*
+   * currently reachable. With Redis, invalidation in {@code EntityRepository.invalidateCache}
+   * keeps all instances coherent so cached reads stay fresh. If Redis isn't wired, or the
+   * provider flipped to unavailable after a connection loss, we fall back to {@code
+   * fromCache=false} to avoid serving stale reads from a per-instance Guava cache in a
+   * multi-instance deployment.
+   */
+  private static boolean isDistributedCacheEnabled() {
+    if (CacheBundle.getCachedEntityDao() == null) {
+      return false;
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    return provider != null && provider.available();
+  }
+
+  public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
+    return getVersionInternal(
+        securityContext, id, version, operationContext, getResourceContextById(id));
+  }
+
+  public T getVersionInternal(
+      SecurityContext securityContext,
+      UUID id,
+      String version,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getVersion(id, version);
+  }
+
+  protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
+    return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext,
+      UUID id,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listVersions(id);
+  }
+
+  protected ResultList<T> listEntityHistoryByTimestampInternal(
+      SecurityContext securityContext,
+      long startTs,
+      long endTs,
+      String before,
+      String after,
+      int limit) {
+
+    ResourceContext resourceContext = getResourceContext();
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include) {
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, null);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include,
+      String includeRelations) {
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
+    return getByNameInternal(
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        relationIncludes,
+        operationContext,
+        getResourceContextByName(name, relationIncludes, fields));
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      Fields fields,
+      Include include,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    return getByNameInternal(
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        RelationIncludes.fromInclude(include),
+        operationContext,
+        resourceContext);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
+    return addHref(
+        uriInfo,
+        authorized != null
+            ? authorized
+            : repository.getByName(
+                uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
+    OperationContext operationContext = new OperationContext(entityType, CREATE);
+    CreateResourceContext<T> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, createResourceContext);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    T createdEntity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+    return Response.created(createdEntity.getHref()).entity(createdEntity).build();
+  }
+
+  public Response create(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      T entity) {
+    OperationContext operationContext = new OperationContext(entityType, CREATE);
+    CreateResourceContext<T> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    T createdEntity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+    return Response.created(createdEntity.getHref()).entity(createdEntity).build();
+  }
+
+  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
+    repository.prepareInternal(entity, true);
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    MetadataOperation operation = createOrUpdateOperation(resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (operation == CREATE) {
+      CreateResourceContext<T> createResourceContext =
+          new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, createResourceContext, operationContext);
+      authorizer.authorize(securityContext, operationContext, createResourceContext);
+      T createdEntity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+      return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
+    }
+    resourceContext =
+        getResourceContextByName(
+            entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    PutResponse<T> response =
+        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  public Response createOrUpdate(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      T entity) {
+    repository.prepareInternal(entity, true);
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    MetadataOperation operation = createOrUpdateOperation(resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (operation == CREATE) {
+      CreateResourceContext<T> createResourceContext =
+          new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, createResourceContext, operationContext);
+      authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+      T createdEntity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+      return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
+    }
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    PutResponse<T> response =
+        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  /** Deprecated: use method with changeContext
+   * Example:
+   * ```
+   * patchInternal(uriInfo, securityContext, id, patch, changeContext);
+   * ```
+   * */
+  @Deprecated
+  public Response patchInternal(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, id, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource) {
+    // Get If-Match header from ThreadLocal set by ETagRequestFilter
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    OperationContext operationContext = new OperationContext(entityType, patch);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    PatchResponse<T> response =
+        repository.patch(
+            uriInfo,
+            id,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            changeSource,
+            ifMatchHeader,
+            impersonatedBy);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      UUID id,
+      JsonPatch patch) {
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    PatchResponse<T> response =
+        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource) {
+    // Get If-Match header from ThreadLocal set by ETagRequestFilter
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    OperationContext operationContext = new OperationContext(entityType, patch);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    PatchResponse<T> response =
+        repository.patch(
+            uriInfo,
+            fqn,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            changeSource,
+            ifMatchHeader,
+            impersonatedBy);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response delete(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
+    DeleteResponse<T> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response deleteByIdAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+    T entity;
+    Response response;
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
+    entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    DeleteResponse<T> deleteResponse =
+                        repository.delete(userName, id, recursive, hardDelete);
+                    if (hardDelete) {
+                      limits.invalidateCache(entityType);
+                    }
+                    repository.storeChangeEventForAsyncOperation(
+                        deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    // Log before notifying. The WebSocket notification is the ONLY report this path
+                    // had, so a failed async delete was invisible to anyone not holding a live
+                    // socket
+                    // — no stack trace, no error line, nothing. A 100k-table service delete that
+                    // dies
+                    // here looks exactly like one still grinding, which is precisely the ambiguity
+                    // that made the nightly scale failures undiagnosable.
+                    LOG.error(
+                        "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                        entityType,
+                        id,
+                        jobId,
+                        recursive,
+                        hardDelete,
+                        e);
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        entity,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
+
+    response =
+        Response.accepted()
+            .entity(
+                new DeleteEntityResponse(
+                    jobId,
+                    "Delete operation initiated for " + entity.getName(),
+                    entity.getName(),
+                    hardDelete,
+                    recursive))
+            .build();
+
+    return response;
+  }
+
+  public Response deleteByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      boolean recursive,
+      boolean hardDelete) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextByName(name, ResourceContextInterface.Operation.DELETE));
+    DeleteResponse<T> response =
+        repository.deleteByName(
+            securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    // Read ?async=true off uriInfo so subclass resources that haven't (yet) declared the
+    // QueryParam still honor the async contract. Lets SDK callers opt into async restore
+    // universally regardless of which Resource subclass forwarded the parameter.
+    boolean asyncFromQuery =
+        uriInfo != null && Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("async"));
+    return restoreEntity(uriInfo, securityContext, id, asyncFromQuery);
+  }
+
+  public Response restoreEntity(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean async) {
+    if (async) {
+      return restoreEntityAsync(uriInfo, securityContext, id);
+    }
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    PutResponse<T> response =
+        repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
+    if (response == null) {
+      // EntityRepository.restoreEntity now calls find(id, Include.ALL) up front, so a truly
+      // missing id has already propagated EntityNotFoundException (→ 404) before we got
+      // here. A null response can only mean "entity exists but is not in DELETED state" —
+      // map that to 400.
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
+    }
+    repository.restoreFromSearch(response.getEntity());
+    addHref(uriInfo, response.getEntity());
+    LOG.info(
+        "Restored {}:{}",
+        Entity.getEntityTypeFromObject(response.getEntity()),
+        response.getEntity().getId());
+    return response.toResponse();
+  }
+
+  /**
+   * Async restore variant. Returns 202 Accepted with a job ID and runs the restore on the
+   * shared async executor. The caller can subscribe to
+   * {@link org.openmetadata.service.socket.WebSocketManager#RESTORE_ENTITY_CHANNEL} to be
+   * notified when the restore completes or fails. Used to avoid proxy / ALB idle timeouts on
+   * large hierarchies (issue #4003).
+   */
+  public Response restoreEntityAsync(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    // Cheap pre-check so we return a synchronous error instead of 202 + delayed WebSocket
+    // FAILED for a request that can't succeed. Distinguish the two failure modes that the
+    // raw EntityNotFoundException would conflate: 404 if the entity truly doesn't exist
+    // (Include.ALL still finds nothing) and 400 if it exists but is already restored.
+    // Capturing the entity here also yields a meaningful name for any later FAILED
+    // notification.
+    T preCheck;
+    try {
+      preCheck = repository.find(id, Include.DELETED);
+    } catch (EntityNotFoundException notDeleted) {
+      // Probe with Include.ALL to distinguish 404-missing from 400-not-deleted. Narrow
+      // catch so unrelated failures (DB connectivity, auth) propagate naturally rather
+      // than being mis-mapped to 400 "not in deleted state".
+      boolean entityExists;
+      try {
+        repository.find(id, Include.ALL);
+        entityExists = true;
+      } catch (EntityNotFoundException missing) {
+        entityExists = false;
+      }
+      if (entityExists) {
+        throw new BadRequestException(
+            String.format("Entity %s:%s is not in deleted state", entityType, id));
+      }
+      throw notDeleted;
+    }
+    String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
+    String jobId = UUID.randomUUID().toString();
+    String userName = securityContext.getUserPrincipal().getName();
+    // Resolve the WebSocket user id on the request thread, while the SecurityContext is
+    // still valid. JAX-RS may invalidate request-scoped state once the 202 response is
+    // returned, so we cannot rely on securityContext.getUserPrincipal() inside the lambda.
+    UUID notifyUserId = WebsocketNotificationHandler.resolveUserId(securityContext);
+    // Intentionally don't capture uriInfo in the lambda — same request-scope concern. The
+    // WebSocket notification only needs name/status, not HREFs.
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    PutResponse<T> response = repository.restoreEntity(userName, id);
+                    if (response == null) {
+                      // Pre-check saw the entity in DELETED state; a null response now means a
+                      // concurrent restore won the race. Treat as idempotent success — the
+                      // operator's request is satisfied. If the entity has since been hard-
+                      // deleted, surface that as a real failure.
+                      handleAlreadyRestored(jobId, id, entityName, notifyUserId);
+                      return;
+                    }
+                    repository.restoreFromSearch(response.getEntity());
+                    repository.storeChangeEventForAsyncOperation(
+                        response.getEntity(), response.getChangeType(), false, userName);
+                    LOG.info(
+                        "[AsyncRestore] Restored {}:{} (jobId={})",
+                        Entity.getEntityTypeFromObject(response.getEntity()),
+                        response.getEntity().getId(),
+                        jobId);
+                    WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                        jobId, notifyUserId, response.getEntity());
+                  } catch (Exception e) {
+                    LOG.error(
+                        "[AsyncRestore] Failed to restore {}:{} (name={})",
+                        entityType,
+                        id,
+                        entityName,
+                        e);
+                    WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                        jobId,
+                        notifyUserId,
+                        entityName,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
+    RestoreEntityResponse response =
+        new RestoreEntityResponse(jobId, "Restore initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  private void handleAlreadyRestored(String jobId, UUID id, String entityName, UUID notifyUserId) {
+    try {
+      T restored = repository.find(id, Include.NON_DELETED);
+      LOG.info(
+          "[AsyncRestore] {} {} was already restored by another request (jobId={})",
+          entityType,
+          id,
+          jobId);
+      WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+          jobId, notifyUserId, restored);
+    } catch (EntityNotFoundException missing) {
+      WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+          jobId, notifyUserId, entityName, "Entity was hard-deleted before restore");
+    }
+  }
+
+  public Response exportCsvInternalAsync(
+      SecurityContext securityContext, String name, boolean recursive) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.EXPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            false,
+            recursive,
+            null,
+            null);
+    String jobId = job.getJobId();
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response bulkAddToAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    String user = subjectContext.user().getName();
+
+    Set<String> editPermissibleResources =
+        authorizer.listPermissions(securityContext, user).stream()
+            .filter(
+                permission ->
+                    permission.getPermissions().stream()
+                        .anyMatch(
+                            perm ->
+                                MetadataOperation.EDIT_TAGS.equals(perm.getOperation())
+                                    && Permission.Access.ALLOW.equals(perm.getAccess())))
+            .map(ResourcePermission::getResource)
+            .collect(Collectors.toSet());
+
+    // Validate if all entity types in the request are in the permissible resources
+    List<String> unauthorizedEntityTypes =
+        request.getAssets().stream()
+            .map(EntityReference::getType)
+            .filter(entityType -> !editPermissibleResources.contains(entityType))
+            .distinct()
+            .toList();
+
+    if (!unauthorizedEntityTypes.isEmpty()
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()) {
+      throw new AuthorizationException(
+          CatalogExceptionMessage.resourcePermissionNotAllowed(
+              user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
+    }
+
+    String jobId = UUID.randomUUID().toString();
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    BulkOperationResult result =
+                        repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                        jobId, securityContext, result);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
+    BulkAssetsOperationResponse response =
+        new BulkAssetsOperationResponse(
+            jobId, "Bulk Add tags to Asset operation initiated successfully.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response bulkRemoveFromAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    String user = subjectContext.user().getName();
+    Set<String> editPermissibleResources =
+        authorizer.listPermissions(securityContext, user).stream()
+            .filter(
+                permission ->
+                    permission.getPermissions().stream()
+                        .anyMatch(
+                            perm ->
+                                MetadataOperation.EDIT_TAGS.equals(perm.getOperation())
+                                    && Permission.Access.ALLOW.equals(perm.getAccess())))
+            .map(ResourcePermission::getResource)
+            .collect(Collectors.toSet());
+
+    List<String> unauthorizedEntityTypes =
+        request.getAssets().stream()
+            .map(EntityReference::getType)
+            .filter(entityType -> !editPermissibleResources.contains(entityType))
+            .distinct()
+            .toList();
+
+    if (!unauthorizedEntityTypes.isEmpty()
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()) {
+      throw new AuthorizationException(
+          CatalogExceptionMessage.resourcePermissionNotAllowed(
+              user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
+    }
+    String jobId = UUID.randomUUID().toString();
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    BulkOperationResult result =
+                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                        jobId, securityContext, result);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
+    BulkAssetsOperationResponse response =
+        new BulkAssetsOperationResponse(
+            jobId, "Bulk Remove tags to Asset operation initiated successfully.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response importCsvInternalAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive) {
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive, null);
+  }
+
+  public Response importCsvInternalAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.IMPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            dryRun,
+            recursive,
+            csv,
+            versioningEntityType);
+    String jobId = job.getJobId();
+    CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
+    return Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
+      throws IOException {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive);
+  }
+
+  protected CsvImportResult importCsvInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive)
+      throws IOException {
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive, null);
+  }
+
+  protected CsvImportResult importCsvInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType)
+      throws IOException {
+    return importCsvInternal(
+        uriInfo, securityContext, name, csv, dryRun, recursive, versioningEntityType, null);
+  }
+
+  protected CsvImportResult importCsvInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType,
+      CsvImportProgressCallback progressCallback)
+      throws IOException {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    CsvImportResult result =
+        nullOrEmpty(versioningEntityType)
+            ? repository.importFromCsv(
+                name,
+                csv,
+                dryRun,
+                securityContext.getUserPrincipal().getName(),
+                recursive,
+                progressCallback)
+            : repository.importFromCsv(
+                name,
+                csv,
+                dryRun,
+                securityContext.getUserPrincipal().getName(),
+                recursive,
+                versioningEntityType,
+                progressCallback);
+
+    // Create version history for bulk import (same logic as async import)
+    String effectiveVersioningEntityType =
+        nullOrEmpty(versioningEntityType) ? entityType : versioningEntityType;
+    if (result.getStatus() != ApiStatus.ABORTED
+        && result.getNumberOfRowsProcessed() > 1
+        && !dryRun) {
+      EntityRepository<EntityInterface> versioningRepo =
+          (EntityRepository<EntityInterface>)
+              Entity.getEntityRepository(effectiveVersioningEntityType);
+
+      if (versioningRepo.supportsBulkImportVersioning()) {
+        processChangeEventForBulkImport(versioningRepo, uriInfo, securityContext, name, result);
+      }
+    }
+    return result;
+  }
+
+  protected void processChangeEventForBulkImport(
+      EntityRepository<EntityInterface> versioningRepo,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      CsvImportResult result) {
+    BulkImportVersioning.recordVersion(
+        versioningRepo, uriInfo, name, securityContext.getUserPrincipal().getName(), result);
+  }
+
+  protected ResourceContext<T> getResourceContext() {
+    return new ResourceContext<>(entityType);
+  }
+
+  protected ResourceContext<T> getResourceContextById(UUID id) {
+    return new ResourceContext<>(entityType, id, null);
+  }
+
+  protected ResourceContext<T> getResourceContextById(
+      UUID id, ResourceContextInterface.Operation operation) {
+    return new ResourceContext<>(entityType, id, null, operation);
+  }
+
+  protected ResourceContext<T> getResourceContextById(UUID id, Include include) {
+    return new ResourceContext<>(entityType, id, null, include);
+  }
+
+  protected ResourceContext<T> getResourceContextById(
+      UUID id, RelationIncludes relationIncludes, Fields fields) {
+    Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
+    return new ResourceContext<>(entityType, id, null, include, fields, relationIncludes);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(String name) {
+    return new ResourceContext<>(entityType, null, name);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(
+      String name, ResourceContextInterface.Operation operation) {
+    return new ResourceContext<>(entityType, null, name, operation);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(String name, Include include) {
+    return new ResourceContext<>(entityType, null, name, include);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(
+      String name, RelationIncludes relationIncludes, Fields fields) {
+    Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
+    return new ResourceContext<>(entityType, null, name, include, fields, relationIncludes);
+  }
+
+  protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
+
+  protected MetadataOperation[] getViewOperations(Fields fields) {
+    if (fields.getFieldList().isEmpty()) {
+      return VIEW_BASIC_OPERATIONS;
+    }
+    Set<MetadataOperation> viewOperations = new TreeSet<>();
+    for (String field : fields.getFieldList()) {
+      MetadataOperation operation = fieldsToViewOperations.get(field);
+      if (operation == null) {
+        return VIEW_ALL_OPERATIONS;
+      }
+      viewOperations.add(operation);
+    }
+    return viewOperations.toArray(new MetadataOperation[0]);
+  }
+
+  protected EntityReference getEntityReference(String entityType, String fqn) {
+    return EntityUtil.getEntityReference(entityType, fqn);
+  }
+
+  protected static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    return EntityUtil.getEntityReferences(entityType, fqns);
+  }
+
+  protected Response bulkCreateOrUpdateAsync(
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata,
+      List<BulkResponse> authFailedResponses,
+      int totalRequests) {
+    repository
+        .submitAsyncBulkOperation(
+            uriInfo,
+            entities,
+            userName,
+            existingByFqn,
+            overrideMetadata,
+            authFailedResponses,
+            totalRequests)
+        .thenAccept(
+            result ->
+                LOG.info(
+                    "Async bulk operation completed for {} {}: {} succeeded, {} failed",
+                    entities.size(),
+                    entityType,
+                    result.getNumberOfRowsPassed(),
+                    result.getNumberOfRowsFailed()));
+
+    BulkOperationResult result = new BulkOperationResult();
+    result.setNumberOfRowsProcessed(totalRequests);
+    result.setNumberOfRowsPassed(0);
+    result.setNumberOfRowsFailed(authFailedResponses.size());
+    List<BulkResponse> acceptedResponses = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      BulkResponse accepted = new BulkResponse();
+      accepted.setRequest(entity.getFullyQualifiedName());
+      accepted.setStatus(202);
+      acceptedResponses.add(accepted);
+    }
+    result.setSuccessRequest(acceptedResponses);
+    if (!authFailedResponses.isEmpty()) {
+      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+      result.setFailedRequest(authFailedResponses);
+    } else {
+      result.setStatus(ApiStatus.SUCCESS);
+    }
+
+    return Response.accepted().entity(result).build();
+  }
+
+  protected Response bulkCreateOrUpdateSync(
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata) {
+    BulkOperationResult result =
+        repository.bulkCreateOrUpdateEntities(
+            uriInfo, entities, userName, existingByFqn, overrideMetadata);
+    return Response.ok(result).build();
+  }
+
+  /**
+   * Reads the {@code overrideMetadata} query param from the bulk request URI. When true, the bulk
+   * update path is allowed to overwrite user-curated metadata (description, displayName) that a bot
+   * PUT would otherwise preserve, and the sourceHash fast-path is disabled. Read from {@link
+   * UriInfo} so the flag is honored uniformly across every {@code /bulk} endpoint without changing
+   * each resource method signature.
+   */
+  protected boolean isOverrideMetadata(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("overrideMetadata"));
+  }
+
+  /**
+   * Deletes entities of this type within the request scope that the ingestion connector did not
+   * report in the current run. By default the deletion is soft; set {@code hardDelete=true} on the
+   * request to hard-delete. Requires {@code DELETE} permission on this entity type. See {@link
+   * EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
+   */
+  protected Response deleteStaleEntities(
+      SecurityContext securityContext, BulkDeleteStaleRequest request) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    BulkOperationResult result =
+        repository.bulkDeleteStaleEntities(request, securityContext.getUserPrincipal().getName());
+    return Response.ok(result).build();
+  }
+
+  protected <C extends CreateEntity> Response processBulkRequest(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<C> createRequests,
+      EntityMapper<T, C> mapper,
+      boolean async) {
+
+    boolean overrideMetadata = isOverrideMetadata(uriInfo);
+    List<T> validEntities = new ArrayList<>();
+    List<BulkResponse> failedResponses = new ArrayList<>();
+
+    // Phase 1a: Validate and map all requests to entities
+    List<T> mappedEntities = new ArrayList<>();
+    Map<T, C> entityToCreateRequest = new IdentityHashMap<>();
+    for (C createRequest : createRequests) {
+      try {
+        String violations = ValidatorUtil.validate(createRequest);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
+        T entity =
+            mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
+        mappedEntities.add(entity);
+        entityToCreateRequest.put(entity, createRequest);
+      } catch (Exception e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(createRequest);
+        failedResponse.setMessage(e.getMessage());
+        failedResponse.setStatus(400);
+        failedResponses.add(failedResponse);
+      }
+    }
+
+    // Phase 1b: Preload shared parent entities for all mapped entities (1 batch query per type)
+    repository.preloadParentsForBulk(mappedEntities);
+
+    // Phase 1c: Prepare each entity (uses preloaded parent cache)
+    List<T> preparedEntities = new ArrayList<>();
+    Map<String, C> entityToRequest = new HashMap<>();
+    try {
+      for (T entity : mappedEntities) {
+        try {
+          repository.prepareInternal(entity, false);
+          repository.setFullyQualifiedName(entity);
+          preparedEntities.add(entity);
+          entityToRequest.put(entity.getFullyQualifiedName(), entityToCreateRequest.get(entity));
+        } catch (Exception e) {
+          C createRequest = entityToCreateRequest.get(entity);
+          BulkResponse failedResponse = new BulkResponse();
+          failedResponse.setRequest(createRequest);
+          failedResponse.setMessage(e.getMessage());
+          failedResponse.setStatus(400);
+          failedResponses.add(failedResponse);
+        }
+      }
+    } finally {
+      repository.clearParentCache();
+    }
+
+    // Phase 2: Batch fetch existing entities (1 DB query instead of N)
+    Map<String, T> existingByFqn = new HashMap<>();
+    if (!preparedEntities.isEmpty()) {
+      List<String> allFqns =
+          preparedEntities.stream().map(T::getFullyQualifiedName).collect(Collectors.toList());
+      List<T> existingEntities = repository.getDao().findEntityByNames(allFqns, Include.ALL);
+      for (T existing : existingEntities) {
+        existingByFqn.put(existing.getFullyQualifiedName(), existing);
+      }
+      if (!existingEntities.isEmpty()) {
+        repository.enrichEntitiesForAuth(existingEntities);
+      }
+    }
+
+    // On-demand policy fields are batch-loaded once for the whole request rather than per entity:
+    // the first policy that reads tags hydrates them for every existing entity in a single query,
+    // avoiding an N+1. A field no policy inspects is never loaded. New on-demand fields are added
+    // here as another entry, with no change to ResourceContext.
+    BulkFieldHydrator bulkFieldHydrator =
+        new BulkFieldHydrator(
+            Map.of(
+                Entity.FIELD_TAGS,
+                () -> repository.batchLoadTags(new ArrayList<>(existingByFqn.values()))));
+
+    // Phase 3: Auth check using batch results
+    for (T entity : preparedEntities) {
+      try {
+        boolean entityExists = existingByFqn.containsKey(entity.getFullyQualifiedName());
+
+        if (!entityExists) {
+          OperationContext operationContext = new OperationContext(entityType, CREATE);
+          CreateResourceContext<T> createResourceContext =
+              new CreateResourceContext<>(entityType, entity);
+          limits.enforceLimits(securityContext, createResourceContext, operationContext);
+          authorizer.authorize(securityContext, operationContext, createResourceContext);
+        } else {
+          MetadataOperation operation = MetadataOperation.EDIT_ALL;
+          OperationContext operationContext = new OperationContext(entityType, operation);
+          T existingEntity = existingByFqn.get(entity.getFullyQualifiedName());
+          ResourceContext<T> resourceContext =
+              new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
+          authorizer.authorize(securityContext, operationContext, resourceContext);
+        }
+
+        validEntities.add(entity);
+      } catch (AuthorizationException e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(entityToRequest.get(entity.getFullyQualifiedName()));
+        failedResponse.setMessage("Permission denied: " + e.getMessage());
+        failedResponse.setStatus(403);
+        failedResponses.add(failedResponse);
+      } catch (Exception e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(entityToRequest.get(entity.getFullyQualifiedName()));
+        failedResponse.setMessage(e.getMessage());
+        failedResponse.setStatus(400);
+        failedResponses.add(failedResponse);
+      }
+    }
+
+    if (validEntities.isEmpty()) {
+      BulkOperationResult result = new BulkOperationResult();
+      result.setStatus(ApiStatus.FAILURE);
+      result.setNumberOfRowsProcessed(createRequests.size());
+      result.setNumberOfRowsPassed(0);
+      result.setNumberOfRowsFailed(createRequests.size());
+      result.setFailedRequest(failedResponses);
+      return Response.ok(result).build();
+    }
+
+    String userName = securityContext.getUserPrincipal().getName();
+    Response response;
+    if (async) {
+      response =
+          bulkCreateOrUpdateAsync(
+              uriInfo,
+              validEntities,
+              userName,
+              existingByFqn,
+              overrideMetadata,
+              failedResponses,
+              createRequests.size());
+    } else {
+      BulkOperationResult result =
+          repository.bulkCreateOrUpdateEntities(
+              uriInfo, validEntities, userName, existingByFqn, overrideMetadata);
+
+      if (!failedResponses.isEmpty()) {
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + failedResponses.size());
+        result.setNumberOfRowsProcessed(createRequests.size());
+        if (result.getFailedRequest() == null) {
+          result.setFailedRequest(failedResponses);
+        } else {
+          result.getFailedRequest().addAll(failedResponses);
+        }
+      }
+      response = Response.ok(result).build();
+    }
+
+    return response;
+  }
+
+  protected void addViewOperation(String fieldsParam, MetadataOperation operation) {
+    String[] fields = fieldsParam.replace(" ", "").split(",");
+    for (String field : fields) {
+      if (allowedFields.contains(field)) {
+        fieldsToViewOperations.put(field, operation);
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers"
+          .contains(field)) {
+        // Some common fields for all the entities might be missing. Ignore it.
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+      }
+    }
+  }
+
+  @GET
+  @Path("/{id}/context")
+  @Produces({AIContextMarkdown.TEXT_MARKDOWN, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "getEntityAiContextById",
+      summary = "Get the AI context for an entity by id",
+      description =
+          "Retrieve the LLM-ready AI Context (Context Profile) for the entity — its attached "
+              + "business knowledge (glossary terms, Context Center articles, applied metrics), "
+              + "type-specific structural context, and depth-1 lineage — as an OKF-style markdown "
+              + "document (default) or the structured AIContext JSON (`?format=json`).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity AI context"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public Response getAiContextById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity id", required = true) @PathParam("id") UUID id,
+      @Parameter(description = "Output format: markdown (default) or json")
+          @QueryParam("format")
+          @DefaultValue("markdown")
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(id));
+    EntityReference reference = Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
+    return renderAiContext(reference.getFullyQualifiedName(), securityContext, format, query);
+  }
+
+  @GET
+  @Path("/name/{fqn}/context")
+  @Produces({AIContextMarkdown.TEXT_MARKDOWN, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "getEntityAiContextByName",
+      summary = "Get the AI context for an entity by fully qualified name",
+      description =
+          "Retrieve the LLM-ready AI Context (Context Profile) for the entity by FQN — see "
+              + "getEntityAiContextById. Returns an OKF-style markdown document by default, or the "
+              + "structured AIContext JSON with `?format=json`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity AI context"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public Response getAiContextByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity fully qualified name", required = true) @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Output format: markdown (default) or json")
+          @QueryParam("format")
+          @DefaultValue("markdown")
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextByName(fqn));
+    return renderAiContext(fqn, securityContext, format, query);
+  }
+
+  private Response renderAiContext(
+      String fqn, SecurityContext securityContext, String format, String query) {
+    AIContext context =
+        new AIContextBuilder(entityType, fqn)
+            .withQuery(query)
+            .withSecurity(authorizer, securityContext)
+            .build();
+    Response response;
+    if (AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)) {
+      response = Response.ok(context, MediaType.APPLICATION_JSON).build();
+    } else {
+      response =
+          Response.ok(AIContextMarkdown.render(context), AIContextMarkdown.TEXT_MARKDOWN).build();
+    }
+    return response;
+  }
+
+  @GET
+  @Path("/history")
+  @Operation(
+      operationId = "listAllEntityVersionsByTimestamp",
+      summary = "List all entity versions within a time range",
+      description =
+          "Get a paginated list of all entity versions within a given time range "
+              + "specified by `startTs` and `endTs` in milliseconds since epoch. ",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of all versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class)))
+      })
+  public ResultList<T> listEntityHistoryByTimestamp(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
+          @QueryParam("startTs")
+          long startTs,
+      @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
+          @QueryParam("endTs")
+          long endTs,
+      @Parameter(description = "Limit the number of entity returned (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 500, message = "must be less than or equal to 500")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of entity versions before this cursor")
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of entity versions after this cursor")
+          @QueryParam("after")
+          String after) {
+    return listEntityHistoryByTimestampInternal(
+        securityContext, startTs, endTs, before, after, limitParam);
+  }
+}

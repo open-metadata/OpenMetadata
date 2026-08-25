@@ -1,0 +1,22 @@
+{
+    "name": "DomoDashboard",
+    "displayName": "DomoDashboard Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+      {
+        "name": "GetDashboards",
+        "description": "List all the dashboards available to the user",
+        "errorMessage": "Failed to fetch dashboards, please validate the credentials or validate if user has access to fetch dashboards",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetCharts",
+        "description": "We can get the chart information using the Access Token and the Instance Domain.",
+        "errorMessage": "Failed to fetch chart information. Please make sure that the Access Token used has enough permissions to get chart details.",
+        "mandatory": false
+      }
+    ]
+  }
+  
+  

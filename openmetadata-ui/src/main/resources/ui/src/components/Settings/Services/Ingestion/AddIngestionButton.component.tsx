@@ -1,0 +1,110 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Button } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
+import { Dropdown } from 'antd';
+import { isEmpty } from 'lodash';
+import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
+import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import LimitWrapper from '../../../../hoc/LimitWrapper';
+import {
+  getIngestionTypes,
+  getSupportedPipelineTypes,
+} from '../../../../utils/IngestionConfigUtils';
+import { getMenuItems } from '../../../../utils/IngestionUtils';
+import { getAddIngestionPath } from '../../../../utils/RouterUtils';
+import { useAgentActionAvailability } from '../../../ServiceAgents/hooks/useAgentActionAvailability';
+import { AddIngestionButtonProps } from './AddIngestionButton.interface';
+
+function AddIngestionButton({
+  serviceDetails,
+  pipelineType,
+  serviceCategory,
+  serviceName,
+  ingestionList,
+  extraMenuItems,
+}: Readonly<AddIngestionButtonProps>) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { isUnavailable } = useAgentActionAvailability();
+
+  const supportedPipelineTypes = useMemo(
+    (): PipelineType[] =>
+      getSupportedPipelineTypes(serviceDetails, serviceCategory),
+    [serviceDetails, serviceCategory]
+  );
+
+  const handleAddIngestionClick = useCallback(
+    (type: PipelineType) => {
+      navigate(getAddIngestionPath(serviceCategory, serviceName, type));
+    },
+    [serviceCategory, serviceName]
+  );
+
+  const isDataInSightIngestionExists = useMemo(
+    () =>
+      ingestionList.some(
+        (ingestion) => ingestion.pipelineType === PipelineType.DataInsight
+      ),
+    [ingestionList]
+  );
+
+  const types = useMemo(
+    (): PipelineType[] =>
+      getIngestionTypes(supportedPipelineTypes, ingestionList, pipelineType),
+    [pipelineType, supportedPipelineTypes, ingestionList]
+  );
+
+  if (isEmpty(types) && isEmpty(extraMenuItems)) {
+    return null;
+  }
+
+  return (
+    <LimitWrapper resource="ingestionPipeline">
+      {/* Creating an agent deploys it to the pipeline service, so the whole control closes down
+          when that service is unreachable. `disabled` has to be on the Dropdown as well: the
+          Button carries no click handler, the menu does. */}
+      <Dropdown
+        disabled={isUnavailable}
+        menu={{
+          items: [
+            ...getMenuItems(types, isDataInSightIngestionExists),
+            ...(extraMenuItems ?? []),
+          ],
+          onClick: (item) => {
+            if ((types as string[]).includes(item.key)) {
+              handleAddIngestionClick(item.key as PipelineType);
+            }
+          },
+        }}
+        placement="bottomRight"
+        trigger={['click']}>
+        <Button
+          className="tw:font-semibold"
+          color="secondary"
+          data-testid="add-new-ingestion-button"
+          iconLeading={<Plus height={14} width={14} />}
+          iconTrailing={<DropdownIcon height={12} width={12} />}
+          isDisabled={isUnavailable}>
+          {t('label.add-agent')}
+        </Button>
+      </Dropdown>
+    </LimitWrapper>
+  );
+}
+
+export default AddIngestionButton;

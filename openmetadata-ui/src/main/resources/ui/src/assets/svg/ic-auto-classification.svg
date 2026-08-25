@@ -1,0 +1,13 @@
+<svg viewBox="0 0 17 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="11.5" cy="5.5" r="4.75" stroke="currentColor" stroke-width="1.5"/>
+<circle cx="11.5" cy="5.5" r="4.75" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5"/>
+<line x1="11.45" y1="3.75" x2="11.45" y2="7.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="9.75" y1="12.75" x2="9.75" y2="17.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="5.25" y1="1.75" x2="0.75" y2="1.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="14.75" y1="17.25" x2="9.75" y2="17.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="0.75" y1="9.25" x2="0.75" y2="1.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="14.75" y1="12.75" x2="14.75" y2="17.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="5.25" y1="9.25" x2="0.75" y2="9.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="13.25" y1="5.45" x2="9.75" y2="5.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+<rect x="0.75" y="12.75" width="5.5" height="4.5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>

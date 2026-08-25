@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/eventSubscriptionDestinationTestRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Test EventSubscription Request",
+  "description": "Schema defining eventSubscription test API.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest",
+  "properties": {
+    "destinations": {
+      "description": "List of external destinations.",
+      "type": "array",
+      "items": {
+        "$ref": "../../events/eventSubscription.json#/definitions/destination"
+      }
+    }
+  },
+  "additionalProperties": false
+}

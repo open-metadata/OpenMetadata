@@ -1,0 +1,157 @@
+package org.openmetadata.service.search;
+
+import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+
+import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.seeding.SeedDataGate;
+
+/**
+ * Interface for generic search client operations.
+ * This interface provides methods for managing data streams and other generic operations.
+ */
+public interface GenericClient {
+
+  String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
+
+  /** Application-owned marker; external template replacements must not preserve stale values. */
+  String INDEX_TEMPLATE_FINGERPRINT_KEY = "openmetadataFingerprint";
+
+  long INDEX_TEMPLATE_PRIORITY = 100L;
+  String INDEX_TEMPLATE_FINGERPRINT_FILTER_PATH =
+      "index_templates.name,index_templates.index_template.index_patterns,"
+          + "index_templates.index_template.composed_of,"
+          + "index_templates.index_template._meta."
+          + INDEX_TEMPLATE_FINGERPRINT_KEY;
+
+  static String calculateIndexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return SeedDataGate.fingerprint(
+        Map.of(
+            "indexPattern",
+            indexPattern,
+            "mappingContent",
+            mappingContent,
+            "priority",
+            Long.toString(INDEX_TEMPLATE_PRIORITY)));
+  }
+
+  default String indexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return calculateIndexTemplateFingerprint(indexPattern, mappingContent);
+  }
+
+  /**
+   * Get list of data streams matching a prefix.
+   *
+   * @param prefix the prefix to match data streams
+   * @return list of data stream names matching the prefix
+   * @throws IOException if the operation fails
+   */
+  default List<String> getDataStreams(String prefix) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete a data stream by name.
+   *
+   * @param dataStreamName the name of the data stream to delete
+   * @throws IOException if the operation fails
+   */
+  default void deleteDataStream(String dataStreamName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an ILM (Index Lifecycle Management) policy.
+   *
+   * @param policyName the name of the policy to delete
+   * @throws IOException if the operation fails
+   */
+  default void deleteILMPolicy(String policyName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Create or update a composable index template.
+   *
+   * @param templateName the name of the template
+   * @param indexPattern the index pattern to match (e.g., "table_search_index*")
+   * @param mappingContent the JSON mapping content containing mappings and settings
+   * @throws IOException if the operation fails
+   */
+  default void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Read OpenMetadata definition fingerprints from composable index templates in one request.
+   *
+   * @param templateNamePattern template name or wildcard pattern
+   * @return template name to definition fingerprint; templates without it are omitted
+   * @throws IOException if the operation fails
+   */
+  default Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete an index template.
+   *
+   * @param templateName the name of the template to delete
+   * @throws IOException if the operation fails
+   */
+  default void deleteIndexTemplate(String templateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Delete a component template.
+   *
+   * @param componentTemplateName the name of the component template to delete
+   * @throws IOException if the operation fails
+   */
+  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Detach ILM policy from indices matching a pattern.
+   *
+   * @param indexPattern the pattern to match indices
+   * @throws IOException if the operation fails
+   */
+  default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Remove ILM policy from a component template while preserving all other settings.
+   * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
+   *
+   * @param componentTemplateName the name of the component template
+   * @throws IOException if the operation fails
+   */
+  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    // Default implementation does nothing as this is only needed for Elasticsearch
+  }
+
+  /**
+   * Get the health status of the search cluster.
+   *
+   * @return SearchHealthStatus indicating whether the cluster is healthy or unhealthy
+   * @throws IOException if the operation fails
+   */
+  SearchHealthStatus getSearchHealthStatus() throws IOException;
+}

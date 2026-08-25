@@ -1,0 +1,387 @@
+package org.openmetadata.service.security.mask;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
+
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
+import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ColumnUtil;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class PIIMasker {
+  private static final Logger LOG = LoggerFactory.getLogger(PIIMasker.class);
+  public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
+  public static final String MASKED_VALUE = "********";
+  public static final String MASKED_NAME = "[MASKED]";
+  public static final String MASKED_MAIL = "********@masked.com";
+
+  private PIIMasker() {
+    /* Private constructor for Utility class */
+  }
+
+  public static TableData maskSampleData(TableData sampleData, Table table, List<Column> columns) {
+    return maskSampleDataInternal(sampleData, columns, hasPiiSensitiveTag(table));
+  }
+
+  public static TableData maskSampleData(
+      TableData sampleData, Container container, List<Column> columns) {
+    return maskSampleDataInternal(sampleData, columns, hasPiiSensitiveTag(container));
+  }
+
+  private static TableData maskSampleDataInternal(
+      TableData sampleData, List<Column> columns, boolean entityHasPiiTag) {
+    // If we don't have sample data, there's nothing to do
+    if (sampleData == null) {
+      return null;
+    }
+
+    List<Integer> columnsPositionToBeMasked;
+
+    // If the entity itself is marked as PII, mask all the sample data
+    if (entityHasPiiTag) {
+      columnsPositionToBeMasked =
+          IntStream.range(0, columns.size()).boxed().collect(Collectors.toList());
+    } else {
+      // Otherwise, mask only the PII columns
+      columnsPositionToBeMasked =
+          columns.stream()
+              .collect(
+                  Collectors.toMap(
+                      Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
+              .entrySet()
+              .stream()
+              .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
+              .map(Map.Entry::getValue)
+              .collect(Collectors.toList());
+    }
+
+    // Mask rows
+    sampleData.setRows(
+        sampleData.getRows().stream()
+            .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
+            .collect(Collectors.toList()));
+
+    List<String> sampleDataColumns = sampleData.getColumns();
+
+    // Flag column names as masked
+    columnsPositionToBeMasked.forEach(
+        position ->
+            sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
+
+    return sampleData;
+  }
+
+  public static Table getSampleData(Table table) {
+    TableData sampleData = maskSampleData(table.getSampleData(), table, table.getColumns());
+    table.setSampleData(sampleData);
+    return table;
+  }
+
+  public static Container getSampleData(Container container) {
+    if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
+      TableData sampleData =
+          maskSampleData(
+              container.getSampleData(), container, container.getDataModel().getColumns());
+      container.setSampleData(sampleData);
+    }
+    return container;
+  }
+
+  /*
+  If the topic or any of its fields are flagged as PII, we will
+  mask the full TopicSampleData list of messages, since we cannot
+  easily pick up the specific key containing the sample data.
+  */
+  public static Topic getSampleData(Topic topic) {
+    TopicSampleData sampleData = topic.getSampleData();
+
+    // If we don't have sample data, there's nothing to do
+    if (sampleData == null) {
+      return topic;
+    }
+
+    if (hasPiiSensitiveTag(topic)) {
+      sampleData.setMessages(List.of(MASKED_VALUE));
+      topic.setSampleData(sampleData);
+    }
+
+    return topic;
+  }
+
+  public static SearchIndex getSampleData(SearchIndex searchIndex) {
+    SearchIndexSampleData sampleData = searchIndex.getSampleData();
+
+    // If we don't have sample data, there's nothing to do
+    if (sampleData == null) {
+      return searchIndex;
+    }
+
+    if (hasPiiSensitiveTag(searchIndex)) {
+      sampleData.setMessages(List.of(MASKED_VALUE));
+      searchIndex.setSampleData(sampleData);
+    }
+
+    return searchIndex;
+  }
+
+  public static List<Column> getTableProfile(
+      String fqn, List<Column> columns, Authorizer authorizer, SecurityContext securityContext) {
+    Table table = Entity.getEntityByName(Entity.TABLE, fqn, "owners", Include.ALL);
+    return getTableProfile(table.getOwners(), columns, authorizer, securityContext);
+  }
+
+  public static List<Column> getTableProfile(
+      List<EntityReference> owners,
+      List<Column> columns,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    boolean authorizePII = authorizer.authorizePII(securityContext, owners);
+    if (authorizePII) return columns;
+    for (Column c : listOrEmpty(columns)) {
+      if (hasPiiSensitiveTag(c)) {
+        c.setProfile(null);
+        c.setName(flagMaskedName(c.getName()));
+      }
+    }
+    return columns;
+  }
+
+  public static List<ColumnProfile> getColumnProfile(
+      String fqn,
+      List<ColumnProfile> columnProfiles,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags,owners", Include.ALL);
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(fqn))
+            .findFirst()
+            .orElse(null);
+    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
+
+    if (column != null && hasPiiSensitiveTag(column) && !authorizePII) {
+      return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
+    }
+    return columnProfiles;
+  }
+
+  public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
+    Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
+    Column columnObj = EntityUtil.getColumn(table, columnProfile.getName());
+    String columnFQN = columnObj.getFullyQualifiedName();
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
+            .findFirst()
+            .orElse(null);
+
+    if (column != null && hasPiiSensitiveTag(column)) {
+      return new ColumnProfile().withName(columnProfile.getName());
+    }
+    return columnProfile;
+  }
+
+  private static TestCase getTestCase(Column column, TestCase testCase) {
+    if (!hasPiiSensitiveTag(column)) return testCase;
+    return maskTestCase(testCase);
+  }
+
+  private static TestCase maskTestCase(TestCase testCase) {
+    testCase.setTestCaseResult(null);
+    testCase.setParameterValues(null);
+    testCase.setDescription(null);
+    testCase.setName(flagMaskedName(testCase.getName()));
+
+    return testCase;
+  }
+
+  /**
+   * A test case outlives the table it points at: the table is hard-deleted while the test case row
+   * survives until DataRetention's {@code OrphanTestCaseCleanup} sweeps it. Resolving that dangling
+   * {@code entityLink} must not fail the request — a single stale row would otherwise turn every
+   * listing that happens to include it into a 404.
+   */
+  private static Table findTableOrNull(String tableFqn) {
+    Table table;
+    try {
+      table = Entity.getEntityByName(Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Test case references table [{}] that no longer exists", tableFqn);
+      table = null;
+    }
+    return table;
+  }
+
+  public static ResultList<TestCase> getTestCases(
+      ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
+    Map<String, Table> entityFQNToTable = new HashMap<>();
+    List<TestCase> maskedTests =
+        testCases.getData().stream()
+            .map(
+                testCase -> {
+                  MessageParser.EntityLink testCaseLink =
+                      MessageParser.EntityLink.parse(testCase.getEntityLink());
+                  Table table;
+                  if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
+                    table = entityFQNToTable.get(testCaseLink.getEntityFQN());
+                  } else {
+                    table = findTableOrNull(testCaseLink.getEntityFQN());
+                    entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
+                  }
+
+                  if (table == null) {
+                    // The column tags that decide masking died with the table, so fall back to the
+                    // caller's PII authorization rather than exposing the orphan's results.
+                    return authorizer.authorizePII(securityContext, null)
+                        ? testCase
+                        : maskTestCase(testCase);
+                  }
+
+                  // Ignore table tests
+                  if (testCaseLink.getFieldName() == null) return testCase;
+
+                  Optional<Column> referencedColumn =
+                      table.getColumns().stream()
+                          .filter(
+                              col ->
+                                  testCaseLink
+                                      .getFullyQualifiedFieldValue()
+                                      .equals(col.getFullyQualifiedName()))
+                          .findFirst();
+
+                  if (referencedColumn.isPresent()) {
+                    Column col = referencedColumn.get();
+                    // We need the table owner to know if we can authorize the access
+                    boolean authorizePII =
+                        authorizer.authorizePII(securityContext, table.getOwners());
+                    if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
+                    return testCase;
+                  }
+                  return testCase;
+                })
+            .collect(Collectors.toList());
+
+    testCases.setData(maskedTests);
+    return testCases;
+  }
+
+  /*
+  Either return the query if user has permissions, or hide it completely.
+  */
+  private static Query getQuery(Query query) {
+    if (!hasPiiSensitiveTag(query)) return query;
+    query.setQuery(MASKED_VALUE);
+    return query;
+  }
+
+  public static ResultList<Query> getQueries(
+      ResultList<Query> queries, Authorizer authorizer, SecurityContext securityContext) {
+    List<Query> maskedQueries =
+        queries.getData().stream()
+            .map(
+                query -> {
+                  boolean authorizePII =
+                      authorizer.authorizePII(securityContext, query.getOwners());
+                  if (!authorizePII) return PIIMasker.getQuery(query);
+                  return query;
+                })
+            .collect(Collectors.toList());
+    queries.setData(maskedQueries);
+    return queries;
+  }
+
+  private static boolean hasPiiSensitiveTag(Query query) {
+    return listOrEmpty(query.getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  private static boolean hasPiiSensitiveTag(Column column) {
+    return ColumnUtil.getAllTags(column).stream().anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  private static boolean hasPiiSensitiveTag(Table table) {
+    return table.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  private static boolean hasPiiSensitiveTag(Container container) {
+    return container.getTags() != null
+        && container.getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  private static boolean hasPiiSensitiveTag(SearchIndex searchIndex) {
+    return searchIndex.getTags().stream()
+        .map(TagLabel::getTagFQN)
+        .anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  /*
+  Check if the Topic is flagged as PII or any of its fields
+  */
+  private static boolean hasPiiSensitiveTag(Topic topic) {
+    if (topic.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals))
+      return true;
+
+    Set<TagLabel> fieldTags = new HashSet<>();
+    List<Field> schemaFields =
+        topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
+    for (Field schemaField : listOrEmpty(schemaFields)) {
+      fieldTags.addAll(getAllFieldTags(schemaField));
+    }
+
+    return fieldTags.stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  private static List<Object> maskSampleDataRow(
+      List<Object> row, List<Integer> columnsPositionToBeMasked) {
+    columnsPositionToBeMasked.forEach(position -> row.set(position, MASKED_VALUE));
+    return row;
+  }
+
+  private static String flagMaskedName(String name) {
+    return String.format("%s %s", name, MASKED_NAME);
+  }
+
+  public static User maskUser(Authorizer authorizer, SecurityContext securityContext, User user) {
+    if (authorizer.authorizePII(securityContext, null)) return user;
+    user.setEmail(MASKED_MAIL);
+    return user;
+  }
+}

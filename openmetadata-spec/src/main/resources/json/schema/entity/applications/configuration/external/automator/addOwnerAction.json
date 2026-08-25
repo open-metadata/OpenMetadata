@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addOwnerAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddOwnerAction",
+  "description": "Add owners to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "addOwnerActionType": {
+      "description": "Add Owner Action Type.",
+      "type": "string",
+      "enum": ["AddOwnerAction"],
+      "default": "AddOwnerAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/addOwnerActionType",
+      "default": "AddOwnerAction"
+    },
+    "owners": {
+      "description": "Owners to apply",
+      "$ref": "../../../../../type/entityReferenceList.json",
+      "default": null
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update the owners even if it is defined in the asset. By default, we will only apply the owners to assets without owner.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "owners"],
+  "additionalProperties": false
+}

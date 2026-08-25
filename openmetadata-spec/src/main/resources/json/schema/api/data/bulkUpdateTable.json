@@ -1,0 +1,89 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/bulkUpdateTable.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkUpdateTable",
+  "description": "Schema for bulk updating multiple tables with differential updates",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BulkUpdateTable",
+  "definitions": {
+    "tableUpdate": {
+      "javaType": "org.openmetadata.schema.api.data.TableUpdate",
+      "description": "Partial table update - only include fields that have changed",
+      "type": "object",
+      "properties": {
+        "fqn": {
+          "description": "Fully qualified name of the table to update",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "columns": {
+          "description": "Updated columns list (replaces existing columns). Only include if changed.",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/table.json#/definitions/column"
+          }
+        },
+        "tableConstraints": {
+          "description": "Updated table constraints. Only include if changed.",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/table.json#/definitions/tableConstraint"
+          }
+        },
+        "tablePartition": {
+          "description": "Updated table partition details. Only include if changed.",
+          "$ref": "../../entity/data/table.json#/definitions/tablePartition"
+        },
+        "description": {
+          "description": "Updated description. Only include if changed.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Updated tags. Only include if changed.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "owner": {
+          "description": "Updated owner. Only include if changed.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "sourceUrl": {
+          "description": "Updated source URL. Only include if changed.",
+          "$ref": "../../type/basic.json#/definitions/sourceUrl"
+        },
+        "retentionPeriod": {
+          "description": "Updated retention period. Only include if changed.",
+          "$ref": "../../type/basic.json#/definitions/duration"
+        },
+        "extension": {
+          "description": "Updated custom properties extension. Only include if changed.",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
+        },
+        "dataModel": {
+          "description": "Updated data model. Only include if changed.",
+          "$ref": "../../entity/data/table.json#/definitions/dataModel"
+        }
+      },
+      "required": ["fqn"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "updates": {
+      "description": "List of table update requests with differential changes",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableUpdate"
+      },
+      "minItems": 1
+    },
+    "dryRun": {
+      "description": "If true, validate requests without persisting changes",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["updates"],
+  "additionalProperties": false
+}

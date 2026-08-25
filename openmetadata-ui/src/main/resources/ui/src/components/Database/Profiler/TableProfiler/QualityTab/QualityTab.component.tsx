@@ -1,0 +1,499 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Form, Select, Space } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { isEmpty } from 'lodash';
+import QueryString from 'qs';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as AbortedTestIcon } from '../../../../../assets/svg/data-observability/aborted-test.svg';
+import { ReactComponent as FailedTestIcon } from '../../../../../assets/svg/data-observability/failed-test.svg';
+import { ReactComponent as SuccessTestIcon } from '../../../../../assets/svg/data-observability/success-test.svg';
+import { ReactComponent as TotalTestIcon } from '../../../../../assets/svg/data-observability/total-test.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
+import {
+  DEFAULT_SORT_ORDER,
+  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_TYPE_OPTION,
+} from '../../../../../constants/profiler.constant';
+import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
+import { TestCaseType } from '../../../../../enums/TestSuite.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
+import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { TestCaseStatus } from '../../../../../generated/tests/testCase';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
+import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
+import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
+import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import {
+  checkPermission,
+  getPrioritizedEditPermission,
+} from '../../../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
+import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
+import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
+import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import DataQualityTab from '../../DataQualityTab/DataQualityTab';
+import {
+  DataQualityTabProps,
+  ProfilerTabPath,
+} from '../../ProfilerDashboard/profilerDashboard.interface';
+import { useTableProfiler } from '../TableProfilerProvider';
+
+export const QualityTab = () => {
+  const {
+    permissions,
+    fetchAllTests,
+    onTestCaseUpdate,
+    allTestCases,
+    isTestsLoading,
+    testCasePaging,
+    table,
+    testCaseSummary,
+  } = useTableProfiler();
+  const { getResourceLimit } = useLimitStore();
+  const { permissions: globalPermissions } = usePermissionProvider();
+
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+  } = testCasePaging;
+
+  const { editTest } = useMemo(() => {
+    return {
+      editTest:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditTests),
+      editDataProfile:
+        permissions &&
+        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
+    };
+  }, [permissions, getPrioritizedEditPermission]);
+
+  const navigate = useNavigate();
+  const location = useCustomLocation();
+  const { t } = useTranslation();
+  const originBreadcrumb = (
+    location.state as {
+      breadcrumbData?: DataQualityTabProps['breadcrumbData'];
+    } | null
+  )?.breadcrumbData;
+
+  const searchData = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as {
+      activeColumnFqn: string;
+      qualityTab: string;
+    };
+  }, [location.search]);
+
+  const { showModal } = useEntityExportModalProvider();
+
+  const { qualityTab = EntityTabs.TEST_CASES } = searchData;
+
+  const isTestCaseTab = useMemo(
+    () => qualityTab === EntityTabs.TEST_CASES,
+    [qualityTab]
+  );
+
+  const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
+    useState<TestCaseStatus>('' as TestCaseStatus);
+  const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
+  const [searchValue, setSearchValue] = useState<string>();
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const testSuite = useMemo(() => table?.testSuite, [table]);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(searchValue) ||
+      Boolean(selectedTestCaseStatus) ||
+      selectedTestType !== TestCaseType.all,
+    [searchValue, selectedTestCaseStatus, selectedTestType]
+  );
+
+  const totalTestCaseSummary = useMemo(() => {
+    const tests = testCaseSummary?.total ?? INITIAL_TEST_SUMMARY;
+
+    return [
+      {
+        title: t('label.test-plural-type', { type: t('label.total') }),
+        key: 'total-tests',
+        value: tests.total,
+        icon: TotalTestIcon,
+      },
+      {
+        title: t('label.test-plural-type', { type: t('label.successful') }),
+        key: 'successful-tests',
+        value: tests.success,
+        icon: SuccessTestIcon,
+      },
+      {
+        title: t('label.test-plural-type', { type: t('label.failed') }),
+        key: 'failed-tests',
+        value: tests.failed,
+        icon: FailedTestIcon,
+      },
+      {
+        title: t('label.test-plural-type', { type: t('label.aborted') }),
+        key: 'aborted-tests',
+        value: tests.aborted,
+        icon: AbortedTestIcon,
+      },
+    ];
+  }, [testCaseSummary]);
+
+  const fetchIngestionPipelineCount = async () => {
+    try {
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuite?.fullyQualifiedName ?? '',
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
+    } catch {
+      // do nothing for count error
+    }
+  };
+
+  useEffect(() => {
+    if (testSuite?.fullyQualifiedName) {
+      fetchIngestionPipelineCount();
+    }
+  }, [testSuite?.fullyQualifiedName]);
+
+  const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
+    currentPage,
+  }) => {
+    if (currentPage) {
+      fetchAllTests({
+        ...sortOptions,
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+        offset: (currentPage - 1) * pageSize,
+      });
+    }
+    handlePageChange(currentPage);
+  };
+
+  const handleSearchTestCase = (value?: string) => {
+    setSearchValue(value);
+    fetchAllTests({
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: value,
+    });
+  };
+
+  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    handlePageChange(INITIAL_PAGING_VALUE);
+  };
+
+  const tableBreadcrumb = useMemo(() => {
+    if (originBreadcrumb?.length) {
+      return originBreadcrumb;
+    }
+
+    return table
+      ? [
+          ...getBreadcrumbForTable(table),
+          {
+            name: table.name,
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              table.fullyQualifiedName ?? '',
+              EntityTabs.PROFILER,
+              ProfilerTabPath.DATA_QUALITY
+            ),
+          },
+        ]
+      : undefined;
+  }, [originBreadcrumb, table]);
+
+  const handleTestCaseStatusChange = (value: TestCaseStatus) => {
+    if (value !== selectedTestCaseStatus) {
+      setSelectedTestCaseStatus(value);
+      fetchAllTests({
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(value) ? undefined : value,
+      });
+    }
+  };
+
+  const extraDropdownContent: ItemType[] = useMemo(() => {
+    const bulkImportExportTestCasePermission = {
+      ViewAll:
+        checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+      EditAll:
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+    };
+
+    return table?.fullyQualifiedName
+      ? ExtraTestCaseDropdownOptions(
+          table.fullyQualifiedName,
+          bulkImportExportTestCasePermission,
+          table?.deleted ?? false,
+          navigate,
+          showModal,
+          EntityType.TABLE
+        )
+      : [];
+  }, [globalPermissions, table, navigate, showModal]);
+
+  const handleTestCaseTypeChange = (value: TestCaseType) => {
+    if (value !== selectedTestType) {
+      setSelectedTestType(value);
+      fetchAllTests({
+        testCaseType: value,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
+    }
+  };
+
+  const tabs = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel
+            count={paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
+        key: EntityTabs.TEST_CASES,
+      },
+      {
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
+        key: EntityTabs.PIPELINE,
+      },
+    ],
+    [
+      isTestsLoading,
+      allTestCases,
+      onTestCaseUpdate,
+      testSuite,
+      fetchAllTests,
+      getResourceLimit,
+      tableBreadcrumb,
+      testCasePaging,
+      ingestionPipelineCount,
+    ]
+  );
+
+  const pagingData = useMemo(() => {
+    return {
+      isNumberBased: true,
+      currentPage,
+      isLoading: isTestsLoading,
+      pageSize,
+      paging,
+      pagingHandler: handleTestCasePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    };
+  }, [
+    currentPage,
+    isTestsLoading,
+    pageSize,
+    paging,
+    handleTestCasePageChange,
+    handlePageSizeChange,
+  ]);
+
+  const handleTabChange = (tab: string | number) => {
+    navigate(
+      {
+        pathname: location.pathname,
+        search: QueryString.stringify({
+          ...searchData,
+          qualityTab: String(tab),
+        }),
+      },
+      { state: location.state, replace: true }
+    );
+  };
+
+  if (permissions && !permissions?.ViewTests) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-observability'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
+
+  return (
+    <div className="quality-tab-container tw:flex tw:flex-col tw:gap-7.5">
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6">
+        {totalTestCaseSummary?.map((summary) => (
+          <SummaryCardV1
+            icon={summary.icon}
+            isLoading={false}
+            key={summary.title}
+            title={summary.title}
+            value={summary.value}
+          />
+        ))}
+      </div>
+
+      <div className="tw:border tw:border-secondary tw:rounded-[10px]">
+        <div
+          className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-4 tw:gap-y-4 tw:p-4"
+          data-testid="quality-tab-toolbar">
+          <div className="tw:flex tw:min-w-100 tw:flex-auto tw:items-center tw:gap-3">
+            <Tabs
+              className="tw:w-max"
+              selectedKey={qualityTab}
+              onSelectionChange={handleTabChange}>
+              <Tabs.List size="sm" type="button-border">
+                {tabs.map(({ label, key }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+            </Tabs>
+
+            {isTestCaseTab && (
+              <div
+                className="tw:min-w-50 tw:max-w-75 tw:flex-1"
+                data-testid="quality-tab-search">
+                <Searchbar
+                  removeMargin
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.test-case-lowercase'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={handleSearchTestCase}
+                />
+              </div>
+            )}
+          </div>
+
+          {isTestCaseTab && (
+            <Form
+              className="new-form-style tw:ml-auto tw:shrink-0"
+              data-testid="quality-tab-filter-controls"
+              layout="inline">
+              <Space
+                align="center"
+                className="tw:w-full tw:justify-end"
+                size={12}>
+                <Form.Item className="tw:m-0 tw:w-44" label={t('label.type')}>
+                  <Select
+                    options={TEST_CASE_TYPE_OPTION}
+                    value={selectedTestType}
+                    onChange={handleTestCaseTypeChange}
+                  />
+                </Form.Item>
+                <Form.Item className="tw:m-0 tw:w-44" label={t('label.status')}>
+                  <Select
+                    options={TEST_CASE_STATUS_OPTION}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
+                <ManageButton
+                  canDelete={false}
+                  deleted={table?.deleted ?? false}
+                  displayName={t('label.manage-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                  entityId={table?.id}
+                  entityName={getEntityName(table)}
+                  entityType={EntityType.TEST_CASE}
+                  extraDropdownContent={extraDropdownContent}
+                  isRecursiveDelete={false}
+                />
+              </Space>
+            </Form>
+          )}
+        </div>
+
+        {qualityTab === EntityTabs.TEST_CASES && (
+          <DataQualityTab
+            removeTableBorder
+            afterDeleteAction={async (...params) => {
+              await fetchAllTests(...params);
+              params?.length &&
+                (await getResourceLimit('dataQuality', true, true));
+            }}
+            breadcrumbData={tableBreadcrumb}
+            fetchTestCases={handleSortTestCase}
+            hasActiveFilters={hasActiveFilters}
+            isEditAllowed={editTest}
+            isLoading={isTestsLoading}
+            pagingData={pagingData}
+            showPagination={showPagination}
+            showTableColumn={false}
+            testCases={allTestCases}
+            onTestCaseResultUpdate={onTestCaseUpdate}
+            onTestUpdate={onTestCaseUpdate}
+          />
+        )}
+
+        {qualityTab === EntityTabs.PIPELINE && (
+          <TestSuitePipelineTab testSuite={testSuite} />
+        )}
+      </div>
+    </div>
+  );
+};

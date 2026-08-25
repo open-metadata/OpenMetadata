@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/driftProbe/duplicateProbe.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Duplicate Probe",
+  "$comment": "@om-entity-type",
+  "description": "Test-only entity schema declaring an entity type that a second schema also declares, so that duplicate resolution stays independent of classpath scan order.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the probe entity.",
+      "type": "string"
+    }
+  }
+}

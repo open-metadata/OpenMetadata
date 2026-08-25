@@ -1,0 +1,67 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+@import '../../Domain/domain.less';
+
+.data-product-details {
+  .ant-tabs-tabpane {
+    min-height: 70vh;
+  }
+
+  .announcement-card {
+    margin-top: var(--om-space-4);
+  }
+
+  .ant-btn-group.spaced {
+    .ant-btn.ant-btn-default.data-contract-latest-result-button {
+      font-size: var(--om-font-size-sm);
+      padding: var(--om-space-6) var(--om-space-12);
+      border-radius: var(--om-radius-xl);
+      font-weight: var(--om-font-weight-semibold);
+      box-shadow: 0px 2px 2px -1px @grey-35, 0px 4px 6px -2px @grey-35,
+        0px 12px 16px -4px @grey-35;
+
+      svg {
+        font-size: var(--om-font-size-26);
+        fill: transparent;
+      }
+
+      &.failed {
+        color: @red-14;
+        border: 1px solid @red-19;
+        background-color: @red-9;
+      }
+
+      &.aborted {
+        color: @orange-7;
+        border: 1px solid @orange-200;
+        background-color: @orange-50;
+      }
+
+      &.running {
+        color: @primary-7;
+        border: 1px solid @blue-39;
+        background-color: @blue-33;
+      }
+    }
+  }
+}
+
+.data-product-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      height: @domain-page-height;
+      overflow-y: auto;
+    }
+  }
+}

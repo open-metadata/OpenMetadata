@@ -1,0 +1,1810 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+# pylint: disable=too-many-lines
+"""
+Looker source module.
+Supports:
+- owner
+- lineage
+- usage
+
+Notes:
+- Filtering is applied on the Dashboard title or ID, if the title is missing
+"""
+
+import copy
+import os
+import re
+import traceback
+from datetime import datetime
+from pathlib import Path
+from typing import (  # noqa: UP035
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+    get_args,
+)
+
+import giturlparse
+import lkml
+import networkx as nx
+from liquid import Template
+from looker_sdk.sdk.api40.methods import Looker40SDK
+from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
+from looker_sdk.sdk.api40.models import (
+    DashboardBase,
+    DashboardElement,
+    LookmlModel,
+    LookmlModelExplore,
+    LookmlModelNavExplore,
+    Project,
+)
+from pydantic import ValidationError
+
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LocalRepositoryPath,
+    LookerConnection,
+    NoGitCredentials,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.security.credentials.bitbucketCredentials import (
+    BitBucketCredentials,
+)
+from metadata.generated.schema.security.credentials.githubCredentials import (
+    GitHubCredentials,
+)
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
+from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
+    DashboardUsage,
+)
+from metadata.ingestion.source.dashboard.looker.bulk_parser import BulkLkmlParser
+from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
+from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
+from metadata.ingestion.source.dashboard.looker.models import (
+    Includes,
+    LookMLManifest,
+    LookMLRepo,
+    LookMlView,
+    ViewName,
+)
+from metadata.ingestion.source.dashboard.looker.utils import _clone_repo
+from metadata.readers.file.api_reader import ReadersCredentials
+from metadata.readers.file.base import Reader
+from metadata.readers.file.credentials import get_credentials_from_url
+from metadata.readers.file.local import LocalReader
+from metadata.utils import fqn
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_dashboard,
+    filter_by_datamodel,
+    filter_pattern_enabled,
+)
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
+logger = ingestion_logger()
+
+LIST_DASHBOARD_FIELDS = ["id", "title"]
+IMPORTED_PROJECTS_DIR = "imported_projects"
+
+# we need to find the derived references in the SQL query using regex
+# https://cloud.google.com/looker/docs/derived-tables#referencing_derived_tables_in_other_derived_tables
+DERIVED_REFERENCES = r"\${([\w\s\d_.]+)\.SQL_TABLE_NAME}"
+
+# Here we can update the fields to get further information, such as:
+# created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
+GET_DASHBOARD_FIELDS = [
+    "id",
+    "title",
+    "dashboard_elements",
+    "dashboard_filters",
+    "description",
+    "folder",
+    "user_id",  # Use as owner
+]
+
+TEMP_FOLDER_DIRECTORY = os.path.join(os.getcwd(), "tmp")  # noqa: PTH109, PTH118
+REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
+
+LOOKER_TAG_CATEGORY = "LookerTags"
+
+
+def clean_dashboard_name(name: str) -> str:
+    """
+    Clean incorrect (and known) looker characters in ids
+    """
+    return name.replace("::", "_")
+
+
+def build_datamodel_name(model_name: str, explore_name: str) -> str:
+    """
+    Build the explore name using the model name
+    """
+    return clean_dashboard_name(model_name + "_" + explore_name)
+
+
+def find_derived_references(sql_query: str) -> List[str]:  # noqa: UP006
+    if sql_query is None:
+        return []
+    matches = re.findall(DERIVED_REFERENCES, sql_query)
+    return matches  # noqa: RET504
+
+
+class LookerSource(DashboardServiceSource):
+    """
+    Looker Source Class.
+
+    Its client uses Looker 40 from the SDK: client = looker_sdk.init40()
+    """
+
+    # pylint: disable=too-many-instance-attributes, too-many-public-methods
+
+    config: WorkflowSource
+    metadata: OpenMetadata
+    client: Looker40SDK
+    progress_mode = ProgressMode.MANUAL
+
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
+        super().__init__(config, metadata)
+        self.today = datetime.now().strftime("%Y-%m-%d")
+
+        self._explores_cache = {}
+        self._views_cache = {}
+        self._repo_credentials: Optional[ReadersCredentials] = None  # noqa: UP045
+        self._reader_class: Optional[Type[Reader]] = None  # noqa: UP006, UP045
+        self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None  # noqa: UP006, UP045
+        self._main_lookml_repos: Optional[List[LookMLRepo]] = None  # noqa: UP006, UP045
+        self._main__lookml_manifest: Optional[LookMLManifest] = None  # noqa: UP045
+        self._lookml_constants_map: Dict[str, str] = {}  # noqa: UP006
+        self._view_data_model: Optional[DashboardDataModel] = None  # noqa: UP045
+
+        self._parsed_views: Optional[Dict[str, str]] = {}  # noqa: UP006, UP045
+        self._unparsed_views: Optional[Dict[str, str]] = {}  # noqa: UP006, UP045
+        self._derived_dependencies = nx.DiGraph()
+
+        self._added_lineage: Optional[Dict] = {}  # noqa: UP006, UP045
+
+    @classmethod
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
+    ) -> "LookerSource":
+        config = WorkflowSource.model_validate(config_dict)
+        connection: LookerConnection = config.serviceConnection.root.config
+        if not isinstance(connection, LookerConnection):
+            raise InvalidSourceException(f"Expected LookerConnection, but got {connection}")
+        return cls(config, metadata)
+
+    @staticmethod
+    def __init_repo(
+        credentials: Optional[  # noqa: UP045
+            Union[  # noqa: UP007
+                NoGitCredentials,
+                LocalRepositoryPath,
+                GitHubCredentials,
+                BitBucketCredentials,
+                GitlabCredentials,
+            ]
+        ],
+    ) -> List["LookMLRepo"]:  # noqa: UP006
+        repos = []
+        if isinstance(credentials, LocalRepositoryPath):
+            # For local repository path, use the path directly without cloning
+            local_path = Path(credentials.root)
+            repo_name = local_path.name
+            repos.append(LookMLRepo(name=repo_name, path=str(local_path)))
+        elif isinstance(credentials, (GitHubCredentials, BitBucketCredentials, GitlabCredentials)):
+            # Support comma-separated repository names
+            repository_names = [name.strip() for name in credentials.repositoryName.root.split(",") if name.strip()]
+
+            for repo_name_only in repository_names:
+                repo_name = f"{credentials.repositoryOwner.root}/{repo_name_only}"
+                repo_path = f"{REPO_TMP_LOCAL_PATH}/{repo_name_only}"
+
+                single_repo_creds = copy.deepcopy(credentials)
+                single_repo_creds.repositoryName.root = repo_name_only
+
+                _clone_repo(
+                    repo_name,
+                    repo_path,
+                    single_repo_creds,
+                    overwrite=True,
+                )
+                repos.append(LookMLRepo(name=repo_name, path=repo_path))
+        else:
+            # For NoGitCredentials or other unsupported types
+            raise ValueError(f"Unsupported credential type: {type(credentials)}")  # noqa: TRY004
+
+        return repos
+
+    def __read_manifest(
+        self,
+        credentials: Optional[  # noqa: UP045
+            Union[  # noqa: UP007
+                NoGitCredentials,
+                LocalRepositoryPath,
+                GitHubCredentials,
+                BitBucketCredentials,
+                GitlabCredentials,
+            ]
+        ],
+        repo: LookMLRepo,
+        path="manifest.lkml",
+    ) -> Optional[LookMLManifest]:  # noqa: UP045
+        file_path = Path(repo.path) / path
+        if not file_path.is_file():
+            if isinstance(credentials, LocalRepositoryPath):
+                logger.warning(
+                    f"Manifest file '{path}' not found in local repository at {file_path}. "
+                    f"Ensure the manifest file exists in your local LookML repository."
+                )
+            return None
+
+        with open(file_path, "r", encoding="utf-8") as fle:  # noqa: PTH123
+            manifest = LookMLManifest.model_validate(lkml.load(fle))
+            if manifest and manifest.remote_dependency:
+                remote_name = manifest.remote_dependency["name"]
+                remote_git_url = manifest.remote_dependency["url"]
+
+                if isinstance(credentials, LocalRepositoryPath):
+                    # For local repository path, warn about remote dependencies
+                    logger.warning(
+                        f"Remote dependency '{remote_name}' found in manifest. "
+                        f"When using localRepositoryPath, remote dependencies are not automatically fetched. "
+                        f"If needed, manually place the dependency in the '{IMPORTED_PROJECTS_DIR}/{remote_name}' directory within your local repository."
+                    )
+                else:
+                    # For remote repositories, clone the dependency as before
+                    url_parsed = giturlparse.parse(remote_git_url)
+                    _clone_repo(
+                        f"{url_parsed.owner}/{url_parsed.repo}",  # type: ignore
+                        f"{repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
+                        credentials,
+                    )
+
+            return manifest
+
+    def prepare(self):
+        if self.service_connection.gitCredentials:
+            credentials = self.service_connection.gitCredentials
+            self._main_lookml_repos = self.__init_repo(credentials)
+            if self._main_lookml_repos:
+                # Read manifest from the first repository (primary repository)
+                self._main__lookml_manifest = self.__read_manifest(credentials, self._main_lookml_repos[0])
+                if self._main__lookml_manifest and self._main__lookml_manifest.constants:
+                    self._lookml_constants_map = {
+                        c["name"]: c.get("value", "") for c in self._main__lookml_manifest.constants
+                    }
+
+    @property
+    def parser(self) -> Optional[Dict[str, BulkLkmlParser]]:  # noqa: UP006, UP045
+        if self.repository_credentials:
+            return self._project_parsers
+        return None
+
+    @parser.setter
+    def parser(self, all_lookml_models: Sequence[LookmlModel]) -> None:
+        """
+        Initialize the project parsers.
+
+        Each LookML model is linked to a Looker Project. Each project can be
+        hosted in different GitHub repositories.
+
+        Here we will prepare the Readers for each project and the LookML parser.
+
+        We are assuming that each Git repo is based under the same owner
+        and can be accessed with the same token. If we have
+        any errors obtaining the git project information, we will default
+        to the incoming GitHub Credentials.
+
+        Since BulkLkmlParser uses Singleton pattern, we create ONE parser per project
+        that aggregates views from all repositories.
+        """
+        if self.repository_credentials and self._main_lookml_repos:
+            all_projects: Set[str] = {model.project_name for model in all_lookml_models}  # noqa: UP006
+            self._project_parsers: Dict[str, BulkLkmlParser] = {}  # noqa: UP006
+
+            # Create readers for all repositories
+            primary_reader = self.reader(Path(self._main_lookml_repos[0].path))
+            additional_readers = [self.reader(Path(repo.path)) for repo in self._main_lookml_repos[1:]]
+
+            # For each project, create a single parser with all readers
+            for project_name in all_projects:
+                parser = BulkLkmlParser(reader=primary_reader, additional_readers=additional_readers)
+                self._project_parsers[project_name] = parser
+
+            logger.info(f"We found the following parsers:\n {self._project_parsers}")
+
+    def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
+        """
+        Given a lookml project, get its git URL and build the credentials
+        """
+        try:
+            project: Project = self.client.project(project_id=project_name)
+            return get_credentials_from_url(original=self.repository_credentials, url=project.git_remote_url)
+        except Exception as err:
+            logger.error(f"Error trying to build project credentials - [{err}]. We'll use the default ones.")
+            return self.repository_credentials
+
+    @property
+    def reader(self) -> Optional[Type[Reader]]:  # noqa: UP006, UP045
+        """
+        Depending on the type of the credentials we'll need a different reader
+        """
+        if not self._reader_class and self.service_connection.gitCredentials:
+            # Credentials from Github/Gitlab/Bitbucket will process by LocalReader
+            self._reader_class = LocalReader
+
+        return self._reader_class
+
+    @property
+    def repository_credentials(self) -> Optional[ReadersCredentials]:  # noqa: UP045
+        """
+        Check if the credentials are informed and return them.
+
+        We either get GitHubCredentials or `NoGitHubCredentials`
+        """
+        if not self._repo_credentials:  # noqa: SIM102
+            if self.service_connection.gitCredentials and (
+                isinstance(self.service_connection.gitCredentials, get_args(ReadersCredentials))  # noqa: SIM101
+                or isinstance(self.service_connection.gitCredentials, LocalRepositoryPath)
+            ):
+                self._repo_credentials = self.service_connection.gitCredentials
+
+        return self._repo_credentials
+
+    def list_datamodels(self) -> Iterable[LookmlModelExplore]:
+        """
+        Fetch explores with the SDK
+        """
+        if self.source_config.includeDataModels:
+            # First, pick up all the LookML Models
+            try:
+                all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
+
+                # Then, gather their information and build the parser
+                self.parser = all_lookml_models
+
+                # Store the models for later processing of standalone views
+                self._all_lookml_models = all_lookml_models
+
+                manual = self.progress_tracking.manual
+                manual.set_total(
+                    DashboardDataModel.__name__,
+                    self._reconcilable_explore_total(all_lookml_models),
+                )
+                manual.mark_reconcilable(DashboardDataModel.__name__)
+
+                # Finally, iterate through them to ingest Explores and Views
+                yield from self.fetch_lookml_explores(all_lookml_models)
+
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Unexpected error fetching LookML models - {err}")
+
+    def _reconcilable_explore_total(self, all_lookml_models: Sequence[LookmlModel]) -> int:
+        """Count the explores that ``fetch_lookml_explores`` would actually
+        yield, i.e. those whose model and composite datamodel name survive the
+        dataModelFilterPattern. This is the DashboardDataModel progress total."""
+        total = 0
+        for model in all_lookml_models:
+            model_name = model.name
+            explores = model.explores
+            if not model_name or not explores:
+                continue
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, model_name):
+                continue
+            for explore in explores:
+                explore_name = explore.name
+                if explore_name and not filter_by_datamodel(
+                    self.source_config.dataModelFilterPattern,
+                    build_datamodel_name(model_name, explore_name),
+                ):
+                    total += 1
+        return total
+
+    def fetch_lookml_explores(self, all_lookml_models: Sequence[LookmlModel]) -> Iterable[LookmlModelExplore]:
+        """
+        Based on the LookML models, iterate over the explores
+        they contain and filter if needed
+        """
+        # Then, fetch the explores for each of them
+        for lookml_model in all_lookml_models:
+            # Each LookML model have a list of explores we'll be ingesting
+            for explore_nav in cast(Sequence[LookmlModelNavExplore], lookml_model.explores) or []:  # noqa: TC006
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, lookml_model.name):
+                    self.status.filter(lookml_model.name, "Data model (Explore) filtered out.")
+                    continue
+
+                try:
+                    explore = self.client.lookml_model_explore(
+                        lookml_model_name=lookml_model.name,
+                        explore_name=explore_nav.name,
+                    )
+                    yield explore
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error fetching LookML Explore [{explore_nav.name}] in model [{lookml_model.name}] - {err}"
+                    )
+
+    def yield_standalone_datamodels(
+        self,
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        Post-process method to ingest all views from the cloned repository that
+        haven't been processed yet. This allows ingesting standalone views that
+        are not associated with any explore.
+
+        This is called as a post-process step after all explores have been processed.
+        """
+        if not self.repository_credentials or not self._project_parsers:
+            return
+
+        if not hasattr(self, "_all_lookml_models") or not self._all_lookml_models:
+            return
+
+        logger.info("Processing all standalone views from cloned repositories")
+
+        # Use the first project for standalone views
+        first_project = list(self._project_parsers.keys())[0] if self._project_parsers else None  # noqa: RUF015
+        if not first_project:
+            return
+
+        # Get the first model name for naming purposes
+        first_model_name = self._all_lookml_models[0].name if self._all_lookml_models else "default"
+
+        project_parser = self._project_parsers.get(first_project)
+        if not project_parser:
+            return
+
+        # Iterate through all cached views
+        for view_name, view in project_parser._views_cache.items():
+            # Skip if view was already processed
+            if view_name in self._views_cache:
+                logger.debug(f"View [{view_name}] already processed, skipping")
+                continue
+
+            # Check if filtered
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, view_name):
+                self.status.filter(view_name, "Data model (View) filtered out.")
+                continue
+
+            try:
+                logger.info(f"Processing standalone view: {view_name}")
+
+                if view.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(view.tags or [])
+
+                datamodel_view_name = f"{first_model_name}_{view.name}_view"
+
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=EntityName(datamodel_view_name),
+                    displayName=view.name,
+                    description=(Markdown(view.description) if view.description else None),
+                    service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=view.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
+                    dataModelType=DataModelType.LookMlView.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(view),
+                    sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    project=first_project,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
+                    )
+                    if view.source_file and first_project
+                    else None,
+                )
+
+                yield Either(right=data_model_request)
+                self.progress_tracking.manual.track(DashboardDataModel.__name__)
+                self.register_record_datamodel(datamodel_request=data_model_request)
+
+                # Build and cache the view model
+                view_data_model = self._build_data_model(datamodel_view_name)
+                self._views_cache[view.name] = view_data_model
+
+                # Add lineage for standalone views
+                yield from self._add_standalone_view_lineage(view, first_project, first_model_name)
+
+            except ValidationError as err:
+                yield Either(
+                    left=StackTraceError(
+                        name=view_name,
+                        error=f"Validation error yielding standalone view [{view_name}]: {err}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+            except Exception as err:
+                yield Either(
+                    left=StackTraceError(
+                        name=view_name,
+                        error=f"Error yielding standalone view [{view_name}]: {err}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def _build_data_model(self, data_model_name):
+        fqn_datamodel = fqn.build(
+            self.metadata,
+            DashboardDataModel,
+            service_name=self.context.get().dashboard_service,
+            data_model_name=data_model_name,
+        )
+
+        _datamodel = self.metadata.get_by_name(
+            entity=DashboardDataModel,
+            fqn=fqn_datamodel,
+            fields=["*"],
+        )
+        return _datamodel  # noqa: RET504
+
+    def yield_data_model_tags(self, tags: List[str]) -> Iterable[Either[OMetaTagAndClassification]]:  # noqa: UP006
+        """
+        Method to yield tags related to specific dashboards
+        """
+        if tags and self.source_config.includeTags:
+            yield from get_ometa_tag_and_classification(
+                tags=tags or [],
+                classification_name=LOOKER_TAG_CATEGORY,
+                tag_description="Looker Tag",
+                classification_description="Tags associated with looker entities",
+                include_tags=self.source_config.includeTags,
+            )
+
+    def yield_bulk_datamodel(self, model: LookmlModelExplore) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        Get the Explore and View information and prepare
+        the model creation request.
+
+        After processing all explores, this method also processes standalone views
+        from the repository that aren't associated with any explore.
+        """
+        # Initialize the flag to track if we've started processing standalone views
+        if not hasattr(self, "_standalone_views_processed"):
+            self._standalone_views_processed = False
+
+        try:
+            datamodel_name = build_datamodel_name(model.model_name, model.name)
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
+                self.status.filter(datamodel_name, "Data model filtered out.")
+            else:
+                if model.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(model.tags or [])
+                explore_datamodel = CreateDashboardDataModelRequest(
+                    name=EntityName(datamodel_name),
+                    displayName=model.name,
+                    description=(Markdown(model.description) if model.description else None),
+                    service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=model.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
+                    dataModelType=DataModelType.LookMlExplore.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(model),
+                    sql=self._get_explore_sql(model),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=model.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/explore/{model.model_name}/{model.name}"
+                    ),
+                )
+                yield Either(right=explore_datamodel)
+                self.progress_tracking.manual.track(DashboardDataModel.__name__)
+                self.register_record_datamodel(datamodel_request=explore_datamodel)
+
+                # build datamodel by our hand since ack_sink=False
+                self.context.get().dataModel = self._build_data_model(datamodel_name)
+                self._view_data_model = copy.deepcopy(self.context.get().dataModel)
+
+                # Maybe use the project_name as key too?
+                # Save the explores for when we create the lineage with the dashboards and views
+                self._explores_cache[explore_datamodel.name.root] = (
+                    self.context.get().dataModel
+                )  # This is the newly created explore
+
+                # We can get VIEWs from the JOINs to know the dependencies
+                # We will only try and fetch if we have the credentials
+                if self.repository_credentials:
+                    logger.info(
+                        f"Repository credentials are present, processing views of explore model {datamodel_name}"
+                    )
+                    if model.joins:
+                        logger.info(f"Joins are present, processing views of explore model {datamodel_name}")
+                    for view in model.joins:
+                        if filter_by_datamodel(self.source_config.dataModelFilterPattern, view.name):
+                            self.status.filter(view.name, "Data model (View) filtered out.")
+                            continue
+                        view_name = view.from_ if view.from_ else view.name
+                        yield from self._process_view(view_name=ViewName(view_name), explore=model)
+                    if model.view_name:
+                        logger.info(
+                            f"View name is present, processing view {model.view_name} of explore model {datamodel_name}"
+                        )
+                        yield from self._process_view(view_name=ViewName(model.view_name), explore=model)
+
+        except ValidationError as err:
+            yield Either(
+                left=StackTraceError(
+                    name=model.name,
+                    error=f"Validation error yielding Data Model [{model.name}]: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=model.name,
+                    error=f"Wild error yielding Data Model [{model.name}]: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        finally:
+            # After processing the last explore, process standalone views
+            # This is a sentinel pattern - we check if this is the last model
+            if not self._standalone_views_processed and hasattr(self, "_all_lookml_models"):
+                # Count how many explores we've processed
+                if not hasattr(self, "_explores_processed_count"):
+                    self._explores_processed_count = 0
+                self._explores_processed_count += 1
+
+                # Calculate total explores
+                total_explores = sum(len(m.explores) if m.explores else 0 for m in self._all_lookml_models)
+
+                # If this is the last explore, process standalone views
+                if self._explores_processed_count >= total_explores:
+                    self._standalone_views_processed = True
+                    logger.info("All explores processed, now processing standalone views")
+                    yield from self.yield_standalone_datamodels()
+
+    def _get_explore_sql(self, explore: LookmlModelExplore) -> Optional[str]:  # noqa: UP045
+        """
+        If github creds are sent, we can pick the explore
+        file definition and add it here
+        """
+        # Only look to parse if creds are in
+        if self.repository_credentials:
+            try:
+                project_parser = self.parser.get(explore.project_name)
+                if project_parser:
+                    explore_sql = project_parser.parsed_files.get(Includes(get_path_from_link(explore.lookml_link)))
+                    logger.debug(f"Explore SQL for project {explore.project_name}: \n{explore_sql}")
+                    return explore_sql
+            except Exception as err:
+                logger.warning(f"Exception getting the model sql: {err}")
+
+        return None
+
+    def _process_view(
+        self, view_name: ViewName, explore: LookmlModelExplore
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        For each view referenced in the JOIN of the explore,
+        We first load the explore file from GitHub, then:
+        1. Fetch the view from the GitHub files (search in includes)
+        2. Yield the view as a dashboard Model
+        3. Yield the lineage between the View -> Explore and Source -> View
+        Every visited view, will be cached so that we don't need to process
+        everything again.
+        """
+
+        project_parser = self.parser.get(explore.project_name)
+        if project_parser:
+            view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)  # noqa: UP045
+
+            if view:
+                if view.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(view.tags or [])
+                datamodel_view_name = build_datamodel_name(explore.model_name, view.name) + "_view"
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=EntityName(datamodel_view_name),
+                    displayName=view.name,
+                    description=(Markdown(view.description) if view.description else None),
+                    service=self.context.get().dashboard_service,
+                    tags=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=view.tags or [],
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
+                    dataModelType=DataModelType.LookMlView.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(view),
+                    sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=explore.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
+                    )
+                    if view.source_file and explore.project_name
+                    else None,
+                )
+                yield Either(right=data_model_request)
+                self._view_data_model = self._build_data_model(datamodel_view_name)
+                self._views_cache[view.name] = self._view_data_model
+                self.register_record_datamodel(datamodel_request=data_model_request)
+                yield from self.add_view_lineage(view, explore)
+            else:
+                logger.warning(
+                    f"Cannot find the view [{view_name}] in the configured repositories. "
+                    "It may be defined in an imported project not listed in 'additionalRepositories'."
+                )
+
+    def replace_derived_references(self, sql_query):
+        """
+        Replace all derived references with the parsed views sql query
+        will replace the derived references in the SQL query using regex
+        for e.g. It will replace ${view_name.SQL_TABLE_NAME} with the parsed view query for view_name
+        https://cloud.google.com/looker/docs/derived-tables#referencing_derived_tables_in_other_derived_tables
+        """
+        try:
+            sql_query = re.sub(
+                DERIVED_REFERENCES,
+                # from `${view_name.SQL_TABLE_NAME}` we want the `view_name`.
+                # match.group(1) will give us the `view_name`
+                lambda match: f"({self._parsed_views.get(match.group(1), match.group(0))})",
+                sql_query,
+            )
+        except Exception as e:
+            logger.warning(f"Something went wrong while replacing derived view references: {e}")
+        return sql_query
+
+    def build_lineage_for_unparsed_views(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        build lineage by parsing the unparsed views containing derived references
+        """
+        try:
+            # Doing a reversed topological sort to process the views in the right order
+            for view_name in reversed(list(nx.topological_sort(self._derived_dependencies))):
+                if view_name in self._parsed_views:
+                    # Skip if already processed
+                    continue
+                sql_query = self.replace_derived_references(self._unparsed_views[view_name])
+                if view_references := find_derived_references(sql_query):
+                    # There are still derived references in the view query
+                    logger.debug(f"Views {view_references} not found for {view_name}. Skipping.")
+                    continue
+                self._parsed_views[view_name] = sql_query
+                del self._unparsed_views[view_name]
+                yield from self._build_lineage_for_view(view_name, sql_query)
+
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name="parse_unparsed_views",
+                    error=f"Error parsing unparsed views: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _add_dependency_edge(self, view_name: str, view_references: List[str]):  # noqa: UP006
+        """
+        Add a dependency edge between the view and the derived reference
+        """
+        for dependent_view_name in view_references:
+            self._derived_dependencies.add_edge(view_name, dependent_view_name)
+
+    def _extract_column_lineage(self, view: LookMlView) -> List[Tuple[Column, Column]]:  # noqa: UP006
+        """
+        Extract column level lineage from a LookML view.
+        Returns a list of tuples containing (source_column, target_column)
+        """
+        logger.debug(f"Extracting column lineage for view: {view.name}")
+        column_lineage = []
+        try:
+            # Build a map: field_name → sql block
+            field_sql_map = {}
+            for field_type in ["dimensions", "measures", "dimension_groups"]:
+                for field in getattr(view, field_type, []):
+                    if hasattr(field, "sql") and field.sql is not None:
+                        field_sql_map[field.name] = field.sql
+
+            # Regex to extract ${TABLE}.col and ${field}
+            table_col_pattern = re.compile(r"\$\{TABLE\}\.([a-zA-Z_][a-zA-Z0-9_]*)")
+            dimension_ref_pattern = re.compile(r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}")
+
+            # Recursive resolver
+            def resolve(field_name, visited=None):
+                if visited is None:
+                    visited = set()
+                if field_name in visited:
+                    return set()
+                visited.add(field_name)
+
+                sql = field_sql_map.get(field_name, "")
+                source_cols = set(table_col_pattern.findall(sql))
+                dimension_refs = dimension_ref_pattern.findall(sql)
+
+                for ref in dimension_refs:
+                    source_cols.update(resolve(ref, visited))
+
+                return source_cols
+
+            # Build lineage for each field
+            for field_name, sql in field_sql_map.items():
+                try:
+                    if not sql:  # Skip if sql is None or empty
+                        continue
+                    source_cols = resolve(field_name)
+                    for source_col in source_cols:
+                        column_lineage.append((source_col, field_name))  # noqa: PERF401
+                except Exception as err:
+                    logger.warning(f"Error processing field {field_name}: {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+
+            return column_lineage  # noqa: TRY300
+        except Exception as e:
+            logger.warning(f"Error extracting column lineage: {e}")
+            logger.debug(traceback.format_exc())
+            return []
+
+    def _get_explore_column_lineage(self, explore_model: LookmlModelExplore) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
+        """
+        Build the lineage between the view and the explore
+        """
+        processed_column_lineage = []
+        for field in explore_model.columns or []:
+            try:
+                # Look for fields with format view_name.col
+                field_name = field.name.root
+                if "." not in field_name:
+                    logger.debug(f"Field [{field_name}] does not have a view name. Skipping.")
+                    continue
+
+                view_name, col_name = field_name.split(".")
+                if view_name != self._view_data_model.displayName:
+                    logger.debug(
+                        f"View name [{view_name}] do not match the view name"
+                        f"[{self._view_data_model.displayName}] Skipping."
+                    )
+                    continue
+
+                # Add lineage from view column to explore column
+                view_col = None
+                for col in self._view_data_model.columns:
+                    if (col.displayName and col.displayName.lower() == col_name.lower()) or (
+                        col.name.root.lower() == col_name.lower()
+                    ):
+                        view_col = col
+                        break
+                from_column = view_col.fullyQualifiedName.root if view_col else None
+                to_column = self._get_data_model_column_fqn(
+                    data_model_entity=explore_model, column=str(field.name.root)
+                )
+
+                if from_column and to_column:
+                    processed_column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
+            except Exception as err:
+                logger.warning(
+                    "Error processing column lineage for explore_model"
+                    f"[{explore_model.name}] field [{field.name}]: {err}"
+                )
+                logger.debug(traceback.format_exc())
+                continue
+        return processed_column_lineage
+
+    def _add_standalone_view_lineage(  # noqa: C901
+        self, view: LookMlView, project_name: str, model_name: str
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Add lineage for standalone views that are not associated with explores.
+        This handles view-to-table lineage and view-to-view lineage via extends.
+        """
+        try:
+            # Set the current view data model for lineage processing
+            datamodel_view_name = f"{model_name}_{view.name}_view"
+            self._view_data_model = self._build_data_model(datamodel_view_name)
+
+            # Handle view-to-view lineage via extends
+            if view.extends__all:
+                for extended_views_list in view.extends__all:
+                    for extended_view_name in extended_views_list:
+                        extended_view_model = self._views_cache.get(extended_view_name)
+
+                        # If not in cache, try to fetch from OpenMetadata
+                        if not extended_view_model:
+                            try:
+                                # Try with _view suffix first (common pattern for views)
+                                extended_datamodel_name = f"{model_name}_{extended_view_name}_view"
+                                extended_view_model = self._build_data_model(extended_datamodel_name)
+
+                                if extended_view_model:
+                                    logger.debug(
+                                        f"Extended view [{extended_view_name}] found in OpenMetadata for standalone view [{view.name}]"
+                                    )
+                            except Exception:
+                                logger.debug(
+                                    f"Extended view [{extended_view_name}] not found in cache or OpenMetadata for standalone view [{view.name}]"
+                                )
+
+                        if extended_view_model:
+                            logger.debug(
+                                f"Building lineage from extended view {extended_view_name} to standalone view {self._view_data_model.name}"
+                            )
+                            yield self._get_add_lineage_request(
+                                from_entity=extended_view_model,
+                                to_entity=self._view_data_model,
+                                column_lineage=[],
+                            )
+
+            db_service_prefixes = self.get_db_service_prefixes()
+
+            if view.sql_table_name:
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
+
+                for db_service_prefix in db_service_prefixes or []:
+                    db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
+                    dialect = self._get_db_dialect(db_service_name)
+                    source_table_name = self._clean_table_name(sql_table_name, dialect)
+                    self._parsed_views[view.name] = source_table_name
+
+                    column_lineage = self._extract_column_lineage(view)
+
+                    lineage_request = self.build_lineage_request(
+                        source=source_table_name,
+                        db_service_prefix=db_service_prefix,
+                        to_entity=self._view_data_model,
+                        column_lineage=column_lineage,
+                    )
+                    if lineage_request:
+                        yield lineage_request
+
+            elif view.derived_table:
+                sql_query = view.derived_table.sql
+                if not sql_query:
+                    return
+                sql_query = self._resolve_lookml_constants(sql_query, strip_unresolved=False)
+                if find_derived_references(sql_query):
+                    sql_query = self.replace_derived_references(sql_query)
+                    if view_references := find_derived_references(sql_query):
+                        self._add_dependency_edge(view.name, view_references)
+                        logger.warning(
+                            f"Not all references are replaced for standalone view [{view.name}]. Parsing it later."
+                        )
+                        return
+                logger.debug(f"Processing standalone view [{view.name}] with SQL: \n[{sql_query}]")
+                yield from self._build_lineage_for_view(view.name, sql_query)
+                if self._unparsed_views:
+                    self.build_lineage_for_unparsed_views()
+
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=view.name,
+                    error=f"Error yielding lineage for standalone view [{view.name}]: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def add_view_lineage(self, view: LookMlView, explore: LookmlModelExplore) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+        """
+        Add the lineage source -> view -> explore
+        """
+        try:
+            # This is the name we store in the cache
+            explore_name = build_datamodel_name(explore.model_name, explore.name)
+            explore_model = self._explores_cache.get(explore_name)
+
+            # TODO: column-level lineage parsing the explore columns with the format `view_name.col`
+            # Now the context has the newly created view
+            if explore_model:
+                logger.debug(
+                    f"Building lineage request for view {self._view_data_model.name} to explore {explore_model.name}"
+                )
+                column_lineage = self._get_explore_column_lineage(explore_model)
+                yield self._get_add_lineage_request(
+                    from_entity=self._view_data_model,
+                    to_entity=explore_model,
+                    column_lineage=column_lineage,
+                )
+
+            else:
+                logger.info(
+                    f"Could not find model for explore [{explore.model_name}: {explore.name}] in the cache"
+                    " while processing view lineage."
+                )
+
+            # Handle view-to-view lineage via extends
+            if view.extends__all:
+                for extended_views_list in view.extends__all:
+                    for extended_view_name in extended_views_list:
+                        extended_view_model = self._views_cache.get(extended_view_name)
+
+                        # If not in cache, try to fetch from OpenMetadata
+                        if not extended_view_model:
+                            try:
+                                # Try with _view suffix first (common pattern for views)
+                                extended_datamodel_name = f"{explore.model_name}_{extended_view_name}_view"
+                                extended_view_model = self._build_data_model(extended_datamodel_name)
+
+                                if extended_view_model:
+                                    logger.debug(
+                                        f"Extended view [{extended_view_name}] found in OpenMetadata for view [{view.name}]"
+                                    )
+                            except Exception:
+                                logger.debug(
+                                    f"Extended view [{extended_view_name}] not found in cache or OpenMetadata for view [{view.name}]"
+                                )
+
+                        if extended_view_model:
+                            logger.debug(
+                                f"Building lineage from extended view {extended_view_name} to view {self._view_data_model.name}"
+                            )
+                            yield self._get_add_lineage_request(
+                                from_entity=extended_view_model,
+                                to_entity=self._view_data_model,
+                                column_lineage=[],
+                            )
+
+            db_service_prefixes = self.get_db_service_prefixes()
+
+            if view.sql_table_name:
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
+
+                for db_service_prefix in db_service_prefixes or []:
+                    db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
+                    dialect = self._get_db_dialect(db_service_name)
+                    source_table_name = self._clean_table_name(sql_table_name, dialect)
+                    self._parsed_views[view.name] = source_table_name
+
+                    # Extract column lineage
+                    column_lineage = self._extract_column_lineage(view)
+
+                    # View to the source is only there if we are informing the dbServiceNames
+                    yield self.build_lineage_request(
+                        source=source_table_name,
+                        db_service_prefix=db_service_prefix,
+                        to_entity=self._view_data_model,
+                        column_lineage=column_lineage,
+                    )
+
+            elif view.derived_table:
+                sql_query = view.derived_table.sql
+                if not sql_query:
+                    return
+                sql_query = self._resolve_lookml_constants(sql_query, strip_unresolved=False)
+                if find_derived_references(sql_query):
+                    sql_query = self.replace_derived_references(sql_query)
+                    # If we still have derived references, we cannot process the view
+                    if view_references := find_derived_references(sql_query):
+                        self._add_dependency_edge(view.name, view_references)
+                        logger.warning(f"Not all references are replaced for view [{view.name}]. Parsing it later.")
+                        return
+                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
+                yield from self._build_lineage_for_view(view.name, sql_query)
+                if self._unparsed_views:
+                    self.build_lineage_for_unparsed_views()
+
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=view.name,
+                    error=f"Error to yield lineage details for view [{view.name}]: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _build_lineage_for_view(self, view_name: str, sql_query: str) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Parse the SQL query and build lineage for the view.
+        """
+        for db_service_prefix in self.get_db_service_prefixes() or []:
+            db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
+            lineage_parser = LineageParser(
+                f"create view {view_name} as {sql_query}",
+                self._get_db_dialect(db_service_name),
+                timeout_seconds=30,
+                parser_type=self.get_query_parser_type(),
+            )
+            if lineage_parser.source_tables:
+                self._parsed_views[view_name] = sql_query
+                for from_table_name in lineage_parser.source_tables:
+                    # Process column level lineage
+                    column_lineage = []
+                    for column_tuple in lineage_parser.column_lineage or []:
+                        if (
+                            column_tuple
+                            and hasattr(column_tuple[0], "parent")
+                            and column_tuple[0].parent == from_table_name
+                        ):
+                            column_lineage.append(  # noqa: PERF401
+                                (
+                                    (
+                                        column_tuple[0].raw_name
+                                        if hasattr(column_tuple[0], "raw_name")
+                                        else column_tuple[0]
+                                    ),
+                                    (
+                                        column_tuple[-1].raw_name
+                                        if hasattr(column_tuple[-1], "raw_name")
+                                        else column_tuple[-1]
+                                    ),
+                                )
+                            )
+                    yield self.build_lineage_request(
+                        source=str(from_table_name),
+                        db_service_prefix=db_service_prefix,
+                        to_entity=self._view_data_model,
+                        column_lineage=column_lineage if column_lineage else None,
+                    )
+
+    def _get_db_dialect(self, db_service_name) -> Dialect:
+        db_service = self.metadata.get_by_name(DatabaseService, db_service_name)
+        return ConnectionTypeDialectMapper.dialect_of(db_service.connection.config.type.value)
+
+    def get_dashboards_list(self) -> List[DashboardBase]:  # noqa: UP006
+        """
+        Get List of all dashboards
+        """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
+        try:
+            dashboards = list(self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS)))
+            kept = [
+                dashboard
+                for dashboard in dashboards
+                if not filter_by_dashboard(
+                    self.source_config.dashboardFilterPattern,
+                    self.get_dashboard_name(dashboard),
+                )
+            ]
+            manual = self.progress_tracking.manual
+            if filter_pattern_enabled(self.source_config.projectFilterPattern):
+                # projectFilterPattern is applied downstream in the base
+                # get_dashboard (needs per-dashboard project detail), so the
+                # kept count over-counts — show a running count instead of a
+                # bar stuck below 100%.
+                manual.mark_reconcilable(Dashboard.__name__)
+            else:
+                manual.set_total(Dashboard.__name__, len(kept))
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Wild error trying to obtain dashboard list {err}")
+            # If we cannot list the dashboards, let's blow up
+            raise err  # noqa: TRY201
+        else:
+            return dashboards
+
+    def get_dashboard_name(self, dashboard: DashboardBase) -> str:
+        """
+        Get Dashboard Title. This will be used for filtering.
+        If the title is not present, we'll send the ID
+        """
+        return dashboard.title or dashboard.id
+
+    def get_dashboard_details(self, dashboard: DashboardBase) -> LookerDashboard:
+        """
+        Get Dashboard Details
+        """
+        fields = GET_DASHBOARD_FIELDS.copy()
+        if self.source_config.includeUsage:
+            fields.append("view_count")
+        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
+
+    def get_owner_ref(self, dashboard_details: LookerDashboard) -> Optional[EntityReferenceList]:  # noqa: UP045
+        """Get dashboard owner
+
+        Store the visited users in the _owners_ref cache, even if we found them
+        in OM or not.
+
+        If the user has not yet been visited, store it and return from cache.
+
+        Args:
+            dashboard_details: LookerDashboard
+        Returns:
+            Optional[EntityReference]
+        """
+        try:
+            if not self.source_config.includeOwners:
+                return None
+            if dashboard_details.user_id is not None:
+                dashboard_owner = self.client.user(dashboard_details.user_id)
+                if dashboard_owner.email:
+                    return self.metadata.get_reference_by_email(dashboard_owner.email.lower())
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
+
+        return None
+
+    def yield_dashboard(self, dashboard_details: LookerDashboard) -> Iterable[Either[CreateDashboardRequest]]:
+        """
+        Method to Get Dashboard Entity
+        """
+        dashboard_request = CreateDashboardRequest(
+            name=EntityName(clean_dashboard_name(dashboard_details.id)),
+            displayName=dashboard_details.title,
+            description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
+            charts=[
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
+                )
+                for chart in self.context.get().charts or []
+            ],
+            # Dashboards are created from the UI directly. They are not linked to a project
+            # like LookML assets, but rather just organised in folders.
+            project=self.get_project_name(dashboard_details),
+            sourceUrl=SourceUrl(f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"),
+            service=self.context.get().dashboard_service,
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
+        )
+        yield Either(right=dashboard_request)
+        self.progress_tracking.manual.track(Dashboard.__name__)
+        self.register_record(dashboard_request=dashboard_request)
+
+    def get_project_name(self, dashboard_details: LookerDashboard) -> Optional[str]:  # noqa: UP045
+        """
+        Get dashboard project if the folder is informed
+        """
+        try:
+            return dashboard_details.folder.name
+        except Exception as exc:
+            logger.debug(f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]")
+        return None
+
+    @staticmethod
+    def _clean_table_name(table_name: str, dialect: Dialect = Dialect.ANSI) -> str:
+        """
+        sql_table_names might be renamed when defining
+        an explore. E.g., customers as cust
+        :param table_name: explore table name
+        :return: clean table name
+        """
+
+        clean_table_name = table_name.lower().split(" as ")[0].strip()
+        if dialect == Dialect.BIGQUERY:
+            clean_table_name = clean_table_name.strip("`")
+        elif dialect == Dialect.DATABRICKS:
+            clean_table_name = clean_table_name.replace("`", "").strip()
+        return clean_table_name
+
+    def _resolve_lookml_constants(self, text: str, strip_unresolved: bool = True) -> str:
+        """Replace @{constant_name} references with values from manifest constants.
+        When strip_unresolved=True (default, for sql_table_name), unresolved constants
+        are removed and leftover dots cleaned up so the table name is still usable.
+        When strip_unresolved=False (for derived_table SQL), unresolved constants are
+        left as-is to avoid producing invalid SQL.
+        """
+        if "@{" not in text:
+            return text
+
+        def replace_constant(match):
+            const_name = match.group(1)
+            if strip_unresolved:
+                return self._lookml_constants_map.get(const_name, "")
+            return self._lookml_constants_map.get(const_name, match.group(0))
+
+        # Match LookML constant syntax: @{constant_name} where names are ASCII alphanumeric + underscore
+        resolved = re.sub(r"@\{([a-zA-Z0-9_]+)\}", replace_constant, text)
+
+        if strip_unresolved:
+            # Collapse consecutive dots left after stripping constants (e.g., "a..b" -> "a.b")
+            resolved = re.sub(r"\.{2,}", ".", resolved)
+            # Remove dots immediately after opening backtick (e.g., "`.table" -> "`table")
+            resolved = re.sub(r"(`)\.+", r"\1", resolved)
+            # Remove dots immediately before closing backtick (e.g., "table.`" -> "table`")
+            resolved = re.sub(r"\.+(`)", r"\1", resolved)
+            # Remove any remaining leading/trailing dots
+            resolved = resolved.strip(".")
+
+        return resolved
+
+    @staticmethod
+    def _render_table_name(table_name: str) -> str:
+        """
+        sql_table_names might contain Liquid templates
+        when defining an explore. e.g,:
+        sql_table_name:
+            {% if openmetadata %}
+                event
+            {% elsif event.created_week._in_query %}
+                event_by_week
+            {% else %}
+                event
+            {% endif %} ;;
+        we should render the template and give the option
+        to render a specific value during metadata ingestion
+        using the "openmetadata" context argument
+        :param table_name: table name with possible templating
+        :return: rendered table name
+        """
+        try:
+            context = {"openmetadata": True}
+            template = Template(table_name)
+            sql_table_name = template.render(context)
+        except Exception:
+            sql_table_name = table_name
+        return sql_table_name
+
+    @staticmethod
+    def get_chart_source_mapping(
+        dashboard_details: LookerDashboard,
+    ) -> Dict[str, Set[str]]:  # noqa: UP006
+        """
+        Map each chart ID to its set of explore names.
+        """
+        chart_explore_map: Dict[str, Set[str]] = {}  # noqa: UP006
+
+        for chart in cast(Iterable[DashboardElement], dashboard_details.dashboard_elements):  # noqa: TC006
+            if not chart.id:
+                continue
+            explores: Set[str] = set()  # noqa: UP006
+            if chart.query and chart.query.view:
+                explores.add(build_datamodel_name(chart.query.model, chart.query.view))
+            if chart.look and chart.look.query and chart.look.query.view:
+                explores.add(build_datamodel_name(chart.look.query.model, chart.look.query.view))
+            if chart.result_maker and chart.result_maker.query and chart.result_maker.query.view:
+                explores.add(build_datamodel_name(chart.result_maker.query.model, chart.result_maker.query.view))
+            if explores:
+                chart_explore_map[chart.id] = explores
+
+        return chart_explore_map
+
+    @staticmethod
+    def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:  # noqa: UP006
+        """
+        Set explores to build lineage for the processed dashboard
+        """
+        dashboard_sources: Set[str] = set()  # noqa: UP006
+        chart_explore_map = LookerSource.get_chart_source_mapping(dashboard_details)
+        for explores in chart_explore_map.values():
+            dashboard_sources.update(explores)
+        return dashboard_sources
+
+    def get_explore(self, explore_name: str) -> Optional[DashboardDataModel]:  # noqa: UP045
+        """
+        Get the dashboard model from cache or API
+        """
+        return self._explores_cache.get(explore_name) or self.metadata.get_by_name(
+            entity=DashboardDataModel,
+            fqn=fqn.build(
+                self.metadata,
+                entity_type=DashboardDataModel,
+                service_name=self.context.get().dashboard_service,
+                data_model_name=explore_name,
+            ),
+        )
+
+    def yield_dashboard_lineage_details(
+        self,
+        dashboard_details: LookerDashboard,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Get lineage between data models, charts, and dashboards.
+
+        We build:
+        - Explore (DataModel) -> Dashboard lineage
+        - Explore (DataModel) -> Chart lineage
+
+        We look at:
+        - chart.query
+        - chart.look (chart.look.query)
+        - chart.result_maker
+        """
+
+        try:
+            chart_explore_map = self.get_chart_source_mapping(dashboard_details)
+
+            # Collect all unique explores across all charts
+            all_explores: Set[str] = set()  # noqa: UP006
+            for explores in chart_explore_map.values():
+                all_explores.update(explores)
+
+            # Yield Explore -> Dashboard lineage
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,
+                dashboard_name=self.context.get().dashboard,
+            )
+            dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
+            if dashboard_entity:
+                for explore_name in all_explores:
+                    cached_explore = self.get_explore(explore_name)
+                    if cached_explore:
+                        yield self._get_add_lineage_request(
+                            from_entity=cached_explore,
+                            to_entity=dashboard_entity,
+                        )
+
+            # Yield Explore -> Chart lineage
+            for chart_id, explore_names in chart_explore_map.items():
+                try:
+                    chart_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart_id,
+                    )
+                    chart_entity = self.metadata.get_by_name(entity=Chart, fqn=chart_fqn)
+                    if not chart_entity:
+                        continue
+
+                    for explore_name in explore_names:
+                        cached_explore = self.get_explore(explore_name)
+                        if cached_explore:
+                            yield self._get_add_lineage_request(
+                                from_entity=cached_explore,
+                                to_entity=chart_entity,
+                            )
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error yielding chart lineage for chart [{chart_id}]: {err}")
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.title,
+                    error=f"Unexpected exception yielding lineage from dashboard [{dashboard_details.title}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _process_and_validate_column_lineage(
+        self,
+        column_lineage: List[Tuple[Column, Column]],  # noqa: UP006
+        from_entity: Table,
+        to_entity: Union[Dashboard, DashboardDataModel],  # noqa: UP007
+    ) -> List[ColumnLineage]:  # noqa: UP006
+        """
+        Process and validate column lineage
+        """
+        processed_column_lineage = []
+        if column_lineage:
+            for column_tuple in column_lineage or []:
+                try:
+                    if len(column_tuple) < 2:
+                        logger.debug(f"Skipping invalid column tuple: {column_tuple}")
+                        continue
+
+                    source_col = column_tuple[0]
+                    target_col = column_tuple[-1]
+
+                    if not source_col or not target_col:
+                        logger.debug(
+                            f"Skipping column tuple with empty values: source={source_col}, "
+                            f"target={target_col}, to_entity={to_entity.name}"
+                        )
+                        continue
+
+                    from_column = get_column_fqn(table_entity=from_entity, column=str(target_col))
+                    to_column = self._get_data_model_column_fqn(
+                        data_model_entity=to_entity,
+                        column=str(source_col),
+                    )
+                    if from_column and to_column:
+                        processed_column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[from_column],
+                                toColumn=to_column,
+                            )
+                        )
+                except Exception as err:
+                    logger.warning(f"Error processing column lineage {column_tuple}: {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+        return processed_column_lineage
+
+    def build_lineage_request(
+        self,
+        source: str,
+        db_service_prefix: str,
+        to_entity: Union[Dashboard, DashboardDataModel],  # noqa: UP007
+        column_lineage: Optional[List[Tuple[Column, Column]]] = None,  # noqa: UP006, UP045
+    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        """
+        Once we have a list of origin data sources, check their components
+        and build the lineage request.
+
+        We will try searching in ES with and without the `database`
+
+        Args:
+            source: table name from the source list
+            db_service_prefix: db service prefix from the config
+            to_entity: Dashboard Entity being used
+        """
+        logger.debug(f"Building lineage request for {source} to {to_entity.name}")
+
+        source_elements = fqn.split_table_name(table_name=source)
+
+        (
+            db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
+        for database_name in [source_elements["database"], None]:
+            if (
+                (prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower())
+                or (
+                    prefix_schema_name
+                    and source_elements["database_schema"]
+                    and prefix_schema_name.lower() != source_elements["database_schema"].lower()
+                )
+                or (
+                    prefix_table_name
+                    and source_elements["table"]
+                    and prefix_table_name.lower() != source_elements["table"].lower()
+                )
+            ):
+                continue
+
+            from_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_name,
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or source_elements["database_schema"],
+                table_name=prefix_table_name or source_elements["table"],
+            )
+
+            from_entity: Table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=from_fqn,
+            )
+
+            if from_entity:
+                if from_entity.id.root not in self._added_lineage:
+                    self._added_lineage[from_entity.id.root] = []
+                if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
+                    self._added_lineage[from_entity.id.root].append(to_entity.id.root)
+                    processed_column_lineage = self._process_and_validate_column_lineage(
+                        column_lineage, from_entity, to_entity
+                    )
+                    return self._get_add_lineage_request(
+                        to_entity=to_entity,
+                        from_entity=from_entity,
+                        column_lineage=processed_column_lineage,
+                    )
+
+        return None
+
+    def yield_dashboard_chart(self, dashboard_details: LookerDashboard) -> Iterable[Either[CreateChartRequest]]:
+        """
+        Method to fetch charts linked to dashboard
+        """
+        for chart in dashboard_details.dashboard_elements:
+            try:
+                if filter_by_chart(
+                    chart_filter_pattern=self.source_config.chartFilterPattern,
+                    chart_name=chart.id,
+                ):
+                    self.status.filter(chart.id, "Chart filtered out")
+                    continue
+
+                if not chart.id:
+                    logger.debug(f"Found chart {chart} without id. Skipping.")
+                    continue
+
+                description = self.build_chart_description(chart)
+                if chart.query is not None:
+                    source_url = chart.query.share_url
+                elif getattr(chart.result_maker, "query", None) is not None:
+                    source_url = chart.result_maker.query.share_url
+                else:
+                    source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.id),
+                    displayName=chart.title or chart.id,
+                    description=Markdown(description) if description else None,
+                    chartType=get_standard_chart_type(chart.type).value,
+                    sourceUrl=SourceUrl(source_url),
+                    service=self.context.get().dashboard_service,
+                )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
+
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=chart.id,
+                        error=f"Error creating chart [{chart}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    @staticmethod
+    def build_chart_description(chart: DashboardElement) -> Optional[str]:  # noqa: UP045
+        """
+        Chart descriptions will be based on the subtitle + note_text, if exists.
+        If the chart is a text tile, we will add the text as the chart description as well.
+        This should keep the dashboard searchable without breaking the original metadata structure.
+        """
+
+        # If the string is None or empty, filter it out.
+        try:
+            return "; ".join(
+                filter(
+                    lambda string: string,
+                    [chart.subtitle_text, chart.body_text, chart.note_text],
+                )
+                or []
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error getting chart description: {err}")
+            return None
+
+    def yield_dashboard_usage(  # pylint: disable=W0221
+        self, dashboard_details: LookerDashboard
+    ) -> Iterable[Either[DashboardUsage]]:
+        """
+        The dashboard.view_count gives us the total number of views. However, we need to
+        pass the views for each day (execution).
+
+        In this function we will first validate if the usageSummary
+        returns us some usage for today's date. If so, we will stop the
+        execution.
+
+        Otherwise, we will add the difference between the usage from the last time
+        the usage was reported and today's view_count from the dashboard.
+
+        Example usage summary from OM API:
+        "usageSummary": {
+            "dailyStats": {
+                "count": 51,
+                "percentileRank": 0.0
+            },
+            "date": "2022-06-23",
+            "monthlyStats": {
+                "count": 105,
+                "percentileRank": 0.0
+            },
+            "weeklyStats": {
+                "count": 105,
+                "percentileRank": 0.0
+            }
+        },
+        :param dashboard_details: Looker Dashboard
+        :return: UsageRequest, if not computed
+        """
+        if not self.source_config.includeUsage:
+            return
+
+        dashboard_name = self.context.get().dashboard
+
+        try:
+            dashboard_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,
+                dashboard_name=dashboard_name,
+            )
+
+            dashboard: Dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,
+                fields=["usageSummary"],
+            )
+
+            current_views = dashboard_details.view_count
+
+            if not current_views:
+                logger.debug(f"No usage to report for {dashboard_details.title}")
+
+            if not dashboard.usageSummary:
+                logger.info(f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}")
+                yield Either(
+                    right=DashboardUsage(
+                        dashboard=dashboard,
+                        usage=UsageRequest(date=self.today, count=current_views),
+                    )
+                )
+
+            elif str(dashboard.usageSummary.date.root) != self.today or not dashboard.usageSummary.dailyStats.count:
+                latest_usage = dashboard.usageSummary.dailyStats.count
+
+                new_usage = current_views - latest_usage
+                if new_usage < 0:
+                    logger.warning(
+                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."
+                        f" Got new_usage={new_usage}."
+                    )
+                    return
+
+                logger.info(f"Yielding new usage for {dashboard.fullyQualifiedName.root}")
+                yield Either(
+                    right=DashboardUsage(
+                        dashboard=dashboard,
+                        usage=UsageRequest(date=self.today, count=current_views - latest_usage),
+                    )
+                )
+
+            else:
+                logger.debug(f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute.")
+                logger.info(f"Usage already informed for {dashboard.fullyQualifiedName.root}")
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{dashboard_name} Usage",
+                    error=f"Exception computing dashboard usage for {dashboard_name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def close(self):
+        self.metadata.compute_percentile(Dashboard, self.today)
+        super().close()

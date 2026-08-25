@@ -1,0 +1,166 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
+import { uuid } from '../../utils/common';
+import { visitEntityPageByFqn } from '../../utils/entity';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
+import { EntityClass } from './EntityClass';
+
+export class MetricClass extends EntityClass {
+  private metricName: string;
+
+  entity: {
+    name: string;
+    description: string;
+    metricExpression: {
+      code: string;
+      language: string;
+    };
+    granularity: string;
+    metricType: string;
+    displayName: string;
+    unitOfMeasurement: string;
+    dimensions?: {
+      name: string;
+      type: string;
+      expression: string;
+      description: string;
+    }[];
+    measures?: {
+      name: string;
+      aggregation: string;
+      expression: string;
+      description: string;
+    }[];
+  };
+
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
+
+  constructor() {
+    super(EntityTypeEndpoint.METRIC);
+
+    this.metricName = `playwright-metric-${uuid()}`;
+
+    this.entity = {
+      name: this.metricName,
+      description: `Total sales over the last quarter ${this.metricName}`,
+      metricExpression: {
+        code: 'SUM(sales)',
+        language: 'SQL',
+      },
+      granularity: 'QUARTER',
+      metricType: 'SUM',
+      displayName: this.metricName,
+      unitOfMeasurement: 'DOLLARS',
+      dimensions: [
+        {
+          name: 'order_date',
+          type: 'TIME',
+          expression: "DATE_TRUNC('day', o.created_at)",
+          description: 'Day the order was placed.',
+        },
+        {
+          name: 'region',
+          type: 'CATEGORICAL',
+          expression: 'c.region',
+          description: 'Customer billing region.',
+        },
+      ],
+      measures: [
+        {
+          name: 'engagements',
+          aggregation: 'SUM',
+          expression: 'likes + comments + shares',
+          description: 'Total interactions across all engagement types.',
+        },
+      ],
+    };
+
+    this.type = 'Metric';
+  }
+
+  async create(apiContext: APIRequestContext) {
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'MetricClass.create',
+      createPath: '/api/v1/metrics',
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  get() {
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  public set(data: { entity: ResponseDataType }): void {
+    this.entityResponseData = data.entity;
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/metrics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    );
+
+    this.entityResponseData = await okJson(response, 'MetricClass.patch');
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  async visitEntityPage(page: Page) {
+    await visitEntityPageByFqn({
+      page,
+      endpoint: this.endpoint,
+      // A metric is a top-level entity, so its FQN is just its name. Fall back
+      // to the created name when entityResponseData has not been populated yet.
+      fqn: this.entityResponseData?.fullyQualifiedName ?? this.entity.name,
+    });
+  }
+
+  async delete(apiContext: APIRequestContext) {
+    const entityResponse = await apiContext.delete(
+      `/api/v1/metrics/${this.entityResponseData?.['id']}?recursive=true&hardDelete=true`
+    );
+
+    return {
+      entity: entityResponse.body,
+    };
+  }
+}

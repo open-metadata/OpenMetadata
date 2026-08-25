@@ -1,0 +1,21 @@
+{
+  "name": "ApplicationBotImpersonationRole",
+  "displayName": "Application bot role with impersonation",
+  "description": "Role corresponding to an Application bot that is allowed to impersonate users.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "ApplicationBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "ApplicationBotImpersonationPolicy"
+    }
+  ]
+}

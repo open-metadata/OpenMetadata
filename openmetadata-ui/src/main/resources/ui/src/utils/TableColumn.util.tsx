@@ -1,0 +1,203 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import Icon from '@ant-design/icons';
+import { ColumnsType, ColumnType } from 'antd/lib/table';
+import classNames from 'classnames';
+import { lazy } from 'react';
+import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { TAG_LIST_SIZE } from '../constants/constants';
+import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
+import { EntityType } from '../enums/entity.enum';
+import { AssetCertification } from '../generated/entity/data/database';
+import { EntityReference } from '../generated/type/entityReference';
+import { TagLabel } from '../generated/type/tagLabel';
+import i18n from './i18next/LocalUtil';
+import {
+  getCertificationTag,
+  getTagsWithoutCertification,
+  getTagsWithoutTier,
+  getTierTags,
+} from './TablePureUtils';
+
+const DomainLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/DomainLabel/DomainLabel.component').then(
+      (module) => ({ default: module.DomainLabel })
+    )
+  )
+);
+
+const OwnerLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/OwnerLabel/OwnerLabel.component').then(
+      (module) => ({ default: module.OwnerLabel })
+    )
+  )
+);
+
+const RichTextEditorPreviewerNew = withSuspenseFallback(
+  lazy(
+    () => import('../components/common/RichTextEditor/RichTextEditorPreviewNew')
+  )
+);
+
+const DataProductsContainer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
+  )
+);
+
+const TagsViewer = withSuspenseFallback(
+  lazy(() => import('../components/Tag/TagsViewer/TagsViewer'))
+);
+
+export const columnFilterIcon = (filtered: boolean) => (
+  <Icon
+    className={classNames('filter-icon', {
+      'filter-icon-active': filtered,
+    })}
+    component={FilterIcon}
+    data-testid="filter-icon"
+  />
+);
+
+export const ownerTableObject = <
+  T extends { owners?: EntityReference[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.owner-plural').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+    key: TABLE_COLUMNS_KEYS.OWNERS,
+    width: 280,
+    filterIcon: columnFilterIcon,
+    render: (owners: EntityReference[]) => (
+      <OwnerLabel
+        isCompactView={false}
+        maxVisibleOwners={4}
+        owners={owners}
+        showLabel={false}
+      />
+    ),
+  },
+];
+
+export const domainTableObject = <
+  T extends { domains?: EntityReference[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.domain-plural').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DOMAINS,
+    key: TABLE_COLUMNS_KEYS.DOMAINS,
+    width: 200,
+    render: (domains: EntityReference[]) => (
+      <DomainLabel
+        domains={domains}
+        entityFqn=""
+        entityId=""
+        entityType={EntityType.TABLE}
+        hasPermission={false}
+      />
+    ),
+  },
+];
+
+export const dataProductTableObject = <
+  T extends { dataProducts?: EntityReference[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.data-product-plural').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DATA_PRODUCTS,
+    key: TABLE_COLUMNS_KEYS.DATA_PRODUCTS,
+    width: 200,
+    render: (dataProduct: EntityReference[]) => (
+      <DataProductsContainer
+        dataProducts={dataProduct}
+        hasPermission={false}
+        showHeader={false}
+      />
+    ),
+  },
+];
+
+export const tagTableObject = <
+  T extends { tags?: TagLabel[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.tag-plural').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+    width: 240,
+    key: TABLE_COLUMNS_KEYS.TAGS,
+    render: (_, record: T) => {
+      const filteredTags = getTagsWithoutCertification(
+        getTagsWithoutTier(record.tags ?? [])
+      );
+
+      return <TagsViewer sizeCap={TAG_LIST_SIZE} tags={filteredTags} />;
+    },
+  },
+];
+
+export const tierTableObject = <
+  T extends { tags?: TagLabel[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.tier').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+    key: TABLE_COLUMNS_KEYS.TIER,
+    width: 120,
+    render: (_, record: T) => {
+      const tierTag = getTierTags(record.tags ?? []);
+
+      return <TagsViewer sizeCap={1} tags={tierTag ? [tierTag] : []} />;
+    },
+  },
+];
+
+export const certificationTableObject = <
+  T extends { certification?: AssetCertification; tags?: TagLabel[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.certification').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.CERTIFICATION,
+    key: TABLE_COLUMNS_KEYS.CERTIFICATION,
+    width: 150,
+    render: (_, record: T) => {
+      const certTag =
+        record.certification?.tagLabel ??
+        getCertificationTag(record.tags ?? []);
+
+      return <TagsViewer sizeCap={1} tags={certTag ? [certTag] : []} />;
+    },
+  },
+];
+
+/**
+ * Generates a table column configuration for the description field.
+ * @param args - Additional column properties to be merged
+ * @returns A ColumnsType<T> array with the description column configuration
+ */
+export const descriptionTableObject = <T extends { description?: string }>(
+  args: ColumnType<T> = {}
+): ColumnsType<T> => [
+  {
+    title: i18n.t('label.description').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    render: (text: string) => <RichTextEditorPreviewerNew markdown={text} />,
+    ...args,
+  },
+];

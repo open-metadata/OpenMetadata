@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/schemaValidation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SchemaValidation",
+  "description": "Schema validation details for data contract.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.SchemaValidation",
+  "properties": {
+    "passed": {
+      "description": "Number of schema checks passed.",
+      "type": "integer"
+    },
+    "failed": {
+      "description": "Number of schema checks failed.",
+      "type": "integer"
+    },
+    "total": {
+      "description": "Total number of schema checks.",
+      "type": "integer"
+    },
+    "failedFields": {
+      "description": "List of fields that do not exist in the entity.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "duplicateFields": {
+      "description": "List of field names that appear more than once in the contract schema.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "typeMismatchFields": {
+      "description": "List of fields with data type mismatches between contract and entity (format: 'fieldName: expected TYPE1, got TYPE2').",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

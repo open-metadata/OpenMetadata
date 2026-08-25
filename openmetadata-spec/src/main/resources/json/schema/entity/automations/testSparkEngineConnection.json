@@ -1,0 +1,19 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/automations/testSparkEngineConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#", 
+    "title": "TestSparkEngineConnectionRequest",
+    "javaType": "org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest",
+    "description": "Test Spark Engine Connection to test user provided configuration is valid or not.",
+    "type": "object",
+    "properties": {
+      "sparkEngine": {
+        "description": "Spark Engine Configuration.",
+        "$ref": "../../metadataIngestion/engine/sparkEngineConfig.json"
+      },
+      "ingestionRunner": {
+        "description": "Optional value of the ingestion runner name responsible for running the test",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+}

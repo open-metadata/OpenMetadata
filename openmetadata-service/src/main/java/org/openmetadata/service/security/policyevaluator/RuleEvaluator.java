@@ -1,0 +1,511 @@
+package org.openmetadata.service.security.policyevaluator;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+
+/**
+ * Note that the methods in the class become available for SpEL expressions for authoring expressions such as
+ * "noOwner()" or "!noOwner()"
+ */
+@Slf4j
+public class RuleEvaluator {
+  private final PolicyContext policyContext;
+  private final SubjectContext subjectContext;
+  private final ResourceContextInterface resourceContext;
+
+  private final boolean expressionValidation;
+  private final boolean isUpdate;
+
+  public RuleEvaluator(boolean isUpdate) {
+    this.policyContext = null;
+    this.subjectContext = null;
+    this.resourceContext = null;
+    this.expressionValidation = true;
+    this.isUpdate = isUpdate;
+  }
+
+  public RuleEvaluator(
+      PolicyContext policyContext,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext) {
+    this.policyContext = policyContext;
+    this.subjectContext = subjectContext;
+    this.resourceContext = resourceContext;
+    this.expressionValidation = false;
+    this.isUpdate = false;
+  }
+
+  @Function(
+      name = "noOwner",
+      input = "none",
+      description = "Returns true if the entity being accessed has no owner",
+      examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
+  @SuppressWarnings("unused")
+  public boolean noOwner() {
+    if (expressionValidation) {
+      return false;
+    }
+    return resourceContext != null && nullOrEmpty(resourceContext.getOwners());
+  }
+
+  @Function(
+      name = "isOwner",
+      input = "none",
+      description = "Returns true if the logged in user is the owner of the entity being accessed",
+      examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
+  public boolean isOwner() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (subjectContext == null || resourceContext == null) {
+      return false;
+    }
+    return subjectContext.isOwner(resourceContext.getOwners());
+  }
+
+  @Function(
+      name = "isReviewer",
+      input = "none",
+      description = "Returns true if the logged in user is a reviewer of the entity being accessed",
+      examples = {"isReviewer()", "!isReviewer"})
+  public boolean isReviewer() {
+    if (expressionValidation) {
+      return false;
+    }
+    // On CREATE the entity is caller-supplied and not yet persisted, so its fields (e.g. reviewers)
+    // cannot be trusted to grant authorization. Only evaluate against already persisted entities.
+    if (subjectContext == null
+        || resourceContext == null
+        || resourceContext instanceof CreateResourceContext
+        || resourceContext.getEntity() == null) {
+      return false;
+    }
+    return subjectContext.isReviewer(resourceContext.getEntity().getReviewers());
+  }
+
+  @Function(
+      name = "isTaskFiler",
+      input = "none",
+      description =
+          "Returns true if the logged in user filed (created) the task being accessed. "
+              + "Only applies when the resource is a task.",
+      examples = {"isTaskFiler()", "!isTaskFiler()"})
+  public boolean isTaskFiler() {
+    Task task = currentTask();
+    boolean filer = false;
+    if (task != null && task.getCreatedBy() != null) {
+      filer = subjectContext.isOwner(List.of(task.getCreatedBy()));
+    }
+    return filer;
+  }
+
+  @Function(
+      name = "isTaskAssignee",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is an assignee of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskAssignee()", "!isTaskAssignee()"})
+  public boolean isTaskAssignee() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getAssignees());
+  }
+
+  @Function(
+      name = "isTaskReviewer",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is a reviewer of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskReviewer()", "!isTaskReviewer()"})
+  public boolean isTaskReviewer() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getReviewers());
+  }
+
+  private Task currentTask() {
+    Task task = null;
+    if (!expressionValidation && subjectContext != null && resourceContext != null) {
+      EntityInterface entity = resourceContext.getEntity();
+      if (entity instanceof Task t) {
+        task = t;
+      }
+    }
+    return task;
+  }
+
+  @Function(
+      name = "hasDomain",
+      input = "none",
+      description =
+          "Returns true if the logged in user has domain access to the entity being accessed. "
+              + "For entities with domains (explicit or inherited), the user must have at least one matching domain. "
+              + "For entities without domains, users without domains can access them.",
+      examples = {"hasDomain()", "!hasDomain()"})
+  public boolean hasDomain() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (subjectContext == null || resourceContext == null || subjectContext.user() == null) {
+      return false;
+    }
+
+    if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
+      LOG.info(
+          "hasDomain() - List operation detected (no specific resource), returning true for post-filtering");
+      return true;
+    }
+
+    List<EntityReference> userDomains = subjectContext.user().getDomains();
+    List<EntityReference> resourceDomains = resourceContext.getDomains();
+
+    String userName = subjectContext.user().getName();
+    String userDomainNames =
+        nullOrEmpty(userDomains)
+            ? "none"
+            : userDomains.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(","));
+    String resourceDomainInfo = "none";
+    if (!nullOrEmpty(resourceDomains)) {
+      resourceDomainInfo =
+          resourceDomains.stream()
+              .map(
+                  d ->
+                      d.getFullyQualifiedName()
+                          + (Boolean.TRUE.equals(d.getInherited()) ? "(inherited)" : ""))
+              .collect(Collectors.joining(","));
+    }
+
+    LOG.info(
+        "hasDomain() check - User: {}, UserDomains: {}, ResourceDomains: {}, Entity: {}",
+        userName,
+        userDomainNames,
+        resourceDomainInfo,
+        resourceContext.getEntity() != null
+            ? resourceContext.getEntity().getFullyQualifiedName()
+            : "unknown");
+
+    // If resource has no domains, allow access to everyone - should be restricted with other
+    // controlled policies
+    if (nullOrEmpty(resourceDomains)) {
+      LOG.info("hasDomain() - Resource has no domains, returning true");
+      return true;
+    }
+
+    // Resource has domains, check if user has domains
+    if (nullOrEmpty(userDomains)) {
+      LOG.info("hasDomain() - Resource has domains but user doesn't, returning false");
+      return false;
+    }
+
+    if (subjectContext.hasDomains(resourceDomains)) {
+      LOG.info("hasDomain() - Domain hierarchy match found, returning true");
+      return true;
+    }
+
+    LOG.info("hasDomain() - No matching domains found, returning false");
+    return false;
+  }
+
+  @Function(
+      name = "noDomain",
+      input = "none",
+      description =
+          "Returns true if the entity being accessed has no domains assigned (empty or null domain list)",
+      examples = {"noDomain()", "!noDomain()"})
+  public boolean noDomain() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    // Returns true only if entity has no domains
+    return nullOrEmpty(resourceContext.getDomains());
+  }
+
+  @Function(
+      name = "matchAllTags",
+      input = "List of comma separated tag or glossary fully qualified names",
+      description = "Returns true if the entity being accessed has all the tags given as input",
+      examples = {
+        "matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"
+      })
+  @SuppressWarnings("ununsed")
+  public boolean matchAllTags(String... tagFQNs) {
+    if (expressionValidation) {
+      for (String tagFqn : tagFQNs) {
+        validateEntityReference(Entity.TAG, tagFqn);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    List<TagLabel> tags = resourceContext.getTags();
+    if (nullOrEmpty(tags)) {
+      LOG.debug("No Tags found for resource");
+      return false;
+    }
+    LOG.debug(
+        "matchAllTags {} resourceTags {}",
+        Arrays.toString(tagFQNs),
+        Arrays.toString(tags.toArray()));
+    for (String tagFQN : tagFQNs) {
+      TagLabel found =
+          tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
+      if (found == null) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Function(
+      name = "matchAnyTag",
+      input = "List of comma separated tag or glossary fully qualified names",
+      description =
+          "Returns true if the entity being accessed has at least one of the tags given as input",
+      examples = {
+        "matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"
+      })
+  @SuppressWarnings("unused")
+  public boolean matchAnyTag(String... tagFQNs) {
+    if (expressionValidation) {
+      for (String tagFqn : tagFQNs) {
+        validateEntityReference(Entity.TAG, tagFqn);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    List<TagLabel> tags = resourceContext.getTags();
+    if (!nullOrEmpty(tags)) {
+      LOG.debug(
+          "matchAnyTag {} resourceTags {}",
+          Arrays.toString(tagFQNs),
+          Arrays.toString(tags.toArray()));
+      for (String tagFQN : tagFQNs) {
+        TagLabel found =
+            tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
+        if (found != null) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchAnyCertification",
+      input = "List of comma separated Certification fully qualified names",
+      description =
+          "Returns true if the entity being accessed has any of the Certification given as input",
+      examples = {"matchAnyCertification('Certification.Silver', 'Certification.Gold')"})
+  @SuppressWarnings("unused")
+  public boolean matchAnyCertification(String... tagFQNs) {
+    if (expressionValidation) {
+      for (String tagFqn : tagFQNs) {
+        validateEntityReference(Entity.TAG, tagFqn);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+
+    EntityInterface entity = resourceContext.getEntity();
+    if (entity == null) {
+      return false;
+    }
+
+    Optional<AssetCertification> oCertification = Optional.ofNullable(entity.getCertification());
+
+    if (oCertification.isEmpty()) {
+      LOG.debug(
+          "matchAnyCertification {} resourceCertification is null.", Arrays.toString(tagFQNs));
+      return false;
+    } else {
+      AssetCertification certification = oCertification.get();
+
+      LOG.debug(
+          "matchAnyCertification {} resourceCertification {}",
+          Arrays.toString(tagFQNs),
+          certification.getTagLabel().getTagFQN());
+      return Arrays.stream(tagFQNs)
+          .anyMatch(tagFQN -> tagFQN.equals(certification.getTagLabel().getTagFQN()));
+    }
+  }
+
+  @Function(
+      name = "matchTeam",
+      input = "None",
+      description =
+          "Returns true if the user and the resource belongs to the team hierarchy where this policy is"
+              + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
+      examples = {"matchTeam()"})
+  @SuppressWarnings("unused")
+  public boolean matchTeam() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (resourceContext == null || nullOrEmpty(resourceContext.getOwners())) {
+      return false;
+    }
+    if (policyContext == null || !policyContext.getEntityType().equals(Entity.TEAM)) {
+      return false;
+    }
+    return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwners())
+        && subjectContext.isUserUnderTeam(policyContext.getEntityName());
+  }
+
+  @Function(
+      name = "inAnyTeam",
+      input = "List of comma separated team names",
+      description =
+          "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
+      examples = {"inAnyTeam('marketing')"})
+  @SuppressWarnings("unused")
+  public boolean inAnyTeam(String... teams) {
+    if (expressionValidation) {
+      for (String team : teams) {
+        validateEntityByName(Entity.TEAM, team);
+      }
+      return false;
+    }
+    if (subjectContext == null) {
+      return false;
+    }
+    for (String team : teams) {
+      if (subjectContext.isUserUnderTeam(team)) {
+        LOG.debug(
+            "inAnyTeam - User {} is under the team {}", subjectContext.user().getName(), team);
+        return true;
+      }
+      LOG.debug(
+          "inAnyTeam - User {} is not under the team {}", subjectContext.user().getName(), team);
+    }
+    return false;
+  }
+
+  @Function(
+      name = "hasAnyRole",
+      input = "List of comma separated roles",
+      description =
+          "Returns true if the user (either direct or inherited from the parent teams) has one or more roles "
+              + "from the list.",
+      examples = {"hasAnyRole('DataSteward', 'DataEngineer')"})
+  @SuppressWarnings("unused")
+  public boolean hasAnyRole(String... roles) {
+    if (expressionValidation) {
+      for (String role : roles) {
+        validateEntityReference(Entity.ROLE, role);
+      }
+      return false;
+    }
+    if (subjectContext == null) {
+      return false;
+    }
+    for (String role : roles) {
+      if (subjectContext.hasAnyRole(role)) {
+        LOG.debug("hasAnyRole - User {} has the role {}", subjectContext.user().getName(), role);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "isAdminUser",
+      input = "none",
+      description =
+          "Returns true if the user being accessed as a resource is an admin. Use with the "
+              + "Impersonate operation to control whether bots can impersonate admin users.",
+      examples = {"isAdminUser()", "!isAdminUser()"})
+  @SuppressWarnings("unused")
+  public boolean isAdminUser() {
+    return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsAdmin()));
+  }
+
+  @Function(
+      name = "isBotUser",
+      input = "none",
+      description =
+          "Returns true if the user being accessed as a resource is a bot. Use with the "
+              + "Impersonate operation to control whether bots can impersonate other bots.",
+      examples = {"isBotUser()", "!isBotUser()"})
+  @SuppressWarnings("unused")
+  public boolean isBotUser() {
+    return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsBot()));
+  }
+
+  private boolean matchesUserResource(Predicate<User> predicate) {
+    boolean result = false;
+    if (!expressionValidation
+        && resourceContext != null
+        && Entity.USER.equals(resourceContext.getResource())
+        && resourceContext.getEntity() instanceof User user) {
+      result = predicate.test(user);
+    }
+    return result;
+  }
+
+  private void validateEntityReference(String entityType, String fqn) {
+    try {
+      Entity.getEntityReferenceByName(entityType, fqn, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // Tags and glossary terms both appear as tag labels on entities,
+      // so matchAnyTag/matchAllTags conditions may reference either type.
+      if (Entity.TAG.equals(entityType)) {
+        try {
+          Entity.getEntityReferenceByName(Entity.GLOSSARY_TERM, fqn, NON_DELETED);
+          return;
+        } catch (EntityNotFoundException ignored) {
+          // Fall through to stale-reference handling
+        }
+      }
+      if (!isUpdate) {
+        throw e;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: {} '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          entityType,
+          fqn);
+    }
+  }
+
+  private void validateEntityByName(String entityType, String name) {
+    try {
+      Entity.getEntityByName(entityType, name, "", NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      if (!isUpdate) {
+        throw e;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: {} '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          entityType,
+          name);
+    }
+  }
+}

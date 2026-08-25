@@ -1,0 +1,80 @@
+{
+  "summary": "Table CSV file is used for importing and exporting table metadata from and to an **existing** table.",
+  "headers": [
+    {
+      "name": "column.name",
+      "required": true,
+      "description": "Fully qualified name of the column.",
+      "examples": [
+        "user_id", "address.zipcode"
+      ]
+    },
+    {
+      "name": "column.displayName",
+      "required": false,
+      "description": "Display name of the column.",
+      "examples": [
+        "USER ID", "ZIP Code"
+      ]
+    },
+    {
+      "name": "column.description",
+      "required": false,
+      "description": "Description for the column in Markdown format.",
+      "examples": [
+        "`user_id` column is the primary key and contains unique user ID."
+      ]
+    },
+    {
+      "name": "column.dataTypeDisplay",
+      "required": false,
+      "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
+      "examples": [
+        "array<int>", "map<int, string>"
+      ]
+    },
+    {
+      "name": "column.dataType",
+      "required": true,
+      "description": "Actual Column data type.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    {
+      "name": "column.arrayDataType",
+      "required": false,
+      "description": "In case of data Type being Array, type of Array Data.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+
+    {
+      "name": "column.dataLength",
+      "required": false,
+      "description": "Data Length of Column in case of CHAR, VARCHAR, BINARY etc.",
+      "examples": [
+        "36"
+      ]
+    },
+    {
+      "name": "column.tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the column separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
+      "examples": [
+        "`PII.Sensitive`",
+        "`PII.Sensitive;PersonalData.Personal`"
+      ]
+    },
+    {
+      "name": "column.glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the column separated by ';'.. Tags automatically derived along with some glossaryTerm will be in `tags`.",
+      "examples": [
+        "`Glossary.GlossaryTerm1`",
+        "`Glossary.GlossaryTerm1.GlossaryTerm2`"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Page } from '@playwright/test';
+import { uuid } from '../../../utils/common';
+
+import {
+  checkServiceFieldSectionHighlighting,
+  Services,
+} from '../../../utils/serviceIngestion';
+import ServiceBaseClass from './ServiceBaseClass';
+
+class BigQueryIngestionClass extends ServiceBaseClass {
+  name = '';
+  filterPattern: string;
+  authOverrides: Record<string, string>;
+
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+    authOverrides?: Record<string, string>;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+      authOverrides,
+    } = extraParams ?? {};
+
+    super(
+      Services.Database,
+      `pw-bigquery-with-%-${uuid()}`,
+      'BigQuery',
+      'testtable',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
+    );
+
+    this.filterPattern = 'testschema';
+    this.authOverrides = authOverrides ?? {};
+  }
+
+  async createService(page: Page) {
+    await super.createService(page);
+  }
+
+  async updateService(page: Page) {
+    await super.updateService(page);
+  }
+
+  async fillConnectionDetails(page: Page) {
+    const clientEmail = process.env.PLAYWRIGHT_BQ_CLIENT_EMAIL ?? '';
+    const projectId = process.env.PLAYWRIGHT_BQ_PROJECT_ID ?? '';
+    const privateKeyId = process.env.PLAYWRIGHT_BQ_PRIVATE_KEY_ID ?? '';
+    const privateKey =
+      this.authOverrides.privateKey ??
+      process.env.PLAYWRIGHT_BQ_PRIVATE_KEY ??
+      '';
+    const clientId = process.env.PLAYWRIGHT_BQ_CLIENT_ID ?? '';
+    const projectIdTaxonomy =
+      process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
+
+    await page
+      .getByRole('button', { name: 'GCP Credentials Values GCP' })
+      .click();
+    await page.getByRole('option', { name: 'GCP Credentials Values' }).click();
+
+    await page
+      .getByRole('button', { name: 'Single Project ID Project ID' })
+      .click();
+    await page.getByRole('option', { name: 'Multiple Project ID' }).click();
+
+    const projectIds = projectId.split(',');
+    for (const id of projectIds) {
+      await page.fill('#root\\/credentials\\/gcpConfig\\/projectId', id.trim());
+      await page
+        .locator('#root\\/credentials\\/gcpConfig\\/projectId')
+        .press('Enter');
+    }
+    await checkServiceFieldSectionHighlighting(page, 'projectId');
+    await page.fill(
+      '#root\\/credentials\\/gcpConfig\\/privateKeyId',
+      privateKeyId
+    );
+    await checkServiceFieldSectionHighlighting(page, 'privateKeyId');
+    await page.fill('#root\\/credentials\\/gcpConfig\\/privateKey', privateKey);
+    await checkServiceFieldSectionHighlighting(page, 'privateKey');
+    await page.fill(
+      '#root\\/credentials\\/gcpConfig\\/clientEmail',
+      clientEmail
+    );
+    await checkServiceFieldSectionHighlighting(page, 'clientEmail');
+    await page.fill('#root\\/credentials\\/gcpConfig\\/clientId', clientId);
+    await checkServiceFieldSectionHighlighting(page, 'clientId');
+
+    await page
+      .getByRole('button', { name: 'Show advanced credential' })
+      .click();
+    await page.fill(
+      '#root\\/credentials\\/gcpConfig\\/clientX509CertUrl',
+      `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
+        clientEmail
+      )}`
+    );
+    await checkServiceFieldSectionHighlighting(page, 'clientX509CertUrl');
+
+    await page.getByTestId('connection-section-scope').click();
+
+    await page.fill(`#root\\/taxonomyProjectID`, projectIdTaxonomy);
+    await page.locator(`#root\\/taxonomyProjectID`).press('Enter');
+  }
+
+  async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.filterPattern);
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
+  }
+
+  async deleteService(page: Page) {
+    await super.deleteService(page);
+  }
+}
+
+export default BigQueryIngestionClass;

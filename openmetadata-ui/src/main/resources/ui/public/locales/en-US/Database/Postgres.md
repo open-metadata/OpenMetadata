@@ -1,0 +1,382 @@
+# Postgres
+
+In this section, we provide guides and references to use the PostgreSQL connector.
+
+## Requirements
+
+$$note
+Note that we only support officially supported Postgres versions. You can check the version list <a href="https://www.postgresql.org/support/versioning/" target="_blank">here</a>.
+$$
+
+### Metadata Extraction
+
+OpenMetadata extracts metadata from PostgreSQL using two main sources:
+
+#### PostgreSQL System Catalogs (`pg_*`)
+
+The connector primarily uses PostgreSQL's system catalog tables and views to extract metadata. These include:
+- `pg_class` - Information about tables, views, and other relations
+- `pg_namespace` - Schema information
+- `pg_attribute` - Column information
+- `pg_description` - Comments on database objects
+- `pg_constraint` - Constraint information
+- `pg_database` - Database information
+- `pg_tables` - Table ownership and metadata
+- `pg_partitioned_table` - Partitioning information
+- `pg_policy` - Row-level security policies
+- `pg_sequence` - Sequence information
+- `pg_attrdef` - Column default values
+- `pg_proc` - Stored procedures and functions
+- `pg_user` - User information
+- `pg_stat_statements` - Query statistics (for usage and lineage)
+
+**No special grants are required** to read from most of these system catalogs as they are readable by any connected user by default. **Exception**: `pg_stat_statements` requires the `pg_read_all_stats` role for access (see [Usage and Lineage](#usage-and-lineage) section below).
+
+#### INFORMATION_SCHEMA Views
+
+The connector also accesses `information_schema.tables` and `information_schema.columns` views. In PostgreSQL, `INFORMATION_SCHEMA` views automatically filter results to show only objects for which the current user has privileges.
+
+**Important**: To extract complete metadata, ensure your OpenMetadata user has appropriate privileges on the schemas and objects you want to discover. While no explicit `GRANT` is needed for `INFORMATION_SCHEMA` itself, the user must have `USAGE` privilege on schemas to see objects within them:
+
+```sql
+-- Grant USAGE on schemas to allow metadata extraction
+GRANT USAGE ON SCHEMA your_schema TO your_user;
+
+-- For multiple schemas, repeat for each schema you want to discover
+GRANT USAGE ON SCHEMA schema1, schema2, schema3 TO your_user;
+```
+
+If you want to extract metadata for specific tables without granting broad access, you can grant `SELECT` on individual tables. However, for metadata extraction alone, `USAGE` on the schema is typically sufficient.
+
+### Profiler & Data Quality
+
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+
+```sql
+-- Grant SELECT for profiling and data quality tests
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO your_user;
+```
+
+### Usage and Lineage
+
+When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table. You can find more information about it on the official <a href="https://www.postgresql.org/docs/current/pgstatstatements.html#id-1.11.7.39.6" target="_blank">docs</a>.
+
+Another interesting consideration here is explained in the following SO <a href="https://stackoverflow.com/questions/50803147/what-is-the-timeframe-for-pg-stat-statements" target="_blank">question</a>.
+
+As a summary:
+- The `pg_stat_statements` has no time data embedded in it.
+- It will show all queries from the last reset (one can call `pg_stat_statements_reset()`).
+
+Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
+
+**For usage and lineage, grant your user `pg_read_all_stats` permission:**
+
+```sql
+GRANT pg_read_all_stats TO your_user;
+```
+
+### Summary of Required Grants
+
+Here's a complete example of setting up a user for OpenMetadata:
+
+```sql
+-- Create user
+CREATE USER openmetadata_user WITH PASSWORD 'your_password';
+
+-- Grant connection to database
+GRANT CONNECT ON DATABASE your_database TO openmetadata_user;
+
+-- Grant USAGE on schemas for metadata extraction
+-- Repeat for each schema you want OpenMetadata to discover
+GRANT USAGE ON SCHEMA schema1, schema2, schema3 TO openmetadata_user;
+
+-- For profiling and data quality (optional, only if needed)
+-- Repeat for each schema where you want to run profiling/tests
+GRANT SELECT ON ALL TABLES IN SCHEMA schema1 TO openmetadata_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA schema2 TO openmetadata_user;
+
+-- For usage and lineage extraction (optional, only if needed)
+GRANT pg_read_all_stats TO openmetadata_user;
+```
+
+You can find further information on the Postgres connector in the <a href="https://docs.open-metadata.org/connectors/database/postgres" target="_blank">docs</a>.
+
+## Connection Details
+
+$$section
+### Connection Scheme $(id="scheme")
+
+SQLAlchemy driver scheme options.
+$$
+
+$$section
+### Username $(id="username")
+
+Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
+$$
+
+
+$$section
+### Auth Config $(id="authType")
+There are 2 types of auth configs:
+- Basic Auth.
+- IAM based Auth.
+- Azure Based Auth.
+
+User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+$$
+
+## Basic Auth
+$$section
+### Password $(id="password")
+
+Password to connect to Postgres.
+$$
+
+## IAM Auth Config
+
+$$section
+### AWS Access Key ID $(id="awsAccessKeyId")
+
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
+
+Access keys consist of two parts:
+1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
+2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+
+You must use both the access key ID and secret access key together to authenticate your requests.
+
+You can find further information on how to manage your access keys <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">here</a>
+$$
+
+$$section
+### AWS Secret Access Key $(id="awsSecretAccessKey")
+
+Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+$$
+
+$$section
+### AWS Region $(id="awsRegion")
+
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
+
+As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
+
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
+$$
+
+$$section
+### AWS Session Token $(id="awsSessionToken")
+
+If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
+
+You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
+$$
+
+$$section
+### Endpoint URL $(id="endPointURL")
+
+To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
+
+Find more information on <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html" target="_blank">AWS service endpoints</a>.
+$$
+
+$$section
+### Profile Name $(id="profileName")
+
+A named profile is a collection of settings and credentials that you can apply to an AWS CLI command. When you specify a profile to run a command, the settings and credentials are used to run that command. Multiple named profiles can be stored in the config and credentials files.
+
+You can inform this field if you'd like to use a profile other than `default`.
+
+Find here more information about <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html" target="_blank">Named profiles for the AWS CLI</a>.
+$$
+
+$$section
+### Assume Role ARN $(id="assumeRoleArn")
+
+Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the `ARN` (Amazon Resource Name) of the policy of the other account.
+
+A user who wants to access a role in a different account must also have permissions that are delegated from the account administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
+
+This is a required field if you'd like to `AssumeRole`.
+
+Find more information on <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html" target="_blank">AssumeRole</a>.
+$$
+
+$$section
+### Assume Role Session Name $(id="assumeRoleSessionName")
+
+An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons.
+
+By default, we'll use the name `OpenMetadataSession`.
+
+Find more information about the <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session." target="_blank">Role Session Name</a>.
+$$
+
+$$section
+### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
+
+The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
+
+Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
+$$
+
+$$section
+### Bucket Name $(id="bucketName")
+
+A bucket name in Data Lake is a unique identifier used to organize and store data objects.
+
+It's similar to a folder name, but it's used for object storage rather than file storage.
+$$
+
+$$section
+### Prefix $(id="prefix")
+
+The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data.
+
+It's used to organize and categorize data within the container, and can help users easily locate and access the data they need.
+$$
+
+## Azure Auth Config
+
+$$section
+### Client ID $(id="clientId")
+
+This is a unique identifier for the service account. To fetch this key, look for the value associated with the `client_id` key in the service account key file.
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+To get the client secret, follow these steps:
+
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for this connection.
+4. Under `Manage`, select `Certificates & secrets`.
+5. Under `Client secrets`, select `New client secret`.
+6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
+7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
+
+$$
+
+$$section
+### Tenant ID $(id="tenantId")
+
+To get the tenant ID, follow these steps:
+
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Power BI.
+4. From the `Overview` section, copy the `Directory (tenant) ID`.
+$$
+
+$$section
+### Storage Account Name $(id="accountName")
+
+Account Name of your storage account
+$$
+
+$$section
+### Key Vault Name $(id="vaultName")
+
+Key Vault Name
+$$
+
+$$section
+### Scopes $(id="scopes")
+
+To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the `Expose an API` section, copy the `Application ID URI`
+5. Make sure the URI ends with `/.default` in case it does not, you can append the same manually
+$$
+
+$$section
+### Host and Port $(id="hostPort")
+
+This parameter specifies the host and port of the Postgres instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5432`.
+
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:5432` as the value.
+$$
+
+$$section
+### Database $(id="database")
+
+Initial Postgres database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
+$$
+
+$$section
+### SSL Mode $(id="sslMode")
+
+SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
+$$
+$$note
+if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+$$
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`sslrootcert`).
+$$
+$$note
+Postgres only needs CA Certificate
+$$
+$$section
+### Classification Name $(id="classificationName")
+
+By default, the Postgres policy tags in OpenMetadata are classified under the name `PostgresPolicyTags`. However, you can create a custom classification name of your choice for these tags. Once you have ingested Postgres data, the custom classification name will be visible in the Classifications list on the Tags page.
+$$
+
+$$section
+### Ingest All Databases $(id="ingestAllDatabases")
+
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
+$$
+
+$$section
+### Connection Arguments $(id="connectionArguments")
+
+Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+$$
+
+$$section
+### Connection Options $(id="connectionOptions")
+
+Additional connection options to build the URL that can be sent to service during the connection.
+$$
+
+$$section
+### Default Database Filter Pattern $(id="databaseFilterPattern")
+
+Regex to only include/exclude databases that matches the pattern.
+$$
+
+$$section
+### Default Schema Filter Pattern $(id="schemaFilterPattern")
+
+Regex to only include/exclude schemas that matches the pattern.
+$$
+
+$$section
+### Default Table Filter Pattern $(id="tableFilterPattern")
+
+Regex to only include/exclude tables that matches the pattern.
+$$
+
+$$section
+### Query Statement Source $(id="queryStatementSource")
+
+Fully qualified name of the view or table to use for query logs. If not provided, defaults to `pg_stat_statements`. 
+
+Use this to configure a custom view (e.g., `my_schema.custom_pg_stat_statements`) when direct access to `pg_stat_statements` is restricted. This is useful in environments where security policies require exposing `pg_stat_statements` contents through a custom view rather than granting direct access.
+
+The custom view must have the same columns as `pg_stat_statements` (`query`, `dbid`, `userid`, `total_exec_time` or `total_time` depending on Postgres version).
+$$
+
+
+$$section
+### Default Stored Procedure Filter Pattern $(id="storedProcedureFilterPattern")
+Regex to only include/exclude stored procedures that matches the pattern.
+$$

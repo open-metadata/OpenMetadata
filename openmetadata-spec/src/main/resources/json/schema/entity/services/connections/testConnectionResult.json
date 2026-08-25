@@ -1,0 +1,108 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/testConnectionResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestConnectionResult",
+  "description": "TestConnectionResult is the definition that will encapsulate result of running the test connection steps.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionResult",
+  "definitions": {
+    "testConnectionStepResult": {
+      "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStepResult",
+      "properties": {
+        "name": {
+          "description": "Name of the step being tested",
+          "type": "string"
+        },
+        "mandatory": {
+          "description": "Is this step mandatory to be passed?",
+          "type": "boolean",
+          "default": true
+        },
+        "passed": {
+          "description": "Did the step pass successfully?",
+          "type": "boolean"
+        },
+        "message": {
+          "description": "Results or exceptions to be shared after running the test. This message comes from the test connection definition",
+          "type": "string",
+          "default": null
+        },
+        "errorLog": {
+          "description": "In case of failed step, this field would contain the actual error faced during the step.",
+          "type": "string",
+          "default": null
+        },
+        "status": {
+          "description": "Lifecycle state of this step.",
+          "type": "string",
+          "enum": ["Queued", "Running", "Passed", "Failed", "Skipped", "Warning"]
+        },
+        "skipReason": {
+          "description": "Why a step did not run, when status is Skipped.",
+          "type": "string",
+          "enum": ["NotImplemented", "ConnectionNotEstablished"]
+        },
+        "diagnosis": {
+          "description": "Classified, actionable explanation of a failure, separate from the raw errorLog.",
+          "type": "object",
+          "properties": {
+            "title": {
+              "description": "Short statement of what went wrong.",
+              "type": "string"
+            },
+            "remediation": {
+              "description": "What the user can do to fix it.",
+              "type": "string"
+            },
+            "docUrl": {
+              "description": "Link to relevant documentation.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "durationMs": {
+          "description": "Wall-clock time the step took, in milliseconds.",
+          "type": "integer"
+        },
+        "executedCommand": {
+          "description": "The command or statement the step actually ran, when applicable.",
+          "type": "string"
+        },
+        "resultSummary": {
+          "description": "Human-readable summary of what the step found on success.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name", "mandatory", "passed"]
+    },
+    "statusType": {
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus",
+      "description": "Enum defining possible Test Connection Result status",
+      "type": "string",
+      "enum": ["Successful", "Failed", "Running"]
+    }
+  },
+  "properties": {
+    "lastUpdatedAt": {
+      "description": "Last time that the test connection was executed",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "description": "Test Connection Result computation status.",
+      "$ref": "#/definitions/statusType"
+    },
+    "steps": {
+      "description": "Steps to test the connection. Order matters.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testConnectionStepResult"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["steps"]
+}

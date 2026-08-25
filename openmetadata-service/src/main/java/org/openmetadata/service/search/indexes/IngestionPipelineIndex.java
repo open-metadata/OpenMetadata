@@ -1,0 +1,113 @@
+package org.openmetadata.service.search.indexes;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import org.json.JSONObject;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+
+public class IngestionPipelineIndex implements TaggableIndex, ServiceBackedIndex {
+  final IngestionPipeline ingestionPipeline;
+  final Set<String> excludeFields = Set.of("sourceConfig", "openMetadataServerConnection");
+
+  /**
+   * Non-searchable fields on a {@link PipelineStatus} whose arbitrary/unbounded keys must never reach
+   * the index (see {@link #searchableStatus}). {@code config}/{@code metadata} are free-form per-run
+   * maps; {@code status} is the per-step telemetry whose {@code operationMetrics}/{@code progress}
+   * nest one key per API endpoint, query, or entity type — thousands of distinct keys that get
+   * dynamically mapped one-field-each and push the index past its total-fields limit. None are
+   * searched (only {@code pipelineState} and the run timestamps are).
+   */
+  private static final Set<String> NON_SEARCHABLE_STATUS_FIELDS =
+      Set.of("config", "metadata", "status");
+
+  public IngestionPipelineIndex(IngestionPipeline ingestionPipeline) {
+    this.ingestionPipeline = ingestionPipeline;
+  }
+
+  @Override
+  public Object getEntity() {
+    return ingestionPipeline;
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.INGESTION_PIPELINE;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("pipelineStatuses");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    doc.put(
+        "name",
+        ingestionPipeline.getName() != null
+            ? ingestionPipeline.getName()
+            : ingestionPipeline.getDisplayName());
+    doc.put("pipelineStatuses", searchableStatuses(ingestionPipeline.getPipelineStatuses()));
+    Optional.ofNullable(ingestionPipeline.getAirflowConfig())
+        .map(AirflowConfig::getScheduleInterval)
+        .ifPresent(
+            scheduleInterval -> {
+              Map<String, Object> airflowConfigMap = new HashMap<>();
+              airflowConfigMap.put("scheduleInterval", scheduleInterval);
+              doc.put("airflowConfig", airflowConfigMap);
+            });
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+        .map(appConfig -> appConfig.optString("type", null))
+        .ifPresent(c -> doc.put("applicationType", c));
+    return doc;
+  }
+
+  private List<Map<String, Object>> searchableStatuses(List<PipelineStatus> statuses) {
+    List<Map<String, Object>> result = null;
+    if (statuses != null) {
+      result = new ArrayList<>(statuses.size());
+      for (PipelineStatus status : statuses) {
+        result.add(searchableStatus(status));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Drops the non-searchable blobs ({@code config}, {@code metadata}, {@code status}) from a run
+   * before indexing. {@code config}/{@code metadata} are arbitrary per-run key/value maps; {@code
+   * status} is per-step telemetry whose {@code operationMetrics}/{@code progress} nest one key per API
+   * endpoint or entity type. None are searched (only the run state and timestamps are), yet their
+   * arbitrary keys are dynamically mapped one-field-each and push the index past its total-fields
+   * limit ("Limit of total fields [1000] has been exceeded"), which rejects the whole document. The
+   * searchable status fields (state, runId, timestamps) are preserved. Returns a copy so the entity
+   * is not mutated.
+   */
+  private Map<String, Object> searchableStatus(PipelineStatus status) {
+    Map<String, Object> result = null;
+    if (status != null) {
+      result = JsonUtils.getMap(status);
+      result.keySet().removeAll(NON_SEARCHABLE_STATUS_FIELDS);
+    }
+    return result;
+  }
+
+  public static Map<String, Float> getFields() {
+    return SearchIndex.getDefaultFields();
+  }
+}

@@ -1,0 +1,26 @@
+[
+    {
+        "tabname": "T001B_PS",
+        "as4local": "A",
+        "as4vers": "0000",
+        "LANG": "E",
+        "tabclass": "TRANSP",
+        "sqltab": "",
+        "applclass": "FB",
+        "authclass": "00",
+        "masterlang": "",
+        "ddtext": "Account Assignment Objects in General Ledger"
+    },
+    {
+        "tabname": "T001B_PS_PER",
+        "as4local": "A",
+        "as4vers": "0000",
+        "LANG": "E",
+        "tabclass": "TRANSP",
+        "sqltab": "",
+        "applclass": "FB",
+        "authclass": "00",
+        "masterlang": "",
+        "ddtext": "Permitted Posting Periods for Account Assignment Objects"
+    }
+]

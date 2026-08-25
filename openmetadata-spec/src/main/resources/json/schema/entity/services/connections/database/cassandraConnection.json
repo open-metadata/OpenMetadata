@@ -1,0 +1,85 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/cassandraConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CassandraConnection",
+    "description": "Cassandra Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.CassandraConnection",
+    "definitions": {
+        "cassandraType": {
+            "description": "Service type.",
+            "type": "string",
+            "enum": [
+                "Cassandra"
+            ],
+            "default": "Cassandra"
+        }
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/cassandraType",
+            "default": "Cassandra"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to Cassandra. This user should have privileges to read all the metadata in Cassandra.",
+            "type": "string"
+        },
+        "authType": {
+            "title": "Auth Configuration Type",
+            "description": "Choose Auth Config Type.",
+            "oneOf": [
+                {
+                    "$ref": "./common/basicAuth.json"
+                },
+                {
+                    "$ref": "./cassandra/cloudConfig.json"
+                }
+            ]
+        },
+        "hostPort": {
+            "title": "Host and Port",
+            "description": "Host and port of the Cassandra service when using the `cassandra` connection scheme. Only host when using the `cassandra+srv` scheme.",
+            "type": "string"
+        },
+        "databaseName": {
+            "title": "Database Name",
+            "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+            "type": "string"
+        },
+        "connectionArguments": {
+            "title": "Connection Arguments",
+            "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+        },
+        "sslMode": {
+            "title": "SSL Mode",
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+        },
+        "sslConfig": {
+            "title": "SSL Configuration",
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+        },
+        "schemaFilterPattern":{
+            "title": "Default Schema Filter Pattern",
+            "description": "Regex to only include/exclude schemas that matches the pattern.",
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+        },
+        "tableFilterPattern": {
+            "title": "Default Table Filter Pattern",
+            "description": "Regex to only include/exclude tables that matches the pattern.",
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+        },
+        "databaseFilterPattern": {
+            "title": "Default Database Filter Pattern",
+            "description": "Regex to only include/exclude databases that matches the pattern.",
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        }
+    },
+    "additionalProperties": false
+}

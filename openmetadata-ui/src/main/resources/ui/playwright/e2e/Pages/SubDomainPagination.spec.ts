@@ -1,0 +1,121 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
+import { SubDomain } from '../../support/domain/SubDomain';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  checkSubDomainCount,
+  createSubDomain,
+  selectDomain,
+} from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
+const domain = new Domain();
+const subDomains: SubDomain[] = [];
+const SUBDOMAIN_COUNT = 60;
+const PAGE_SIZE = 9;
+
+test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.slow(true);
+
+  test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await domain.create(apiContext);
+
+    const createPromises = [];
+    for (let i = 1; i <= SUBDOMAIN_COUNT; i++) {
+      const subDomain = new SubDomain(
+        domain,
+        `TestSubDomain${i.toString().padStart(2, '0')}`
+      );
+      subDomains.push(subDomain);
+      createPromises.push(subDomain.create(apiContext));
+    }
+
+    await Promise.all(createPromises);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await domain.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Navigate to domain page', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+  });
+
+  test('Verify subdomain count and pagination functionality', async ({
+    page,
+  }) => {
+    await selectDomain(page, domain.data);
+
+    await waitForAllLoadersToDisappear(page);
+
+    await test.step('Verify subdomain count in tab label', async () => {
+      await expect(page.getByTestId('subdomains')).toBeVisible();
+
+      await checkSubDomainCount(page, SUBDOMAIN_COUNT);
+    });
+
+    await test.step('Navigate to subdomains tab and verify initial data load', async () => {
+      const subDomainRes = page.waitForResponse(
+        `/api/v1/search/query?q=&index=domain&from=0&size=${PAGE_SIZE}*`
+      );
+      await page.getByTestId('subdomains').click();
+      await subDomainRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.locator('table')).toBeVisible();
+
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
+
+      // Verify current page shows page 1
+      const tableRows = page.locator('table tbody tr');
+
+      await expect(tableRows).toHaveCount(PAGE_SIZE);
+    });
+
+    await test.step('Test pagination navigation', async () => {
+      const nextPageResponse = page.waitForResponse('/api/v1/search/query?*');
+      await page.getByLabel('Next Page').click();
+      await nextPageResponse;
+
+      const prevPageResponse = page.waitForResponse('/api/v1/search/query?*');
+      await page.getByLabel('Previous Page').click();
+      await prevPageResponse;
+    });
+
+    await test.step('Create new subdomain and verify count updates', async () => {
+      const subDomain = new SubDomain(domain);
+      await createSubDomain(page, subDomain.data);
+
+      await checkSubDomainCount(page, SUBDOMAIN_COUNT + 1);
+    });
+  });
+});

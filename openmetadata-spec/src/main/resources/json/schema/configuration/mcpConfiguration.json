@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/mcpConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCPConfiguration",
+  "description": "This schema defines the Model Context Protocol (MCP) Server configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.MCPConfiguration",
+  "properties": {
+    "mcpServerName": {
+      "description": "Name of the MCP server",
+      "type": "string",
+      "default": "openmetadata-mcp-server"
+    },
+    "mcpServerVersion": {
+      "description": "Version of the MCP server",
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "enabled": {
+      "description": "Enable or disable the MCP server",
+      "type": "boolean",
+      "default": true
+    },
+    "path": {
+      "description": "Base path for MCP endpoints",
+      "type": "string",
+      "default": "/api/v1/mcp"
+    },
+    "originValidationEnabled": {
+      "description": "Enable or disable origin validation for requests",
+      "type": "boolean",
+      "default": false
+    },
+    "originHeaderUri": {
+      "description": "Expected origin header URI for validation",
+      "type": "string",
+      "default": "http://localhost"
+    },
+    "baseUrl": {
+      "description": "Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not set, falls back to system settings. For clustered deployments, set this to the external-facing URL.",
+      "type": "string"
+    },
+    "allowedOrigins": {
+      "description": "List of allowed origins for CORS on OAuth endpoints. Use specific origins for production security. Wildcard (*) is NOT recommended.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["http://localhost:3000", "http://localhost:8585", "http://localhost:9090"]
+    },
+    "connectTimeout": {
+      "description": "HTTP connection timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms (30 seconds)",
+      "type": "integer",
+      "default": 30000
+    },
+    "readTimeout": {
+      "description": "HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms (30 seconds)",
+      "type": "integer",
+      "default": 30000
+    }
+  },
+  "additionalProperties": false
+}

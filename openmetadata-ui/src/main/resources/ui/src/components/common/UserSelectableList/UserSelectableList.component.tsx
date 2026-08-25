@@ -1,0 +1,224 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Button, Popover, Tooltip } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+  TEXT_GREY_MUTED,
+} from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getUsers } from '../../../rest/userAPI';
+import { formatUsersResponse } from '../../../utils/APIUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { SelectableList } from '../SelectableList/SelectableList.component';
+import { UserTag } from '../UserTag/UserTag.component';
+import './user-select-dropdown.less';
+import { UserSelectableListProps } from './UserSelectableList.interface';
+
+type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
+
+export const UserSelectableList = ({
+  hasPermission,
+  selectedUsers = [],
+  onUpdate,
+  children,
+  popoverProps,
+  multiSelect = true,
+  filterCurrentUser = false,
+  includeBot = false,
+}: UserSelectableListProps) => {
+  const [popupVisible, setPopupVisible] = useState(false);
+  const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+  const botUserIds = useRef<Set<string>>(new Set());
+
+  const seedBotsFromSelected = useCallback(() => {
+    (selectedUsers as UserReferenceWithBotFlag[]).forEach((user) => {
+      if (user.isBot && user.id) {
+        botUserIds.current.add(user.id);
+      }
+    });
+  }, [selectedUsers]);
+
+  useEffect(() => {
+    if (includeBot) {
+      seedBotsFromSelected();
+    }
+  }, [includeBot, seedBotsFromSelected]);
+
+  const trackBots = useCallback(
+    (users: Array<{ id: string; isBot?: boolean }>) => {
+      users.forEach((user) => {
+        if (user.isBot && user.id) {
+          botUserIds.current.add(user.id);
+        }
+      });
+    },
+    []
+  );
+
+  const fetchOptions = async (searchText: string, after?: string) => {
+    if (!after) {
+      botUserIds.current.clear();
+      if (includeBot) {
+        seedBotsFromSelected();
+      }
+    }
+    if (searchText) {
+      try {
+        const res = await searchQuery({
+          query: searchText,
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          queryFilter: includeBot
+            ? undefined
+            : getTermQuery({ isBot: 'false' }),
+          searchIndex: SearchIndex.USER,
+        });
+
+        const users = formatUsersResponse(res.hits.hits);
+
+        if (includeBot) {
+          trackBots(users);
+        }
+
+        const data = getEntityReferenceListFromEntities(users, EntityType.USER);
+
+        if (filterCurrentUser) {
+          const user = data.find((user) => user.id === currentUser?.id);
+          if (user) {
+            data.splice(data.indexOf(user), 1);
+          }
+        }
+
+        return { data, paging: { total: res.hits.total.value } };
+      } catch (error) {
+        return { data: [], paging: { total: 0 } };
+      }
+    } else {
+      try {
+        const { data, paging } = await getUsers({
+          limit: PAGE_SIZE_MEDIUM,
+          after: after ?? undefined,
+          ...(includeBot ? {} : { isBot: false }),
+        });
+
+        if (includeBot) {
+          trackBots(data);
+        }
+
+        const filterData = getEntityReferenceListFromEntities(
+          data,
+          EntityType.USER
+        );
+        if (filterCurrentUser) {
+          const user = filterData.find((user) => user.id === currentUser?.id);
+          if (user) {
+            filterData.splice(filterData.indexOf(user), 1);
+          }
+        }
+
+        return { data: filterData, paging };
+      } catch (error) {
+        return { data: [], paging: { total: 0 } };
+      }
+    }
+  };
+
+  const handleUpdate = useCallback(
+    async (users: EntityReference[]) => {
+      if (multiSelect) {
+        await (onUpdate as (users: EntityReference[]) => Promise<void>)(users);
+      } else {
+        await (onUpdate as (users: EntityReference) => Promise<void>)(users[0]);
+      }
+      setPopupVisible(false);
+    },
+    [onUpdate]
+  );
+
+  const botTagRenderer = useCallback(
+    (item: EntityReference) => (
+      <div className="d-flex items-center gap-2">
+        {botUserIds.current.has(item.id) && (
+          <Tooltip title={t('label.bot')}>
+            <BotIcon
+              aria-label={t('label.bot')}
+              color={TEXT_GREY_MUTED}
+              data-testid="bot-indicator"
+              height={16}
+              width={16}
+            />
+          </Tooltip>
+        )}
+        <UserTag
+          avatarType="outlined"
+          id={item.name ?? ''}
+          name={getEntityName(item)}
+        />
+      </div>
+    ),
+    [t]
+  );
+
+  return (
+    <Popover
+      destroyTooltipOnHide
+      content={
+        <SelectableList
+          customTagRenderer={includeBot ? botTagRenderer : undefined}
+          fetchOptions={fetchOptions}
+          multiSelect={multiSelect}
+          searchPlaceholder={t('label.search-for-type', {
+            type: t('label.user'),
+          })}
+          selectedItems={selectedUsers}
+          onCancel={() => setPopupVisible(false)}
+          onUpdate={handleUpdate}
+        />
+      }
+      open={popupVisible}
+      overlayClassName="user-select-popover p-0"
+      placement="bottomRight"
+      showArrow={false}
+      trigger="click"
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
+      {children ?? (
+        <Tooltip
+          placement="topRight"
+          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+          <Button
+            className="p-0 flex-center"
+            data-testid="add-user"
+            disabled={!hasPermission}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            size="small"
+            type="text"
+          />
+        </Tooltip>
+      )}
+    </Popover>
+  );
+};

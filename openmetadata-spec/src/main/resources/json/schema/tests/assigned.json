@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/assigned.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Assigned",
+  "description": "test case failure details for assigned failures",
+  "javaType": "org.openmetadata.schema.tests.type.Assigned",
+  "type": "object",
+  "properties": {
+    "assignee": {
+      "description": "User working on failure resolution.",
+      "$ref": "../type/entityReference.json"
+    }
+  },
+  "required": ["assignee"],
+  "additionalProperties": false
+}

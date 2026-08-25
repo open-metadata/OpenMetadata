@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createEntityProfile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateEntityProfileRequest",
+  "description": "Request schema for creating an entity profile for a table.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateEntityProfile",
+  "properties": {
+    "entityType": {
+      "description": "Type of entity for which the profile is created. For example, 'table'.",
+      "type": "string",
+      "default": "table"
+    },
+    "timestamp": {
+      "description": "Timestamp when the profile is created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "profileData": {
+      "oneOf": [
+        { "$ref": "../../entity/data/table.json#/definitions/tableProfile" },
+        { "$ref": "../../entity/data/table.json#/definitions/columnProfile" },
+        { "$ref": "../../entity/data/table.json#/definitions/systemProfile" }
+      ]
+    },
+    "profileType": {
+      "description": "type of profile",
+      "$ref": "../../type/entityProfile.json#/definitions/profileTypeEnum"
+    }
+  },
+  "required": ["entityType", "profileData"],
+  "additionalProperties": false
+}

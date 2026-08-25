@@ -1,0 +1,196 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Col, Row, Tabs } from 'antd';
+import { capitalize, isEmpty, startCase } from 'lodash';
+import qs from 'qs';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Navigate, useNavigate } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
+import Services from '../../components/Settings/Services/Services';
+import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { SERVICE_CATEGORY } from '../../constants/Services.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { useAuth } from '../../hooks/authHooks';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { userPermissions } from '../../utils/PermissionsUtils';
+import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import './service-page.less';
+
+const ServicesPage = () => {
+  const { tab } = useRequiredParams<{ tab: string }>();
+  const location = useCustomLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
+  const queryParams = qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substring(1)
+      : location.search
+  );
+  const search =
+    queryParams.tab ??
+    (tab === GlobalSettingOptions.DATA_OBSERVABILITY
+      ? 'pipelines'
+      : 'services');
+
+  const serviceCategoryValues = useMemo(
+    () => new Set<string>(Object.values(ServiceCategory)),
+    []
+  );
+
+  const isValidTab =
+    tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
+    Boolean(SERVICE_CATEGORY[tab]) ||
+    serviceCategoryValues.has(tab);
+
+  const serviceName = useMemo(() => {
+    if (tab === GlobalSettingOptions.DATA_OBSERVABILITY) {
+      return 'dataObservabilityServices';
+    }
+
+    if (SERVICE_CATEGORY[tab]) {
+      return SERVICE_CATEGORY[tab];
+    }
+
+    if (serviceCategoryValues.has(tab)) {
+      return tab as ServiceCategory;
+    }
+
+    return ServiceCategory.DATABASE_SERVICES;
+  }, [tab, serviceCategoryValues]);
+
+  const { permissions } = usePermissionProvider();
+
+  const viewAllPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      userPermissions.hasViewPermissions(
+        getResourceEntityFromServiceCategory(tab),
+        permissions
+      )
+    );
+  }, [permissions]);
+
+  const isEmbedded = location.pathname.startsWith('/askCollate');
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    const crumbs = getSettingPageEntityBreadCrumb(
+      GlobalSettingsMenuCategory.SERVICES,
+      tab === GlobalSettingOptions.DATA_OBSERVABILITY
+        ? t('label.data-observability')
+        : capitalize(tab)
+    );
+
+    if (isEmbedded) {
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name:
+            tab === GlobalSettingOptions.DATA_OBSERVABILITY
+              ? t('label.data-observability')
+              : capitalize(tab),
+          url: '',
+          activeTitle: true,
+        },
+      ];
+    }
+
+    return crumbs;
+  }, [tab, t, isEmbedded]);
+
+  if (!isValidTab) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
+
+  return viewAllPermission ? (
+    <PageLayoutV1 pageTitle={startCase(serviceName)}>
+      {isEmbedded && <div className="tw:h-4" />}
+      <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col className="h-full" span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={search as string}
+            className="tabs-new services-tabs"
+            items={[
+              ...(serviceName === 'dataObservabilityServices'
+                ? []
+                : [
+                    {
+                      key: 'services',
+                      children: <Services serviceName={serviceName} />,
+                      label: 'Services',
+                    },
+                  ]),
+              ...(isAdminUser
+                ? [
+                    {
+                      key: 'pipelines',
+                      children: (
+                        <IngestionPipelineList
+                          serviceName={
+                            serviceName === 'dataObservabilityServices'
+                              ? 'testSuites'
+                              : serviceName
+                          }
+                        />
+                      ),
+                      label: 'Pipelines',
+                    },
+                  ]
+                : []),
+            ]}
+            onChange={(activeKey) => navigate({ search: `tab=${activeKey}` })}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
+  ) : (
+    <Row>
+      <Col span={24}>
+        <ErrorPlaceHolder
+          className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: startCase(serviceName),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      </Col>
+    </Row>
+  );
+};
+
+export default ServicesPage;

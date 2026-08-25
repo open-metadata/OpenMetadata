@@ -1,0 +1,493 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Base workflow definition.
+"""
+
+import traceback
+import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime
+from statistics import mean
+from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
+
+from metadata.__version__ import get_client_version
+from metadata.config.common import WorkflowExecutionError
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    AirflowConfig,
+    IngestionPipeline,
+    PipelineState,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdateType,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
+    WorkflowConfig,
+)
+from metadata.generated.schema.tests.testSuite import ServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion import diagnostics
+from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.ometa.client_utils import create_ometa_client
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.utils import fqn
+from metadata.utils.class_helper import (
+    get_pipeline_type_from_source_config,
+    get_reference_type_from_service_type,
+    get_service_class_from_service_type,
+)
+from metadata.utils.helpers import datetime_to_ts
+from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.operation_metrics import OperationMetricsState
+from metadata.utils.progress_tracker import ProgressTrackerState
+from metadata.utils.streamable_logger import (
+    cleanup_streamable_logging,
+    setup_streamable_logging_for_workflow,
+)
+from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
+from metadata.workflow.workflow_resource_metrics import WorkflowResourceMetrics
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+
+logger = ingestion_logger()
+
+# Type of service linked to the Ingestion Pipeline
+T = TypeVar("T")
+
+REPORTS_INTERVAL_SECONDS = 30
+
+
+class InvalidWorkflowJSONException(Exception):  # noqa: N818
+    """
+    Raised when we cannot properly parse the workflow
+    """
+
+
+class BaseWorkflow(ABC, WorkflowStatusMixin):
+    """
+    Base workflow implementation
+    """
+
+    config: Union[Any, Dict]  # noqa: UP006, UP007
+    _run_id: Optional[str] = None  # noqa: UP045
+    metadata: OpenMetadata
+    metadata_config: OpenMetadataConnection
+    service_type: ServiceType
+
+    def __init__(
+        self,
+        config: Union[Any, Dict],  # noqa: UP006, UP007
+        workflow_config: WorkflowConfig,
+        service_type: ServiceType,
+        output_handler: WorkflowOutputHandler = WorkflowOutputHandler(),
+    ):
+        """
+        Disabling pylint to wait for workflow reimplementation as a topology
+        """
+        self.output_handler = output_handler
+        self.config = config
+        self.workflow_config = workflow_config
+        self.service_type = service_type
+        self._timer: Optional[RepeatedTimer] = None  # noqa: UP045
+        self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
+        self._steps_closed = False
+        self._start_ts = datetime_to_ts(datetime.now())
+
+        set_loggers_level(self.workflow_config.loggerLevel.value)
+
+        # We create the ometa client at the workflow level and pass it to the steps
+        self.metadata = create_ometa_client(
+            self.workflow_config.openMetadataServerConfig,
+            user_agent=self._build_user_agent(),
+        )
+
+        # Setup streamable logging if configured
+        if self.config.ingestionPipelineFQN and self.config.pipelineRunId and self.config.enableStreamableLogs:
+            setup_streamable_logging_for_workflow(
+                metadata=self.metadata,
+                pipeline_fqn=self.config.ingestionPipelineFQN,
+                run_id=self.config.pipelineRunId,
+                log_level=self.workflow_config.loggerLevel.value,
+                enable_streaming=True,
+            )
+
+        # Emit after the streamable handler is installed so the line is captured.
+        self.metadata.log_server_version()
+
+        self._log_workflow_execution_info()
+
+        # Set run context for operation metrics tracking
+        OperationMetricsState().set_run_context(
+            run_id=str(self.config.pipelineRunId.root) if self.config.pipelineRunId else None,
+            pipeline_fqn=self.config.ingestionPipelineFQN,
+        )
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
+
+        self.post_init()
+
+    def _build_user_agent(self) -> Optional[str]:  # noqa: UP045
+        """
+        HTTP User-Agent identifying this workflow's requests to the OpenMetadata server.
+        Subclasses override this to provide more specific identifiers. Best-effort: the
+        version is dropped if it cannot be resolved, but a stable identifier is kept.
+        """
+        try:
+            return f"openmetadata-ingestion (v{get_client_version()})"
+        except Exception as exc:
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")
+            return "openmetadata-ingestion"
+
+    @property
+    def ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
+        """Get or create the Ingestion Pipeline from the configuration"""
+        if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
+            self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
+
+        return self._ingestion_pipeline
+
+    def close_steps(self) -> None:
+        """
+        Close workflow steps so that any buffered records are flushed and
+        reflected in the step status before it is printed.
+
+        Sinks like the metadata REST sink batch entities and only flush them
+        in `close()`, where they are also added to the status counters. This
+        must run before `print_status()` so the printed counts include those
+        buffered records, while remaining separate from `stop()` so the
+        streamable logging handler stays alive during status printing.
+
+        Idempotent: `execute()` calls this before `print_status()`, and
+        `stop()` calls it again so callers using `stop()` standalone still
+        get step cleanup. The `_steps_closed` flag prevents double-flush.
+        """
+        if self._steps_closed:
+            return
+        self._steps_closed = True
+        for step in self.workflow_steps():
+            try:
+                step.close()
+            except Exception as exc:
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
+
+    def stop(self) -> None:
+        """
+        Main stopping logic
+        """
+        # Stop the timer first. This runs in a separate thread and if not properly closed
+        # it can hung the workflow
+        self.timer.stop()
+
+        # Stop diagnostics threads if they were installed. Emits the
+        # `diag.time_budget` summary line through the diag logger before
+        # the threads exit, which gets captured by the streamable
+        # handler's synchronous shutdown in `execute()`'s outer finally.
+        diagnostics.shutdown()
+
+        # Reset progress and metrics tracking singletons
+        ProgressTrackerState().reset()
+        OperationMetricsState().reset()
+
+        # Close steps before tearing down the OM client so sinks can use it
+        # for any final flush. No-op when execute() already closed steps.
+        # Wrapped defensively so a flush failure doesn't leave the timer
+        # stopped but the OM client still open.
+        try:
+            self.close_steps()
+        except Exception:
+            logger.debug("close_steps failed during stop", exc_info=True)
+
+        self.metadata.close()
+
+    @property
+    def timer(self) -> RepeatedTimer:
+        """
+        Status timer: It will print the source & sink status every `interval` seconds.
+        """
+        if not self._timer:
+            self._timer = RepeatedTimer(REPORTS_INTERVAL_SECONDS, self._report_ingestion_status)
+
+        return self._timer
+
+    @classmethod
+    @abstractmethod
+    def create(cls, config_dict: dict):
+        """Single function to execute to create a Workflow instance"""
+
+    @abstractmethod
+    def post_init(self) -> None:
+        """Method to execute after we have initialized all the internals"""
+
+    @abstractmethod
+    def execute_internal(self) -> None:
+        """Workflow-specific logic to execute safely"""
+
+    def calculate_success(self) -> Optional[float]:  # noqa: UP045
+        """
+        Get the success % of the internal execution.
+        Since we'll use this to get a single success % from multiple steps, we'll take
+        the minimum success % from all the steps. This way, we can have a proper
+        workflow status.
+        E.g., if we have no errors on the source but a bunch of them on the sink,
+        we still want the flow to be marked as a failure or partial success.
+        """
+        if not self.workflow_steps():
+            logger.warning("No steps to calculate success")
+            return None
+
+        return mean([step.get_status().calculate_success() for step in self.workflow_steps()])
+
+    @abstractmethod
+    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
+        """Get the failures to flag whether if the workflow succeeded or not"""
+
+    @abstractmethod
+    def workflow_steps(self) -> List[Step]:  # noqa: UP006
+        """Steps to report status from"""
+
+    def raise_from_status_internal(self, raise_warnings=False) -> None:
+        """Based on the internal workflow status, raise a WorkflowExecutionError"""
+        for step in self.workflow_steps():
+            if (
+                step.get_status().failures
+                and step.get_status().calculate_success() < self.workflow_config.successThreshold
+            ):
+                raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
+
+            if raise_warnings and step.status.warnings:
+                raise WorkflowExecutionError(f"{step.name} reported warning: {Summary.from_step(step)}")
+
+    def _log_workflow_execution_info(self) -> None:
+        """Log the workflow type and ingestion runner at the start of execution"""
+        if self.config.ingestionRunnerName:
+            logger.info(
+                f"Executing workflow [{self.config.ingestionPipelineFQN}] in Runner [{self.config.ingestionRunnerName}]"
+            )
+
+    def execute(self) -> None:
+        """
+        Main entrypoint:
+        1. Start logging timer. It will be closed at `stop`
+        2. Execute the workflow
+        3. Validate the pipeline status
+        4. Update the pipeline status at the end
+        """
+        pipeline_state = PipelineState.success
+        self.timer.trigger()
+        diagnostics.install(self)
+        # Emit a "run started" update immediately. The reporting timer's first
+        # tick is a full REPORTS_INTERVAL_SECONDS away, so without this a run
+        # that finishes inside that window would only ever emit its terminal
+        # event — and any live viewer would see nothing while it ran. This
+        # registers the run with the server up front so it is visible the moment
+        # it starts, regardless of duration.
+        self.send_progress_update(ProgressUpdateType.DISCOVERY)
+        # `self.config` is typed Union[Any, Dict]; getattr keeps the static
+        # checker happy without changing behavior (the Dict branch never
+        # carries this attribute at runtime).
+        pipeline_fqn = getattr(self.config, "ingestionPipelineFQN", None)
+        try:
+            with (
+                diagnostics.operation("workflow.execute", fqn=pipeline_fqn),
+                diagnostics.dump_on_memory_error(),
+            ):
+                self.execute_internal()
+
+            if self.workflow_config.successThreshold <= self.calculate_success() < 100:
+                pipeline_state = PipelineState.partialSuccess
+
+            # If there's any steps that should raise a failed status,
+            # raise it here to set the pipeline status as failed
+            try:
+                self.raise_from_status_internal()
+            except WorkflowExecutionError:
+                pipeline_state = PipelineState.failed
+
+        # Any unhandled exception should blow up the execution
+        except Exception as err:
+            pipeline_state = PipelineState.failed
+            raise err  # noqa: TRY201
+
+        # Force resource closing. Required for killing the threading
+        finally:
+            # Flush sink buffers first so the step statuses include records
+            # that some sinks only commit in close(). Both the persisted
+            # pipeline status (build_ingestion_status -> Summary.from_step)
+            # and the printed summary read from those same step statuses.
+            # Swallow any unexpected error here so the pipeline status is
+            # still persisted to the server even on a catastrophic flush
+            # failure (preserves the pre-existing "status is always sent"
+            # invariant).
+            try:
+                self.close_steps()
+            except Exception:
+                logger.debug("close_steps failed", exc_info=True)
+            try:
+                ingestion_status = self.build_ingestion_status()
+                try:
+                    self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                finally:
+                    self.send_progress_update(self.terminal_progress_update_type(pipeline_state))
+                try:
+                    self.print_status()
+                finally:
+                    self.stop()
+            finally:
+                # Must run after every other emitter so the tail is captured.
+                cleanup_streamable_logging()
+
+    @property
+    def run_id(self) -> str:
+        """
+        If the config does not have an informed run id, we'll
+        generate and assign one here.
+        """
+        if not self._run_id:
+            if self.config.pipelineRunId:
+                self._run_id = str(self.config.pipelineRunId.root)
+            else:
+                self._run_id = str(uuid.uuid4())  # pylint: disable=no-member
+
+        return self._run_id
+
+    def get_or_create_ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
+        """
+        If we get the `ingestionPipelineFqn` from the `workflowConfig`, it means we want to
+        keep track of the status.
+        - During the UI deployment, the IngestionPipeline is already created from the UI.
+        - From external deployments, we might need to create the Ingestion Pipeline the first time
+          the YAML is executed.
+        If the Ingestion Pipeline is not created, create it now to update the status.
+
+        Note that during the very first run, the service might not even be created yet. In that case,
+        we won't be able to flag the RUNNING status. We'll wait until the metadata ingestion
+        workflow has prepared the necessary components, and we will update the SUCCESS/FAILED
+        status at the end of the flow.
+        """
+        try:
+            maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(  # noqa: UP045
+                entity=IngestionPipeline,
+                fqn=self.config.ingestionPipelineFQN,
+            )
+
+            if maybe_pipeline:
+                return maybe_pipeline
+
+            # Get the name from <service>.<name> or, for test suites, <tableFQN>.testSuite
+            *_, pipeline_name = fqn.split(self.config.ingestionPipelineFQN)
+
+            service = self._get_ingestion_pipeline_service()
+
+            if service is not None:
+                return self.metadata.create_or_update(
+                    CreateIngestionPipelineRequest(
+                        name=pipeline_name,
+                        service=EntityReference(
+                            id=service.id,
+                            type=get_reference_type_from_service_type(self.service_type),
+                        ),
+                        pipelineType=get_pipeline_type_from_source_config(self.config.source.sourceConfig),
+                        sourceConfig=self.config.source.sourceConfig,
+                        airflowConfig=AirflowConfig(),
+                        enableStreamableLogs=self.config.enableStreamableLogs,
+                    )
+                )
+
+            return maybe_pipeline  # noqa: TRY300
+
+        except Exception as exc:
+            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
+            return None
+
+    def _get_ingestion_pipeline_service(self) -> Optional[T]:  # noqa: UP045
+        """
+        Ingestion Pipelines are linked to either an EntityService (DatabaseService, MessagingService,...)
+        or a Test Suite.
+
+        Depending on the Source Config Type, we'll need to GET one or the other to create
+        the Ingestion Pipeline
+        """
+
+        return self.metadata.get_by_name(
+            entity=get_service_class_from_service_type(self.service_type),
+            fqn=self.config.source.serviceName,
+        )
+
+    def _report_ingestion_status(self):
+        """
+        Given a logger, use it to INFO the workflow status
+        """
+        try:
+            for step in self.workflow_steps():
+                record_count: int = (
+                    step.status.record_count if step.status.record_count > 0 else len(step.status.records)
+                )
+
+                logger.info(
+                    f"{step.name}: Processed {record_count} records,"
+                    f" updated {len(step.status.updated_records)} records,"
+                    f" filtered {len(step.status.filtered)} records,"
+                    f" found {len(step.status.failures)} errors"
+                )
+
+            # Only calculate resource metrics when debug is enabled
+            # for no unnecessary computations
+            if self._is_debug_enabled():
+                metrics = WorkflowResourceMetrics()
+                logger.debug(
+                    f"Workflow Resources - "
+                    f"CPU: {metrics.cpu_usage_percent:.2f}% "
+                    f"({metrics.system_cpu_cores}c/{metrics.system_cpu_threads}t) | "
+                    f"Memory: {metrics.memory_used_mb:.2f}MB/"
+                    f"{metrics.memory_total_mb:.2f}MB "
+                    f"({metrics.memory_usage_percent:.2f}%) | "
+                    f"Processes: {metrics.active_processes}"
+                )
+
+            registry = self._find_progress_registry()
+            if registry is not None:
+                text = registry.render_cli()
+                if text:
+                    logger.info("Ingestion progress:\n%s", text)
+
+            # Send progress update to the server for live tracking
+            self.send_progress_update()
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Wild exception reporting status - {exc}")
+
+    def _is_debug_enabled(self) -> bool:
+        return (
+            hasattr(self, "config")
+            and hasattr(self.config, "workflowConfig")
+            and hasattr(self.config.workflowConfig, "loggerLevel")
+            and self.config.workflowConfig.loggerLevel is LogLevels.DEBUG
+        )
+
+    def print_status(self):
+        start_time = self.workflow_steps()[0].get_status().source_start_time
+
+        self.output_handler.print_status(
+            self.result_status(),
+            self.workflow_steps(),
+            start_time,
+            self._is_debug_enabled(),
+        )

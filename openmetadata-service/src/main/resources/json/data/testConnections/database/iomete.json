@@ -1,0 +1,32 @@
+{
+  "name": "Iomete",
+  "displayName": "Iomete Test Connection",
+  "description": "This Test Connection validates the access against the IOMETE lakehouse and basic metadata extraction of schemas and tables.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the IOMETE service and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to IOMETE. Please validate the host/port, username, password, cluster, and data plane.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the schemas available to the user.",
+      "errorMessage": "Failed to fetch schemas. Please validate that the user has sufficient privileges.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "From a given schema, list the tables belonging to that schema.",
+      "errorMessage": "Failed to fetch tables. Please validate that the user has sufficient privileges.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema, list the views belonging to that schema.",
+      "errorMessage": "Failed to fetch views. Please validate that the user has sufficient privileges.",
+      "mandatory": false
+    }
+  ]
+}

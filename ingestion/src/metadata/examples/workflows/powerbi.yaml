@@ -1,0 +1,92 @@
+source:
+  type: powerbi
+  serviceName: local_powerbi
+  serviceConnection:
+    config:
+      clientId: client_id
+      clientSecret: client_secret
+      tenantId: tenant_id
+      scope:
+        - https://analysis.windows.net/powerbi/api/.default
+      pagination_entity_per_page: 100
+      # useAdminApis: true or false
+      # For pbit files, choose one of Local, S3, Azure or GCS configurations
+      # # For local
+      # pbitFilesSource:
+      #   pbitFileConfigType: local
+      #   path: "/path/to/pbit/files"
+      #   pbitFilesExtractDir: "/path/to/extract/pbit/files"
+      # # For S3
+      # pbitFilesSource:
+      #   pbitFileConfigType: s3
+      #   securityConfig:  # These are modeled after all AWS credentials
+      #     awsAccessKeyId: KEY
+      #     awsSecretAccessKey: SECRET
+      #     awsRegion: us-east-2
+      #   prefixConfig:
+      #     bucketName: bucket_name
+      #     objectPrefix: "main_dir/pbit_files"
+      #   pbitFilesExtractDir: "/path/to/extract/pbit/files"
+      # # For Azure
+      # pbitFilesSource:
+      #   pbitFileConfigType: azure
+      #   securityConfig:
+      #     clientId: clientId
+      #     clientSecret: clientSecret
+      #     tenantId: tenantId
+      #     accountName: accountName
+      #   prefixConfig:
+      #     bucketName: bucket_name
+      #     objectPrefix: "main_dir/pbit_files"
+      #   pbitFilesExtractDir: "/path/to/extract/pbit/files"
+      # # For GCS
+      # pbitFilesSource:
+      #   pbitFileConfigType: gcs
+      #   securityConfig:
+      #     gcpConfig:
+      #       type: My Type
+      #       projectId: project ID
+      #       privateKeyId: us-east-2
+      #       privateKey: |
+      #         -----BEGIN PRIVATE KEY-----
+      #         Super secret key
+      #         -----END PRIVATE KEY-----
+      #       clientEmail: client@mail.com
+      #       clientId: 1234
+      #       authUri: https://accounts.google.com/o/oauth2/auth (default)
+      #       tokenUri: https://oauth2.googleapis.com/token (default)
+      #       authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
+      #       clientX509CertUrl: https://cert.url (URI)
+      #   prefixConfig:
+      #     bucketName: bucket_name
+      #     objectPrefix: "main_dir/pbit_files"
+      #   pbitFilesExtractDir: "/path/to/extract/pbit/files"
+      type: PowerBI
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      chartFilterPattern:
+        includes:
+          - Gross Margin %
+          - Total Defect*
+          - "Number"
+        excludes:
+          - Total Revenue
+      dashboardFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
+      projectFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"      

@@ -1,0 +1,54 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.message-banner-wrapper {
+  display: flex;
+  gap: var(--om-space-8);
+  align-items: center;
+  backdrop-filter: blur(500px);
+  padding: var(--om-space-8) var(--om-space-16);
+  font-weight: @font-medium;
+
+  &.border-radius {
+    border-radius: var(--om-radius-sm);
+  }
+
+  &.success {
+    background-color: @success-bg-color;
+    color: @grey-700;
+  }
+
+  &.error {
+    background-color: @error-bg-color;
+    color: @grey-700;
+  }
+
+  &.info {
+    background-color: @info-bg-color;
+    color: @grey-700;
+
+    .info-icon {
+      color: @info-color;
+      font-size: var(--om-font-size-md);
+    }
+  }
+
+  .loading-spinner-success {
+    color: @success-color;
+  }
+
+  .loading-spinner-info {
+    color: @info-color;
+  }
+}

@@ -1,0 +1,99 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.full-screen-view {
+  .data-assets-header-container {
+    visibility: hidden;
+  }
+}
+
+.data-assets-header-container {
+  .owner-label-container,
+  .domain-label-container {
+    max-width: 220px;
+  }
+
+  .domain-link-container {
+    max-width: 148px;
+
+    .domain-link-text.render-domain-lebel-style {
+      color: var(--tw-color-gray-700);
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
+  }
+
+  .domain-link.ant-typography,
+  span.header-owner-heading,
+  .ant-typography.no-owner-heading,
+  .extra-info-label-heading {
+    color: var(--tw-color-gray-700);
+  }
+
+  .data-contract-latest-result-button {
+    &.failed {
+      color: var(--tw-color-error-600);
+      border-color: var(--tw-color-error-200);
+      background-color: var(--tw-color-error-50);
+    }
+
+    &.aborted {
+      color: @orange-7;
+      border-color: @orange-200;
+      background-color: @orange-50;
+    }
+
+    &.running {
+      color: var(--tw-color-brand-700);
+      border-color: var(--tw-color-brand-200);
+      background-color: var(--tw-color-brand-50);
+    }
+  }
+
+  .ant-btn.ant-btn-icon-only.bordered {
+    border-color: @border-light;
+    background-color: transparent;
+
+    &:hover,
+    &:focus {
+      border-color: @border-light;
+      background-color: transparent;
+    }
+
+    svg {
+      color: @de-active-color;
+    }
+
+    &:hover svg,
+    &:focus svg {
+      color: @de-active-color;
+    }
+  }
+
+  .data-assets-header-manage-button.ant-btn {
+    height: 36px;
+    padding: 0 var(--om-space-9);
+  }
+
+  &.has-editable-metadata {
+    .header-extra-info-field > :first-child {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+    }
+  }
+}

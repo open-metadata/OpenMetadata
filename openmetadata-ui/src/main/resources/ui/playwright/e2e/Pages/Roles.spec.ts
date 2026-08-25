@@ -1,0 +1,555 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getElementWithPagination,
+  removePolicyFromRole,
+} from '../../utils/roles';
+import { settingClick } from '../../utils/sidebar';
+
+const policies = {
+  dataConsumerPolicy: 'Data Consumer Policy',
+  dataStewardPolicy: 'Data Steward Policy',
+  organizationPolicy: 'Organization Policy',
+};
+
+const errorMessageValidation = {
+  ifPolicyNotSelected: 'Enter at least one policy',
+  ifNameNotEntered: 'Name size must be between 1 and 128',
+  lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
+};
+
+// use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
+test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
+
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify roles page is ready
+    await expect(page.locator('[data-testid="add-role"]')).toBeVisible();
+  });
+
+  test('Roles page should work properly', async ({ page }) => {
+    // 8 sequential test.step blocks that each renavigate to the roles list
+    // and paginate via getElementWithPagination (50-page loop, 30s loader
+    // wait each). Under CI load the whole thing has been hitting the
+    // 180s test.slow() ceiling — a 3-minute burn per attempt before the
+    // retry starts. Cap at 120s so failures fail fast and Playwright's
+    // per-test retry recovers the run without triple-timing-out.
+    // Happy-path runtime for this test on a warm shard is ~60-90s.
+    test.setTimeout(120_000);
+
+    const roleName = `Role-test-${uuid()}`;
+    const description = `This is ${roleName} description`;
+    const updatedRoleName = `PW Updated ${roleName}`;
+
+    await test.step('Add new role and check all tabs data', async () => {
+      // Ensure add-role button is visible before clicking
+      const addRoleButton = page.locator('[data-testid="add-role"]');
+      await expect(addRoleButton).toBeVisible();
+      await addRoleButton.click();
+
+      // Wait for navigation and form to be ready
+      await expect(page.locator('[data-testid="inactive-link"]')).toContainText(
+        'Add New Role'
+      );
+      await expect(page.locator('#name')).toBeVisible();
+
+      // Entering name
+      await page.locator('#name').fill(roleName);
+
+      // Entering description
+      const descriptionField = page.locator(descriptionBox);
+      await expect(descriptionField).toBeVisible();
+      await descriptionField.fill(description);
+
+      // Select the policies - search and select from dropdown
+      const policiesDropdown = page.locator('[data-testid="policies"]');
+      await expect(policiesDropdown).toBeVisible();
+      await policiesDropdown.click();
+      await policiesDropdown.locator('input').fill('Data');
+      const dataConsumerOption = page
+        .locator('.ant-select-dropdown:visible')
+        .locator('[title="Data Consumer Policy"]');
+      await expect(dataConsumerOption).toBeVisible();
+      await dataConsumerOption.click();
+
+      await policiesDropdown.locator('input').fill('Data');
+      const dataStewardOption = page
+        .locator('.ant-select-dropdown:visible')
+        .locator('[title="Data Steward Policy"]');
+      await expect(dataStewardOption).toBeVisible();
+      await dataStewardOption.click();
+
+      // close dropdown by clicking side panel
+      await page.getByText('Add Role').click();
+
+      // Wait for dropdown to close
+      await expect(
+        page.locator('.ant-select-dropdown:visible')
+      ).not.toBeVisible();
+
+      // Save the role - wait for API response and UI update
+      const submitButton = page.locator('[data-testid="submit-btn"]');
+      await expect(submitButton).toBeVisible();
+      await expect(submitButton).toBeEnabled();
+
+      await Promise.all([
+        // Wait for API call to complete
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/roles') &&
+            response.status() === 201
+        ),
+        submitButton.click(),
+      ]);
+
+      // Wait for loader to disappear after submission
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the role is added successfully
+      await expect(page).toHaveURL(`/settings/access/roles/${roleName}`);
+      await expect(page.locator('[data-testid="inactive-link"]')).toContainText(
+        roleName
+      );
+
+      // Verify added description
+      const descriptionContainer = page.locator(
+        '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+      );
+      await expect(descriptionContainer).toBeVisible();
+      await expect(descriptionContainer).toContainText(description);
+
+      // click on the policies tab
+      const policiesTab = page.locator('[role="tab"]:has-text("Policies")');
+      await expect(policiesTab).toBeVisible();
+      await policiesTab.click();
+
+      // Wait for policies tab content to load
+      await waitForAllLoadersToDisappear(page);
+
+      // Verifying the added policies - use proper assertions
+      await expect(
+        page.getByRole('link', {
+          name: policies.dataConsumerPolicy,
+          exact: true,
+        })
+      ).toBeVisible();
+
+      await expect(
+        page.getByRole('link', {
+          name: policies.dataStewardPolicy,
+          exact: true,
+        })
+      ).toBeVisible();
+
+      // click on the teams tab
+      const teamsTab = page.locator('[role="tab"]:has-text("Teams")');
+      await expect(teamsTab).toBeVisible();
+      await teamsTab.click();
+
+      // Wait for teams tab content to load
+      await waitForAllLoadersToDisappear(page);
+      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+
+      // click on the users tab
+      const usersTab = page.locator('[role="tab"]:has-text("Users")');
+      await expect(usersTab).toBeVisible();
+      await usersTab.click();
+
+      // Wait for users tab content to load
+      await waitForAllLoadersToDisappear(page);
+      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+
+      // Navigate to roles list page to verify the added role
+      await settingClick(page, GlobalSettingOptions.ROLES);
+      await waitForAllLoadersToDisappear(page);
+
+      const roleLocator = page.locator(
+        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+      );
+      await getElementWithPagination(page, roleLocator, false);
+
+      const roleRow = roleLocator.locator(
+        'xpath=ancestor::*[@data-row-key][1]'
+      );
+      await expect(roleRow).toBeVisible();
+      await expect(roleRow).toContainText(roleName);
+
+      const plusMoreButton = roleRow.getByTestId('plus-more-count');
+      if (await plusMoreButton.isVisible()) {
+        await plusMoreButton.click();
+        const combinedPoliciesText = [
+          await roleRow.textContent(),
+          await page.locator('.ant-popover-content').textContent(),
+        ]
+          .filter(Boolean)
+          .join(' ');
+        expect(combinedPoliciesText).toContain(policies.dataConsumerPolicy);
+        expect(combinedPoliciesText).toContain(policies.dataStewardPolicy);
+      } else {
+        await expect(roleRow).toContainText(policies.dataConsumerPolicy);
+      }
+    });
+
+    await test.step('Add new role without selecting data', async () => {
+      // Ensure add-role button is visible before clicking
+      const addRoleButton = page.locator('[data-testid="add-role"]');
+      await expect(addRoleButton).toBeVisible();
+      await addRoleButton.click();
+
+      // Wait for navigation and form to be ready
+      await expect(page.locator('[data-testid="inactive-link"]')).toContainText(
+        'Add New Role'
+      );
+      await expect(page.locator('#name')).toBeVisible();
+
+      // Entering name
+      await page.locator('#name').fill(roleName);
+
+      // Entering description
+      const descriptionField = page.locator(descriptionBox);
+      await expect(descriptionField).toBeVisible();
+      await descriptionField.fill(description);
+
+      // Do not Select the policies
+      // Save the role
+      const submitButton = page.locator('[data-testid="submit-btn"]');
+      await expect(submitButton).toBeVisible();
+      await expect(submitButton).toBeEnabled();
+      await submitButton.click();
+
+      // Verify the error message that is displayed - wait for alert to appear
+      const errorAlert = page.locator('[role="alert"]');
+      await expect(errorAlert).toBeVisible();
+      await expect(errorAlert).toContainText(
+        errorMessageValidation.ifPolicyNotSelected
+      );
+    });
+
+    await test.step('Edit created role', async () => {
+      // Direct-nav to the role detail page. The previous pattern
+      // (settingClick → paginate the roles list until the row is found →
+      // click it) can burn 30s+ of loader waits per hop; the URL is
+      // deterministic from roleName so skip the round-trip entirely.
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
+
+      const editDescriptionButton = page.locator(
+        '[data-testid="edit-description"]'
+      );
+      await expect(editDescriptionButton).toBeVisible();
+      await editDescriptionButton.click();
+
+      // Wait for description editor to be visible
+      const descriptionField = page.locator(descriptionBox);
+      await expect(descriptionField).toBeVisible();
+      await descriptionField.fill(`${description}-updated`);
+
+      const saveButton = page.locator('[data-testid="save"]');
+      await expect(saveButton).toBeVisible();
+      await expect(saveButton).toBeEnabled();
+
+      await Promise.all([
+        // Wait for API call to complete
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/roles') &&
+            (response.status() === 200 || response.status() === 201)
+        ),
+        saveButton.click(),
+      ]);
+
+      // Wait for loader to disappear and verify description updated
+      await waitForAllLoadersToDisappear(page);
+      await expect(page.locator('[data-testid="inactive-link"]')).toBeVisible();
+
+      // Asserting updated description
+      const descriptionContainer = page.locator(
+        '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+      );
+      await expect(descriptionContainer).toBeVisible();
+      await expect(descriptionContainer).toContainText(
+        `${description}-updated`
+      );
+    });
+
+    await test.step('Edit role display name', async () => {
+      const manageButton = page.getByTestId('manage-button');
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
+
+      const renameButton = page.getByTestId('rename-button-title');
+      await expect(renameButton).toBeVisible();
+      await renameButton.click();
+
+      // Wait for modal to be visible
+      const displayNameField = page.locator('#displayName');
+      await expect(displayNameField).toBeVisible();
+      await displayNameField.click();
+      await displayNameField.fill(updatedRoleName);
+
+      const saveButton = page.getByTestId('save-button');
+      await expect(saveButton).toBeVisible();
+      await expect(saveButton).toBeEnabled();
+
+      await Promise.all([
+        // Wait for API call to complete
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/roles') &&
+            (response.status() === 200 || response.status() === 201)
+        ),
+        saveButton.click(),
+      ]);
+
+      // Wait for loader and verify header updated
+      await waitForAllLoadersToDisappear(page);
+      const headerDisplayName = page.getByTestId('entity-header-display-name');
+      await expect(headerDisplayName).toBeVisible();
+      await expect(headerDisplayName).toContainText(updatedRoleName);
+    });
+
+    await test.step('Add new policy to created role', async () => {
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
+
+      // Click add policy button
+      const addPolicyButton = page.locator('[data-testid="add-policy"]');
+      await expect(addPolicyButton).toBeVisible();
+      await addPolicyButton.click();
+
+      // Wait for modal to be fully visible
+      const modalContainer = page.getByRole('dialog', { name: 'Add Policy' });
+      await expect(modalContainer).toBeVisible();
+
+      // Add new policy - wait for policy row to be visible
+      const organizationPolicyOption = page
+        .locator('[data-testid="policy-row"]')
+        .getByText(policies.organizationPolicy);
+
+      // Scroll into view if needed (modal might have scrollable content)
+      await organizationPolicyOption.scrollIntoViewIfNeeded();
+      await expect(organizationPolicyOption).toBeVisible();
+      await organizationPolicyOption.click();
+
+      // Verify policy is selected (appears in selected section)
+      await expect(
+        modalContainer
+          .locator('.selected')
+          .filter({ hasText: policies.organizationPolicy })
+      ).toBeVisible();
+
+      const submitButton = page.locator('[type="button"]:has-text("Submit")');
+      await expect(submitButton).toBeVisible();
+      await expect(submitButton).toBeEnabled();
+
+      await Promise.all([
+        // Wait for API call to complete
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/roles') &&
+            (response.status() === 200 || response.status() === 201)
+        ),
+        submitButton.click(),
+      ]);
+
+      // Wait for modal to close and UI to update
+      await expect(modalContainer).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify policy was added
+      await expect(
+        page.getByRole('link', {
+          name: policies.organizationPolicy,
+          exact: true,
+        })
+      ).toBeVisible();
+    });
+
+    await test.step('Remove added policy from created role', async () => {
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
+
+      // Remove policy
+      await removePolicyFromRole(
+        page,
+        policies.organizationPolicy,
+        updatedRoleName
+      );
+
+      // Wait for UI to update after removal
+      await waitForAllLoadersToDisappear(page);
+
+      // Validating if the policy is removed successfully
+      await expect(
+        page.getByRole('link', {
+          name: policies.organizationPolicy,
+          exact: true,
+        })
+      ).not.toBeVisible();
+    });
+
+    await test.step('Check if last policy is not removed', async () => {
+      await page.goto(`/settings/access/roles/${roleName}`);
+      await waitForAllLoadersToDisappear(page);
+
+      // Removing second policy from the role
+      await removePolicyFromRole(
+        page,
+        policies.dataStewardPolicy,
+        updatedRoleName
+      );
+
+      // Wait for UI to update after removal
+      await waitForAllLoadersToDisappear(page);
+
+      // Validating if the policy is removed successfully
+      await expect(
+        page.getByRole('link', {
+          name: policies.dataStewardPolicy,
+          exact: true,
+        })
+      ).not.toBeVisible();
+
+      // Removing the last policy and validating the error message
+      await removePolicyFromRole(
+        page,
+        policies.dataConsumerPolicy,
+        updatedRoleName
+      );
+
+      // Wait for toast notification to appear
+      await toastNotification(
+        page,
+        errorMessageValidation.lastPolicyCannotBeRemoved
+      );
+
+      // Verify policy is still present
+      await expect(
+        page.getByRole('link', {
+          name: policies.dataConsumerPolicy,
+          exact: true,
+        })
+      ).toBeVisible();
+    });
+
+    await test.step('Delete created Role', async () => {
+      await settingClick(page, GlobalSettingOptions.ROLES);
+
+      // Wait for roles page to be ready
+      await waitForAllLoadersToDisappear(page);
+
+      const roleLocator = page.locator(
+        `[data-testid="delete-action-${updatedRoleName}"]`
+      );
+      await getElementWithPagination(page, roleLocator);
+
+      // Wait for delete button to be visible and click it
+      await expect(roleLocator).toBeVisible();
+
+      const confirmButton = page.locator('[data-testid="confirm-button"]');
+      await expect(confirmButton).toBeVisible();
+      await expect(confirmButton).toBeEnabled();
+
+      await Promise.all([
+        // Wait for API call to complete
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/roles') &&
+            response.status() === 200
+        ),
+        confirmButton.click(),
+      ]);
+
+      // Wait for modal to close and UI to update
+      await waitForAllLoadersToDisappear(page);
+
+      // Validate deleted role is no longer visible
+      await expect(
+        page.locator(
+          `[data-testid="role-name"][href="/settings/access/roles/${updatedRoleName}"]`
+        )
+      ).not.toBeVisible();
+    });
+  });
+
+  test('Delete role action from manage button options', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const role = new RolesClass();
+    const policies = ['ApplicationBotPolicy'];
+    const roleLocator = page
+      .getByTestId('role-name')
+      .filter({ hasText: role.data.displayName })
+      .first();
+
+    await role.create(apiContext, policies);
+
+    await page.reload();
+
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.locator('[data-testid="add-role"]')).toBeVisible();
+
+    await getElementWithPagination(page, roleLocator);
+
+    const manageButton = page
+      .getByTestId('role-details-container')
+      .getByTestId('manage-button');
+    await expect(manageButton).toBeVisible();
+    await manageButton.click();
+
+    const deleteButton = page
+      .locator(
+        '[data-testid="delete-button"], [data-testid="delete-button-title"]'
+      )
+      .first();
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+
+    const confirmButton = page.locator('[data-testid="confirm-button"]');
+    await expect(confirmButton).toBeVisible();
+    await expect(confirmButton).toBeEnabled();
+
+    await Promise.all([
+      // Wait for API call to complete
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/roles') && response.status() === 200
+      ),
+      confirmButton.click(),
+    ]);
+
+    // Wait for UI to update and verify role is deleted
+    await waitForAllLoadersToDisappear(page);
+    await expect(roleLocator).not.toBeVisible();
+
+    await role.delete(apiContext);
+    await afterAction();
+  });
+});

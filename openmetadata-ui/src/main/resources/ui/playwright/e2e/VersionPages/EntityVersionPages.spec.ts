@@ -1,0 +1,586 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, Page, test as base } from '@playwright/test';
+import { COMMON_TIER_TAG } from '../../constant/common';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { FileClass } from '../../support/entity/FileClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
+import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import {
+  descriptionBoxReadOnly,
+  getApiContext,
+  redirectToHomePage,
+  reloadAndWaitForNetworkIdle,
+  toastNotification,
+} from '../../utils/common';
+import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
+
+let adminUser: UserClass;
+
+const entityClasses = [
+  ApiEndpointClass,
+  TableClass,
+  StoredProcedureClass,
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
+];
+
+let entities: InstanceType<(typeof entityClasses)[number]>[];
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
+
+test.describe('Entity Version pages', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    adminUser = new UserClass();
+    entities = entityClasses.map((EntityClass) => new EntityClass());
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+
+    const domain = EntityDataClass.domain1.responseData;
+
+    for (const entity of entities) {
+      await entity.create(apiContext);
+      const dataTypeDisplayPath = getEntityDataTypeDisplayPatch(entity);
+      await entity.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              labelType: 'Manual',
+              state: 'Confirmed',
+              source: 'Classification',
+              tagFQN: 'PersonalData.SpecialCategory',
+            },
+          },
+          {
+            op: 'add',
+            path: '/tags/1',
+            value: {
+              labelType: 'Manual',
+              state: 'Confirmed',
+              source: 'Classification',
+              tagFQN: 'PII.Sensitive',
+            },
+          },
+          {
+            op: 'add',
+            path: '/description',
+            value: 'Description for newly added service',
+          },
+          {
+            op: 'add',
+            path: '/domains',
+            value: [
+              {
+                id: domain.id,
+                type: 'domain',
+                name: domain.name,
+                description: domain.description,
+              },
+            ],
+          },
+          ...(dataTypeDisplayPath
+            ? [
+                {
+                  op: 'add' as const,
+                  path: dataTypeDisplayPath,
+                  value: 'OBJECT',
+                },
+              ]
+            : []),
+        ],
+      });
+    }
+
+    await afterAction();
+  });
+
+  test.beforeEach('Visit entity details page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
+
+    await afterAction();
+  });
+
+  entityClasses.forEach((EntityClass) => {
+    test(`${new EntityClass().getType()}`, async ({ page }) => {
+      test.slow();
+
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
+
+      const { apiContext } = await getApiContext(page);
+      await entity.visitEntityPage(page);
+
+      // Read actual version from API response to avoid hardcoding version numbers.
+      const setupPatchVersion = entity.entityResponseData.version;
+      const setupVersionText = `v${Number.parseFloat(
+        String(setupPatchVersion)
+      ).toFixed(1)}`;
+      const versionDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionDetailResponse;
+      // Wait for version selector to render before clicking
+      await page
+        .locator(`[data-testid="version-selector-${setupVersionText}"]`)
+        .waitFor({ state: 'visible' });
+      // Explicitly select the incremental version in the history panel.
+      await page
+        .locator(`[data-testid="version-selector-${setupVersionText}"]`)
+        .click();
+
+      await test.step('should show edited tags and description changes', async () => {
+        await expect(
+          page.locator(
+            `[data-testid="version-entry-${setupVersionText}"] [data-testid="version-change-description"]`
+          )
+        ).toContainText('description');
+
+        await expect(
+          page.locator('[data-testid="domain-link"] [data-testid="diff-added"]')
+        ).toBeVisible();
+
+        await expect(
+          page.locator(
+            `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
+          )
+        ).toBeVisible();
+
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+          )
+        ).toBeVisible();
+
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+          )
+        ).toBeVisible();
+      });
+
+      await test.step('should show owner changes', async () => {
+        await page.locator('[data-testid="version-button"]').click();
+        const OWNER1 = EntityDataClass.user1.responseData;
+
+        await entity.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/owners/0',
+              value: {
+                id: OWNER1.id,
+                type: 'user',
+              },
+            },
+          ],
+        });
+
+        await reloadAndWaitForNetworkIdle(page);
+
+        // patch() updates entityResponseData, so version reflects the incremented value.
+        const ownerPatchVersion = entity.entityResponseData.version;
+        const ownerVersionText = `v${Number.parseFloat(
+          String(ownerPatchVersion)
+        ).toFixed(1)}`;
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/versions/${ownerPatchVersion}`) &&
+            response.status() === 200
+        );
+        await page.locator('[data-testid="version-button"]').click();
+        await versionDetailResponse;
+        await page
+          .locator(`[data-testid="version-selector-${ownerVersionText}"]`)
+          .click();
+
+        await expect(
+          page.locator(
+            `[data-testid="version-entry-${ownerVersionText}"] [data-testid="version-change-description"]`
+          )
+        ).toContainText('owners');
+
+        await expect(
+          page.locator('[data-testid="owner-link"] [data-testid="diff-added"]')
+        ).toBeVisible();
+      });
+
+      if (entity.endpoint === 'tables') {
+        await test.step('should show column display name changes properly', async () => {
+          await page.locator('[data-testid="version-button"]').click();
+
+          await page
+            .locator(
+              `[data-row-key$="${
+                (entity as TableClass).entity.columns[0].name
+              }"] [data-testid="edit-displayName-button"]`
+            )
+            .click();
+
+          await page.locator('#displayName').clear();
+          await page.locator('#displayName').fill('New Column Name');
+
+          await page
+            .getByTestId('entity-name-modal')
+            .getByTestId('save-button')
+            .click();
+
+          await page.getByTestId('entity-name-modal').waitFor({
+            state: 'detached',
+          });
+
+          await page.locator('[data-testid="version-button"]').click();
+
+          await expect(
+            page.locator(
+              `[data-row-key$="${
+                (entity as TableClass).entity.columns[0].name
+              }"] [data-testid="diff-added"]`
+            )
+          ).toBeVisible();
+        });
+      }
+
+      await test.step('should show tier changes', async () => {
+        await page.locator('[data-testid="version-button"]').click();
+
+        await entity.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                name: COMMON_TIER_TAG[0].name,
+                tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
+
+        await reloadAndWaitForNetworkIdle(page);
+
+        // patch() updates entityResponseData, so version reflects the incremented value.
+        const tierPatchVersion = entity.entityResponseData.version;
+        const tierVersionText = `v${Number.parseFloat(
+          String(tierPatchVersion)
+        ).toFixed(1)}`;
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/versions/${tierPatchVersion}`) &&
+            response.status() === 200
+        );
+        await page.locator('[data-testid="version-button"]').click();
+        await versionDetailResponse;
+        await page
+          .locator(`[data-testid="version-selector-${tierVersionText}"]`)
+          .click();
+
+        await expect(
+          page.locator(
+            `[data-testid="version-entry-${tierVersionText}"] [data-testid="version-change-description"]`
+          )
+        ).toContainText(COMMON_TIER_TAG[0].fullyQualifiedName);
+
+        await expect(
+          page.locator('[data-testid="Tier"] > [data-testid="diff-added"]')
+        ).toBeVisible();
+      });
+
+      await test.step('should show version details after soft deleted', async () => {
+        await page.locator('[data-testid="version-button"]').click();
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="delete-button"]');
+
+        await page.getByTestId('delete-modal').waitFor();
+
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
+
+        const deleteResponse = page.waitForResponse(
+          `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
+        );
+        await page.click('[data-testid="confirm-button"]');
+
+        await deleteResponse;
+
+        await toastNotification(
+          page,
+          /deleted successfully!/,
+          BIG_ENTITY_DELETE_TIMEOUT
+        );
+
+        await reloadAndWaitForNetworkIdle(page);
+
+        const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+
+        await expect(deletedBadge).toHaveText('Deleted');
+
+        // Soft-delete is UI-only — no patch response to read the version from,
+        // so match any version URL and select the first (latest) panel entry.
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            /\/versions\/\d+\.\d+/.test(response.url()) &&
+            response.status() === 200
+        );
+        await page.locator('[data-testid="version-button"]').click();
+        await versionDetailResponse;
+
+        const latestVersionEntry = page
+          .locator('[data-testid^="version-entry-"]')
+          .first();
+        await latestVersionEntry
+          .locator('[data-testid^="version-selector-"]')
+          .click();
+
+        await expect(
+          latestVersionEntry.locator(
+            '[data-testid="version-change-description"]'
+          )
+        ).toContainText('Data Asset has been deleted');
+
+        // Deleted badge should be visible
+        await expect(
+          page.locator('[data-testid="deleted-badge"]')
+        ).toBeVisible();
+      });
+    });
+  });
+
+  test.describe('Table historical column descriptions', () => {
+    let freshTable: TableClass;
+    let col0Name: string;
+    let col0OriginalDesc: string;
+    const col0UpdatedDesc =
+      'Updated description to verify historical version view';
+
+    test.beforeAll(
+      'Create table with historical description',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        freshTable = new TableClass();
+        await freshTable.create(apiContext);
+
+        col0Name = freshTable.entity.columns[0].name;
+        col0OriginalDesc = freshTable.children[0].description ?? '';
+
+        expect(
+          col0OriginalDesc,
+          'seed column must have a description for this regression check'
+        ).not.toBe('');
+
+        await freshTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/columns/0/description',
+              value: col0UpdatedDesc,
+            },
+          ],
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await freshTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('Table - should show historical column descriptions in version view', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await freshTable.visitEntityPage(page);
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page
+        .locator('[data-testid="version-selector-v0.1"]')
+        .waitFor({ state: 'visible' });
+
+      const versionDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions/0.1') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-selector-v0.1"]').click();
+      await versionDetailResponse;
+
+      await expect(
+        page.locator(
+          `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+        )
+      ).toContainText(col0OriginalDesc);
+
+      await expect(
+        page.locator(
+          `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+        )
+      ).not.toContainText(col0UpdatedDesc);
+    });
+  });
+
+  test.describe('Version drawer close should restore default tab', () => {
+    let table: TableClass;
+    let database: DatabaseClass;
+    let databaseSchema: DatabaseSchemaClass;
+
+    test.beforeAll('Setup entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      table = new TableClass();
+      database = new DatabaseClass();
+      databaseSchema = new DatabaseSchemaClass();
+      await table.create(apiContext);
+      await database.create(apiContext);
+      await databaseSchema.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.delete(apiContext);
+      await database.delete(apiContext);
+      await databaseSchema.delete(apiContext);
+      await afterAction();
+    });
+
+    test('Table - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await table.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+
+    test('Database - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await database.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+
+    test('DatabaseSchema - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await databaseSchema.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+  });
+});

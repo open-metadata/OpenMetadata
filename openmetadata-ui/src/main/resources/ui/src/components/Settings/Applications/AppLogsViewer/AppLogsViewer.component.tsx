@@ -1,0 +1,714 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  Badge,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Table,
+  Typography,
+} from 'antd';
+import { capitalize, isEmpty, toString } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
+import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
+import {
+  formatLatencyAverage,
+  formatThroughput,
+  getAppRunFailureLogs,
+  getEntityStatsData,
+} from '../../../../utils/ApplicationUtils';
+import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
+import AppBadge from '../../../common/Badge/Badge.component';
+import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
+import './app-logs-viewer.less';
+import {
+  AppLogsViewerProps,
+  ServerStats,
+  ServerStatsData,
+} from './AppLogsViewer.interface';
+import ReindexFailures from './ReindexFailures.component';
+
+const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
+  const { t } = useTranslation();
+  const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+
+  const {
+    successContext,
+    failureContext,
+    timestamp,
+    status,
+    startTime,
+    endTime,
+  } = data;
+
+  const hasFailures = useMemo(() => {
+    const jobStats =
+      successContext?.stats?.jobStats ?? failureContext?.stats?.jobStats;
+
+    return (jobStats?.failedRecords ?? 0) > 0;
+  }, [successContext, failureContext]);
+
+  // Wall-clock duration of the run, used as the rate basis on the overall
+  // stats card. Stage cards keep using stepStats.totalTimeMs (stage-CPU time)
+  // so engineers can still see per-stage cost. The overall card answers the
+  // operator question "how fast is reindex actually going?" — which is
+  // successRecords / wall_clock, not the inflated stage-CPU rate that sums
+  // parallel worker time. For in-flight runs (no endTime yet) we tick a
+  // local `now` state every 5s so the rate moves with the job; React's
+  // dependency rules require the bumping value to be a state, not Date.now()
+  // captured inside useMemo.
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    if (!startTime || endTime) {
+      return undefined;
+    }
+    const id = setInterval(() => setNow(Date.now()), 5000);
+
+    return () => clearInterval(id);
+  }, [startTime, endTime]);
+
+  const wallClockMs = useMemo<number | undefined>(() => {
+    if (!startTime) {
+      return undefined;
+    }
+    const end = endTime ?? now;
+
+    return Math.max(0, end - startTime);
+  }, [startTime, endTime, now]);
+
+  const failureLogs = useMemo(() => getAppRunFailureLogs(data), [data]);
+
+  const statsRender = useCallback(
+    (
+      stepStats: StepStats,
+      title?: string,
+      options: {
+        showStatus?: boolean;
+        effectiveTimeMs?: number;
+        latencyLabelKey?: string;
+      } = {}
+    ) => {
+      const { showStatus = true, effectiveTimeMs, latencyLabelKey } = options;
+
+      return (
+        <Card
+          data-testid={`stats-component${
+            title ? `-${title.toLowerCase()}` : ''
+          }`}
+          size="small"
+          title={title}>
+          <Row gutter={[16, 8]}>
+            <Col span={24}>
+              <Space wrap direction="horizontal" size={0}>
+                {showStatus && (
+                  <>
+                    <div className="flex">
+                      <span className="text-grey-muted">{`${t(
+                        'label.status'
+                      )}:`}</span>
+
+                      <Space align="center" className="m-l-xs" size={8}>
+                        <Icon
+                          component={
+                            STATUS_ICON[status as keyof typeof STATUS_ICON]
+                          }
+                          style={ICON_DIMENSION}
+                        />
+                        <span>{capitalize(status)}</span>
+                      </Space>
+                    </div>
+                    <Divider type="vertical" />
+                  </>
+                )}
+                <div className="flex">
+                  <span className="text-grey-muted">{`${t(
+                    'label.index-states'
+                  )}:`}</span>
+                  <span className="m-l-xs">
+                    <Space size={8}>
+                      <Badge
+                        showZero
+                        className="request-badge running"
+                        count={stepStats.totalRecords}
+                        overflowCount={99999999}
+                        title={`${t('label.total-index-sent')}: ${
+                          stepStats.totalRecords
+                        }`}
+                      />
+
+                      <Badge
+                        showZero
+                        className="request-badge success"
+                        count={stepStats.successRecords}
+                        overflowCount={99999999}
+                        title={`${t('label.entity-index', {
+                          entity: t('label.success'),
+                        })}: ${stepStats.successRecords}`}
+                      />
+
+                      <Badge
+                        showZero
+                        className="request-badge failed"
+                        count={stepStats.failedRecords}
+                        overflowCount={99999999}
+                        title={`${t('label.entity-index', {
+                          entity: t('label.failed'),
+                        })}: ${stepStats.failedRecords}`}
+                      />
+
+                      {stepStats.warningRecords !== undefined &&
+                        stepStats.warningRecords > 0 && (
+                          <Badge
+                            showZero
+                            className="request-badge warning"
+                            count={stepStats.warningRecords}
+                            overflowCount={99999999}
+                            title={`${t('label.entity-index', {
+                              entity: t('label.warning-plural'),
+                            })}: ${stepStats.warningRecords}`}
+                          />
+                        )}
+                    </Space>
+                  </span>
+                </div>
+                {(() => {
+                  // effectiveTimeMs (e.g. wall-clock for the overall card) takes
+                  // precedence over stepStats.totalTimeMs (stage-CPU time). This
+                  // is also what avoids the misleading ">85k r/s" the overall
+                  // card would otherwise show when jobStats.totalTimeMs is 0
+                  // because stage timings aren't aggregated up to the job level.
+                  const timeMs = effectiveTimeMs ?? stepStats.totalTimeMs;
+                  if (
+                    timeMs === undefined ||
+                    stepStats.successRecords === undefined ||
+                    stepStats.successRecords <= 0
+                  ) {
+                    return null;
+                  }
+
+                  return (
+                    <>
+                      <Divider type="vertical" />
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          latencyLabelKey ?? 'label.latency'
+                        )}:`}</span>
+                        <span className="m-l-xs" data-testid="stage-latency">
+                          {`${formatLatencyAverage(
+                            timeMs,
+                            stepStats.successRecords
+                          )} · ${formatThroughput(
+                            timeMs,
+                            stepStats.successRecords
+                          )}`}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
+                {showStatus && (
+                  <>
+                    <Divider type="vertical" />
+                    <div className="flex">
+                      <span className="text-grey-muted">{`${t(
+                        'label.last-updated'
+                      )}:`}</span>
+                      <span className="m-l-xs">
+                        {timestamp
+                          ? formatDateTimeWithTimezone(timestamp)
+                          : '--'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+      );
+    },
+    [timestamp, formatDateTimeWithTimezone, status]
+  );
+
+  const tableColumn = useMemo(() => {
+    const entityTotalJobStatsData =
+      successContext?.stats?.jobStats || failureContext?.stats?.jobStats;
+
+    return isEmpty(entityTotalJobStatsData)
+      ? []
+      : [
+          {
+            title: t('label.name'),
+            dataIndex: 'name',
+            key: 'name',
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.total'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats total m-l-sm"
+                  label={entityTotalJobStatsData.totalRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'totalRecords',
+            key: 'totalRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-primary">{text}</Typography.Text>
+            ),
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.success'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats success m-l-sm"
+                  label={entityTotalJobStatsData.successRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'successRecords',
+            key: 'successRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-success">{text}</Typography.Text>
+            ),
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.failed'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats failure m-l-sm"
+                  label={entityTotalJobStatsData.failedRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'failedRecords',
+            key: 'failedRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-failure">{text}</Typography.Text>
+            ),
+          },
+          ...(successContext?.stats?.vectorStats?.totalRecords
+            ? [
+                {
+                  title: t('label.vector-embedding-plural'),
+                  dataIndex: 'vectorEmbeddings',
+                  key: 'vectorEmbeddings',
+                  render: (value: number | null) => (
+                    <Typography.Text
+                      className={value !== null ? 'text-primary' : ''}>
+                      {value !== null ? value : '-'}
+                    </Typography.Text>
+                  ),
+                },
+              ]
+            : []),
+          {
+            title: t('label.reader-avg'),
+            dataIndex: 'readerAvgMs',
+            key: 'readerAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-reader-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.process-avg'),
+            dataIndex: 'processAvgMs',
+            key: 'processAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-process-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.sink-avg'),
+            dataIndex: 'sinkAvgMs',
+            key: 'sinkAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-sink-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          ...(successContext?.stats?.vectorStats?.totalRecords
+            ? [
+                {
+                  title: t('label.vector-avg'),
+                  dataIndex: 'vectorAvgMs',
+                  key: 'vectorAvgMs',
+                  render: (value: string) => (
+                    <Typography.Text data-testid="entity-vector-avg">
+                      {value}
+                    </Typography.Text>
+                  ),
+                },
+              ]
+            : []),
+        ];
+  }, [successContext, failureContext]);
+
+  const entityStatsRenderer = useCallback(
+    (entityStats: { [key: string]: StepStats }) => {
+      return (
+        <Table
+          className="m-t-md"
+          columns={tableColumn}
+          data-testid="app-entity-stats-history-table"
+          dataSource={getEntityStatsData(entityStats)}
+          pagination={false}
+          rowKey="name"
+          scroll={scrollHeight ? { y: scrollHeight } : undefined}
+          size="small"
+        />
+      );
+    },
+    [tableColumn]
+  );
+
+  const serverStatsData = useMemo((): ServerStatsData[] => {
+    const serverStats = successContext?.serverStats as
+      | Record<string, ServerStats>
+      | undefined;
+    if (!serverStats) {
+      return [];
+    }
+
+    return Object.entries(serverStats).map(([serverId, stats]) => ({
+      name: serverId,
+      processedRecords: stats.processedRecords ?? 0,
+      successRecords: stats.successRecords ?? 0,
+      failedRecords: stats.failedRecords ?? 0,
+      partitions: `${stats.completedPartitions ?? 0}/${
+        stats.totalPartitions ?? 0
+      }`,
+    }));
+  }, [successContext?.serverStats]);
+
+  const serverStatsColumns = useMemo(() => {
+    if (serverStatsData.length === 0) {
+      return [];
+    }
+
+    const totalProcessed = serverStatsData.reduce(
+      (sum, s) => sum + s.processedRecords,
+      0
+    );
+    const totalSuccess = serverStatsData.reduce(
+      (sum, s) => sum + s.successRecords,
+      0
+    );
+    const totalFailed = serverStatsData.reduce(
+      (sum, s) => sum + s.failedRecords,
+      0
+    );
+
+    return [
+      {
+        title: t('label.server'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (text: string) => (
+          <Typography.Text className="font-medium">{text}</Typography.Text>
+        ),
+      },
+      {
+        title: (
+          <div className="d-flex items-center">
+            <Typography.Text>
+              {t('label.entity-record-plural', {
+                entity: t('label.processed'),
+              })}{' '}
+            </Typography.Text>
+            <AppBadge
+              className="entity-stats total m-l-sm"
+              label={toString(totalProcessed)}
+            />
+          </div>
+        ),
+        dataIndex: 'processedRecords',
+        key: 'processedRecords',
+        render: (text: number) => (
+          <Typography.Text className="text-primary">{text}</Typography.Text>
+        ),
+      },
+      {
+        title: (
+          <div className="d-flex items-center">
+            <Typography.Text>
+              {t('label.entity-record-plural', {
+                entity: t('label.success'),
+              })}{' '}
+            </Typography.Text>
+            <AppBadge
+              className="entity-stats success m-l-sm"
+              label={toString(totalSuccess)}
+            />
+          </div>
+        ),
+        dataIndex: 'successRecords',
+        key: 'successRecords',
+        render: (text: number) => (
+          <Typography.Text className="text-success">{text}</Typography.Text>
+        ),
+      },
+      {
+        title: (
+          <div className="d-flex items-center">
+            <Typography.Text>
+              {t('label.entity-record-plural', {
+                entity: t('label.failed'),
+              })}{' '}
+            </Typography.Text>
+            <AppBadge
+              className="entity-stats failure m-l-sm"
+              label={toString(totalFailed)}
+            />
+          </div>
+        ),
+        dataIndex: 'failedRecords',
+        key: 'failedRecords',
+        render: (text: number) => (
+          <Typography.Text className="text-failure">{text}</Typography.Text>
+        ),
+      },
+      {
+        title: t('label.partition-plural'),
+        dataIndex: 'partitions',
+        key: 'partitions',
+        render: (text: string) => <Typography.Text>{text}</Typography.Text>,
+      },
+    ];
+  }, [serverStatsData]);
+
+  const serverStatsRenderer = useCallback(() => {
+    if (serverStatsData.length === 0) {
+      return null;
+    }
+
+    const serverCount = successContext?.serverCount as number | undefined;
+
+    return (
+      <Card
+        className="m-t-md"
+        data-testid="server-stats-card"
+        size="small"
+        title={
+          <Space>
+            <span>{t('label.server-stat-plural')}</span>
+            {serverCount && (
+              <Badge
+                className="request-badge running"
+                count={serverCount}
+                title={`${serverCount} ${t('label.server')}(s)`}
+              />
+            )}
+          </Space>
+        }>
+        <Table
+          columns={serverStatsColumns}
+          data-testid="server-stats-table"
+          dataSource={serverStatsData}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
+      </Card>
+    );
+  }, [serverStatsData, serverStatsColumns, successContext?.serverCount]);
+
+  return (
+    <>
+      {successContext?.stats?.jobStats &&
+        statsRender(
+          successContext?.stats.jobStats,
+          t('label.overall-stat-plural'),
+          {
+            effectiveTimeMs: wallClockMs,
+            latencyLabelKey: 'label.wall-clock',
+          }
+        )}
+      {failureContext?.stats?.jobStats &&
+        statsRender(
+          failureContext?.stats.jobStats,
+          t('label.overall-stat-plural'),
+          {
+            effectiveTimeMs: wallClockMs,
+            latencyLabelKey: 'label.wall-clock',
+          }
+        )}
+
+      <Row className="m-t-md" gutter={[16, 16]}>
+        {successContext?.stats?.readerStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.readerStats,
+              t('label.reader-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.readerStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.readerStats,
+              t('label.reader-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+
+        {successContext?.stats?.processStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.processStats,
+              t('label.process-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.processStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.processStats,
+              t('label.process-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+
+        {successContext?.stats?.sinkStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.sinkStats,
+              t('label.sink-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.sinkStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.sinkStats,
+              t('label.sink-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+
+        {successContext?.stats?.vectorStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.vectorStats,
+              t('label.vector-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.vectorStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.vectorStats,
+              t('label.vector-stat-plural'),
+              {
+                showStatus: false,
+              }
+            )}
+          </Col>
+        )}
+      </Row>
+
+      {serverStatsRenderer()}
+
+      {successContext?.stats?.entityStats &&
+        entityStatsRenderer(successContext.stats.entityStats)}
+      {failureContext?.stats?.entityStats &&
+        entityStatsRenderer(failureContext.stats.entityStats)}
+
+      {failureLogs && (
+        <div className="m-t-md">
+          <Button
+            data-testid="view-logs-button"
+            type="link"
+            onClick={() => setShowLogsModal(true)}>
+            {t('label.view-entity', { entity: t('label.log-plural') })}
+          </Button>
+        </div>
+      )}
+
+      {hasFailures && (
+        <div className="m-t-md">
+          <Button
+            data-testid="view-reindex-failures-button"
+            type="link"
+            onClick={() => setShowFailuresDrawer(true)}>
+            {t('label.view-reindex-failure-plural')}
+          </Button>
+        </div>
+      )}
+
+      <ReindexFailures
+        visible={showFailuresDrawer}
+        onClose={() => setShowFailuresDrawer(false)}
+      />
+
+      <LogViewerModal
+        logs={failureLogs}
+        open={showLogsModal}
+        title={t('label.log-plural')}
+        onClose={() => setShowLogsModal(false)}
+      />
+    </>
+  );
+};
+
+export default AppLogsViewer;

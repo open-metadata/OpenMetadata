@@ -1,0 +1,156 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { forwardRef, type ReactNode } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { MemoryRouter } from 'react-router-dom';
+import {
+  MOCK_CURRENT_TEAM,
+  MOCK_TABLE_DATA,
+} from '../../../../mocks/Teams.mock';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
+import { TeamHierarchyProps } from './team.interface';
+import TeamHierarchy from './TeamHierarchy';
+
+const teamHierarchyPropsData: TeamHierarchyProps = {
+  data: MOCK_TABLE_DATA,
+  currentTeam: MOCK_CURRENT_TEAM,
+  isSearchLoading: false,
+  isTeamBasicDataLoading: false,
+  onTeamExpand: jest.fn(),
+  isFetchingAllTeamAdvancedDetails: false,
+  showDeletedTeam: false,
+  onShowDeletedTeamChange: jest.fn(),
+  handleAddTeamButtonClick: jest.fn(),
+  createTeamPermission: true,
+  isTeamDeleted: false,
+  handleTeamSearch: jest.fn(),
+};
+
+const mockShowErrorToast = jest.fn();
+
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+
+  const MockLink = forwardRef<
+    HTMLAnchorElement,
+    { children?: ReactNode; to?: unknown }
+  >(({ children, to, ...props }, ref) => (
+    <a href={to as string} ref={ref} {...props}>
+      {children}
+    </a>
+  ));
+
+  return {
+    ...actual,
+    Link: MockLink,
+  };
+});
+
+jest.mock('../../../../utils/TeamUtils', () => ({
+  getMovedTeamData: jest.fn().mockReturnValue([]),
+  isDropRestricted: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../../rest/teamsAPI', () => ({
+  updateTeam: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
+  getTeamByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
+}));
+
+jest.mock('../../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringUtils'),
+  stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('../../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('entityName'),
+}));
+
+jest.mock('../../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntitySearchUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
+
+jest.mock('../../../../utils/RouterUtils', () => ({
+  getTeamsWithFqnPath: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
+}));
+
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>SearchBar</div>)
+);
+
+const renderComponent = (props = {}) => {
+  return render(
+    <DndProvider backend={HTML5Backend}>
+      <TeamHierarchy {...teamHierarchyPropsData} {...props} />
+    </DndProvider>,
+    { wrapper: MemoryRouter }
+  );
+};
+
+describe('Team Hierarchy page', () => {
+  it('Initially, Table should load', async () => {
+    renderComponent();
+
+    const table = await screen.findByTestId('team-hierarchy-table');
+
+    expect(table).toBeInTheDocument();
+  });
+
+  it('Should render all table columns', async () => {
+    renderComponent();
+
+    const table = await screen.findByTestId('team-hierarchy-table');
+    const teamsColumn = await screen.findByText('label.team-plural');
+    const typeColumn = await screen.findByText('label.type');
+    const subTeamsColumn = await screen.findByText('label.sub-team-plural');
+    const usersColumn = await screen.findByText('label.user-plural');
+    const assetCountColumn = await screen.findByText('label.entity-count');
+    const rows = await screen.findAllByRole('row');
+
+    expect(table).toBeInTheDocument();
+    expect(teamsColumn).toBeInTheDocument();
+    expect(typeColumn).toBeInTheDocument();
+    expect(subTeamsColumn).toBeInTheDocument();
+    expect(usersColumn).toBeInTheDocument();
+    expect(assetCountColumn).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
+
+    expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
+  });
+
+  it('Should render child row in table', async () => {
+    renderComponent();
+
+    const table = await screen.findByTestId('team-hierarchy-table');
+
+    expect(table).toBeInTheDocument();
+
+    const expandableTableRow = await screen.getAllByTestId('expand-icon');
+    fireEvent.click(expandableTableRow[0]);
+
+    const totalRows = await screen.findAllByText('entityName');
+
+    expect(totalRows).toHaveLength(5);
+  });
+});

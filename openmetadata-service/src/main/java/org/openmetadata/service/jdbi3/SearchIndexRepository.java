@@ -1,0 +1,675 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.jdbi3;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SearchIndexField;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.searchindex.SearchIndexResource;
+import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
+
+public class SearchIndexRepository extends EntityRepository<SearchIndex> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
+
+  public SearchIndexRepository() {
+    super(
+        SearchIndexResource.COLLECTION_PATH,
+        Entity.SEARCH_INDEX,
+        SearchIndex.class,
+        Entity.getCollectionDAO().searchIndexDAO(),
+        "",
+        "",
+        CHANGE_SUMMARY_FIELDS);
+    supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetFieldTags);
+  }
+
+  @Override
+  public void setFullyQualifiedName(SearchIndex searchIndex) {
+    searchIndex.setFullyQualifiedName(
+        FullyQualifiedName.add(
+            searchIndex.getService().getFullyQualifiedName(), searchIndex.getName()));
+    if (searchIndex.getFields() != null) {
+      setFieldFQN(searchIndex.getFullyQualifiedName(), searchIndex.getFields());
+    }
+  }
+
+  @Override
+  public void prepare(SearchIndex searchIndex, boolean update) {
+    var searchService = (SearchService) getCachedParentOrLoad(searchIndex.getService(), "", ALL);
+    searchIndex.setService(searchService.getEntityReference());
+    searchIndex.setServiceType(searchService.getServiceType());
+  }
+
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
+  protected ObjectNode storageJsonNode(SearchIndex searchIndex) {
+    ObjectNode node = super.storageJsonNode(searchIndex);
+    stripFieldTags(node.get("fields"));
+    return node;
+  }
+
+  private void stripFieldTags(JsonNode fieldsNode) {
+    if (!(fieldsNode instanceof ArrayNode fieldArray)) {
+      return;
+    }
+    for (JsonNode field : fieldArray) {
+      if (!(field instanceof ObjectNode fieldNode)) {
+        continue;
+      }
+      fieldNode.remove("tags");
+      stripFieldTags(fieldNode.get("children"));
+    }
+  }
+
+  @Override
+  public void storeEntity(SearchIndex searchIndex, boolean update) {
+    store(searchIndex, update);
+  }
+
+  @Override
+  public void storeEntities(List<SearchIndex> searchIndexes) {
+    storeMany(searchIndexes);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<SearchIndex> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(SearchIndex::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
+  public void storeRelationships(SearchIndex searchIndex) {
+    addServiceRelationship(searchIndex, searchIndex.getService());
+  }
+
+  @Override
+  protected void storeEntitySpecificRelationshipsForMany(List<SearchIndex> entities) {
+    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
+    for (SearchIndex searchIndex : entities) {
+      EntityReference service = searchIndex.getService();
+      if (service == null || service.getId() == null) {
+        continue;
+      }
+      relationships.add(
+          newRelationship(
+              service.getId(),
+              searchIndex.getId(),
+              service.getType(),
+              entityType,
+              Relationship.CONTAINS));
+    }
+    bulkInsertRelationships(relationships);
+  }
+
+  @Override
+  public void setFields(SearchIndex searchIndex, Fields fields, RelationIncludes relationIncludes) {
+    searchIndex.setService(getContainer(searchIndex.getId()));
+    if (searchIndex.getFields() != null) {
+      getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
+    }
+  }
+
+  @Override
+  public void clearFields(SearchIndex searchIndex, Fields fields) {
+    /* Nothing to do */
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<SearchIndex> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    // Bulk fetch and set service for all search indexes first
+    fetchAndSetServices(entities);
+
+    // Then call parent's implementation which handles standard fields
+    super.setFieldsInBulk(fields, entities);
+  }
+
+  private void fetchAndSetServices(List<SearchIndex> searchIndexes) {
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all search indexes
+    Map<UUID, EntityReference> serviceRefs = batchFetchServices(searchIndexes);
+
+    // Set service field for all search indexes
+    for (SearchIndex searchIndex : searchIndexes) {
+      EntityReference serviceRef = serviceRefs.get(searchIndex.getId());
+      if (serviceRef != null) {
+        searchIndex.withService(serviceRef);
+      }
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<SearchIndex> searchIndexes) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Batch query to get all services that contain these search indexes
+    // findFromBatch finds relationships where the provided IDs are in the "to" position
+    // So this finds: SEARCH_SERVICE (from) -> CONTAINS -> SEARCH_INDEX (to)
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(searchIndexes), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      // We're looking for records where Search Service contains Search Index
+      if (Entity.SEARCH_SERVICE.equals(record.getFromEntity())) {
+        UUID searchIndexId = UUID.fromString(record.getToId());
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.SEARCH_SERVICE, UUID.fromString(record.getFromId()), Include.NON_DELETED);
+        serviceMap.put(searchIndexId, serviceRef);
+      }
+    }
+
+    return serviceMap;
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetFollowers(List<SearchIndex> searchIndexes, Fields fields) {
+    if (!fields.contains(FIELD_FOLLOWERS) || searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, searchIndexes, batchFetchFollowers(searchIndexes), SearchIndex::setFollowers);
+  }
+
+  private void fetchAndSetFieldTags(List<SearchIndex> searchIndexes, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+
+    // First, fetch searchIndex-level tags (important for search indexing)
+    List<String> entityFQNs =
+        searchIndexes.stream().map(SearchIndex::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (SearchIndex searchIndex : searchIndexes) {
+      searchIndex.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(searchIndex.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if fields are requested, also fetch field-level tags
+    if (fields.contains("fields")) {
+      // Use bulk tag fetching to avoid N+1 queries
+      bulkPopulateEntityFieldTags(searchIndexes, SearchIndex::getFields);
+    }
+  }
+
+  @Override
+  public EntityRepository<SearchIndex>.EntityUpdater getUpdater(
+      SearchIndex original, SearchIndex updated, Operation operation, ChangeSource changeSource) {
+    return new SearchIndexUpdater(original, updated, operation);
+  }
+
+  public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
+    // Validate the request content
+    SearchIndex searchIndex = find(searchIndexId, NON_DELETED);
+    SearchIndexSampleData sampleData =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionDAO()
+                .getExtension(searchIndex.getId(), "searchIndex.sampleData"),
+            SearchIndexSampleData.class);
+    searchIndex.setSampleData(sampleData);
+    setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
+
+    // Set the fields tags. Will be used to mask the sample data
+    if (!authorizePII) {
+      getFieldTags(true, searchIndex.getFields());
+      searchIndex.setTags(getTags(searchIndex.getFullyQualifiedName()));
+      return PIIMasker.getSampleData(searchIndex);
+    }
+
+    return searchIndex;
+  }
+
+  public SearchIndex addSampleData(UUID searchIndexId, SearchIndexSampleData sampleData) {
+    // Validate the request content
+    SearchIndex searchIndex = daoCollection.searchIndexDAO().findEntityById(searchIndexId);
+
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            searchIndexId,
+            "searchIndex.sampleData",
+            "searchIndexSampleData",
+            JsonUtils.pojoToJson(sampleData));
+    setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
+    return searchIndex.withSampleData(sampleData);
+  }
+
+  private void setFieldFQN(String parentFQN, List<SearchIndexField> fields) {
+    fields.forEach(
+        c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
+          String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
+          c.setFullyQualifiedName(fieldFqn);
+          if (c.getChildren() != null) {
+            setFieldFQN(fieldFqn, c.getChildren());
+          }
+        });
+  }
+
+  private void getFieldTags(boolean setTags, List<SearchIndexField> fields) {
+    for (SearchIndexField f : listOrEmpty(fields)) {
+      f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
+      getFieldTags(setTags, f.getChildren());
+    }
+  }
+
+  @Override
+  public void validateTags(SearchIndex entity) {
+    super.validateTags(entity);
+    validateSchemaFieldTags(entity.getFields());
+  }
+
+  private void validateSchemaFieldTags(List<SearchIndexField> fields) {
+    // Add field level tags by adding tag to field relationship
+    for (SearchIndexField field : listOrEmpty(fields)) {
+      validateTags(field.getTags());
+      field.setTags(addDerivedTags(field.getTags()));
+      checkMutuallyExclusive(field.getTags());
+      if (field.getChildren() != null) {
+        validateSchemaFieldTags(field.getChildren());
+      }
+    }
+  }
+
+  private void applyFieldTags(List<SearchIndexField> fields) {
+    // Add field level tags by adding tag to field relationship
+    for (SearchIndexField field : fields) {
+      applyTags(field.getTags(), field.getFullyQualifiedName());
+      if (field.getChildren() != null) {
+        applyFieldTags(field.getChildren());
+      }
+    }
+  }
+
+  @Override
+  public void applyTags(SearchIndex searchIndex) {
+    // Add table level tags by adding tag to table relationship
+    super.applyTags(searchIndex);
+    if (searchIndex.getFields() != null) {
+      applyFieldTags(searchIndex.getFields());
+    }
+  }
+
+  @Override
+  protected EntityReference getParentReference(SearchIndex entity) {
+    return entity.getService();
+  }
+
+  @Override
+  public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    SearchIndex searchIndex = (SearchIndex) entity;
+    EntityUtil.mergeTags(allTags, searchIndex.getTags());
+    List<SearchIndexField> schemaFields =
+        searchIndex.getFields() != null ? searchIndex.getFields() : null;
+    for (SearchIndexField schemaField : listOrEmpty(schemaFields)) {
+      EntityUtil.mergeTags(allTags, schemaField.getTags());
+    }
+    return allTags;
+  }
+
+  @Override
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("fields")) {
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new FieldDescriptionWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new FieldTagWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
+      }
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class FieldDescriptionWorkflow extends DescriptionTaskWorkflow {
+    private final SearchIndexField schemaField;
+
+    FieldDescriptionWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      schemaField =
+          getSchemaField(
+              (SearchIndex) threadContext.getAboutEntity(),
+              threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      schemaField.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class FieldTagWorkflow extends TagTaskWorkflow {
+    private final SearchIndexField schemaField;
+
+    FieldTagWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      schemaField =
+          getSchemaField(
+              (SearchIndex) threadContext.getAboutEntity(),
+              threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      schemaField.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  private static SearchIndexField getSchemaField(SearchIndex searchIndex, String fieldName) {
+    String schemaName = fieldName;
+    List<SearchIndexField> schemaFields = searchIndex.getFields();
+    String childSchemaName = "";
+    if (fieldName.contains(".")) {
+      String fieldNameWithoutQuotes = fieldName.substring(1, fieldName.length() - 1);
+      schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+      childSchemaName =
+          fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+    }
+    SearchIndexField schemaField = null;
+    for (SearchIndexField field : schemaFields) {
+      if (field.getName().equals(schemaName)) {
+        schemaField = field;
+        break;
+      }
+    }
+    if (!childSchemaName.isEmpty() && schemaField != null) {
+      schemaField = getChildSchemaField(schemaField.getChildren(), childSchemaName);
+    }
+    if (schemaField == null) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldName("schema", fieldName));
+    }
+    return schemaField;
+  }
+
+  private static SearchIndexField getChildSchemaField(
+      List<SearchIndexField> fields, String childSchemaName) {
+    SearchIndexField childrenSchemaField = null;
+    for (SearchIndexField field : fields) {
+      if (field.getName().equals(childSchemaName)) {
+        childrenSchemaField = field;
+        break;
+      }
+    }
+    if (childrenSchemaField == null) {
+      for (SearchIndexField field : fields) {
+        if (field.getChildren() != null) {
+          childrenSchemaField = getChildSchemaField(field.getChildren(), childSchemaName);
+          if (childrenSchemaField != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenSchemaField;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<SearchIndex> searchIndexes) {
+    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return followersMap;
+    }
+
+    // Initialize empty lists for all search indexes
+    for (SearchIndex searchIndex : searchIndexes) {
+      followersMap.put(searchIndex.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all followers for all search indexes
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(searchIndexes),
+                org.openmetadata.schema.type.Relationship.FOLLOWS.ordinal());
+
+    // Group followers by search index ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID searchIndexId = UUID.fromString(record.getToId());
+      EntityReference followerRef =
+          Entity.getEntityReferenceById(
+              record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
+      followersMap.get(searchIndexId).add(followerRef);
+    }
+
+    return followersMap;
+  }
+
+  public class SearchIndexUpdater extends EntityUpdater {
+    public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
+
+    public SearchIndexUpdater(SearchIndex original, SearchIndex updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Transaction
+    @Override
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate(
+          "fields",
+          () -> {
+            if (updated.getFields() != null) {
+              updateSearchIndexFields(
+                  "fields",
+                  original.getFields() == null ? null : original.getFields(),
+                  updated.getFields(),
+                  EntityUtil.searchIndexFieldMatch);
+            }
+          });
+      compareAndUpdate(
+          "searchIndexSettings",
+          () ->
+              recordChange(
+                  "searchIndexSettings",
+                  original.getSearchIndexSettings(),
+                  updated.getSearchIndexSettings()));
+      compareAndUpdate(
+          "sourceHash",
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
+      compareAndUpdate(
+          "indexType",
+          () -> recordChange("indexType", original.getIndexType(), updated.getIndexType()));
+    }
+
+    private void updateSearchIndexFields(
+        String fieldName,
+        List<SearchIndexField> origFields,
+        List<SearchIndexField> updatedFields,
+        BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
+      List<SearchIndexField> deletedFields = new ArrayList<>();
+      List<SearchIndexField> addedFields = new ArrayList<>();
+      recordListChange(
+          fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
+      // carry forward tags and description if deletedFields matches added field
+      Map<String, SearchIndexField> addedFieldMap =
+          addedFields.stream()
+              .collect(Collectors.toMap(SearchIndexField::getName, Function.identity()));
+
+      for (SearchIndexField deleted : deletedFields) {
+        if (addedFieldMap.containsKey(deleted.getName())) {
+          SearchIndexField addedField = addedFieldMap.get(deleted.getName());
+          if (nullOrEmpty(addedField.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+            addedField.setDescription(deleted.getDescription());
+          }
+          if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {
+            addedField.setTags(deleted.getTags());
+          }
+        }
+      }
+
+      // Delete tags related to deleted fields
+      deletedFields.forEach(
+          deleted ->
+              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+
+      // Add tags related to newly added fields
+      for (SearchIndexField added : addedFields) {
+        applyTags(added.getTags(), added.getFullyQualifiedName());
+      }
+
+      // Carry forward the user generated metadata from existing fields to new fields
+      for (SearchIndexField updated : updatedFields) {
+        // Find stored field matching name, data type and ordinal position
+        SearchIndexField stored =
+            origFields.stream().filter(c -> fieldMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New field added
+          continue;
+        }
+        String searchFieldPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        updateFieldDescription(searchFieldPrefix, stored, updated);
+        updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
+        updateFieldDisplayName(searchFieldPrefix, stored, updated);
+        updateTags(
+            stored.getFullyQualifiedName(),
+            EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
+            stored.getTags(),
+            updated.getTags());
+
+        if (updated.getChildren() != null && stored.getChildren() != null) {
+          updateSearchIndexFields(
+              searchFieldPrefix, stored.getChildren(), updated.getChildren(), fieldMatch);
+        }
+      }
+      majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
+    }
+
+    private void updateFieldDescription(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+        updatedField.setDescription(origField.getDescription());
+        return;
+      }
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DESCRIPTION),
+          origField.getDescription(),
+          updatedField.getDescription());
+    }
+
+    private void updateFieldDisplayName(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDisplayName()) && updatedByBot()) {
+        updatedField.setDisplayName(origField.getDisplayName());
+        return;
+      }
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DISPLAY_NAME),
+          origField.getDisplayName(),
+          updatedField.getDisplayName());
+    }
+
+    private void updateFieldDataTypeDisplay(
+        String fieldPrefix, SearchIndexField origField, SearchIndexField updatedField) {
+      if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
+        updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
+        return;
+      }
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DATA_TYPE_DISPLAY),
+          origField.getDataTypeDisplay(),
+          updatedField.getDataTypeDisplay());
+    }
+  }
+}

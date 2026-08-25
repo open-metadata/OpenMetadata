@@ -1,0 +1,217 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { ContainerSearchSource } from '../../../interface/search.interface';
+
+export interface CommonSource {
+  fullyQualifiedName: string;
+  serviceType: string;
+  name: string;
+  entityType: string;
+}
+
+export interface TableSource extends CommonSource {
+  table_id: string;
+  table_name: string;
+}
+
+export interface ColumnSource extends CommonSource {
+  column_id: string;
+  column_name: string;
+}
+
+export interface DashboardSource extends CommonSource {
+  dashboard_id: string;
+  dashboard_name: string;
+}
+
+export interface TopicSource extends CommonSource {
+  topic_id: string;
+  topic_name: string;
+}
+
+export interface PipelineSource extends CommonSource {
+  pipeline_id: string;
+  pipeline_name: string;
+}
+
+export interface MlModelSource extends CommonSource {
+  ml_model_id: string;
+  mlmodel_name: string;
+}
+
+export interface SearchIndexSource extends CommonSource {
+  search_index_id: string;
+  search_index_name: string;
+}
+
+export interface GlossarySource extends CommonSource {
+  glossary_id: string;
+  glossary_name: string;
+}
+
+export interface DatabaseSource extends CommonSource {
+  database_id: string;
+  database_name: string;
+}
+
+export interface DatabaseSchemaSource extends CommonSource {
+  database_schema_id: string;
+  database_schema_name: string;
+}
+
+export interface TagSource extends CommonSource {
+  tag_id: string;
+  tag_name: string;
+}
+
+export interface StoredProcedureSource extends CommonSource {
+  stored_procedure_id: string;
+  stored_procedure_name: string;
+}
+
+export interface DashboardDataModelSource extends CommonSource {
+  data_model_id: string;
+  data_model_name: string;
+}
+export interface DataProductSource extends CommonSource {
+  data_product_id: string;
+  data_product_name: string;
+}
+
+export interface ChartSource extends CommonSource {
+  chart_id: string;
+  chart_name: string;
+}
+
+export interface APIEndpointSource extends CommonSource {
+  api_endpoint_id: string;
+  api_endpoint_name: string;
+}
+export interface MetricSource extends CommonSource {
+  metric_id: string;
+  metric_name: string;
+}
+
+export interface APICollectionSource extends CommonSource {
+  api_collection_id: string;
+  api_collection_name: string;
+}
+
+export interface DirectorySource extends CommonSource {
+  directory_id: string;
+  directory_name: string;
+}
+
+export interface FileSource extends CommonSource {
+  file_id: string;
+  file_name: string;
+}
+
+export interface SpreadsheetSource extends CommonSource {
+  spreadsheet_id: string;
+  spreadsheet_name: string;
+}
+
+export interface WorksheetSource extends CommonSource {
+  worksheet_id: string;
+  worksheet_name: string;
+}
+
+export interface KnowledgePageSource extends CommonSource {
+  knowledge_page_id: string;
+  knowledge_page_name: string;
+}
+
+export interface Option {
+  _index: string;
+  _id: string;
+  _source:
+    | TableSource
+    | DashboardSource
+    | TopicSource
+    | PipelineSource
+    | MlModelSource
+    | ContainerSearchSource
+    | StoredProcedureSource
+    | DashboardDataModelSource
+    | GlossarySource
+    | TagSource
+    | SearchIndexSource
+    | DataProductSource
+    | ChartSource
+    | APIEndpointSource
+    | APICollectionSource
+    | MetricSource
+    | DirectorySource
+    | FileSource
+    | SpreadsheetSource
+    | WorksheetSource
+    | DatabaseSource
+    | DatabaseSchemaSource
+    | ColumnSource
+    | KnowledgePageSource;
+}
+
+export type SearchSuggestions =
+  | TableSource[]
+  | ColumnSource[]
+  | TopicSource[]
+  | PipelineSource[]
+  | TagSource[]
+  | GlossarySource[]
+  | ContainerSearchSource[]
+  | DashboardSource[]
+  | MlModelSource[]
+  | SearchIndexSource[]
+  | StoredProcedureSource[]
+  | DashboardDataModelSource[]
+  | DataProductSource[]
+  | ChartSource[]
+  | APIEndpointSource[]
+  | APICollectionSource[]
+  | MetricSource[]
+  | DatabaseSource[]
+  | DatabaseSchemaSource[]
+  | DirectorySource[]
+  | FileSource[]
+  | SpreadsheetSource[]
+  | WorksheetSource[]
+  | KnowledgePageSource[];
+
+export interface SuggestionsObject {
+  tableSuggestions: TableSource[];
+  columnSuggestions: ColumnSource[];
+  topicSuggestions: TopicSource[];
+  dashboardSuggestions: DashboardSource[];
+  pipelineSuggestions: PipelineSource[];
+  mlModelSuggestions: MlModelSource[];
+  containerSuggestions: ContainerSearchSource[];
+  storedProcedureSuggestions: StoredProcedureSource[];
+  dataModelSuggestions: DashboardDataModelSource[];
+  glossaryTermSuggestions: GlossarySource[];
+  tagSuggestions: TagSource[];
+  searchIndexSuggestions: SearchIndexSource[];
+  dataProductSuggestions: DataProductSource[];
+  chartSuggestions: ChartSource[];
+  apiEndpointSuggestions: APIEndpointSource[];
+  apiCollectionSuggestions: APICollectionSource[];
+  metricSuggestions: MetricSource[];
+  databaseSuggestions: DatabaseSource[];
+  databaseSchemaSuggestions: DatabaseSchemaSource[];
+  directorySuggestions: DirectorySource[];
+  fileSuggestions: FileSource[];
+  spreadsheetSuggestions: SpreadsheetSource[];
+  worksheetSuggestions: WorksheetSource[];
+  knowledgeArticleSuggestions: KnowledgePageSource[];
+}

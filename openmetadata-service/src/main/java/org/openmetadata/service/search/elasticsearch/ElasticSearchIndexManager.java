@@ -1,0 +1,652 @@
+package org.openmetadata.service.search.elasticsearch;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
+import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
+import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
+import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import es.co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
+import es.co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
+import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
+import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
+import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
+import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
+import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
+import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
+import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
+import es.co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
+import es.co.elastic.clients.transport.endpoints.BooleanResponse;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.IndexManagementClient;
+
+/**
+ * ElasticSearch implementation of index management operations.
+ * This class handles all index-related operations for ElasticSearch.
+ */
+@Slf4j
+public class ElasticSearchIndexManager implements IndexManagementClient {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private final ElasticsearchClient client;
+  private final String clusterAlias;
+  private final boolean isClientAvailable;
+
+  public ElasticSearchIndexManager(ElasticsearchClient client, String clusterAlias) {
+    this.client = client;
+    this.clusterAlias = clusterAlias != null ? clusterAlias : "";
+    this.isClientAvailable = client != null;
+  }
+
+  @Override
+  public boolean indexExists(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot check index exists.");
+      return false;
+    }
+    try {
+      ElasticsearchIndicesClient indicesClient = client.indices();
+      ExistsRequest request = ExistsRequest.of(e -> e.index(indexName));
+      BooleanResponse response = indicesClient.exists(request);
+      LOG.info("index {} exist: {}", indexName, response.value());
+      return response.value();
+    } catch (Exception e) {
+      LOG.error("Failed to check if index {} exists", indexName, e);
+      return false;
+    }
+  }
+
+  @Override
+  public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot create index.");
+      return;
+    }
+    try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      createIndexInternal(indexName, indexMappingContent);
+      createAliases(indexMapping);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as the String overload and updateIndex.
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to create index {} due to", indexMapping.getIndexName(clusterAlias), e);
+    }
+  }
+
+  @Override
+  public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update index.");
+      return;
+    }
+    try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              : indexMappingContent;
+      String mappingsJson = extractMappingsJson(transformedContent);
+      PutMappingRequest request =
+          PutMappingRequest.of(
+              builder -> {
+                builder.index(indexName);
+                if (mappingsJson != null) {
+                  builder.withJson(new StringReader(mappingsJson));
+                }
+                return builder;
+              });
+
+      client.indices().putMapping(request);
+      LOG.info("Successfully updated mapping for index: {}", indexName);
+
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as createIndex.
+      throw e;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update Elasticsearch index {} due to",
+          indexMapping.getIndexName(clusterAlias),
+          e);
+    }
+  }
+
+  @Override
+  public void deleteIndex(IndexMapping indexMapping) {
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    deleteIndexInternal(indexName);
+  }
+
+  @Override
+  public void createAliases(IndexMapping indexMapping) {
+    try {
+      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.addAll(indexMapping.getDataInsightAliases(clusterAlias));
+      aliases.add(indexMapping.getAlias(clusterAlias));
+      addIndexAlias(indexMapping, aliases.toArray(new String[0]));
+    } catch (Exception e) {
+      LOG.error("Failed to create aliases for {} due to", indexMapping.getAlias(clusterAlias), e);
+    }
+  }
+
+  @Override
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    Set<String> aliasSet = new HashSet<>(Arrays.asList(aliasNames));
+    addAliasesInternal(indexName, aliasSet);
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot create index.");
+      return;
+    }
+    try {
+      createIndexInternal(indexName, indexMappingContent);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it.
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to create index {} due to", indexName, e);
+    }
+  }
+
+  private String extractMappingsJson(String indexMappingContent) {
+    if (indexMappingContent == null) {
+      return null;
+    }
+    try {
+      JsonNode root = MAPPER.readTree(indexMappingContent);
+      JsonNode mappings = root.get("mappings");
+      if (mappings != null) {
+        return MAPPER.writeValueAsString(mappings);
+      }
+      return indexMappingContent;
+    } catch (IOException e) {
+      LOG.warn(
+          "Failed to extract mappings from index content, using full content: {}", e.getMessage());
+      return indexMappingContent;
+    }
+  }
+
+  private void createIndexInternal(String indexName, String indexMappingContent)
+      throws IOException {
+    String enrichedContent =
+        (indexMappingContent != null && !indexMappingContent.isEmpty())
+            ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+            : indexMappingContent;
+    CreateIndexRequest request =
+        CreateIndexRequest.of(
+            builder -> {
+              builder.index(indexName);
+              if (enrichedContent != null) {
+                builder.withJson(new StringReader(enrichedContent));
+              }
+              return builder;
+            });
+
+    client.indices().create(request);
+    LOG.info("Successfully created index: {}", indexName);
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    deleteIndexInternal(indexName);
+  }
+
+  @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete index.");
+      return;
+    }
+
+    int maxRetries = 5;
+    long initialDelayMs = 1000; // 1 second
+    long maxDelayMs = 60000; // 60 seconds
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        DeleteIndexRequest request = DeleteIndexRequest.of(builder -> builder.index(indexName));
+        DeleteIndexResponse response = client.indices().delete(request);
+
+        if (response.acknowledged()) {
+          LOG.info(
+              "Successfully deleted index: {} (attempt {}/{})",
+              indexName,
+              attempt + 1,
+              maxRetries + 1);
+          return;
+        } else {
+          LOG.warn(
+              "Index deletion for {} was not acknowledged (attempt {}/{})",
+              indexName,
+              attempt + 1,
+              maxRetries + 1);
+        }
+      } catch (ElasticsearchException esEx) {
+        // Check if it's a snapshot-related error (status 400 or 503)
+        if (esEx.status() == 400 || esEx.status() == 503) {
+          if (attempt < maxRetries) {
+            long delayMs = Math.min(initialDelayMs * (long) Math.pow(2, attempt), maxDelayMs);
+            LOG.warn(
+                "Failed to delete index {} due to snapshot or temporary issue (attempt {}/{}). "
+                    + "Retrying in {} ms. Error: {}",
+                indexName,
+                attempt + 1,
+                maxRetries + 1,
+                delayMs,
+                esEx.getMessage());
+            try {
+              Thread.sleep(delayMs);
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              LOG.error("Interrupted while waiting to retry index deletion for {}", indexName, ie);
+              return;
+            }
+          } else {
+            LOG.error(
+                "Failed to delete index {} after {} attempts due to snapshot or temporary issue",
+                indexName,
+                maxRetries + 1,
+                esEx);
+            return;
+          }
+        } else {
+          // Non-retryable error
+          LOG.error("Failed to delete index {} due to non-retryable error", indexName, esEx);
+          return;
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to delete index {} due to unexpected error", indexName, e);
+        return;
+      }
+    }
+  }
+
+  private void deleteIndexInternal(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete index.");
+      return;
+    }
+    try {
+      DeleteIndexRequest request = DeleteIndexRequest.of(builder -> builder.index(indexName));
+      DeleteIndexResponse response = client.indices().delete(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Successfully deleted index: {}", indexName);
+      } else {
+        LOG.warn("Index deletion for {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index {} due to", indexName, e);
+    }
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    addAliasesInternal(indexName, aliases);
+  }
+
+  private void addAliasesInternal(String indexName, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot add aliases.");
+      return;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      return;
+    }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
+
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Aliases {} added to index {}", aliases, indexName);
+      } else {
+        LOG.warn("Alias update for index {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to add aliases {} to index {} due to", aliases, indexName, e);
+    }
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot remove aliases.");
+      return;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      return;
+    }
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              u -> {
+                for (String alias : aliases) {
+                  u.actions(a -> a.remove(remove -> remove.index(indexName).alias(alias)));
+                }
+                return u;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Aliases {} removed from index {}", aliases, indexName);
+      } else {
+        LOG.warn("Alias removal for index {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to remove aliases {} from index {} due to", aliases, indexName, e);
+    }
+  }
+
+  @Override
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot swap aliases.");
+      return false;
+    }
+    Set<String> finalAliases = aliases == null ? Set.of() : aliases;
+    Set<String> finalIndicesToRemove = indicesToRemove == null ? Set.of() : indicesToRemove;
+    if (finalAliases.isEmpty() && finalIndicesToRemove.isEmpty()) {
+      LOG.debug("No aliases to swap and no indices to remove for index {}", newIndex);
+      return true;
+    }
+    Set<String> finalOldIndices = oldIndices == null ? new HashSet<>() : oldIndices;
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                // First, remove aliases from all old indices
+                for (String oldIndex : finalOldIndices) {
+                  for (String alias : finalAliases) {
+                    updateBuilder.actions(
+                        actionBuilder ->
+                            actionBuilder.remove(
+                                removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
+                  }
+                }
+                // Then delete any concrete index sharing the alias name, atomically, so the alias
+                // add below cannot race a separate delete and orphan the canonical name.
+                // must_exist is intentionally omitted to stay byte-for-byte aligned with the
+                // OpenSearch path (which rejects it); it is unnecessary because
+                // resolveCanonicalRemoval only forwards indices already confirmed to exist.
+                for (String indexToRemove : finalIndicesToRemove) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.removeIndex(
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
+                }
+                // Finally, add aliases to the new index
+                for (String alias : finalAliases) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
+                }
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info(
+            "Atomically swapped aliases {} to index {} (removed indices {}, detached from {})",
+            finalAliases,
+            newIndex,
+            finalIndicesToRemove,
+            finalOldIndices);
+        return true;
+      } else {
+        LOG.warn("Alias swap to index {} was not acknowledged", newIndex);
+        return false;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to swap aliases {} to index {}", finalAliases, newIndex, e);
+      return false;
+    }
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    Set<String> aliases = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot get aliases.");
+      return aliases;
+    }
+    try {
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(indexName));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      response
+          .aliases()
+          .forEach((index, aliasDetails) -> aliases.addAll(aliasDetails.aliases().keySet()));
+
+      LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
+    } catch (Exception e) {
+      LOG.error("Failed to get aliases for index {} due to", indexName, e);
+    }
+    return aliases;
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot get indices by alias.");
+      return indices;
+    }
+    try {
+
+      boolean isAliasExist = client.indices().existsAlias(b -> b.name(aliasName)).value();
+      if (!isAliasExist) {
+        LOG.warn("Alias '{}' does not exist. Returning empty index set.", aliasName);
+        return indices;
+      }
+
+      GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      indices.addAll(response.aliases().keySet());
+
+      LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
+    } catch (ElasticsearchException esEx) {
+      if (esEx.status() == 404) {
+        LOG.warn("Alias '{}' not found (404). Returning empty set.", aliasName);
+        return indices;
+      }
+
+      // Other errors should not be masked
+      LOG.error(
+          "Unexpected ElasticsearchException while getting alias {}: {}",
+          aliasName,
+          esEx.getMessage(),
+          esEx);
+    } catch (Exception e) {
+      LOG.error("Failed to get indices for alias {} due to", aliasName, e);
+    }
+    return indices;
+  }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot list indices by prefix.");
+      return indices;
+    }
+    try {
+      String pattern = buildScopedPattern(prefix);
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      indices.addAll(response.aliases().keySet());
+
+      LOG.info(
+          "Retrieved {} indices matching pattern '{}' (prefix='{}'): {}",
+          indices.size(),
+          pattern,
+          prefix,
+          indices);
+    } catch (Exception e) {
+      LOG.error("Failed to list indices by prefix {} due to", prefix, e);
+    }
+    return indices;
+  }
+
+  private String buildScopedPattern(String prefix) {
+    if (prefix != null && !prefix.isEmpty()) {
+      return prefix + "*";
+    }
+    return clusterAlias.isEmpty() ? "*" : clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    List<IndexStats> result = new ArrayList<>();
+    String statsPattern = buildScopedPattern(null);
+    var statsResponse = client.indices().stats(s -> s.index(statsPattern));
+    // Fetch aliases once for the inventory instead of leasing one connection per index.
+    var aliasResponse = client.indices().getAlias(g -> g.index(statsPattern));
+    var aliasesByIndex = aliasResponse.aliases();
+    var indices = statsResponse.indices();
+    for (var entry : indices.entrySet()) {
+      String indexName = entry.getKey();
+      if (indexName.startsWith(".")) {
+        continue;
+      }
+      IndicesStats stats = entry.getValue();
+      long docs = 0;
+      long indexedOps = 0;
+      long sizeBytes = 0;
+      int primaryShards = 0;
+      int replicaShards = 0;
+      if (stats.primaries() != null) {
+        if (stats.primaries().docs() != null) {
+          docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().indexing() != null) {
+          indexedOps = stats.primaries().indexing().indexTotal();
+        }
+        if (stats.primaries().store() != null) {
+          sizeBytes = stats.primaries().store().sizeInBytes();
+        }
+      }
+      if (stats.shards() != null) {
+        for (var shardEntry : stats.shards().entrySet()) {
+          for (var shardStats : shardEntry.getValue()) {
+            if (shardStats.routing() != null && shardStats.routing().primary()) {
+              primaryShards++;
+            } else {
+              replicaShards++;
+            }
+          }
+        }
+      }
+      String health = stats.health() != null ? stats.health().name().toUpperCase() : "UNKNOWN";
+      var aliasMetadata = aliasesByIndex.get(indexName);
+      Set<String> aliases =
+          aliasMetadata == null ? Set.of() : new HashSet<>(aliasMetadata.aliases().keySet());
+      result.add(
+          new IndexStats(
+              indexName,
+              docs,
+              indexedOps,
+              primaryShards,
+              replicaShards,
+              sizeBytes,
+              health,
+              aliases));
+    }
+    return result;
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update settings for {}.", indexName);
+      return;
+    }
+    if (settingsJson == null || settingsJson.isBlank()) {
+      LOG.debug("No settings to apply for index {}, skipping.", indexName);
+      return;
+    }
+    try {
+      PutIndicesSettingsRequest request =
+          PutIndicesSettingsRequest.of(
+              b -> {
+                b.index(indexName);
+                b.withJson(new StringReader(settingsJson));
+                return b;
+              });
+      PutIndicesSettingsResponse response = client.indices().putSettings(request);
+      LOG.info(
+          "Updated settings on index '{}' acknowledged={} settings={}",
+          indexName,
+          response.acknowledged(),
+          settingsJson);
+    } catch (Exception e) {
+      LOG.error("Failed to update settings on index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot force-merge {}.", indexName);
+      return;
+    }
+    try {
+      long start = System.currentTimeMillis();
+      ForcemergeRequest request =
+          ForcemergeRequest.of(
+              b ->
+                  b.index(indexName).maxNumSegments((long) maxNumSegments).waitForCompletion(true));
+      ForcemergeResponse response = client.indices().forcemerge(request);
+      LOG.info(
+          "Force-merged index '{}' to {} segments in {}ms (failed shards: {})",
+          indexName,
+          maxNumSegments,
+          System.currentTimeMillis() - start,
+          response.shards() != null && response.shards().failed() != null
+              ? response.shards().failed()
+              : 0);
+    } catch (Exception e) {
+      LOG.error("Failed to force-merge index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+}

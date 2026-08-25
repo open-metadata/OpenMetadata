@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/type/customProperty.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomProperty",
+  "description": "This schema defines the custom property to an entity to extend it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.type.CustomProperty",
+  "definitions": {
+    "format": {
+      "description": "Applies to date interval, date, time format.",
+      "type": "string"
+    },
+    "entityTypes": {
+      "description": "Applies to Entity References. Entity Types can be used to restrict what type of entities can be configured for a entity reference.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "customPropertyConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.CustomPropertyConfig",
+      "title": "CustomPropertyConfig",
+      "description": "Config to define constraints around CustomProperty",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "../type/customProperties/enumConfig.json"
+            },
+            {
+              "$ref": "#/definitions/format"
+            },
+            {
+              "$ref": "#/definitions/entityTypes"
+            },
+            {
+              "$ref": "customProperties/tableConfig.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "propertyType": {
+      "description": "Reference to a property type. Only property types are allowed and entity types are not allowed as custom properties to extend an existing entity",
+      "$ref": "../type/entityReference.json"
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the entity property. Must be unique for an entity. Allowed characters: alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }. Must start with an alphanumeric character. Disallowed: \" * & < > : ^ $ \\ / ~ (forward slash and tilde are reserved by JSON Pointer / RFC 6901).",
+      "$ref": "../type/basic.json#/definitions/customPropertyName"
+    },
+    "displayName": {
+      "description": "Display Name for the custom property.Must be unique for an entity.",
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "propertyType": {
+      "$ref": "#/definitions/propertyType"
+    },
+    "customPropertyConfig": {
+      "$ref": "#/definitions/customPropertyConfig"
+    }
+  },
+  "required": ["name", "description", "propertyType"],
+  "additionalProperties": false
+}

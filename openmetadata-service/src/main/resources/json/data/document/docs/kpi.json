@@ -1,0 +1,10 @@
+{
+  "name": "KPI",
+  "displayName": "KPI",
+  "description": "Visualizes key performance metrics of data assets in an intuitive graph format.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.KPI",
+  "data": {
+    "gridSizes": ["small", "medium"]
+  }
+}

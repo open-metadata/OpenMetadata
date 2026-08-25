@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/api/bulkEntityPatch.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkEntityPatch",
+  "description": "Schema for bulk patching multiple entities with JsonPatch operations",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.BulkEntityPatch",
+  "definitions": {
+    "entityPatch": {
+      "javaType": "org.openmetadata.schema.api.EntityPatch",
+      "description": "JsonPatch operation for a single entity",
+      "type": "object",
+      "properties": {
+        "fqn": {
+          "description": "Fully qualified name of the entity to patch",
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "patch": {
+          "description": "JsonPatch document with operations to apply",
+          "type": "array"
+        }
+      },
+      "required": ["fqn", "patch"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "patches": {
+      "description": "List of entity patch operations",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entityPatch"
+      },
+      "minItems": 1
+    },
+    "dryRun": {
+      "description": "If true, validate patches without persisting changes",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["patches"],
+  "additionalProperties": false
+}

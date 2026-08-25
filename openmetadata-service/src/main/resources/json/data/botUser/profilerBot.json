@@ -1,0 +1,9 @@
+{
+  "name": "profiler-bot",
+  "roles": [
+    {
+        "name": "ProfilerBotRole",
+        "type": "role"
+    }
+  ]
+}

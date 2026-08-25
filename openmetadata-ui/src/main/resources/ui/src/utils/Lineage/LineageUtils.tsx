@@ -1,0 +1,76 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import {
+  BreadcrumbItemType,
+  Breadcrumbs,
+} from '@openmetadata/ui-core-components';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
+import { NodeData } from '../../components/Lineage/Lineage.interface';
+import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
+import { EntityType } from '../../enums/entity.enum';
+import i18n from '../i18next/LocalUtil';
+
+export const LINEAGE_IMPACT_OPTIONS = [
+  {
+    label: i18n.t('label.asset-level'),
+    key: EImpactLevel.TableLevel,
+    icon: TableIcon,
+    entityType: EntityType.TABLE,
+  },
+  {
+    label: i18n.t('label.column-level'),
+    key: EImpactLevel.ColumnLevel,
+    icon: ColumnIcon,
+    entityType: EntityType.TABLE_COLUMN,
+  },
+];
+
+export const LINEAGE_DEPENDENCY_OPTIONS = [
+  {
+    label: 'Direct',
+    key: 'direct',
+    icon: <ArrowRightOutlined />,
+  },
+  {
+    label: 'Indirect',
+    key: 'indirect',
+    icon: <ArrowLeftOutlined />,
+  },
+];
+
+export const renderTruncatedPath = (path: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const items: BreadcrumbItemType[] = path
+    .split('>')
+    .map((label, index) => ({ id: String(index), label: label.trim() }));
+
+  return <Breadcrumbs items={items} maxItems={2} size="xs" type="text" />;
+};
+
+export const addBaseNodeDepthToNodes = (
+  baseNodeDepth: number,
+  nodes: Record<string, NodeData>
+): Record<string, NodeData> => {
+  return Object.fromEntries(
+    Object.entries(nodes).map(([key, nodeData]) => [
+      key,
+      { ...nodeData, nodeDepth: (nodeData.nodeDepth ?? 0) + baseNodeDepth },
+    ])
+  );
+};

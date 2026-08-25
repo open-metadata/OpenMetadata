@@ -1,0 +1,9 @@
+{
+  "name": "autoClassification-bot",
+  "roles": [
+    {
+        "name": "AutoClassificationBotRole",
+        "type": "role"
+    }
+  ]
+}

@@ -1,0 +1,1333 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.apps.bundles.searchIndex.distributed;
+
+import io.micrometer.core.instrument.Timer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListener;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.EntityReindexContextMapper;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.DefaultRecreateHandler;
+import org.openmetadata.service.search.EntityReindexContext;
+import org.openmetadata.service.search.RecreateIndexHandler;
+import org.openmetadata.service.search.ReindexContext;
+
+/**
+ * Executor for distributed search index jobs.
+ *
+ * <p>This class orchestrates the distributed indexing process: - Creates or joins an existing job -
+ * Claims and processes partitions in parallel - Coordinates with other servers via the database -
+ * Reports progress via WebSocket
+ *
+ * <p>Includes robust handling for:
+ * <ul>
+ *   <li>Concurrent job prevention via distributed locking with refresh</li>
+ *   <li>Server crash detection and partition reassignment</li>
+ *   <li>Process crash recovery via startup checks</li>
+ * </ul>
+ */
+@Slf4j
+public class DistributedSearchIndexExecutor {
+
+  /**
+   * Set of job IDs currently being coordinated by this server. Used to prevent
+   * DistributedJobParticipant from joining jobs that this server is coordinating.
+   */
+  private static final Set<UUID> COORDINATED_JOBS =
+      java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
+  /** Check if a job is being coordinated by this server. */
+  public static boolean isCoordinatingJob(UUID jobId) {
+    return COORDINATED_JOBS.contains(jobId);
+  }
+
+  /** Maximum number of concurrent partition workers per server */
+  private static final int MAX_WORKER_THREADS =
+      Math.min(10, Runtime.getRuntime().availableProcessors() * 2);
+
+  /** Time to wait for workers to finish on shutdown */
+  private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
+
+  /** Interval for checking stale partitions */
+  private static final long STALE_CHECK_INTERVAL_MS = 30000;
+
+  /** Poll cadence while waiting for participant partitions to drain, so finishers reconcile promptly */
+  private static final long DRAIN_WAIT_POLL_INTERVAL_MS = 2000;
+
+  /** Interval for refreshing the distributed lock */
+  private static final long LOCK_REFRESH_INTERVAL_MS = 60000;
+
+  /** Interval for updating partition heartbeats */
+  private static final long PARTITION_HEARTBEAT_INTERVAL_MS = 30000;
+
+  /** Default cadence the orchestrator re-checks job state while waiting for workers to finish */
+  private static final long DEFAULT_LATCH_POLL_INTERVAL_SECONDS = 15;
+
+  private static final long DEFAULT_PARTICIPANT_DRAIN_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(30);
+
+  // Generous backstop on how long this coordinator waits for participant-claimed partitions to
+  // finish after it has drained its own, so every entity is promoted with a fully-built index
+  // instead of being left on its stale pre-reindex index. The wait returns the moment the job goes
+  // terminal, so a large value is free in the common case; it only bounds a wedged job (a dead
+  // participant whose reclaimed partition no surviving worker re-claims), which is then left
+  // in-flight for the orphan-job monitor to finalize rather than force-cancelled. Overridable in
+  // tests.
+  private volatile long participantDrainTimeoutMs = DEFAULT_PARTICIPANT_DRAIN_TIMEOUT_MS;
+
+  private final CollectionDAO collectionDAO;
+  private final DistributedSearchIndexCoordinator coordinator;
+  private final JobRecoveryManager recoveryManager;
+  private final AtomicBoolean stopped = new AtomicBoolean(false);
+  private final String serverId;
+  private final CompositeProgressListener listeners = new CompositeProgressListener();
+
+  @Getter private SearchIndexJob currentJob;
+  private DistributedJobStatsAggregator statsAggregator;
+  private ExecutorService workerExecutor;
+  private final Set<UUID> activePartitions = ConcurrentHashMap.newKeySet();
+  private final List<PartitionWorker> activeWorkers = new ArrayList<>();
+  private volatile Thread lockRefreshThread;
+  private volatile Thread partitionHeartbeatThread;
+  private Thread staleReclaimerThread;
+
+  /** Re-check cadence for {@link #awaitWorkers}; overridable in tests to keep them fast. */
+  private long latchPollIntervalSeconds = DEFAULT_LATCH_POLL_INTERVAL_SECONDS;
+
+  // App context for WebSocket broadcasts
+  private UUID appId;
+  private Long appStartTime;
+
+  // Notifier for alerting other servers when job starts
+  private DistributedJobNotifier jobNotifier;
+
+  // Job context for listener callbacks
+  private ReindexingJobContext jobContext;
+
+  // Failure recording
+  private IndexingFailureRecorder failureRecorder;
+  private BulkSink searchIndexSink;
+
+  // Per-entity staged index promotion
+  private EntityCompletionTracker entityTracker;
+  private RecreateIndexHandler indexPromotionHandler;
+  private ReindexContext stagedIndexContext;
+
+  // Reader stats tracking (accumulated across all worker threads)
+  private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
+  private final AtomicLong coordinatorReaderFailed = new AtomicLong(0);
+  private final AtomicLong coordinatorReaderWarnings = new AtomicLong(0);
+  private final AtomicInteger coordinatorPartitionsCompleted = new AtomicInteger(0);
+  private final AtomicInteger coordinatorPartitionsFailed = new AtomicInteger(0);
+
+  public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
+    this(collectionDAO, 10000); // Default partition size
+  }
+
+  public DistributedSearchIndexExecutor(CollectionDAO collectionDAO, int partitionSize) {
+    this.collectionDAO = collectionDAO;
+    PartitionCalculator calculator = new PartitionCalculator(partitionSize, MAX_WORKER_THREADS);
+    this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO, calculator);
+    this.recoveryManager = new JobRecoveryManager(collectionDAO, partitionSize);
+    this.serverId = ServerIdentityResolver.getInstance().getServerId();
+  }
+
+  /**
+   * Add a progress listener to receive callbacks during job execution.
+   *
+   * @param listener The progress listener to add
+   * @return This executor for method chaining
+   */
+  public DistributedSearchIndexExecutor addListener(ReindexingProgressListener listener) {
+    listeners.addListener(listener);
+    return this;
+  }
+
+  /**
+   * Remove a progress listener.
+   *
+   * @param listener The progress listener to remove
+   * @return This executor for method chaining
+   */
+  public DistributedSearchIndexExecutor removeListener(ReindexingProgressListener listener) {
+    listeners.removeListener(listener);
+    return this;
+  }
+
+  /**
+   * Get the number of registered listeners.
+   *
+   * @return The listener count
+   */
+  public int getListenerCount() {
+    return listeners.getListenerCount();
+  }
+
+  /**
+   * Set the app context for WebSocket broadcasts. This allows the stats aggregator to include the
+   * correct app ID and start time so the frontend can match WebSocket updates to existing records.
+   *
+   * @param appId The application ID
+   * @param startTime The job start time (as recorded in the app run record)
+   */
+  public void setAppContext(UUID appId, Long startTime) {
+    this.appId = appId;
+    this.appStartTime = startTime;
+  }
+
+  /**
+   * Set the job notifier for alerting other servers when a job starts. Servers discover the job
+   * through database polling.
+   *
+   * @param notifier The job notifier
+   */
+  public void setJobNotifier(DistributedJobNotifier notifier) {
+    this.jobNotifier = notifier;
+  }
+
+  /**
+   * Create and initialize a new distributed indexing job.
+   *
+   * @param entities Set of entity types to index
+   * @param jobConfiguration The job configuration
+   * @param createdBy User who initiated the job
+   * @return The created job
+   */
+  public SearchIndexJob createJob(
+      Set<String> entities,
+      EventPublisherJob jobConfiguration,
+      String createdBy,
+      ReindexingConfiguration reindexConfig) {
+
+    LOG.info("Creating distributed indexing job for {} entity types", entities.size());
+
+    // First, check if there's already a blocking job (and try to recover orphaned ones)
+    Optional<SearchIndexJob> blockingJob = recoveryManager.checkForBlockingJob();
+    if (blockingJob.isPresent()) {
+      SearchIndexJob blocker = blockingJob.get();
+      throw new IllegalStateException(
+          String.format(
+              "Cannot start new reindexing job - another job is already %s: %s (started: %s)",
+              blocker.getStatus().name().toLowerCase(),
+              blocker.getId(),
+              blocker.getStartedAt() != null
+                  ? new java.util.Date(blocker.getStartedAt())
+                  : "not started"));
+    }
+
+    // Try to acquire the global reindex lock
+    UUID tempJobId = UUID.randomUUID();
+    if (!coordinator.tryAcquireReindexLock(tempJobId)) {
+      // Double-check for running jobs
+      List<SearchIndexJob> runningJobs =
+          coordinator.getRecentJobs(List.of(IndexJobStatus.RUNNING, IndexJobStatus.READY), 1);
+      if (!runningJobs.isEmpty()) {
+        throw new IllegalStateException(
+            "A reindexing job is already running: " + runningJobs.getFirst().getId());
+      }
+      throw new IllegalStateException(
+          "Failed to acquire reindex lock - another operation may be in progress");
+    }
+
+    try {
+      // Create the job (pass reindexConfig so time-series date filtering is applied to totals)
+      SearchIndexJob job =
+          coordinator.createJob(entities, jobConfiguration, createdBy, reindexConfig);
+
+      // Initialize partitions (with date filtering for time series entities)
+      currentJob = coordinator.initializePartitions(job.getId(), reindexConfig);
+
+      // Atomically transfer lock to real job ID
+      boolean transferred = coordinator.transferReindexLock(tempJobId, currentJob.getId());
+      if (!transferred) {
+        // Lock was lost - another server may have started a job
+        // Mark our job as failed since we can't safely proceed without the lock
+        markJobAsFailed(currentJob.getId(), "Failed to acquire lock - another job may be running");
+        throw new IllegalStateException(
+            "Failed to transfer reindex lock - another server may have started a conflicting job");
+      }
+
+      LOG.info(
+          "Created job {} with {} total records across {} entity types",
+          currentJob.getId(),
+          currentJob.getTotalRecords(),
+          entities.size());
+
+      return currentJob;
+
+    } catch (Exception e) {
+      coordinator.releaseReindexLock(tempJobId);
+      throw e;
+    }
+  }
+
+  /**
+   * Perform startup recovery to handle any orphaned jobs from previous crashes.
+   *
+   * @return Recovery result with details of what was recovered/failed
+   */
+  public JobRecoveryManager.RecoveryResult performStartupRecovery() {
+    return recoveryManager.performStartupRecovery();
+  }
+
+  /**
+   * Join an existing distributed job instead of creating a new one.
+   *
+   * @param jobId The job ID to join
+   * @return The job, or empty if not found
+   */
+  public Optional<SearchIndexJob> joinJob(UUID jobId) {
+    Optional<SearchIndexJob> jobOpt = coordinator.getJob(jobId);
+    if (jobOpt.isPresent()) {
+      currentJob = jobOpt.get();
+      LOG.info("Server {} joined job {}", serverId, jobId);
+    }
+    return jobOpt;
+  }
+
+  /**
+   * Execute the distributed indexing job.
+   *
+   * <p>This method: 1. Starts the job if in READY state 2. Claims and processes partitions until
+   * none remain 3. Coordinates with other servers for load balancing
+   *
+   * @param bulkSink The sink for writing to search index
+   * @param stagedIndexContext Context for staged index writes and promotion
+   * @return Execution result with statistics
+   */
+  public ExecutionResult execute(
+      BulkSink bulkSink, ReindexContext stagedIndexContext, ReindexingConfiguration reindexConfig) {
+
+    if (currentJob == null) {
+      throw new IllegalStateException("No job to execute - call createJob() or joinJob() first");
+    }
+    if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Staged index context is required for distributed reindexing");
+    }
+
+    UUID jobId = currentJob.getId();
+    LOG.info("Server {} starting execution of job {}", serverId, jobId);
+    boolean startedJob = false;
+
+    // Start the job if in READY state
+    if (currentJob.getStatus() == IndexJobStatus.READY) {
+      coordinator.startJob(jobId);
+      currentJob = coordinator.getJob(jobId).orElseThrow();
+      startedJob = true;
+    }
+
+    if (currentJob.getStatus() != IndexJobStatus.RUNNING) {
+      throw new IllegalStateException(
+          "Job must be in RUNNING state to execute. Current: " + currentJob.getStatus());
+    }
+
+    // Notify other servers that a job has started so they can participate
+    if (startedJob && jobNotifier != null && currentJob.getStatus() == IndexJobStatus.RUNNING) {
+      jobNotifier.notifyJobStarted(jobId, "SEARCH_INDEX");
+      LOG.info("Notified other servers about job {} via {}", jobId, jobNotifier.getType());
+    }
+
+    ReindexingMetrics metrics = ReindexingMetrics.getInstance();
+    Timer.Sample timerSample = null;
+    if (metrics != null) {
+      metrics.recordJobStarted();
+      timerSample = metrics.startJobTimer();
+    }
+
+    // Mark this job as being coordinated by this server (prevents participant from joining)
+    COORDINATED_JOBS.add(jobId);
+    LOG.debug("Marked job {} as coordinated by this server", jobId);
+
+    // Create job context for listener callbacks
+    jobContext = new DistributedJobContext(currentJob);
+
+    // Notify listeners that job has started
+    listeners.onJobStarted(jobContext);
+
+    // Notify listeners with auto-tuned configuration
+    if (reindexConfig != null) {
+      listeners.onJobConfigured(jobContext, reindexConfig);
+    }
+
+    // Create stats aggregator with app context for proper WebSocket matching
+    long statsInterval =
+        reindexConfig.statsIntervalMs() > 0
+            ? reindexConfig.statsIntervalMs()
+            : DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS;
+    statsAggregator =
+        new DistributedJobStatsAggregator(coordinator, jobId, appId, appStartTime, statsInterval);
+
+    // Set up progress listener on stats aggregator
+    if (listeners.getListenerCount() > 0) {
+      statsAggregator.setProgressListener(listeners, jobContext);
+    }
+
+    statsAggregator.setBulkSink(bulkSink);
+    statsAggregator.start();
+
+    // Store sink reference for stats persistence
+    this.searchIndexSink = bulkSink;
+
+    // Initialize failure recorder
+    this.failureRecorder = new IndexingFailureRecorder(collectionDAO, jobId.toString(), serverId);
+
+    // Set up failure callback on the sink to record sink failures
+    bulkSink.setFailureCallback(
+        (entityType, entityId, entityFqn, errorMessage, stage) -> {
+          if (failureRecorder != null) {
+            if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+              failureRecorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+            } else {
+              failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+            }
+          }
+        });
+
+    // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
+    // No need for redundant server-level stats persistence
+
+    // Store staged index context for per-entity promotion
+    this.stagedIndexContext = stagedIndexContext;
+
+    // Initialize entity completion tracker for per-entity index promotion
+    this.entityTracker = new EntityCompletionTracker(jobId);
+    initializeEntityTracker(jobId);
+    coordinator.setEntityCompletionTracker(entityTracker);
+
+    // Start lock refresh thread to prevent lock expiration during long-running jobs
+    lockRefreshThread =
+        Thread.ofVirtual()
+            .name("reindex-lock-refresh-" + jobId.toString().substring(0, 8))
+            .start(() -> runLockRefreshLoop(jobId));
+
+    // Start partition heartbeat thread to keep owned partitions alive
+    partitionHeartbeatThread =
+        Thread.ofVirtual()
+            .name("reindex-partition-heartbeat-" + jobId.toString().substring(0, 8))
+            .start(this::runPartitionHeartbeatLoop);
+
+    // Apply CPU-budgeted pool sizes from auto-tune
+    applyPoolSizes(reindexConfig, bulkSink);
+
+    // Calculate worker threads from auto-tuned configuration
+    int numWorkers = Math.min(Math.max(1, reindexConfig.consumerThreads()), MAX_WORKER_THREADS);
+    LOG.info(
+        "Distributed executor using {} workers, batch size {} (autoTune={})",
+        numWorkers,
+        reindexConfig.batchSize(),
+        reindexConfig.autoTune());
+
+    String jobIdShort = jobId.toString().substring(0, 8);
+    workerExecutor =
+        Executors.newFixedThreadPool(
+            numWorkers,
+            Thread.ofPlatform()
+                .name("reindex-partition-worker-" + jobIdShort + "-", 0)
+                .priority(Thread.MIN_PRIORITY)
+                .factory());
+
+    AtomicLong totalSuccess = new AtomicLong(0);
+    AtomicLong totalFailed = new AtomicLong(0);
+    CountDownLatch workerLatch = new CountDownLatch(numWorkers);
+
+    // Start worker threads that continuously claim and process partitions
+    int batchSize = reindexConfig.batchSize();
+
+    for (int i = 0; i < numWorkers; i++) {
+      final int workerId = i;
+      workerExecutor.submit(
+          () -> {
+            try {
+              runWorkerLoop(
+                  workerId,
+                  bulkSink,
+                  batchSize,
+                  stagedIndexContext,
+                  totalSuccess,
+                  totalFailed,
+                  reindexConfig);
+            } finally {
+              workerLatch.countDown();
+            }
+          });
+    }
+
+    staleReclaimerThread =
+        Thread.ofVirtual()
+            .name("reindex-stale-reclaimer-" + jobId.toString().substring(0, 8))
+            .start(() -> runStaleReclaimerLoop(jobId));
+
+    boolean drained = false;
+    try {
+      drained = awaitWorkers(workerLatch, jobId);
+      if (drained) {
+        LOG.info("All workers completed for job {}", jobId);
+      } else {
+        LOG.warn(
+            "Workers did not all drain for job {}; orchestrator unwinding on terminal state",
+            jobId);
+      }
+
+      // Ensure job completion is checked after all workers finish.
+      // This handles the case where 0 partitions were created (e.g., all selected
+      // entity types have 0 records), so no partition completion ever triggers the check.
+      coordinator.checkAndUpdateJobCompletion(jobId);
+
+      // Final reconciliation pass: catch ALL participant-server completions before
+      // the stale-reclaimer is killed. Participant workers may have finished partitions
+      // that were never reconciled by the stale-reclaimer's periodic loop.
+      if (entityTracker != null && stagedIndexContext != null) {
+        LOG.info("Running final DB reconciliation for job {}", jobId);
+        List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+        entityTracker.reconcileFromDatabase(allPartitions);
+        LOG.info(
+            "Final reconciliation complete - promoted entities: {}",
+            entityTracker.getPromotedEntities());
+      }
+
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Execution interrupted for job {}", jobId);
+    } finally {
+      // Drive the job to a terminal state before the coordinator unwinds, so the strategy's
+      // monitor returns and the finalizer promotes every staged index. Without this, a slow or
+      // dead participant server's still-PROCESSING partition leaves the job RUNNING forever — the
+      // finalizer never runs and the participant's entities silently keep serving their stale
+      // pre-reindex indexes (surfacing as fielddata/nested mapping errors after an upgrade).
+      try {
+        driveJobToTerminalState(jobId, drained);
+      } catch (Exception e) {
+        LOG.warn("Error during job cleanup for job {}", jobId, e);
+      }
+
+      interruptAndJoin(staleReclaimerThread, "stale-reclaimer");
+      interruptAndJoin(lockRefreshThread, "lock-refresh");
+      interruptAndJoin(partitionHeartbeatThread, "partition-heartbeat");
+
+      // Shutdown executor
+      workerExecutor.shutdown();
+      try {
+        if (!workerExecutor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+          workerExecutor.shutdownNow();
+        }
+      } catch (InterruptedException e) {
+        workerExecutor.shutdownNow();
+        Thread.currentThread().interrupt();
+      }
+
+      // Flush sink and wait for all pending bulk requests to complete
+      try {
+        if (searchIndexSink != null) {
+          LOG.info("Flushing sink and waiting for pending requests");
+          boolean completed = searchIndexSink.flushAndAwait(60);
+          if (!completed) {
+            LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("Error flushing sink", e);
+      }
+
+      // Flush and close failure recorder before stats aggregator so failure count is available
+      try {
+        if (failureRecorder != null) {
+          failureRecorder.close();
+        }
+      } catch (Exception e) {
+        LOG.error("Error closing failure recorder", e);
+      }
+
+      // Clear failure callback from sink
+      try {
+        if (searchIndexSink != null) {
+          searchIndexSink.setFailureCallback(null);
+        }
+      } catch (Exception e) {
+        LOG.debug("Error clearing failure callback", e);
+      }
+
+      // Final stats broadcast and cleanup
+      try {
+        statsAggregator.forceUpdate();
+        statsAggregator.stop();
+      } catch (Exception e) {
+        LOG.error("Error stopping stats aggregator", e);
+      }
+
+      try {
+        if (metrics != null && timerSample != null) {
+          SearchIndexJob finalJob = coordinator.getJob(jobId).orElse(null);
+          recordTerminalMetric(
+              metrics, timerSample, finalJob != null ? finalJob.getStatus() : null);
+        }
+      } catch (Exception e) {
+        LOG.debug("Error recording metrics", e);
+      }
+
+      // Notify other servers that job has completed
+      try {
+        if (jobNotifier != null) {
+          jobNotifier.notifyJobCompleted(jobId);
+        }
+      } catch (Exception e) {
+        LOG.debug("Error notifying job completion", e);
+      }
+
+      // Restore default pool sizes
+      resetPoolSizes(bulkSink);
+
+      // Release lock
+      try {
+        coordinator.releaseReindexLock(jobId);
+      } catch (Exception e) {
+        LOG.warn("Error releasing reindex lock", e);
+      }
+
+      // Remove from coordinated jobs set
+      COORDINATED_JOBS.remove(jobId);
+      LOG.debug("Removed job {} from coordinated jobs set", jobId);
+    }
+
+    // Get final job state
+    currentJob = coordinator.getJobWithAggregatedStats(jobId);
+
+    return new ExecutionResult(
+        currentJob.getStatus(),
+        currentJob.getTotalRecords(),
+        currentJob.getSuccessRecords(),
+        currentJob.getFailedRecords(),
+        currentJob.getStartedAt(),
+        currentJob.getCompletedAt());
+  }
+
+  private void applyPoolSizes(ReindexingConfiguration config, BulkSink sink) {
+    if (config.fieldFetchThreads() > 0) {
+      EntityRepository.setFieldFetchPoolSize(config.fieldFetchThreads());
+    }
+    if (config.docBuildThreads() > 0) {
+      if (sink instanceof OpenSearchBulkSink) {
+        OpenSearchBulkSink.setDocBuildPoolSize(config.docBuildThreads());
+      } else if (sink instanceof ElasticSearchBulkSink) {
+        ElasticSearchBulkSink.setDocBuildPoolSize(config.docBuildThreads());
+      }
+    }
+  }
+
+  private void resetPoolSizes(BulkSink sink) {
+    try {
+      EntityRepository.resetFieldFetchPoolSize();
+      if (sink instanceof OpenSearchBulkSink) {
+        OpenSearchBulkSink.resetDocBuildPoolSize();
+      } else if (sink instanceof ElasticSearchBulkSink) {
+        ElasticSearchBulkSink.resetDocBuildPoolSize();
+      }
+    } catch (Exception e) {
+      LOG.debug("Error resetting pool sizes", e);
+    }
+  }
+
+  /**
+   * Worker loop that continuously claims and processes partitions.
+   */
+  private void runWorkerLoop(
+      int workerId,
+      BulkSink bulkSink,
+      int batchSize,
+      ReindexContext stagedIndexContext,
+      AtomicLong totalSuccess,
+      AtomicLong totalFailed,
+      ReindexingConfiguration reindexConfig) {
+
+    LOG.info("Worker {} starting for job {}", workerId, currentJob.getId());
+
+    PartitionWorker worker =
+        new PartitionWorker(
+            coordinator, bulkSink, batchSize, stagedIndexContext, failureRecorder, reindexConfig);
+
+    synchronized (activeWorkers) {
+      activeWorkers.add(worker);
+    }
+
+    int claimAttempts = 0;
+
+    try {
+      while (!stopped.get()) {
+        // Check if job is being stopped
+        SearchIndexJob job = coordinator.getJob(currentJob.getId()).orElse(null);
+        if (job == null || job.getStatus() == IndexJobStatus.STOPPING || job.isTerminal()) {
+          LOG.info(
+              "Worker {} stopping - job state: {}",
+              workerId,
+              job != null ? job.getStatus() : "null");
+          break;
+        }
+
+        // Try to claim a partition
+        claimAttempts++;
+        Optional<SearchIndexPartition> partitionOpt =
+            coordinator.claimNextPartition(currentJob.getId());
+
+        if (partitionOpt.isEmpty()) {
+          // No more partitions available - log at INFO level on first attempt
+          if (claimAttempts == 1) {
+            LOG.info("Worker {} could not claim partition on first attempt", workerId);
+          } else {
+            LOG.debug(
+                "Worker {} found no available partitions (attempt {})", workerId, claimAttempts);
+          }
+
+          // Check if all partitions are done (not just unavailable)
+          List<SearchIndexPartition> pending =
+              coordinator.getPartitions(currentJob.getId(), PartitionStatus.PENDING);
+          List<SearchIndexPartition> processing =
+              coordinator.getPartitions(currentJob.getId(), PartitionStatus.PROCESSING);
+
+          if (pending.isEmpty() && processing.isEmpty()) {
+            // Log detailed info about partition state on exit
+            List<SearchIndexPartition> completed =
+                coordinator.getPartitions(currentJob.getId(), PartitionStatus.COMPLETED);
+            List<SearchIndexPartition> failed =
+                coordinator.getPartitions(currentJob.getId(), PartitionStatus.FAILED);
+            LOG.info(
+                "Worker {} exiting - all partitions complete (attempts: {}, completed: {}, failed: {})",
+                workerId,
+                claimAttempts,
+                completed.size(),
+                failed.size());
+            break;
+          }
+
+          // Wait a bit before retrying (other servers might release partitions)
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+          continue;
+        }
+
+        // Process the partition
+        SearchIndexPartition partition = partitionOpt.get();
+        LOG.info(
+            "Worker {} processing partition {} for {}",
+            workerId,
+            partition.getId(),
+            partition.getEntityType());
+
+        activePartitions.add(partition.getId());
+        try {
+          PartitionWorker.PartitionResult result = worker.processPartition(partition);
+          totalSuccess.addAndGet(result.successCount());
+          totalFailed.addAndGet(result.failedCount());
+
+          coordinatorReaderSuccess.addAndGet(result.successCount());
+          coordinatorReaderFailed.addAndGet(result.readerFailed());
+          coordinatorReaderWarnings.addAndGet(result.readerWarnings());
+          coordinatorPartitionsCompleted.incrementAndGet();
+
+          LOG.debug(
+              "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
+              workerId,
+              partition.getId(),
+              result.successCount(),
+              result.failedCount(),
+              result.readerFailed(),
+              result.readerWarnings());
+        } catch (Exception e) {
+          LOG.error(
+              "Worker {} failed partition {} for {}: {}",
+              workerId,
+              partition.getId(),
+              partition.getEntityType(),
+              e.getMessage(),
+              e);
+        } finally {
+          activePartitions.remove(partition.getId());
+        }
+      }
+    } finally {
+      synchronized (activeWorkers) {
+        activeWorkers.remove(worker);
+      }
+      LOG.debug("Worker {} exiting", workerId);
+    }
+  }
+
+  /**
+   * Periodically checks for and reclaims stale partitions.
+   */
+  private void runStaleReclaimerLoop(UUID jobId) {
+    while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
+      try {
+        Thread.sleep(STALE_CHECK_INTERVAL_MS);
+
+        SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+        if (job == null || job.isTerminal()) {
+          break;
+        }
+
+        int reclaimed = coordinator.reclaimStalePartitions(jobId);
+        if (reclaimed > 0) {
+          LOG.info("Reclaimed {} stale partitions for job {}", reclaimed, jobId);
+        }
+
+        if (entityTracker != null) {
+          List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+          entityTracker.reconcileFromDatabase(allPartitions);
+        }
+
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      } catch (Exception e) {
+        LOG.error("Error in stale reclaimer for job {}", jobId, e);
+      }
+    }
+  }
+
+  /**
+   * Ensures the job reaches a terminal state as the coordinator unwinds. A STOPPING job force-cancels
+   * its PROCESSING partitions (the user asked to stop). Otherwise, once this coordinator has drained
+   * its own partitions ({@code drained}), any still-PROCESSING partitions belong to participant
+   * servers: wait for them to finish so every entity completes and is promoted with a fully-built
+   * index, never force-cancelling in-flight work (which would promote a partial index). The
+   * stale-reclaimer runs alongside this wait, reconciling finished entities as their partitions land
+   * and re-queuing stragglers a crashed participant abandoned. If the wait is exhausted - a wedged
+   * job whose reclaimed work no surviving worker picks up - the partitions are left in-flight for the
+   * orphan-job monitor to finalize rather than cancelled.
+   */
+  private void driveJobToTerminalState(UUID jobId, boolean drained) {
+    SearchIndexJob state = coordinator.getJob(jobId).orElse(null);
+    if (state != null && state.getStatus() == IndexJobStatus.STOPPING) {
+      coordinator.forceCompleteProcessingPartitions(jobId);
+    } else if (drained
+        && !coordinator.getPartitions(jobId, PartitionStatus.PROCESSING).isEmpty()
+        && !awaitProcessingComplete(jobId, participantDrainTimeoutMs)) {
+      LOG.warn(
+          "Job {} still has PROCESSING partitions after waiting {}ms for participant servers to "
+              + "finish; leaving them in-flight rather than cancelling, so entities are promoted "
+              + "with complete indexes once their partitions actually finish",
+          jobId,
+          participantDrainTimeoutMs);
+    }
+    coordinator.checkAndUpdateJobCompletion(jobId);
+  }
+
+  /**
+   * Waits up to {@code timeoutMs} for the job's partitions to all finish processing (the job reaching
+   * PROMOTING or a terminal state), reconciling entity completion each cycle so partitions finished
+   * by participant servers are promoted as they land. Returns whether processing completed in time.
+   */
+  private boolean awaitProcessingComplete(UUID jobId, long timeoutMs) {
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    boolean processingComplete = isJobProcessingComplete(jobId);
+    while (!processingComplete && !Thread.currentThread().isInterrupted()) {
+      if (entityTracker != null) {
+        entityTracker.reconcileFromDatabase(coordinator.getPartitions(jobId, null));
+      }
+      if (System.currentTimeMillis() >= deadline) {
+        break;
+      }
+      sleepQuietly(Math.min(STALE_CHECK_INTERVAL_MS, DRAIN_WAIT_POLL_INTERVAL_MS));
+      processingComplete = isJobProcessingComplete(jobId);
+    }
+    return processingComplete;
+  }
+
+  private boolean isJobProcessingComplete(UUID jobId) {
+    SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+    return job == null || job.isProcessingComplete();
+  }
+
+  private void sleepQuietly(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Records the timing metric for the run based on the job's status when {@code execute()} unwinds.
+   * PROMOTING is the normal drained end-state - the strategy's promotion sweep flips it terminal
+   * afterwards, outside this timer scope - so it counts as a completed run rather than a failure.
+   */
+  private void recordTerminalMetric(
+      ReindexingMetrics metrics, Timer.Sample timerSample, IndexJobStatus finalStatus) {
+    if (finalStatus == IndexJobStatus.COMPLETED
+        || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS
+        || finalStatus == IndexJobStatus.PROMOTING) {
+      metrics.recordJobCompleted(timerSample);
+    } else if (finalStatus == IndexJobStatus.STOPPED) {
+      metrics.recordJobStopped(timerSample);
+    } else {
+      metrics.recordJobFailed(timerSample);
+    }
+  }
+
+  /**
+   * Periodically refreshes the distributed lock to prevent expiration during long-running jobs.
+   *
+   * <p>This ensures that if a job runs longer than the lock timeout, the lock is refreshed
+   * and other servers won't mistakenly think the lock is abandoned.
+   */
+  private void runLockRefreshLoop(UUID jobId) {
+    while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
+      try {
+        Thread.sleep(LOCK_REFRESH_INTERVAL_MS);
+
+        SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+        if (job == null || job.isTerminal()) {
+          LOG.debug("Lock refresh loop exiting - job {} is terminal or not found", jobId);
+          break;
+        }
+
+        boolean refreshed = coordinator.refreshReindexLock(jobId);
+        if (refreshed) {
+          LOG.debug("Refreshed reindex lock for job {}", jobId);
+          collectionDAO.searchIndexJobDAO().touchJob(jobId.toString(), System.currentTimeMillis());
+        } else {
+          LOG.warn("Failed to refresh reindex lock for job {} - lock may have been stolen", jobId);
+          // Mark the job as failed since we lost the lock
+          markJobAsFailedDueToLostLock(jobId);
+          stop();
+          break;
+        }
+
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      } catch (Exception e) {
+        LOG.error("Error refreshing lock for job {}", jobId, e);
+      }
+    }
+  }
+
+  /**
+   * Periodically updates heartbeats for partitions being processed by this server.
+   *
+   * <p>This ensures that if a partition takes a long time to process (but is still active),
+   * other servers won't reclaim it as stale.
+   */
+  private void runPartitionHeartbeatLoop() {
+    while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
+      try {
+        Thread.sleep(PARTITION_HEARTBEAT_INTERVAL_MS);
+
+        // Get all processing partitions assigned to this server
+        if (currentJob == null || currentJob.isTerminal()) {
+          break;
+        }
+
+        List<SearchIndexPartition> processing =
+            coordinator.getPartitions(currentJob.getId(), PartitionStatus.PROCESSING);
+
+        int updated = 0;
+        long now = System.currentTimeMillis();
+        for (SearchIndexPartition partition : processing) {
+          if (serverId.equals(partition.getAssignedServer())
+              && activePartitions.contains(partition.getId())) {
+            collectionDAO
+                .searchIndexPartitionDAO()
+                .updateHeartbeat(partition.getId().toString(), now);
+            updated++;
+          }
+        }
+
+        if (updated > 0) {
+          LOG.debug("Updated heartbeats for {} partitions", updated);
+        }
+
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      } catch (Exception e) {
+        LOG.error("Error updating partition heartbeats", e);
+      }
+    }
+  }
+
+  public IndexingFailureRecorder getFailureRecorder() {
+    return failureRecorder;
+  }
+
+  /**
+   * Mark a job as failed with a custom error message.
+   *
+   * @param jobId The job ID
+   * @param errorMessage The error message
+   */
+  private void markJobAsFailed(UUID jobId, String errorMessage) {
+    try {
+      CollectionDAO.SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+      CollectionDAO.SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+
+      CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord stats =
+          partitionDAO.getAggregatedStats(jobId.toString());
+
+      long now = System.currentTimeMillis();
+
+      jobDAO.update(
+          jobId.toString(),
+          IndexJobStatus.FAILED.name(),
+          stats != null ? stats.processedRecords() : 0,
+          stats != null ? stats.successRecords() : 0,
+          stats != null ? stats.failedRecords() : 0,
+          null,
+          null,
+          now,
+          now,
+          errorMessage);
+
+      partitionDAO.cancelPendingPartitions(jobId.toString());
+
+      LOG.error("Job {} marked as FAILED: {}", jobId, errorMessage);
+    } catch (Exception e) {
+      LOG.error("Error marking job {} as failed", jobId, e);
+    }
+  }
+
+  /**
+   * Wait for all workers to finish, re-checking job state on each poll so the orchestrator
+   * thread cannot hang indefinitely on {@code workerLatch.await()}.
+   *
+   * <p>A healthy reindex can legitimately run for hours, so there is no wall-clock cap: while the
+   * job keeps progressing it is never terminal and this simply keeps waiting. But once the job
+   * reaches a terminal/STOPPING state (lock lost, stop requested, or recovered/failed by another
+   * pod), a worker wedged inside a single partition on an unresponsive search backend would
+   * otherwise never count down the latch — leaving the Quartz execution thread stuck and blocking
+   * every retrigger with "Job is already running". On terminal state we force {@link #stop()}
+   * (which interrupts wedged workers via {@code shutdownNow}) and return; the caller's {@code
+   * finally} performs the bounded drain ({@code awaitTermination} + sink flush).
+   *
+   * @return {@code true} if all workers drained normally, {@code false} if the orchestrator
+   *     force-unwound because the job reached a terminal/STOPPING state first
+   */
+  private boolean awaitWorkers(CountDownLatch workerLatch, UUID jobId) throws InterruptedException {
+    boolean drained = false;
+    boolean done = false;
+    while (!done) {
+      drained = workerLatch.await(latchPollIntervalSeconds, TimeUnit.SECONDS);
+      if (drained) {
+        done = true;
+      } else if (isJobTerminalOrStopping(jobId)) {
+        LOG.warn(
+            "Job {} is terminal/stopping but workers have not drained; forcing executor "
+                + "shutdown so the orchestrator can unwind",
+            jobId);
+        stop();
+        done = true;
+      }
+    }
+    return drained;
+  }
+
+  /**
+   * Whether the job has reached a terminal/STOPPING state. A read failure is treated as
+   * non-terminal so a transient DB blip during polling keeps the orchestrator waiting rather than
+   * tearing down an otherwise-healthy multi-hour reindex; the wedge unwinds on the next clean poll.
+   */
+  private boolean isJobTerminalOrStopping(UUID jobId) {
+    boolean terminal;
+    try {
+      SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+      terminal = job == null || job.isTerminal() || job.getStatus() == IndexJobStatus.STOPPING;
+    } catch (Exception e) {
+      LOG.warn("Could not read job {} state while awaiting workers; will keep waiting", jobId, e);
+      terminal = false;
+    }
+    return terminal;
+  }
+
+  /**
+   * Mark a job as failed because we lost the distributed lock.
+   *
+   * @param jobId The job ID
+   */
+  private void markJobAsFailedDueToLostLock(UUID jobId) {
+    try {
+      CollectionDAO.SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+      CollectionDAO.SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+
+      CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord stats =
+          partitionDAO.getAggregatedStats(jobId.toString());
+
+      long now = System.currentTimeMillis();
+
+      jobDAO.update(
+          jobId.toString(),
+          IndexJobStatus.FAILED.name(),
+          stats != null ? stats.processedRecords() : 0,
+          stats != null ? stats.successRecords() : 0,
+          stats != null ? stats.failedRecords() : 0,
+          null,
+          null,
+          now,
+          now,
+          "Lost distributed lock - another server may have taken over or lock expired");
+
+      partitionDAO.cancelPendingPartitions(jobId.toString());
+
+      LOG.error("Job {} marked as FAILED due to lost distributed lock", jobId);
+    } catch (Exception e) {
+      LOG.error("Error marking job {} as failed", jobId, e);
+    }
+  }
+
+  private static final long THREAD_JOIN_TIMEOUT_MS = 5000;
+
+  private void interruptAndJoin(Thread thread, String name) {
+    if (thread == null) {
+      return;
+    }
+    thread.interrupt();
+    try {
+      thread.join(THREAD_JOIN_TIMEOUT_MS);
+      if (thread.isAlive()) {
+        LOG.warn(
+            "Thread {} did not terminate within {}ms after interrupt",
+            name,
+            THREAD_JOIN_TIMEOUT_MS);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Request to stop the current job execution.
+   */
+  public void stop() {
+    if (stopped.compareAndSet(false, true)) {
+      LOG.info("Stop requested for distributed executor");
+
+      // Interrupt lock-refresh and heartbeat threads first so they cannot flip
+      // the job back to RUNNING or extend the lock TTL after requestStop() is called.
+      interruptAndJoin(lockRefreshThread, "lock-refresh");
+      interruptAndJoin(partitionHeartbeatThread, "partition-heartbeat");
+
+      // Stop all active workers
+      synchronized (activeWorkers) {
+        for (PartitionWorker worker : activeWorkers) {
+          worker.stop();
+        }
+      }
+
+      // Request job stop via coordinator
+      if (currentJob != null) {
+        coordinator.requestStop(currentJob.getId());
+      }
+
+      // Forcibly interrupt blocked worker threads. {@code worker.stop()} above only sets a
+      // boolean — workers parked inside the bulk-sink semaphore, a slow {@code
+      // initializeKeysetCursor} DB query, or {@code waitForSinkOperations} (5-minute deadline)
+      // won't observe that flag for a long time. {@code shutdownNow} sends Thread.interrupt()
+      // to every running task so the existing InterruptedException catch blocks unwind quickly
+      // and {@code workerLatch} can count down. Without this the user-clicked Stop is invisible
+      // for minutes, the aggregator keeps broadcasting stale state, and the UI stays "Running".
+      if (workerExecutor != null && !workerExecutor.isShutdown()) {
+        workerExecutor.shutdownNow();
+      }
+    }
+  }
+
+  /**
+   * Check if stop has been requested.
+   *
+   * @return true if stop was requested
+   */
+  public boolean isStopped() {
+    return stopped.get();
+  }
+
+  /**
+   * Get fresh job stats from the database.
+   *
+   * <p>Unlike getCurrentJob() which returns a cached reference, this method queries the database
+   * for the latest aggregated statistics.
+   *
+   * @return The job with current aggregated stats, or null if no job is active
+   */
+  public SearchIndexJob getJobWithFreshStats() {
+    if (currentJob == null) {
+      return null;
+    }
+    return coordinator.getJobWithAggregatedStats(currentJob.getId());
+  }
+
+  /**
+   * Get the entity completion tracker for checking which entities have been promoted.
+   *
+   * @return The entity completion tracker, or null if not initialized
+   */
+  public EntityCompletionTracker getEntityTracker() {
+    return entityTracker;
+  }
+
+  /**
+   * Flip the job from PROMOTING to its terminal status after the strategy's promotion sweep. Thin
+   * delegate to the coordinator so the strategy does not reach past the executor.
+   */
+  public void markPromotionComplete(UUID jobId, boolean allPromoted) {
+    coordinator.markPromotionComplete(jobId, allPromoted);
+  }
+
+  /**
+   * Update the staged index mapping for the current job. This mapping tells participant servers
+   * which staged index to write to for each entity type during index recreation.
+   *
+   * @param stagedIndexMapping Map of entity type to staged index name
+   */
+  public void updateStagedIndexMapping(Map<String, String> stagedIndexMapping) {
+    if (currentJob == null) {
+      LOG.warn("Cannot update staged index mapping - no current job");
+      return;
+    }
+    coordinator.updateStagedIndexMapping(currentJob.getId(), stagedIndexMapping);
+  }
+
+  /**
+   * Initialize the entity completion tracker with partition counts and promotion callback.
+   */
+  private void initializeEntityTracker(UUID jobId) {
+    // Count partitions per entity
+    Map<String, Integer> partitionCountByEntity = new HashMap<>();
+    List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+    for (SearchIndexPartition p : allPartitions) {
+      partitionCountByEntity.merge(p.getEntityType(), 1, Integer::sum);
+    }
+
+    // Initialize tracking for each entity
+    for (Map.Entry<String, Integer> entry : partitionCountByEntity.entrySet()) {
+      entityTracker.initializeEntity(entry.getKey(), entry.getValue());
+    }
+
+    LOG.info(
+        "Initialized entity tracker for job {} with {} entity types: {}",
+        jobId,
+        partitionCountByEntity.size(),
+        partitionCountByEntity);
+
+    if (partitionCountByEntity.isEmpty()) {
+      LOG.info("No partitions found for job {}; finalizer will promote staged indexes", jobId);
+      return;
+    }
+
+    if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
+      throw new IllegalStateException("Staged index context is required for entity promotion");
+    }
+    indexPromotionHandler = Entity.getSearchRepository().createReindexHandler();
+    // Wire job configuration so applyLiveServingSettings can revert bulk-build overrides
+    // (refresh=-1, replicas=0, async translog) before the per-entity alias swap.
+    if (indexPromotionHandler instanceof DefaultRecreateHandler defaultHandler
+        && currentJob != null
+        && currentJob.getJobConfiguration() != null) {
+      defaultHandler.withJobData(currentJob.getJobConfiguration());
+    }
+    entityTracker.setOnEntityComplete(this::promoteEntityIndex);
+    LOG.info(
+        "Per-entity promotion callback set for job {} (staged index entities={})",
+        jobId,
+        stagedIndexContext.getEntities());
+  }
+
+  /**
+   * Promote a single entity's index when all its partitions complete.
+   */
+  private boolean promoteEntityIndex(String entityType, boolean success) {
+    if (indexPromotionHandler == null || stagedIndexContext == null) {
+      LOG.warn(
+          "Cannot promote index for entity '{}' - no index promotion handler or staged context",
+          entityType);
+      return false;
+    }
+
+    EntityReindexContext entityContext =
+        EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType);
+    if (entityContext.getStagedIndex() == null) {
+      LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
+      return true;
+    }
+
+    boolean promoted = false;
+    try {
+      LOG.debug(
+          "Promoting entity '{}': success={}, canonicalIndex={}, stagedIndex={}",
+          entityType,
+          success,
+          entityContext.getCanonicalIndex(),
+          entityContext.getStagedIndex());
+
+      if (indexPromotionHandler instanceof DefaultRecreateHandler defaultHandler) {
+        LOG.info("Promoting index for entity '{}' (success={})", entityType, success);
+        promoted = defaultHandler.promoteEntityIndex(entityContext, success);
+      } else {
+        promoted = indexPromotionHandler.finalizeReindex(entityContext, success);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to promote index for entity '{}'", entityType, e);
+    }
+    return promoted;
+  }
+
+  /**
+   * Result of job execution.
+   */
+  public record ExecutionResult(
+      IndexJobStatus status,
+      long totalRecords,
+      long successRecords,
+      long failedRecords,
+      Long startedAt,
+      Long completedAt) {
+
+    public double getSuccessRate() {
+      if (totalRecords == 0) return 0.0;
+      return (successRecords * 100.0) / totalRecords;
+    }
+
+    public long getDurationMs() {
+      if (startedAt == null || completedAt == null) return 0;
+      return completedAt - startedAt;
+    }
+  }
+}

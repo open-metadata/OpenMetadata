@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/uiThemePreference.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UiThemePreference",
+  "description": "This schema defines  UI related configuration and settings.",
+  "type": "object",
+  "javaType": "org.openmetadata.api.configuration.UiThemePreference",
+  "properties": {
+    "customLogoConfig": {
+      "$ref": "../configuration/logoConfiguration.json",
+      "description": "References the LogoConfiguration schema which includes settings related to the custom logos used in the application's user interface."
+    },
+    "customTheme": {
+      "$ref": "../configuration/themeConfiguration.json",
+      "description": "References the ThemeConfiguration schema that defines the custom theme color used in the application's user interface."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["customLogoConfig", "customTheme"]
+}

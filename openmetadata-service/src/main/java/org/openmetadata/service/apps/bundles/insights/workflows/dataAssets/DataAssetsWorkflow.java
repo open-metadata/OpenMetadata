@@ -1,0 +1,448 @@
+package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
+
+import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsElasticSearchProcessor;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsOpenSearchProcessor;
+import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
+import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
+import org.openmetadata.service.workflows.interfaces.Processor;
+import org.openmetadata.service.workflows.interfaces.Sink;
+import org.openmetadata.service.workflows.interfaces.TaggedOperation;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
+
+@Slf4j
+public class DataAssetsWorkflow implements DataInsightsWorkflow {
+  public static final String DATA_STREAM_KEY = "DataStreamKey";
+  public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
+  private static final String ALL_ENTITIES = "all";
+
+  private final DataAssetsConfig dataAssetsConfig;
+  private final int retentionDays = 30;
+  private final Long startTimestamp;
+  private final Long endTimestamp;
+  private final int batchSize;
+  private final SearchRepository searchRepository;
+  private final CollectionDAO collectionDAO;
+  private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
+  private final Set<String> entityTypes;
+  private final DataInsightsSearchConfiguration dataInsightsSearchConfiguration;
+  private final DataInsightsSearchInterface searchInterface;
+
+  private DataInsightsEntityEnricherProcessor entityEnricher;
+  private Processor entityProcessor;
+  private Sink searchIndexSink;
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
+
+  private volatile boolean stopped = false;
+  private volatile ExecutorService executor;
+
+  public DataAssetsWorkflow(
+      DataAssetsConfig dataAssetsConfig,
+      Long timestamp,
+      int batchSize,
+      Optional<DataInsightsApp.Backfill> backfill,
+      Set<String> entityTypes,
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      DataInsightsSearchInterface searchInterface) {
+    if (backfill.isPresent()) {
+      Long oldestPossibleTimestamp =
+          TimestampUtils.getStartOfDayTimestamp(
+              TimestampUtils.subtractDays(timestamp, retentionDays));
+
+      this.endTimestamp =
+          TimestampUtils.getEndOfDayTimestamp(
+              Collections.max(
+                  List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
+      this.startTimestamp =
+          TimestampUtils.getStartOfDayTimestamp(
+              Collections.max(
+                  List.of(
+                      TimestampUtils.getTimestampFromDateString(backfill.get().startDate()),
+                      oldestPossibleTimestamp)));
+
+      if (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp))) {
+        LOG.warn(
+            "Backfill won't happen because the set date is before the limit of {}",
+            oldestPossibleTimestamp);
+      }
+    } else {
+      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(timestamp);
+      this.startTimestamp =
+          TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
+    }
+
+    this.batchSize = batchSize;
+    this.searchRepository = searchRepository;
+    this.collectionDAO = collectionDAO;
+    this.entityTypes = entityTypes;
+    this.searchInterface = searchInterface;
+    this.dataInsightsSearchConfiguration = searchInterface.readDataInsightsSearchConfiguration();
+    this.dataAssetsConfig = dataAssetsConfig;
+  }
+
+  private void initialize() {
+    Stats stats = getInitialStatsForEntities(entityTypes);
+    int totalRecords = stats.getJobStats().getTotalRecords();
+
+    Set<String> entityTypesToProcess = getEntityTypesToProcess();
+
+    entityTypes.stream()
+        .filter(
+            entityType ->
+                dataAssetsConfig.getEntities().equals(Set.of(ALL_ENTITIES))
+                    || dataAssetsConfig.getEntities().contains(entityType))
+        .filter(
+            entityType ->
+                entityTypesToProcess.equals(Set.of(ALL_ENTITIES))
+                    || entityTypesToProcess.contains(entityType))
+        .forEach(
+            entityType -> {
+              List<String> fields = getSearchIndexFields(entityType);
+              ListFilter filter = getListFilter(entityType);
+              PaginatedEntitiesSource source =
+                  new PaginatedEntitiesSource(entityType, batchSize, fields, filter)
+                      .withName(String.format("[DataAssetsWorkflow] %s", entityType));
+              sources.add(source);
+            });
+
+    this.entityEnricher = new DataInsightsEntityEnricherProcessor(totalRecords);
+    if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      this.entityProcessor = new DataInsightsOpenSearchProcessor(totalRecords);
+      this.searchIndexSink =
+          new OpenSearchIndexSink(
+              searchRepository,
+              totalRecords,
+              searchRepository.getSearchConfiguration().getPayLoadSize());
+    } else {
+      this.entityProcessor = new DataInsightsElasticSearchProcessor(totalRecords);
+      this.searchIndexSink =
+          new ElasticSearchIndexSink(
+              searchRepository,
+              totalRecords,
+              searchRepository.getSearchConfiguration().getPayLoadSize());
+    }
+  }
+
+  private ListFilter getListFilter(String entityType) {
+    ListFilter filter = null;
+
+    // data product does not support soft delete
+    if (!entityType.equals("dataProduct")) {
+      filter = new ListFilter();
+      if (dataAssetsConfig.getServiceFilter() != null) {
+        filter =
+            filter.addQueryParam("service", dataAssetsConfig.getServiceFilter().getServiceName());
+      }
+    } else {
+      filter = new ListFilter(Include.ALL);
+    }
+
+    return filter;
+  }
+
+  private Set<String> getEntityTypesToProcess() {
+    if (dataAssetsConfig.getServiceFilter() != null) {
+      return Entity.getEntityTypeInService(dataAssetsConfig.getServiceFilter().getServiceType());
+    } else {
+      return Set.of(ALL_ENTITIES);
+    }
+  }
+
+  private int computeConcurrencyBudget() {
+    int cpuBudget = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+
+    try {
+      var applicationConfig = OpenMetadataApplicationConfigHolder.getInstance();
+      int poolSize = applicationConfig.getDataSourceFactory().getMaxSize();
+      int configuredBudget =
+          applicationConfig.getAsyncOperationsConfiguration().getDataInsightsMaxConcurrentDbTasks();
+      return computeConcurrencyBudget(cpuBudget, poolSize, configuredBudget);
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not determine database pool size, using default concurrency budget: {}",
+          e.getMessage());
+    }
+    return Math.min(
+        cpuBudget,
+        new org.openmetadata.service.config.AsyncOperationsConfiguration()
+            .getDataInsightsMaxConcurrentDbTasks());
+  }
+
+  static int computeConcurrencyBudget(int cpuBudget, int poolSize, int configuredBudget) {
+    int databaseBudget = Math.max(1, poolSize / 10);
+    return Math.max(1, Math.min(configuredBudget, Math.min(cpuBudget, databaseBudget)));
+  }
+
+  @Override
+  public void process() throws SearchIndexException {
+    if (!dataAssetsConfig.getEnabled() || stopped) {
+      return;
+    }
+    LOG.info("[Data Insights] Processing Data Assets Insights.");
+    initialize();
+    Map<String, Object> contextData = new HashMap<>();
+
+    contextData.put(START_TIMESTAMP_KEY, startTimestamp);
+    contextData.put(END_TIMESTAMP_KEY, endTimestamp);
+
+    int budget = computeConcurrencyBudget();
+    LOG.info("[Data Insights] Using concurrency budget of {} virtual threads.", budget);
+
+    for (PaginatedEntitiesSource source : sources) {
+      if (stopped) {
+        break;
+      }
+      deleteBasedOnDataRetentionPolicy(
+          getDataStreamName(searchRepository.getClusterAlias(), source.getEntityType()));
+      deleteDataBeforeInserting(
+          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
+      contextData.put(
+          DATA_STREAM_KEY,
+          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
+      contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
+      contextData.put(
+          ENTITY_TYPE_FIELDS_KEY,
+          searchInterface.getEntityAttributeFields(
+              dataInsightsSearchConfiguration, source.getEntityType()));
+
+      processSource(source, Map.copyOf(contextData), budget);
+    }
+  }
+
+  /**
+   * Processes entities from {@code source} in parallel using virtual threads. Concurrency is
+   * bounded by a semaphore with {@code budget} permits. Bulk operations produced by each thread are
+   * collected in a concurrent queue and flushed to the search index after each batch. The method
+   * blocks until all entities in a batch complete before reading the next one.
+   */
+  private void processSource(
+      PaginatedEntitiesSource source, Map<String, Object> contextData, int budget)
+      throws SearchIndexException {
+    Semaphore concurrencyLimit = new Semaphore(budget);
+    ConcurrentLinkedQueue<TaggedOperation<?>> opsQueue = new ConcurrentLinkedQueue<>();
+
+    try (ExecutorService sourceExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      this.executor = sourceExecutor;
+
+      String keysetCursor = null;
+      while (!stopped) {
+        try {
+          ResultList<? extends EntityInterface> batch = source.readNextKeyset(keysetCursor);
+          keysetCursor = batch.getPaging().getAfter();
+
+          if (batch.getData().isEmpty()) {
+            if (!batch.getErrors().isEmpty()) {
+              source.updateStats(0, batch.getErrors().size());
+            }
+            if (keysetCursor == null) {
+              break;
+            }
+            continue;
+          }
+
+          record EntityFuture(EntityInterface entity, Future<Void> future) {}
+          List<EntityFuture> entityFutures = new ArrayList<>();
+          for (EntityInterface entity : batch.getData()) {
+            entityFutures.add(
+                new EntityFuture(
+                    entity,
+                    sourceExecutor.submit(
+                        () -> {
+                          concurrencyLimit.acquire();
+                          try {
+                            List<Map<String, Object>> enriched =
+                                entityEnricher.enrichSingle(entity, contextData);
+                            List<?> bulkOps =
+                                (List<?>) entityProcessor.process(enriched, contextData);
+                            EntityReference ref = entity.getEntityReference();
+                            bulkOps.forEach(op -> opsQueue.add(new TaggedOperation<>(op, ref)));
+                          } finally {
+                            concurrencyLimit.release();
+                          }
+                          return null;
+                        })));
+          }
+
+          int batchSuccess = 0;
+          int batchFailed = 0;
+          for (EntityFuture ef : entityFutures) {
+            try {
+              ef.future().get();
+              batchSuccess++;
+            } catch (ExecutionException e) {
+              batchFailed++;
+              LOG.debug(
+                  "[DataAssetsWorkflow] Failed to process entity '{}' (type={}): {}",
+                  ef.entity().getFullyQualifiedName(),
+                  source.getEntityType(),
+                  e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+            }
+          }
+
+          drainAndFlush(opsQueue);
+
+          batchFailed += batch.getErrors().size();
+          source.updateStats(batchSuccess, batchFailed);
+
+          if (keysetCursor == null) {
+            break;
+          }
+        } catch (SearchIndexException ex) {
+          source.updateStats(
+              ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
+          String errorMessage =
+              String.format("Failed processing Data from %s: %s", source.getName(), ex);
+          workflowStats.addFailure(errorMessage);
+          break;
+        } catch (InterruptedException ex) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    } finally {
+      this.executor = null;
+    }
+
+    try {
+      drainAndFlush(opsQueue);
+    } finally {
+      updateWorkflowStats(source.getName(), source.getStats());
+      mergeEnricherStepStats();
+    }
+  }
+
+  /**
+   * Surface per-step enrichment stats (e.g. {@code [Enricher] team}, {@code [Enricher]
+   * descriptionSources}) alongside the per-entity-type source stats. The enricher is shared across
+   * all entity types processed in this workflow run, so its counters are cumulative across sources
+   * — calling this in each source's finally block keeps the workflow's view of the stats current.
+   */
+  private void mergeEnricherStepStats() {
+    if (entityEnricher == null) {
+      return;
+    }
+    Map<String, StepStats> perStep = entityEnricher.getEntityStats();
+    for (Map.Entry<String, StepStats> entry : perStep.entrySet()) {
+      workflowStats.updateWorkflowStepStats("[Enricher] " + entry.getKey(), entry.getValue());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void drainAndFlush(ConcurrentLinkedQueue<TaggedOperation<?>> queue)
+      throws SearchIndexException {
+    List<TaggedOperation<?>> batch = new ArrayList<>();
+    TaggedOperation<?> tagged;
+    while ((tagged = queue.poll()) != null) {
+      batch.add(tagged);
+    }
+    if (!batch.isEmpty()) {
+      searchIndexSink.write(batch);
+    }
+  }
+
+  @Override
+  public void stop() {
+    this.stopped = true;
+    ExecutorService exec = this.executor;
+    if (exec != null) {
+      exec.shutdownNow();
+    }
+  }
+
+  private void deleteBasedOnDataRetentionPolicy(String dataStreamName) throws SearchIndexException {
+    long retentionLimitTimestamp =
+        TimestampUtils.subtractDays(System.currentTimeMillis(), dataAssetsConfig.getRetention());
+    try {
+      searchRepository
+          .getSearchClient()
+          .deleteByRangeQuery(
+              dataStreamName, "@timestamp", null, null, null, retentionLimitTimestamp);
+    } catch (Exception rx) {
+      throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
+    }
+  }
+
+  private void deleteDataBeforeInserting(String dataStreamName) throws SearchIndexException {
+    try {
+      if (dataAssetsConfig.getServiceFilter() == null) {
+        searchRepository
+            .getSearchClient()
+            .deleteByRangeQuery(
+                dataStreamName, "@timestamp", null, startTimestamp, null, endTimestamp);
+      } else {
+        searchRepository
+            .getSearchClient()
+            .deleteByRangeAndTerm(
+                dataStreamName,
+                "@timestamp",
+                null,
+                startTimestamp,
+                null,
+                endTimestamp,
+                "service.name.keyword",
+                dataAssetsConfig.getServiceFilter().getServiceName());
+      }
+    } catch (Exception rx) {
+      throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
+    }
+  }
+
+  private void updateWorkflowStats(String stepName, StepStats newStepStats) {
+    workflowStats.updateWorkflowStepStats(stepName, newStepStats);
+
+    int currentSuccess =
+        workflowStats.getWorkflowStepStats().values().stream()
+            .mapToInt(StepStats::getSuccessRecords)
+            .sum();
+    int currentFailed =
+        workflowStats.getWorkflowStepStats().values().stream()
+            .mapToInt(StepStats::getFailedRecords)
+            .sum();
+
+    workflowStats.updateWorkflowStats(currentSuccess, currentFailed);
+  }
+}

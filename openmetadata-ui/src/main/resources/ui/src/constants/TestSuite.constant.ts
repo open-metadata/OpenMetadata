@@ -1,0 +1,92 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { StepperStepType } from 'Models';
+import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import i18n from '../utils/i18next/LocalUtil';
+
+const TEST_SUITE_LABEL = i18n.t('label.test-suite');
+const ADD_TEST_SUITE_LABEL = i18n.t('label.add-entity', {
+  entity: i18n.t('label.test-suite'),
+});
+
+export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
+  {
+    name: ADD_TEST_SUITE_LABEL,
+    step: 1,
+  },
+  {
+    name: i18n.t('label.add-entity', {
+      entity: i18n.t('label.test-case'),
+    }),
+    step: 2,
+  },
+  {
+    name: i18n.t('label.test-suite-status'),
+    step: 3,
+  },
+];
+
+export const TEST_SUITE_STEPPER_BREADCRUMB = [
+  {
+    name: TEST_SUITE_LABEL,
+    url: `/data-quality/${DataQualityPageTabs.TEST_SUITES}`,
+    activeTitle: false,
+  },
+  {
+    name: ADD_TEST_SUITE_LABEL,
+    url: '',
+    activeTitle: true,
+  },
+];
+
+export const INITIAL_TEST_SUMMARY = {
+  aborted: 0,
+  failed: 0,
+  success: 0,
+  total: 0,
+};
+
+export const TEST_CASE_STATUS: Record<
+  TestCaseResolutionStatusTypes,
+  TestCaseResolutionStatusTypes[]
+> = {
+  [TestCaseResolutionStatusTypes.New]: [
+    TestCaseResolutionStatusTypes.ACK,
+    TestCaseResolutionStatusTypes.Assigned,
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.ACK]: [
+    TestCaseResolutionStatusTypes.Assigned,
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.Assigned]: [
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.Resolved]: [],
+};
+
+export const TEST_CASE_RESOLUTION_STATUS_LABELS: Record<
+  TestCaseResolutionStatusTypes,
+  string
+> = {
+  [TestCaseResolutionStatusTypes.New]: i18n.t('label.new'),
+  [TestCaseResolutionStatusTypes.ACK]: i18n.t('label.ack'),
+  [TestCaseResolutionStatusTypes.Assigned]: i18n.t('label.assigned'),
+  [TestCaseResolutionStatusTypes.Resolved]: i18n.t('label.resolved'),
+};
+
+export const TABLE_DIFF = 'tableDiff';
+export const TABLE_DATA_TO_BE_FRESH = 'tableDataToBeFresh';
+export const TABLE_FRESHNESS_KEY = 'freshness';

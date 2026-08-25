@@ -1,0 +1,78 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/api/restConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RestConnection",
+  "description": "REST Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.api.RestConnection",
+  "definitions": {
+    "restType": {
+      "description": "REST API type",
+      "type": "string",
+      "enum": ["Rest"],
+      "default": "Rest"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "REST API Type",
+      "description": "REST API Type",
+      "$ref": "#/definitions/restType",
+      "default": "Rest"
+    },
+    "openAPISchemaConnection": {
+      "title": "OpenAPI Schema Connection",
+      "description": "OpenAPI Schema source config. Either a URL or a file path must be provided.",
+      "oneOf": [
+        {
+          "$ref": "openAPISchemaURL.json"
+        },
+        {
+          "$ref": "openAPISchemaFilePath.json"
+        },
+        {
+          "$ref": "openAPISchemaS3.json"
+        }
+      ]
+    },
+    "token": {
+      "title": "Token",
+      "description": "Generated Token to connect to OpenAPI Schema.",
+      "type": "string",
+      "format": "password"
+    },
+    "docURL": {
+      "expose": true,
+      "title": "docURL",
+      "description": "Documentation URL for the schema.",
+      "type": "string",
+      "format": "uri"
+    },
+    "apiCollectionFilterPattern": {
+      "description": "Regex to only fetch api collections with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default API Collection Filter Pattern"
+    },
+    "apiEndpointFilterPattern": {
+      "description": "Regex to only fetch api endpoints with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default API Endpoint Filter Pattern"
+    },
+    "verifySSL": {
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": ["openAPISchemaConnection"]
+}

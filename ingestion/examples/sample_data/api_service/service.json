@@ -1,0 +1,16 @@
+{
+	"type": "rest",
+	"serviceName": "sample_api_service", 
+	"serviceConnection": {
+		"config": {
+			"type": "Rest",
+			"openAPISchemaConnection": {
+				"openAPISchemaURL": "https://petstore3.swagger.io/"
+			},
+    		"token":"mock_token"
+		}
+	},
+	"sourceConfig": {
+   		"config": {}
+  	}
+}

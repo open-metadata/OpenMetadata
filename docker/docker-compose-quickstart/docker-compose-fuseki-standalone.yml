@@ -1,0 +1,49 @@
+# Standalone Apache Jena Fuseki for RDF/Knowledge Graph storage
+services:
+  fuseki:
+    # Build from the in-repo Dockerfile (Fuseki 5.6.0). See
+    # ../development/docker-compose-fuseki.yml for the full rationale.
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:5.6.0
+    container_name: fuseki-standalone
+    hostname: fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      # Local-dev default — production deployments MUST override via
+      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
+      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
+      - JVM_ARGS=-Xmx4g -Xms2g
+    volumes:
+      # See docker-compose-fuseki-rosetta.yml — host bind path renamed so
+      # existing directories with the old stain layout aren't silently
+      # mounted at the new /fuseki-data path.
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-tdb2-data:/fuseki-data
+    networks:
+      - fuseki-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+networks:
+  fuseki-net:
+    driver: bridge
+
+# Usage:
+# 1. Create the volume directory: mkdir -p fuseki-volume
+# 2. Start: docker-compose -f docker-compose-fuseki-standalone.yml up -d
+# 3. Access Fuseki UI: http://localhost:3030
+# 4. Login: admin/admin
+# 5. SPARQL endpoint: http://localhost:3030/openmetadata/sparql

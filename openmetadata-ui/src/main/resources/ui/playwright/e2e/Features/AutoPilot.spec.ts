@@ -1,0 +1,287 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { expect, test } from '@playwright/test';
+import { isEmpty } from 'lodash';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
+import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
+import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
+import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
+import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
+import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
+import { UserClass } from '../../support/user/UserClass';
+import { checkAutoPilotStatus } from '../../utils/AutoPilot';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getAgentCard,
+  getServiceCategoryFromService,
+} from '../../utils/serviceIngestion';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+
+const user = new UserClass();
+
+const services = [
+  ApiIngestionClass,
+  // Skipping S3 as it is failing intermittently in CI
+  // Remove the comment when fixed: https://github.com/open-metadata/OpenMetadata/issues/23727
+  // S3IngestionClass,
+  MetabaseIngestionClass,
+  MysqlIngestionClass,
+  KafkaIngestionClass,
+  MlFlowIngestionClass,
+];
+
+if (process.env.PLAYWRIGHT_IS_OSS) {
+  services.push(AirflowIngestionClass);
+}
+
+// use the admin user to login
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'on-first-retry' : 'retain-on-failure',
+  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
+});
+
+test.beforeAll(async ({ browser }) => {
+  const { afterAction, apiContext } = await createNewPage(browser);
+
+  await user.create(apiContext);
+  await user.setDataStewardRole(apiContext);
+
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { afterAction, apiContext } = await createNewPage(browser);
+
+  await user.delete(apiContext);
+
+  await afterAction();
+});
+
+services.forEach((ServiceClass) => {
+  const service = new ServiceClass({
+    shouldAddIngestion: false,
+    shouldAddDefaultFilters: true,
+  });
+
+  test.describe.serial(
+    service.serviceType,
+    PLAYWRIGHT_INGESTION_TAG_OBJ,
+    () => {
+      const testData = {
+        service: {
+          name: '',
+          id: '',
+          fullyQualifiedName: '',
+        },
+      };
+
+      test.beforeEach('Visit entity details page', async ({ page }) => {
+        await redirectToHomePage(page);
+      });
+
+      test('Create Service and check the AutoPilot status', async ({
+        page,
+      }) => {
+        // 8 minutes max for AutoPilot tests to complete agents running.
+        test.setTimeout(8 * 60 * 1000);
+
+        await settingClick(
+          page,
+          service.category as unknown as SettingOptionsType
+        );
+
+        // Create service
+        await service.createService(page);
+
+        testData.service = service.serviceResponseData;
+
+        // Wait for the service details page to load
+        await page.waitForURL('**/service/**');
+        await waitForAllLoadersToDisappear(page);
+
+        // Open a parallel page on the Agents tab BEFORE any AutoPilot run
+        // starts. Its pipeline list loads empty, so the agent cards asserted
+        // below can only arrive through the SSE DISCOVERY events that carry
+        // the newly created pipeline entities — the page is never reloaded.
+        const agentsPage =
+          service.serviceType === 'Mysql'
+            ? await page.context().newPage()
+            : undefined;
+
+        try {
+          if (agentsPage) {
+            await agentsPage.goto(page.url());
+            await waitForAllLoadersToDisappear(agentsPage);
+            await agentsPage.click('[role="tab"] [data-testid="agents"]');
+
+            const metadataSubTab = agentsPage.locator(
+              '[data-testid="metadata-sub-tab"]'
+            );
+            if (await metadataSubTab.isVisible()) {
+              await metadataSubTab.click();
+            }
+          }
+
+          // Check the auto pilot status via API polling
+          await checkAutoPilotStatus(page, service);
+
+          if (agentsPage) {
+            const { apiContext } = await getApiContext(agentsPage);
+            const pipelinesResponse = await apiContext.get(
+              `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+                service.serviceResponseData.name
+              }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+                service.category
+              )}&limit=15`
+            );
+            const pipelines: Array<{
+              name: string;
+              pipelineStatuses?: unknown;
+            }> = (await pipelinesResponse.json()).data;
+
+            // Only pipelines that actually ran emit DISCOVERY frames; the
+            // ones AutoPilot leaves Pending never stream and stay invisible.
+            const ranPipelines = pipelines.filter(
+              (pipeline) => !isEmpty(pipeline.pipelineStatuses)
+            );
+
+            expect(ranPipelines.length).toBeGreaterThan(0);
+
+            for (const pipeline of ranPipelines) {
+              const agentCard = getAgentCard(agentsPage, pipeline.name);
+
+              await expect(agentCard).toBeVisible();
+              await expect(
+                agentCard.getByTestId('pipeline-status')
+              ).not.toBeEmpty();
+            }
+          }
+        } finally {
+          await agentsPage?.close();
+        }
+
+        // Reload to render the completed workflow status in the UI.
+        // The page was loaded before the workflow finished, and the WebSocket
+        // connection for live updates is only established when the initial
+        // status is RUNNING — which it wasn't at page load time.
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+
+        // Wait for the auto pilot status banner to be visible
+        await expect(
+          page.getByText('AutoPilot agents run completed successfully.')
+        ).toBeVisible({ timeout: 60_000 });
+
+        if (service.serviceType === 'Mysql') {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          await page.getByTestId('agent-status-widget-view-more').click();
+
+          await page.getByTestId('agent-status-card-Metadata').waitFor({
+            state: 'visible',
+          });
+
+          // Check the agents statuses
+          await expect(
+            page.getByTestId('agent-status-card-Lineage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Usage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Auto Classification')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Profiler')
+          ).toBeVisible();
+
+          // Check the agents summary
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Successful')
+              .getByTestId('pipeline-count')
+          ).toHaveText('3');
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Pending')
+              .getByTestId('pipeline-count')
+          ).toHaveText('2');
+
+          // Check the total data assets count
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database-count')
+          ).toHaveText('1');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database Schema-count')
+          ).toHaveText('2');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Table-count')
+          ).toHaveText('3');
+        }
+      });
+
+      test('Agents created by AutoPilot should be deleted', async ({
+        page,
+      }) => {
+        const { apiContext } = await getApiContext(page);
+
+        // Get the agents created by AutoPilot
+        const getAgents = await apiContext.get(
+          `/api/v1/services/ingestionPipelines?fields=owners%2CpipelineStatuses&service=${
+            testData.service.name
+          }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+            service.category
+          )}&limit=15`
+        );
+
+        const agentsList = (await getAgents.json()).data;
+
+        // Check if the agents are created
+        expect(agentsList.length).toBeGreaterThan(0);
+
+        // Delete the service
+        await service.deleteService(page);
+
+        // Get the agents after deleting the service
+        const getAfterDeletingAgents = await apiContext.get(
+          `/api/v1/services/ingestionPipelines?fields=owners%2CpipelineStatuses&service=${
+            testData.service.name
+          }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+            service.category
+          )}&limit=15`
+        );
+
+        const agentsListAfterDeleting = (await getAfterDeletingAgents.json())
+          .data;
+
+        // Check if the agents are deleted
+        expect(agentsListAfterDeleting).toHaveLength(0);
+      });
+    }
+  );
+});

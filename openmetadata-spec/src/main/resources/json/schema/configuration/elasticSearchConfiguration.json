@@ -1,0 +1,304 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/elasticSearchConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearchConfiguration",
+  "description": "This schema defines the Elastic Search Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration",
+  "definitions": {
+    "searchIndexMappingLanguage": {
+      "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+      "description": "This schema defines the language options available for search index mappings.",
+      "type": "string",
+      "enum": [
+        "EN",
+        "JP",
+        "ZH",
+        "RU"
+      ],
+      "default": "EN"
+    }
+  },
+  "properties": {
+    "host": {
+      "description": "Elastic Search Host. Supports single host or comma-separated list for multiple hosts (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').",
+      "type": "string"
+    },
+    "port": {
+      "description": "Elastic Search port. Used when host does not include port. Ignored when using comma-separated hosts with ports.",
+      "type": "integer"
+    },
+    "scheme": {
+      "description": "Http/Https connection scheme",
+      "type": "string"
+    },
+    "username": {
+      "description": "Elastic Search Username for Login",
+      "type": "string"
+    },
+    "password": {
+      "description": "Elastic Search Password for Login",
+      "type": "string"
+    },
+    "truststorePath": {
+      "description": "Truststore Path",
+      "type": "string"
+    },
+    "truststorePassword": {
+      "description": "Truststore Password",
+      "type": "string"
+    },
+    "connectionTimeoutSecs": {
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 5
+    },
+    "connectionRequestTimeoutSecs": {
+      "description": "Maximum time in seconds to wait for a connection from the HTTP connection pool",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
+    "socketTimeoutSecs": {
+      "description": "Socket Timeout in Seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "keepAliveTimeoutSecs": {
+      "description": "Keep Alive Timeout in Seconds",
+      "type": "integer"
+    },
+    "maxConnTotal": {
+      "description": "Maximum total connections in the connection pool across all hosts",
+      "type": "integer",
+      "default": 30
+    },
+    "maxConnPerRoute": {
+      "description": "Maximum connections per host/route in the connection pool. Keep this below maxConnTotal for multi-host clusters so one slow host cannot consume the entire pool; single-host deployments can raise it up to maxConnTotal.",
+      "type": "integer",
+      "default": 10
+    },
+    "batchSize": {
+      "description": "Batch Size for Requests",
+      "type": "integer",
+      "default": 10
+    },
+    "payLoadSize": {
+      "description": "Payload size in bytes depending on elasticsearch config",
+      "type": "integer",
+      "default": 10485760
+    },
+    "clusterAlias": {
+      "description": "Alias for search indexes to provide segregation of indexes.",
+      "type": "string",
+      "default": null
+    },
+    "searchIndexMappingLanguage": {
+      "$ref": "#/definitions/searchIndexMappingLanguage"
+    },
+    "searchType": {
+      "description": "This enum defines the search Type elastic/open search.",
+      "type": "string",
+      "enum": [
+        "elasticsearch",
+        "opensearch"
+      ],
+      "default": "elasticsearch"
+    },
+    "searchIndexFactoryClassName": {
+      "description": "Index factory name",
+      "type": "string"
+    },
+    "searchIndexingLimits": {
+      "description": "Limits applied while building search documents so that field values can never be rejected by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override to tune without changing infrastructure settings.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.SearchIndexingLimits",
+      "properties": {
+        "enableMappingHardening": {
+          "description": "Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails into index mappings at creation time so documents cannot be rejected. When false, mappings are created as-is.",
+          "type": "boolean",
+          "default": true
+        },
+        "keywordMaxBytes": {
+          "description": "Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe character count derived from this (value/4). The hard Lucene limit is 32766 bytes.",
+          "type": "integer",
+          "minimum": 4,
+          "default": 32766
+        },
+        "mappingDepthLimit": {
+          "description": "Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 20
+        },
+        "nestedObjectsLimit": {
+          "description": "Maximum number of nested-type objects allowed in a single document before Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors index.mapping.nested_objects.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        },
+        "totalFieldsLimit": {
+          "description": "Maximum total fields per index. Mirrors index.mapping.total_fields.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000
+        },
+        "maxColumns": {
+          "description": "Maximum number of flattened columns or schema fields indexed for a single data asset. Items beyond this are dropped from the search document.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        }
+      },
+      "additionalProperties": false
+    },
+    "aws": {
+      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled. When enabled, uses standard AWS environment variables or configured credentials.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
+      "extends": {
+        "$ref": "../security/credentials/awsBaseConfig.json"
+      },
+      "properties": {
+        "enabled": {
+          "description": "Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be configured. Defaults to false for backward compatibility.",
+          "type": "boolean",
+          "default": false
+        },
+        "serviceName": {
+          "description": "AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch Serverless)",
+          "type": "string",
+          "default": "es"
+        }
+      }
+    },
+    "naturalLanguageSearch": {
+      "description": "Configuration for natural language search capabilities",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration",
+      "properties": {
+        "enabled": {
+          "description": "Enable or disable natural language search",
+          "type": "boolean",
+          "default": false
+        },
+        "semanticSearchEnabled": {
+          "description": "Enable or disable semantic search using vector embeddings",
+          "type": "boolean",
+          "default": false
+        },
+        "keywordWeight": {
+          "description": "Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)",
+          "type": "number",
+          "default": 0.4
+        },
+        "semanticWeight": {
+          "description": "Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)",
+          "type": "number",
+          "default": 0.6
+        },
+        "knnNumCandidatesMultiplier": {
+          "description": "Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the cost of latency. Defaults to 2.",
+          "type": "integer",
+          "default": 2,
+          "minimum": 1
+        },
+        "providerClass": {
+          "description": "Fully qualified class name of the NLQService implementation to use",
+          "type": "string",
+          "default": "org.openmetadata.service.search.nlq.NoOpNLQService"
+        },
+        "filterExtractor": {
+          "description": "NLQ filter extractor cache and prompt tuning.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.FilterExtractor",
+          "properties": {
+            "cacheMaxSize": {
+              "description": "Max number of entries in the NLQ filter extraction result cache.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1000
+            },
+            "cacheExpiryMinutes": {
+              "description": "Cache TTL in minutes for NLQ filter extraction results.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 5
+            },
+            "maxSampleValues": {
+              "description": "Max sample values shown per filter category in the system prompt.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "modelId": {
+              "description": "Optional model override for NLQ filter extraction. Leave empty to use the model from llmConfiguration.",
+              "type": "string"
+            },
+            "maxTokens": {
+              "description": "Maximum tokens the model may generate for NLQ filter extraction.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 256
+            },
+            "temperature": {
+              "description": "Sampling temperature for NLQ filter extraction.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 2.0,
+              "default": 0.0
+            },
+            "timeoutSeconds": {
+              "description": "Per-call timeout in seconds for NLQ filter extraction completion.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 15
+            }
+          },
+          "additionalProperties": false
+        },
+        "hybridSearch": {
+          "description": "Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.HybridSearch",
+          "properties": {
+            "searchPipeline": {
+              "description": "Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.",
+              "type": "string",
+              "default": "hybrid-rrf"
+            },
+            "semanticScoreThreshold": {
+              "description": "Minimum score threshold for the semantic (KNN) sub-query results.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.55
+            },
+            "maxQueryTerms": {
+              "description": "Maximum number of query terms forwarded to the shard-fair keyword sub-query.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "fragmentSize": {
+              "description": "Highlight fragment size (characters) for hybrid search hits.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1000
+            },
+            "paginationDepth": {
+              "description": "Pagination depth used by the hybrid query for RRF normalization.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["scheme", "connectionTimeoutSecs", "connectionRequestTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "additionalProperties": false
+}

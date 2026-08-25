@@ -1,0 +1,14 @@
+{
+    "name": "Grafana",
+    "displayName": "Grafana Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+        {
+            "name": "GetDashboards",
+            "description": "Validate authentication credentials",
+            "errorMessage": "Failed to authenticate with Grafana. Please check your credentials.",
+            "mandatory": true,
+            "shortCircuit": true
+        }
+    ]
+}

@@ -1,0 +1,181 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Button, Popover } from 'antd';
+import { lazy, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { EntityReference } from '../../../generated/entity/type';
+import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
+import { EditIconButton } from '../IconButtons/EditIconButton';
+import './domain-select-dropdown.less';
+import { DomainSelectableListProps } from './DomainSelectableList.interface';
+
+const DomainSelectablTree = withSuspenseFallback(
+  lazy(() => import('../DomainSelectableTree/DomainSelectableTree'))
+);
+
+const DomainSelectableList = ({
+  children,
+  disabled,
+  getPopupContainer: getPopupContainerProp,
+  hasPermission,
+  multiple = false,
+  onCancel,
+  onUpdate,
+  popoverProps,
+  restrictedDomains,
+  selectedDomain,
+  showAllDomains = false,
+  wrapInButton = true,
+  overlayClassName,
+  isClearable,
+}: DomainSelectableListProps) => {
+  const { t } = useTranslation();
+  const [popupVisible, setPopupVisible] = useState(false);
+  const { isVersionView } = useGenericContext<Domain>();
+
+  const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain)
+        ? selectedDomain.map((item) => item.fullyQualifiedName)
+        : [selectedDomain.fullyQualifiedName];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
+  const initialDomains = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
+  const handleUpdate = useCallback(
+    async (domains: EntityReference[]) => {
+      if (multiple) {
+        await onUpdate(domains);
+        setPopupVisible(false);
+
+        return;
+      }
+
+      // Handle single domain mode
+      if (domains.length > 0) {
+        await onUpdate(domains[0]);
+      } else {
+        // Pass undefined for empty selection in single domain mode
+        await onUpdate(
+          undefined as unknown as EntityReference | EntityReference[]
+        );
+      }
+
+      setPopupVisible(false);
+    },
+    [onUpdate, multiple]
+  );
+
+  const handleCancel = useCallback(() => {
+    setPopupVisible(false);
+    onCancel?.();
+  }, [onCancel]);
+
+  const popoverContent = useMemo(() => {
+    return (
+      <Popover
+        destroyTooltipOnHide
+        content={
+          !disabled && (
+            <div data-react-aria-top-layer>
+              <FocusTrapWithContainer active={popoverProps?.open || false}>
+                <DomainSelectablTree
+                  initialDomains={initialDomains}
+                  isClearable={isClearable}
+                  isMultiple={multiple}
+                  restrictedDomains={restrictedDomains}
+                  showAllDomains={showAllDomains}
+                  value={selectedDomainsList as string[]}
+                  visible={popupVisible || Boolean(popoverProps?.open)}
+                  onCancel={handleCancel}
+                  onSubmit={handleUpdate}
+                />
+              </FocusTrapWithContainer>
+            </div>
+          )
+        }
+        open={popupVisible}
+        overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
+        placement="bottomRight"
+        showArrow={false}
+        trigger="click"
+        onOpenChange={(visible) => {
+          if (!disabled) {
+            setPopupVisible(visible);
+          }
+        }}
+        {...popoverProps}
+        getPopupContainer={getPopupContainerProp ?? getVisiblePopupContainer}>
+        {children ??
+          (!isVersionView && (
+            <EditIconButton
+              newLook
+              data-testid="add-domain"
+              disabled={!hasPermission || disabled}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.domain-plural'),
+              })}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ))}
+      </Popover>
+    );
+  }, [
+    children,
+    getPopupContainerProp,
+    hasPermission,
+    handleCancel,
+    handleUpdate,
+    initialDomains,
+    multiple,
+    popoverProps,
+    popupVisible,
+    restrictedDomains,
+    selectedDomainsList,
+    selectedDomain,
+    isVersionView,
+    isClearable,
+  ]);
+
+  if (wrapInButton) {
+    return (
+      <Button
+        className="remove-button-default-styling flex-center"
+        disabled={disabled}
+        onClick={(e) => e.stopPropagation()}>
+        {popoverContent}
+      </Button>
+    );
+  }
+
+  return popoverContent;
+};
+
+export default DomainSelectableList;

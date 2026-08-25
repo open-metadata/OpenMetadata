@@ -1,0 +1,26 @@
+{
+  "name": "sample_google_drive",
+  "serviceType": "GoogleDrive",
+  "connection": {
+    "config": {
+      "type": "GoogleDrive",
+      "credentials": {
+        "gcpConfig": {
+          "type": "service_account",
+          "projectId": "sample-project-id",
+          "privateKeyId": "sample-private-key-id",
+          "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDN...\n-----END RSA PRIVATE KEY-----",
+          "clientEmail": "sample-sa@sample-project.iam.gserviceaccount.com",
+          "clientId": "123456789",
+          "authUri": "https://accounts.google.com/o/oauth2/auth",
+          "tokenUri": "https://oauth2.googleapis.com/token",
+          "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+          "clientX509CertUrl": "https://www.googleapis.com/robot/v1/metadata/x509/sample-sa%40sample-project.iam.gserviceaccount.com"
+        }
+      },
+      "driveId": "0APBVnJtQ-NLCUk9PVA",
+      "includeTeamDrives": true,
+      "includeGoogleSheets": true
+    }
+  }
+}

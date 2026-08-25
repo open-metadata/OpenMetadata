@@ -1,0 +1,233 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import {
+  DataTypeTopic,
+  Field,
+  Topic,
+} from '../../../src/generated/entity/data/topic';
+import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
+import { uuid } from '../../utils/common';
+import { visitEntityPageByFqn } from '../../utils/entity';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
+import { EntityClass } from './EntityClass';
+
+export class TopicClass extends EntityClass {
+  service: {
+    name: string;
+    serviceType: string;
+    connection: {
+      config: {
+        type: string;
+        bootstrapServers: string;
+        saslUsername: string;
+        saslPassword: string;
+        saslMechanism: string;
+        supportsMetadataExtraction: boolean;
+      };
+    };
+  };
+  private readonly topicName: string;
+  children: Field[];
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    messageSchema: {
+      schemaText: string;
+      schemaType: string;
+      schemaFields: Field[];
+    };
+    partitions: number;
+  };
+
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: Topic = {} as Topic;
+
+  constructor(name?: string) {
+    super(EntityTypeEndpoint.Topic);
+    this.type = 'Topic';
+    this.childrenTabId = 'schema';
+    this.serviceCategory = SERVICE_TYPE.Messaging;
+    this.serviceType = ServiceTypes.MESSAGING_SERVICES;
+
+    const serviceName = name ?? `pw-messaging-service-${uuid()}`;
+    this.topicName = `pw-topic-entity-class-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Kafka',
+      connection: {
+        config: {
+          type: 'Kafka',
+          bootstrapServers: 'Bootstrap Servers',
+          saslUsername: 'admin',
+          saslPassword: 'admin',
+          saslMechanism: 'PLAIN',
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = [
+      {
+        name: `default${uuid()}`,
+        dataType: DataTypeTopic.Record,
+        tags: [],
+        children: [
+          {
+            name: `name${uuid()}`,
+            dataType: DataTypeTopic.Record,
+            tags: [],
+            children: [
+              {
+                name: 'first_name',
+                dataType: DataTypeTopic.String,
+                description: 'Description for schema field first_name',
+                tags: [],
+              },
+              {
+                name: 'last_name',
+                dataType: DataTypeTopic.String,
+                tags: [],
+              },
+            ],
+          },
+          {
+            name: 'age',
+            dataType: DataTypeTopic.Int,
+            tags: [],
+          },
+          {
+            name: 'club_name',
+            dataType: DataTypeTopic.String,
+            tags: [],
+          },
+        ],
+      },
+      {
+        name: `secondary${uuid()}`,
+        dataType: DataTypeTopic.Record,
+        tags: [],
+        children: [],
+      },
+    ];
+
+    this.entity = {
+      name: this.topicName,
+      displayName: this.topicName,
+      service: this.service.name,
+      description: `Description for ${this.topicName}`,
+      messageSchema: {
+        schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
+    "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,
+        schemaType: 'JSON',
+        schemaFields: this.children,
+      },
+      partitions: 128,
+    };
+
+    this.childrenSelectorId = this.children[0]['name'];
+  }
+
+  async create(apiContext: APIRequestContext) {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'TopicClass.create',
+      createPath: '/api/v1/services/messagingServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'TopicClass.create',
+      createPath: '/api/v1/topics',
+      fqnSegments: [this.service.name, this.entity.name],
+      data: this.entity,
+    });
+
+    this.childrenSelectorId =
+      this.entityResponseData.messageSchema?.schemaFields?.[0]
+        .fullyQualifiedName ?? '';
+
+    return {
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/topics/name/${this.entityResponseData?.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    );
+
+    this.entityResponseData = await okJson(response, 'TopicClass.patch');
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  get() {
+    return {
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
+    };
+  }
+
+  public set(data: { entity: Topic; service: ResponseDataType }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
+  async visitEntityPage(page: Page) {
+    await visitEntityPageByFqn({
+      page,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
+    });
+  }
+
+  async delete(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.delete(
+      `/api/v1/services/messagingServices/name/${encodeURIComponent(
+        this.serviceResponseData?.fullyQualifiedName ?? ''
+      )}?recursive=true&hardDelete=true`
+    );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+}

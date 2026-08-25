@@ -1,0 +1,251 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Col, Form, Row } from 'antd';
+import { FormProviderProps } from 'antd/lib/form/context';
+import { isEmpty } from 'lodash';
+import QueryString from 'qs';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import {
+  DEFAULT_SCHEDULE_CRON_DAILY,
+  SCHEDULAR_OPTIONS,
+} from '../../../../constants/Schedular.constants';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { useFqn } from '../../../../hooks/useFqn';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../../interface/FormUtils.interface';
+import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
+import { generateFormFields } from '../../../../utils/formUtils';
+import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
+import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
+import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
+import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
+import {
+  AddTestSuitePipelineProps,
+  TestSuiteIngestionDataType,
+} from '../AddDataQualityTest.interface';
+import './add-test-suite-pipeline.style.less';
+
+const AddTestSuitePipeline = ({
+  initialData,
+  isLoading,
+  onSubmit,
+  onCancel,
+  includePeriodOptions,
+  testSuite,
+}: AddTestSuitePipelineProps) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { ingestionFQN } = useFqn();
+  const location = useCustomLocation();
+
+  const testSuiteId = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+    const testSuiteIdData =
+      testSuite?.id ?? (searchData as { testSuiteId: string }).testSuiteId;
+
+    return testSuite?.basic ? undefined : testSuiteIdData;
+  }, [location.search, testSuite?.basic, testSuite?.id]);
+
+  const tableFqnForFilters = useMemo(() => {
+    if (
+      testSuite?.basic &&
+      testSuite.basicEntityReference?.fullyQualifiedName &&
+      testSuite.basicEntityReference.type === 'table'
+    ) {
+      return testSuite.basicEntityReference.fullyQualifiedName;
+    }
+
+    return undefined;
+  }, [testSuite?.basic, testSuite?.basicEntityReference]);
+
+  // The picker's `q` is free text: the endpoint parses it as a literal term rather than as a
+  // Lucene expression, so the suite scope travels as first-class filter params. A basic suite owns
+  // exactly its table's test cases, so scoping by the table's entityLink is equivalent.
+  const testCasePickerScope = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      testSuiteId,
+      ...(tableFqnForFilters && {
+        entityLink: `<#E::table::${tableFqnForFilters}>`,
+        includeAllTests: true,
+      }),
+    }),
+    [testSuiteId, tableFqnForFilters]
+  );
+
+  const [selectAllTestCases, setSelectAllTestCases] = useState(
+    initialData?.selectAllTestCases
+  );
+  const isEditMode = !isEmpty(ingestionFQN);
+
+  const formFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      placeholder: t('label.enter-entity', {
+        entity: t('label.name'),
+      }),
+      props: {
+        'data-testid': 'pipeline-name',
+      },
+      id: 'root/name',
+    },
+  ];
+
+  const testCaseFormFields: FieldProp[] = [
+    {
+      name: 'selectAllTestCases',
+      label: t('label.select-all-entity', {
+        entity: t('label.test-case-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        'data-testid': 'select-all-test-cases',
+      },
+      id: 'root/selectAllTestCases',
+      formItemLayout: FormItemLayout.HORIZONTAL,
+    },
+  ];
+
+  const handleCancelBtn = () => {
+    navigate(-1);
+  };
+
+  const onFinish = (
+    values: WorkflowExtraConfig & TestSuiteIngestionDataType
+  ) => {
+    const {
+      cron,
+      enableDebugLog,
+      testCases,
+      name,
+      selectAllTestCases,
+      raiseOnError,
+    } = values;
+    const testCaseNames = normalizeSelectedTestProp(testCases);
+
+    onSubmit({
+      cron,
+      enableDebugLog,
+      name,
+      selectAllTestCases,
+      testCases: testCaseNames.length > 0 ? testCaseNames : undefined,
+      raiseOnError,
+    });
+  };
+
+  const handleFromChange: FormProviderProps['onFormChange'] = (
+    _,
+    { forms }
+  ) => {
+    const form = forms['schedular-form'];
+    if (!form) {
+      return;
+    }
+    const value = form.getFieldValue('selectAllTestCases');
+    setSelectAllTestCases(value);
+    if (value) {
+      form.setFieldsValue({ testCases: undefined });
+    }
+  };
+
+  const raiseOnErrorFormField = useMemo(() => getRaiseOnErrorFormField(), []);
+
+  const schedularOptionsTranslated = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
+  return (
+    <Form.Provider onFormChange={handleFromChange}>
+      <ScheduleInterval
+        buttonProps={{
+          okText: isEditMode ? t('label.save') : t('label.create'),
+        }}
+        debugLog={{ allow: true }}
+        defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+        includePeriodOptions={includePeriodOptions}
+        initialData={initialData}
+        isEditMode={isEditMode}
+        schedularOptions={schedularOptionsTranslated}
+        status={isLoading ? 'waiting' : 'initial'}
+        topChildren={
+          <>
+            <Col span={24}>{generateFormFields(formFields)}</Col>
+            <Col span={24}>
+              {t('label.schedule-for-entity', {
+                entity: t('label.test-case-plural'),
+              })}
+            </Col>
+          </>
+        }
+        onBack={onCancel ?? handleCancelBtn}
+        onDeploy={onFinish}>
+        <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
+        <Col span={24}>
+          <Row className="add-test-case-container" gutter={[0, 16]}>
+            <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
+            {!selectAllTestCases && (
+              <Col span={24}>
+                <Form.Item
+                  label={t('label.test-case')}
+                  name="testCases"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('label.field-required', {
+                        field: t('label.test-case'),
+                      }),
+                    },
+                  ]}
+                  valuePropName="selectedTest">
+                  <AddTestCaseList
+                    columnFilters={
+                      tableFqnForFilters
+                        ? `fullyQualifiedName:"${escapeESReservedCharacters(
+                            tableFqnForFilters
+                          )}"`
+                        : undefined
+                    }
+                    hideTableFilter={Boolean(tableFqnForFilters)}
+                    showButton={false}
+                    testCaseParams={testCasePickerScope}
+                  />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
+        </Col>
+      </ScheduleInterval>
+    </Form.Provider>
+  );
+};
+
+export default AddTestSuitePipeline;

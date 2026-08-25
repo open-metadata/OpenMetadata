@@ -1,0 +1,21 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerbi/bucketDetails.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Bucket Details",
+    "description": "Details of the bucket where the .pbit files are stored",
+    "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
+    "type": "object",
+    "properties": {
+        "bucketName": {
+            "title": "Bucket Name",
+            "description": "Name of the bucket where the .pbit files are stored",
+            "type": "string"
+        },
+        "objectPrefix": {
+            "title": "Object Prefix",
+            "description": "Path of the folder where the .pbit files are stored",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

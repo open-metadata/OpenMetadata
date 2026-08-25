@@ -1,0 +1,23 @@
+{
+  "tools": [
+    {
+      "name": "search_metadata",
+      "description": "Creates a prompt for Searching metadata in OpenMetadata.",
+      "arguments": [
+        {
+          "name": "query",
+          "description": "Keywords to use for searching.",
+          "required": true
+        },
+        {
+          "name": "entityType",
+          "description": "Entity Type to Filter Report."
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of results to return. Default is 10. Try to keep this number low unless the user asks for more."
+        }
+      ]
+    }
+  ]
+}

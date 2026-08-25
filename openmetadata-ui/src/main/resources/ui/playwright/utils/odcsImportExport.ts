@@ -1,0 +1,105 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, Page, Response } from '@playwright/test';
+import { TableClass } from '../support/entity/TableClass';
+import { toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+
+export const navigateToContractTab = async (page: Page, table: TableClass) => {
+  await table.visitEntityPage(page);
+  await page.click('[data-testid="contract"]');
+  await waitForAllLoadersToDisappear(page);
+};
+
+export const openODCSImportDropdown = async (page: Page) => {
+  const addButton = page.getByTestId('add-contract-button');
+  const manageButton = page.getByTestId('manage-contract-actions');
+
+  // Button render can lag the page loader; wait instead of a one-shot isVisible() check.
+  await expect(addButton.or(manageButton)).toBeVisible({ timeout: 15000 });
+
+  if (await addButton.isVisible()) {
+    await addButton.click();
+    await page.getByTestId('add-contract-menu').waitFor({
+      state: 'visible',
+      timeout: 10000,
+    });
+  } else {
+    await manageButton.click();
+    await page.getByTestId('contract-action-dropdown').waitFor({
+      state: 'visible',
+      timeout: 10000,
+    });
+  }
+};
+
+export const clickImportODCSButton = async (page: Page) => {
+  await page.getByTestId('import-odcs-contract-button').click();
+};
+
+export const importODCSYaml = async (
+  page: Page,
+  yamlContent: string,
+  filename: string,
+  options?: { mode?: 'merge' | 'replace'; hasExistingContract?: boolean }
+) => {
+  await clickImportODCSButton(page);
+
+  await page.getByTestId('import-contract-modal').waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
+
+  const fileInput = page.getByTestId('file-upload-input');
+  await fileInput.setInputFiles({
+    name: filename,
+    mimeType: 'application/yaml',
+    buffer: Buffer.from(yamlContent),
+  });
+
+  await page.getByTestId('file-info-card').waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
+
+  // If existing contract, select mode
+  if (options?.hasExistingContract && options?.mode) {
+    await page.getByTestId(`import-mode-${options.mode}`).click();
+  }
+
+  // Determine which API endpoint will be called based on mode
+  // ODCS imports use: POST (new) or PUT (merge/replace) to /dataContracts/odcs/yaml
+  const importResponse = page.waitForResponse((response: Response) => {
+    const url = response.url();
+    const method = response.request().method();
+
+    if (options?.hasExistingContract) {
+      // Merge and Replace modes both use PUT to /dataContracts/odcs/yaml with mode param
+      return (
+        url.includes('/api/v1/dataContracts/odcs/yaml') && method === 'PUT'
+      );
+    } else {
+      // New contract: POST to /dataContracts/odcs/yaml
+      return (
+        url.includes('/api/v1/dataContracts/odcs/yaml') && method === 'POST'
+      );
+    }
+  });
+
+  // Click Import button
+  const importButton = page.getByTestId('import-button');
+  await importButton.click({ delay: 100 });
+
+  await importResponse;
+  await toastNotification(page, 'ODCS Contract imported successfully');
+};

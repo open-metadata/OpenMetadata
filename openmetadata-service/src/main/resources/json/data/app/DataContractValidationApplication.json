@@ -1,0 +1,8 @@
+{
+  "name": "DataContractValidationApplication",
+  "displayName": "Data Contract Validation",
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 * * *"
+  }
+}

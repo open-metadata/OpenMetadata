@@ -1,0 +1,247 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.add-semantic-button {
+  span {
+    font-weight: var(--om-font-weight-semibold);
+  }
+  .anticon {
+    font-size: var(--om-font-size-sm);
+    rotate: 45deg;
+  }
+}
+
+.contract-semantic-form-container {
+  .ant-card.expanded {
+    .ant-card-head {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  .ant-card.new-header-border-card.expandable-card {
+    margin-top: var(--om-space-16);
+    border: 1px solid @border-color-7;
+    box-shadow: 0 1px 2px 0 @grey-27;
+
+    .ant-card-head {
+      background: var(--tw-color-bg-primary);
+      border-bottom: 1px solid @grey-200;
+
+      .semantic-form-item-title-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: var(--om-space-12);
+
+        .enable-form-item {
+          margin-bottom: 0;
+
+          .ant-switch {
+            margin-left: var(--om-space-2);
+            width: 44px;
+            height: 24px;
+
+            .ant-switch-handle {
+              width: 16px;
+              height: 16px;
+              top: 4px;
+              left: 4px;
+
+              &::before {
+                border-radius: var(--om-radius-20);
+              }
+            }
+          }
+
+          .ant-switch-checked {
+            .ant-switch-handle {
+              left: calc(100% - 16px - 4px);
+            }
+          }
+        }
+
+        > div:first-child {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .semantic-form-item-title {
+          font-size: var(--om-font-size-md);
+          font-weight: var(--om-font-weight-semibold);
+          line-height: 32px;
+        }
+
+        .semantic-form-item-description {
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-regular);
+          color: @grey-600;
+        }
+
+        .ant-btn.edit-expand-button {
+          border-radius: var(--om-radius-md);
+          border: 1px solid @border-light;
+
+          svg {
+            font-size: var(--om-font-size-xl);
+            color: @grey-600;
+          }
+        }
+
+        .ant-btn.delete-expand-button {
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border-radius: var(--om-radius-md);
+          background: transparent;
+          border-color: @error-color;
+
+          svg {
+            width: 20px;
+            color: @error-color;
+          }
+        }
+      }
+
+      .ant-card-extra {
+        .ant-btn.expand-collapse-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: var(--om-radius-md);
+          border: 1px solid @border-light;
+
+          svg {
+            font-size: var(--om-font-size-xl);
+            color: @grey-600;
+          }
+        }
+      }
+    }
+  }
+
+  .expanded-active-card {
+    .ant-card-head {
+      display: none;
+    }
+
+    .ant-card-body {
+      padding: 0;
+
+      .semantic-form-item-content {
+        padding: var(--om-space-20);
+
+        .ant-switch {
+          margin-left: var(--om-space-2);
+          width: 36px;
+          height: 20px;
+
+          .ant-switch-handle {
+            width: 14px;
+            height: 14px;
+            top: 3px;
+            left: 3px;
+
+            &::before {
+              border-radius: var(--om-radius-20);
+            }
+          }
+        }
+
+        .ant-switch-checked {
+          .ant-switch-handle {
+            left: calc(100% - 14px - 4px);
+          }
+        }
+      }
+    }
+  }
+
+  .semantic-form-item-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--om-space-16) var(--om-space-24);
+    border-top: 1px solid @grey-200;
+  }
+
+  .query-builder-form-field {
+    .ant-card {
+      border: none;
+      &.query-builder-card.jsonlogic
+        .query-builder-container
+        .group-or-rule-container.group-container
+        > .group.group-or-rule
+        > .group--header
+        .group--conjunctions {
+        top: -48px;
+        transform: none;
+        left: auto;
+        right: 0;
+      }
+    }
+    .ant-card-body {
+      padding: 0;
+
+      .ant-divider {
+        display: none;
+      }
+
+      .query-filter-label {
+        margin-bottom: var(--om-space-8);
+        display: inline-block;
+        line-height: 40px;
+      }
+
+      .ant-btn-group {
+        .action--DELETE {
+          border: 1px solid @grey-34;
+
+          .anticon {
+            color: @grey-400;
+          }
+        }
+
+        .action--ADD-RULE {
+          display: none !important;
+        }
+      }
+    }
+  }
+}
+
+.semantic-rule-editor-view-only {
+  .ant-divider {
+    display: none;
+  }
+
+  .query-builder {
+    .group--conjunctions {
+      display: none;
+    }
+  }
+
+  .ant-card-body {
+    padding: 0;
+  }
+
+  .query-builder-card {
+    border: none;
+    box-shadow: none;
+  }
+}

@@ -1,0 +1,644 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { Column } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
+import { MOCK_TABLE } from '../../../mocks/TableData.mock';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+} from '../../../rest/tableAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import SchemaTable from './SchemaTable.component';
+
+const mockTableConstraints = [
+  {
+    constraintType: 'PRIMARY_KEY',
+    columns: ['address_id', 'shop_id'],
+  },
+] as Table['tableConstraints'];
+const mockColumns = [
+  {
+    name: 'comments',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 1,
+  },
+  {
+    name: 'products',
+    dataType: 'ARRAY',
+    arrayDataType: 'STRUCT',
+    dataLength: 1,
+    dataTypeDisplay:
+      'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 2,
+  },
+  {
+    name: 'platform',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.platform',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 3,
+  },
+] as Column[];
+
+const mockColumnsWithNested = [
+  {
+    name: 'comments',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 1,
+  },
+  {
+    name: 'products',
+    dataType: 'ARRAY',
+    arrayDataType: 'STRUCT',
+    dataLength: 1,
+    dataTypeDisplay:
+      'array<struct<product_id:character varying(24),price:int,onsale:boolean>>',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 2,
+    children: [
+      {
+        name: 'product_id',
+        dataType: 'VARCHAR',
+        dataLength: 24,
+        dataTypeDisplay: 'character varying(24)',
+        fullyQualifiedName:
+          'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products.product_id',
+        tags: [],
+        description: 'Original product ID description',
+        ordinalPosition: 1,
+      },
+      {
+        name: 'price',
+        dataType: 'INT',
+        dataTypeDisplay: 'int',
+        fullyQualifiedName:
+          'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products.price',
+        tags: [],
+        ordinalPosition: 2,
+      },
+      {
+        name: 'onsale',
+        dataType: 'BOOLEAN',
+        dataTypeDisplay: 'boolean',
+        fullyQualifiedName:
+          'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products.onsale',
+        tags: [],
+        ordinalPosition: 3,
+      },
+    ],
+  },
+] as Column[];
+
+const mockGenericContextProps = {
+  data: {
+    ...MOCK_TABLE,
+    columns: mockColumns,
+    tableConstraints: mockTableConstraints,
+  } as Table,
+  permissions: DEFAULT_ENTITY_PERMISSION,
+  type: 'table',
+  setDisplayedColumns: jest.fn(),
+};
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest
+    .fn()
+    .mockImplementation(() => mockGenericContextProps),
+}));
+
+jest.mock('../../../rest/tableAPI', () => ({
+  getTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    })
+  ),
+  searchTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    })
+  ),
+  updateTableColumn: jest.fn(),
+}));
+
+jest.mock('../../../utils/FqnUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
+}));
+
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+  const flattenColumnsMock = (items: Column[]): Column[] => {
+    if (!items || items.length === 0) {
+      return [];
+    }
+    const result: Column[] = [];
+    items.forEach((item) => {
+      result.push(item);
+      if (item.children && item.children.length > 0) {
+        result.push(...flattenColumnsMock(item.children));
+      }
+    });
+
+    return result;
+  };
+
+  return {
+    ...actual,
+    getAllRowKeysByKeyName: jest.fn(),
+    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+    makeData: jest.fn().mockImplementation((value) => value),
+    prepareConstraintIcon: jest.fn(),
+    updateFieldTags: jest.fn(),
+    flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
+    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+        expandable ? (
+          <button
+            data-testid="expand-icon"
+            onClick={(e) => onExpand(record, e)}>
+            ExpandIcon
+          </button>
+        ) : null
+      ),
+    })),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+    updateColumnInNestedStructure: actual.updateColumnInNestedStructure,
+  };
+});
+
+jest.mock(
+  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({
+    fqn: MOCK_TABLE.fullyQualifiedName,
+    entityFqn: MOCK_TABLE.fullyQualifiedName,
+    columnFqn: '',
+  }),
+}));
+
+const columnsWithDisplayName = [
+  {
+    name: 'comments',
+    displayName: 'Comments',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 1,
+  },
+  {
+    name: 'products',
+    dataType: 'ARRAY',
+    arrayDataType: 'STRUCT',
+    dataLength: 1,
+    dataTypeDisplay:
+      'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 2,
+  },
+  {
+    name: 'platform',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.platform',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 3,
+  },
+] as Column[];
+
+jest.mock('../../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
+jest.mock(
+  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  () => ({
+    ModalWithMarkdownEditor: jest.fn().mockReturnValue(<p>EditorModal</p>),
+  })
+);
+
+jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityNameModal</p>);
+});
+
+jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
+  return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
+});
+
+jest.mock('../../../utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../utils/GlossaryUtils', () => ({
+  getGlossaryTermsList: jest.fn(() => Promise.resolve([])),
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../TableTags/TableTags.component', () => {
+  return jest.fn().mockReturnValue(<p>TableTags</p>);
+});
+
+jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
+  getAllTags: jest.fn(),
+  getFilteredTagsData: jest.fn((data) => data),
+}));
+
+jest.mock('../TableDescription/TableDescription.component', () => {
+  return jest.fn().mockReturnValue(<p>TableDescription</p>);
+});
+
+const mockTableScrollValue = jest.fn();
+
+jest.mock('../../../constants/Table.constants', () => ({
+  get TABLE_SCROLL_VALUE() {
+    return mockTableScrollValue();
+  },
+}));
+
+jest.mock('../../../rest/testAPI', () => ({
+  getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../utils/StringUtils', () => ({
+  stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  getEntityColumnFQN: jest.fn(),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/table/${fqn}`),
+}));
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  columnFilterIcon: jest.fn().mockReturnValue(<p>ColumnFilterIcon</p>),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
+  ownerTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../utils/EntityUtilClassBase', () => ({
+  getEntityByFqn: jest.fn(),
+  getFqnParts: jest
+    .fn()
+    .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
+}));
+
+jest.mock('../../../utils/EntitySortUtils', () => ({
+  getColumnSorter: jest.fn(),
+}));
+jest.mock('../../../utils/EntityPureUtils', () => ({
+  getEntityBulkEditPath: jest.fn(),
+}));
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation(({ displayName, name }) => displayName || name || ''),
+}));
+jest.mock('../../../utils/EntityColumnUtils', () => ({
+  getFrequentlyJoinedColumns: jest.fn(),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
+  highlightSearchArrayElement: jest.fn(),
+  highlightSearchText: jest.fn().mockImplementation((value) => value),
+}));
+
+jest.mock('../../../constants/Table.constants', () => ({
+  COLUMN_CONSTRAINT_TYPE_OPTIONS: [
+    { label: 'label.primary-key', value: 'PRIMARY_KEY' },
+    { label: 'label.foreign-key', value: 'FOREIGN_KEY' },
+    { label: 'label.unique', value: 'UNIQUE' },
+  ],
+}));
+
+describe('Test EntityTable Component', () => {
+  it('Initially, Table should load', async () => {
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+      MOCK_TABLE.fullyQualifiedName,
+      {
+        fields: 'tags,customMetrics,extension',
+        limit: 50,
+        offset: 0,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }
+    );
+
+    const entityTable = await screen.findByTestId('entity-table');
+
+    screen.debug(entityTable);
+
+    expect(entityTable).toBeInTheDocument();
+  });
+
+  it('Should render tags and description components', async () => {
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+      MOCK_TABLE.fullyQualifiedName,
+      {
+        fields: 'tags,customMetrics,extension',
+        limit: 50,
+        offset: 0,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }
+    );
+
+    const tableTags = await screen.findAllByText('TableTags');
+
+    expect(tableTags).toHaveLength(6);
+
+    const tableDescription = screen.getAllByText('TableDescription');
+
+    expect(tableDescription).toHaveLength(3);
+  });
+
+  it('should source column tag filter options from the full table columns, not the loaded page', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+      data: [mockColumns[0]],
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(getAllTags).toHaveBeenCalledWith(mockColumns);
+    expect(searchTableColumnsByFQN).not.toHaveBeenCalled();
+  });
+
+  it('Table should load empty when no data present', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const entityTable = await screen.findByTestId('entity-table');
+
+    expect(entityTable).toBeInTheDocument();
+
+    const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
+
+    expect(emptyPlaceholder).toBeInTheDocument();
+  });
+
+  it('should render column name only if displayName is not present', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+    render(<SchemaTable />, {
+      wrapper: MemoryRouter,
+    });
+
+    const columnNames = await screen.findAllByTestId('column-name');
+
+    expect(columnNames).toHaveLength(3);
+
+    expect(columnNames[0].textContent).toBe('comments');
+    expect(columnNames[1].textContent).toBe('products');
+    expect(columnNames[2].textContent).toBe('platform');
+  });
+
+  it('should render column name & displayName for column if both presents', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: columnsWithDisplayName,
+      paging: { total: columnsWithDisplayName.length },
+    });
+    render(<SchemaTable />, {
+      wrapper: MemoryRouter,
+    });
+
+    const columnDisplayName = await screen.findAllByTestId(
+      'column-display-name'
+    );
+    const columnName = await screen.findAllByTestId('column-name');
+
+    expect(columnDisplayName[0]).toBeInTheDocument();
+    expect(columnName[0]).toBeInTheDocument();
+
+    expect(columnDisplayName[0].textContent).toBe('Comments');
+    expect(columnName[0].textContent).toBe('comments');
+  });
+
+  it('should not render edit displayName button is table is deleted', async () => {
+    mockGenericContextProps.data = {
+      ...MOCK_TABLE,
+      columns: columnsWithDisplayName,
+    } as Table;
+    render(<SchemaTable />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(
+      screen.queryByTestId('edit-displayName-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render copy column link button for each column', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    expect(copyButtons).toHaveLength(3);
+  });
+
+  it('should copy column link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      expect.stringContaining(mockColumns[0].fullyQualifiedName ?? '')
+    );
+  });
+
+  describe('Nested Column Updates', () => {
+    it('should render table with nested columns', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: mockColumnsWithNested,
+        paging: { total: mockColumnsWithNested.length },
+      });
+
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: mockColumnsWithNested,
+      } as Table;
+
+      await act(async () => {
+        render(<SchemaTable />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      const entityTable = await screen.findByTestId('entity-table');
+
+      expect(entityTable).toBeInTheDocument();
+      expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({
+          fields: 'tags,customMetrics,extension',
+        })
+      );
+    });
+
+    it('should have updateColumnInNestedStructure available in TableUtils', () => {
+      const {
+        updateColumnInNestedStructure,
+      } = require('../../../utils/TablePureUtils');
+
+      expect(updateColumnInNestedStructure).toBeDefined();
+      expect(typeof updateColumnInNestedStructure).toBe('function');
+    });
+
+    it('should support nested column structure with children', async () => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: mockColumnsWithNested,
+        paging: { total: mockColumnsWithNested.length },
+      });
+
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: mockColumnsWithNested,
+      } as Table;
+
+      await act(async () => {
+        render(<SchemaTable />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      expect(mockColumnsWithNested[1].children).toBeDefined();
+      expect(mockColumnsWithNested[1].children).toHaveLength(3);
+      expect(mockColumnsWithNested[1].children?.[0].name).toBe('product_id');
+    });
+  });
+});

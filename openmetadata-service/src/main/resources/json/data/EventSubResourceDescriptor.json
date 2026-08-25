@@ -1,0 +1,328 @@
+[
+  {
+    "name" : "all",
+    "supportedFilters" : [
+      "filterByEntityId",
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name": "chart",
+    "supportedFilters": [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "dashboardService" ]
+  },
+  {
+    "name" : "dashboard",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "dashboardService" ]
+  },
+  {
+    "name" : "dashboardService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "database",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "databaseService" ]
+  },
+  {
+    "name" : "databaseSchema",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "databaseService", "database" ]
+  },
+  {
+    "name" : "databaseService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "glossary",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "glossaryTerm",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "glossary" ]
+  },
+  {
+    "name" : "ingestionPipeline",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "messagingService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "mlmodel",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "mlmodelService" ]
+  },
+  {
+    "name" : "mlmodelService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "pipeline",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "pipelineService" ]
+  },
+  {
+    "name" : "pipelineService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "storageService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "table",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "databaseService", "database", "databaseSchema" ]
+  },
+  {
+    "name" : "tag",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "classification" ]
+  },
+  {
+    "name" : "tagCategory",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "topic",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "messagingService" ]
+  },
+  {
+    "name" : "metadataService",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "dashboardDataModel",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ],
+    "containerEntities" : [ "dashboardService" ]
+  },
+  {
+    "name" : "announcement",
+    "supportedFilters" : [
+    ]
+  },
+  {
+    "name" : "task",
+    "supportedFilters" : [
+      "filterByMentionedName"
+    ]
+  },
+  {
+    "name" : "conversation",
+    "supportedFilters" : [
+      "filterByMentionedName"
+    ]
+  },
+  {
+    "name": "user",
+    "supportedFilters": [
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "domain",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  },
+  {
+    "name" : "dataProduct",
+    "supportedFilters" : [
+      "filterByOwnerName",
+      "filterByFqn",
+      "filterByEventType",
+      "filterByUpdaterName",
+      "filterByDomain",
+      "filterByGeneralMetadataEvents",
+      "filterByUpdaterIsBot"
+    ]
+  }
+]

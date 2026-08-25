@@ -1,0 +1,90 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/trinoConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrinoConnection",
+  "description": "Trino Connection Config",
+  "type": "object",
+  "definitions": {
+    "trinoType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Trino"
+      ],
+      "default": "Trino"
+    },
+    "trinoScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "trino"
+      ],
+      "default": "trino"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/trinoType",
+      "default": "Trino"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/trinoScheme",
+      "default": "trino"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Trino.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "../../../../services/connections/database/common/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../services/connections/database/common/jwtAuth.json"
+        },
+        {
+          "$ref": "../../../../services/connections/database/common/azureConfig.json"
+        },
+        {
+          "$ref": "../../../../services/connections/database/common/noConfigAuthenticationTypes.json"
+        }
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Trino service.",
+      "type": "string"
+    },
+    "catalog": {
+      "title": "Catalog",
+      "description": "Catalog of the data source.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../../../../services/connections/connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../../../../services/connections/connectionBasicType.json#/definitions/connectionArguments"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
+}

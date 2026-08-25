@@ -1,0 +1,1000 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
+import { TableClass } from '../../support/entity/TableClass';
+import { TaskClass } from '../../support/entity/TaskClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  assignTagToChildren,
+  copyAndGetClipboardText,
+  getFirstRowColumnLink,
+  removeTagsFromChildren,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
+
+const table1 = new TableClass();
+
+test.describe('Table pagination sorting search scenarios ', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await table1.create(apiContext);
+
+    for (let i = 0; i < 30; i++) {
+      await table1.createTestCase(apiContext);
+    }
+
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('Table pagination with sorting should works', async ({
+    dataConsumerPage: page,
+  }) => {
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+
+    await page.click('[data-testid="test-cases"]');
+    await waitForAllLoadersToDisappear(page);
+
+    // Capture the paginated list responses so we wait for the *new* data
+    // before counting rows. Without this, the loader can finish for the
+    // current page while the page-2 fetch is still in flight, and the
+    // row count assertion runs against an empty table mid-transition.
+    const sortedResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
+    await page.getByText('Name', { exact: true }).click();
+    await sortedResponse;
+
+    const nextPageResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
+    await page.getByTestId('next').click();
+    await nextPageResponse;
+
+    await waitForAllLoadersToDisappear(page);
+
+    // Use toHaveCount instead of .count() === 15 so Playwright auto-retries
+    // the assertion until the table re-renders with the page-2 rows.
+    await expect(
+      page.locator('[data-testid="test-case-table"] tbody tr[data-key]')
+    ).toHaveCount(15);
+  });
+
+  test('Table search with sorting should work', async ({
+    dataConsumerPage: page,
+  }) => {
+    const listTestCasesResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+
+    await page.click('[data-testid="test-cases"]');
+
+    await listTestCasesResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await page.getByText('Name', { exact: true }).click();
+    await page.locator('[data-testid="searchbar-component"] input').click();
+
+    const searchTerm = 'temp-test-case';
+    const testSearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) && (responseUrl.searchParams.get('q') ?? '') === searchTerm
+      );
+    });
+
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill(searchTerm);
+
+    await testSearchResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
+  });
+
+  test('Table filter with sorting should work', async ({
+    dataConsumerPage: page,
+  }) => {
+    const listTestCasesResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+
+    await page.click('[data-testid="test-cases"]');
+
+    await listTestCasesResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await page.getByText('Name', { exact: true }).click();
+
+    await page.getByTestId('status-select-filter').click();
+
+    const filteredResults = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'
+    );
+
+    await page.getByTitle('Queued').locator('div').click();
+
+    await filteredResults;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    // Migration static data seeds test cases across every status (including
+    // Queued), so the status filter alone no longer yields an empty list.
+    // Combine it with a search term that matches nothing to deterministically
+    // land on the empty-state placeholder.
+    const noMatchSearch = `no-match-${uuid()}`;
+    const emptySearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) && (responseUrl.searchParams.get('q') ?? '').includes(noMatchSearch)
+      );
+    });
+    await page.locator('[data-testid="searchbar-component"] input').click();
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill(noMatchSearch);
+    await emptySearchResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
+  });
+
+  test('Table page should show schema tab with count', async ({
+    dataConsumerPage: page,
+  }) => {
+    await table1.visitEntityPage(page);
+
+    const count = table1.entity.columns.length;
+
+    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText(
+      `${count}`
+    );
+  });
+
+  test('should persist current page', async ({ dataConsumerPage: page }) => {
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    await page.getByTestId('next').click();
+
+    await waitForAllLoadersToDisappear(page);
+
+    const initialPageIndicator = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    // First navigation - click on first table link
+    const firstLinkInColumn = getFirstRowColumnLink(page);
+    await firstLinkInColumn.click();
+
+    await page.waitForURL('**/table/**');
+    await waitForAllLoadersToDisappear(page);
+
+    await page.goBack();
+
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify page indicator is still the same after first navigation
+    await expect(page.locator('[data-testid="page-indicator"]')).toHaveText(
+      initialPageIndicator ?? ''
+    );
+
+    // Second navigation - click on second table link
+    const secondLinkInColumn = getFirstRowColumnLink(page);
+    await secondLinkInColumn.click();
+
+    await page.waitForURL('**/table/**');
+    await waitForAllLoadersToDisappear(page);
+
+    await page.goBack();
+
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify page indicator is still the same after second navigation
+    await expect(page.locator('[data-testid="page-indicator"]')).toHaveText(
+      initialPageIndicator ?? ''
+    );
+  });
+
+  test('should persist page size', async ({ dataConsumerPage: page }) => {
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(pageSizeDropdown).toBeVisible();
+    await expect(pageSizeDropdown).toBeEnabled();
+    await pageSizeDropdown.click();
+
+    const pageSizeOption = page
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .getByRole('menuitem', { name: '15 / Page' });
+    await expect(pageSizeOption).toBeVisible();
+    await pageSizeOption.click();
+    await waitForAllLoadersToDisappear(page);
+
+    const linkInColumn = getFirstRowColumnLink(page);
+    const entityApiResponse = page.waitForResponse(
+      '/api/v1/permissions/table/name/*'
+    );
+    await linkInColumn.click();
+
+    await entityApiResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await page.goBack();
+    await waitForAllLoadersToDisappear(page);
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
+
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
+  });
+});
+
+test.describe('Table & Data Model columns table pagination', () => {
+  test('expand collapse should only visible for nested columns', async ({
+    page,
+  }) => {
+    test.slow();
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+
+    await waitForAllLoadersToDisappear(page);
+
+    // Should show expand icon for nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shipping_address"]'
+        )
+        .getByTestId('expand-icon')
+    ).toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // verify column profile table
+    await page.getByRole('tab', { name: 'Data Observability' }).click();
+    await waitForAllLoadersToDisappear(page);
+
+    const colsResponse = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(
+            '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns'
+          ) && response.request().method() === 'GET'
+    );
+    await page.getByRole('tab', { name: 'Column Profile' }).click();
+
+    const data = await colsResponse;
+    expect(data.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+
+    // Should show expand icon for nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shipping_address"]'
+        )
+        .getByTestId('expand-icon')
+    ).toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+  });
+
+  test('expand / collapse should not appear after updating nested fields table', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
+
+    await waitForAllLoadersToDisappear(page);
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId:
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+      entityEndpoint: 'tables',
+    });
+
+    // Should not show expand icon for non-nested columns
+    await expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId:
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+      entityEndpoint: 'tables',
+    });
+  });
+});
+
+test.describe('Tags and glossary terms should be consistent for search ', () => {
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
+  let testClassification: ClassificationClass;
+  let testTag: TagClass;
+
+  test.beforeAll(async ({ browser }) => {
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    testClassification = new ClassificationClass();
+    testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Glossary term should be consistent for search', async ({
+    dataConsumerPage: page,
+  }) => {
+    const tableRoute = '/table/sample_data.ecommerce_db.shopify.dim_customer';
+    const glossaryRowSelector =
+      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
+
+    await expect
+      .poll(
+        async () => {
+          await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
+          await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+          return await page.locator(glossaryRowSelector).count();
+        },
+        {
+          timeout: 60000,
+          intervals: [1000, 2000, 5000],
+        }
+      )
+      .toBeGreaterThan(0);
+
+    await waitForAllLoadersToDisappear(page);
+    const glossaryTagsCell = page.locator(
+      `${glossaryRowSelector} [data-testid*="glossary-tags"]`
+    );
+    await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
+
+    // Check if add button exists and is visible
+    const rowSelector =
+      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
+
+    const addButton = glossaryTagsCell.getByTestId('add-tag');
+    if (await addButton.isVisible().catch(() => false)) {
+      await addButton.click();
+    } else {
+      await glossaryTagsCell.getByTestId('edit-button').click();
+    }
+
+    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
+
+    await page
+      .locator('[data-testid="tag-selector"] input')
+      .fill(glossaryTerm.data.name);
+
+    await page
+      .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      .click();
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/columns/name/') &&
+          ['PUT', 'PATCH'].includes(response.request().method()) &&
+          response.ok()
+      ),
+      page.getByTestId('saveAssociatedTag').click(),
+    ]);
+    await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
+    await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
+
+    // Scoped to the cell: the select keeps its overlay mounted after closing, so the
+    // matching dropdown option carries the same testid and an unscoped locator is
+    // ambiguous under strict mode.
+    await expect(
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
+    ).toBeVisible();
+
+    await page
+      .getByTestId('search-bar-container')
+      .getByTestId('searchbar')
+      .fill('customer_id');
+    await page
+      .getByTestId('entity-table')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
+
+    await expect(
+      page
+        .getByTestId('glossary-tags-0')
+        .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+    ).toBeVisible();
+
+    await page.click(`${rowSelector} [data-testid="edit-button"]`);
+
+    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
+    await page
+      .locator('[data-testid="tag-selector"] input')
+      .fill(glossaryTerm.data.name);
+
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      .click();
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/columns/name/') &&
+          ['PUT', 'PATCH'].includes(response.request().method()) &&
+          response.ok()
+      ),
+      page.getByTestId('saveAssociatedTag').click(),
+    ]);
+    await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
+    ).not.toBeVisible();
+  });
+
+  test('Tags term should be consistent for search', async ({
+    dataConsumerPage: page,
+  }) => {
+    const columnsResponse = page.waitForResponse(
+      '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
+    );
+
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+
+    // Wait for page to be fully loaded
+    await columnsResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    // Check if add button exists and is visible
+    const rowSelector =
+      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
+
+    const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
+    if (await addButton.isVisible()) {
+      await addButton.click();
+    } else {
+      await page.click(`${rowSelector} [data-testid="edit-button"]`);
+    }
+
+    await page
+      .locator('.ant-select-dropdown:visible')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
+    await page
+      .locator('[data-testid="tag-selector"] input')
+      .fill(testTag.data.name);
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      .click();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await page.waitForResponse('api/v1/columns/name/*');
+
+    await expect(
+      page
+        .locator(rowSelector)
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+    ).toBeVisible();
+
+    await page.reload();
+    // Wait for page to be fully loaded
+    await waitForAllLoadersToDisappear(page);
+    const getRequest = page.waitForResponse(
+      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
+    );
+    await page
+      .getByTestId('search-bar-container')
+      .getByTestId('searchbar')
+      .fill('shop_id');
+
+    await getRequest;
+
+    await expect(
+      page
+        .getByTestId('classification-tags-0')
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+    ).toBeVisible();
+
+    await page.click(
+      `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+    );
+
+    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
+    await page
+      .locator('[data-testid="tag-selector"] input')
+      .fill(testTag.data.name);
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      .click();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await page.waitForResponse('api/v1/columns/name/*');
+
+    await expect(
+      page
+        .getByTestId('classification-tags-0')
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+    ).not.toBeVisible();
+  });
+});
+
+test.describe('Large Table Column Search & Copy Link', () => {
+  test.use({
+    contextOptions: {
+      permissions: ['clipboard-read', 'clipboard-write'],
+    },
+  });
+
+  const largeTable = new TableClass();
+  const largeTableName = `large_table_${uuid()}`;
+  const targetColumnName = 'test_col_071';
+  type TableColumn = NonNullable<
+    Parameters<TableClass['createAdditionalTable']>[0]['columns']
+  >[number];
+  type ColumnDataType = TableColumn['dataType'];
+  let createdTable: Record<string, ColumnDataType | string | number>;
+
+  test.beforeAll('Setup large table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create base hierarchy (service, db, schema) - assuming create() does this
+    await largeTable.create(apiContext);
+
+    // Generate columns
+    const columns: TableColumn[] = [];
+    // Create modest number of columns to ensure pagination/search is active
+    for (let i = 0; i < 50; i++) {
+      columns.push({
+        name: `extra_col_${i}`,
+        dataType: 'VARCHAR' as ColumnDataType,
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: `Extra column ${i}`,
+      });
+    }
+    // Add the target column
+    columns.push({
+      name: targetColumnName,
+      dataType: 'VARCHAR' as ColumnDataType,
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Target column for search test',
+    });
+
+    // Create table with these columns using createAdditionalTable
+    // Note: TableClass.createAdditionalTable merges provided data with default entity structure
+    createdTable = await largeTable.createAdditionalTable(
+      {
+        name: largeTableName,
+        displayName: largeTableName,
+        columns: columns,
+      },
+      apiContext
+    );
+
+    await afterAction();
+  });
+
+  test('Search for column, copy link, and verify side panel behavior', async ({
+    page,
+  }) => {
+    test.slow();
+    await redirectToHomePage(page);
+
+    const columnsResponse = page.waitForResponse(
+      `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns?*`
+    );
+    // 1. Visit the table page directly
+    await page.goto(`/table/${createdTable.fullyQualifiedName}`);
+    await columnsResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    // Ensure entity table is visible
+    await expect(page.getByTestId('entity-table')).toBeVisible();
+
+    // 2. Search for the specific column
+    const searchBar = page.getByTestId('searchbar');
+    await searchBar.waitFor({ state: 'visible' });
+    const columnSearchResponse = page.waitForResponse(
+      `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns/search?*${targetColumnName}*`
+    );
+    await searchBar.fill(targetColumnName);
+    await columnSearchResponse;
+
+    // Wait for search results filters the rows
+    // We look for the row with our target column key
+    const rowSelector = page.locator(
+      `[data-row-key="${createdTable.fullyQualifiedName}.${targetColumnName}"]`
+    );
+    await rowSelector.waitFor({ state: 'visible' });
+
+    // 3. Click "Copy Link" for that column
+    const copyButton = rowSelector.getByTestId('copy-column-link-button');
+
+    // 4. Read clipboard
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+    // Verify URL format structure
+    expect(clipboardText).toContain(
+      `/table/${createdTable.fullyQualifiedName}`
+    );
+    expect(clipboardText).toContain(targetColumnName);
+
+    // 5. Visit the copied Link — assert single-column GET fires with
+    // entityType/fields query params.
+    const columnGetResponsePromise = page.waitForResponse((response) => {
+      if (
+        !response.url().includes('/api/v1/columns/name/') ||
+        response.request().method() !== 'GET'
+      ) {
+        return false;
+      }
+      const url = new URL(response.url());
+
+      return (
+        url.searchParams.get('entityType') === 'table' &&
+        url.searchParams.get('fields') ===
+          'tags,customMetrics,extension,profile'
+      );
+    });
+    await page.goto(clipboardText);
+    const columnGetResponse = await columnGetResponsePromise;
+
+    expect(columnGetResponse.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+
+    // 6. Verify Side Panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Verify title in side panel matches column name
+    await expect(sidePanel).toContainText(targetColumnName);
+
+    // 7. Verify URL Cleanup on Close
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL reverts to base table URL
+    await expect(page).toHaveURL(
+      new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
+    );
+  });
+});
+
+test.describe('dbt Tab Visibility for Seed Files', () => {
+  const tableWithDbtData = new TableClass();
+
+  test.beforeAll('Setup table with dbt dataModel', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create a table
+    await tableWithDbtData.create(apiContext);
+
+    await afterAction();
+  });
+
+  test('should show dbt tab if only path is present', async ({ page }) => {
+    await redirectToHomePage(page);
+
+    // Intercept the table API call to add dataModel field to save test time
+    // Since dataModel can only be added through ingestion
+    await page.route(
+      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+
+        // Add the dataModel field to the response
+        json.dataModel = {
+          modelType: 'DBT',
+          resourceType: 'seed',
+          path: 'seeds/sample_seed.csv',
+        };
+
+        await route.fulfill({
+          response,
+          json,
+        });
+      }
+    );
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify path is displayed
+    await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
+
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
+  });
+
+  test('should show dbt tab if only source project is present', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+
+    // Intercept the table API call to add dataModel field to save test time
+    // Since dataModel can only be added through ingestion
+    await page.route(
+      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+
+        // Add the dataModel field to the response
+        json.dataModel = {
+          modelType: 'DBT',
+          resourceType: 'seed',
+          dbtSourceProject: 'test_dbt_project',
+        };
+
+        await route.fulfill({
+          response,
+          json,
+        });
+      }
+    );
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt Source Project info is displayed
+    await expect(page.getByTestId('dbt-source-project-id')).toContainText(
+      'test_dbt_project'
+    );
+
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
+  });
+});
+
+test.describe('Table source URL header button', () => {
+  const sourceUrlTable = new TableClass();
+  const SOURCE_URL = 'https://example.com/table/source';
+
+  test.beforeAll('Setup table with source URL', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await sourceUrlTable.create(apiContext);
+    await sourceUrlTable.patch({
+      apiContext,
+      patchData: [{ op: 'add', path: '/sourceUrl', value: SOURCE_URL }],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await sourceUrlTable.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('source URL button links to the configured source', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sourceUrlTable.visitEntityPage(page);
+
+    const sourceUrlButton = page.getByTestId('source-url-button');
+    await expect(sourceUrlButton).toBeVisible();
+    await expect(sourceUrlButton).toHaveAttribute('href', SOURCE_URL);
+    await expect(sourceUrlButton).toHaveAttribute('target', '_blank');
+  });
+});
+
+test.describe('Table open-task header stat', () => {
+  const openTaskTable = new TableClass();
+  let openTask: TaskClass;
+
+  test.beforeAll('Setup table with an open task', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await openTaskTable.create(apiContext);
+
+    const loggedInUser = await (
+      await apiContext.get('/api/v1/users/loggedInUser')
+    ).json();
+    openTask = new TaskClass({
+      about: `<#E::table::${openTaskTable.entityResponseData.fullyQualifiedName}>`,
+      assignees: [loggedInUser.name],
+    });
+    await openTask.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await openTask.delete(apiContext);
+    await openTaskTable.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('open-task stat shows the count and links to the Tasks tab', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await openTaskTable.visitEntityPage(page);
+
+    const openTaskStat = page.getByTestId('open-task-stat');
+    await expect(openTaskStat).toBeVisible();
+    await expect(openTaskStat).toContainText('1');
+
+    await openTaskStat.click();
+
+    await page.waitForURL('**/activity_feed/tasks');
+    await expect(page).toHaveURL(/\/activity_feed\/tasks/);
+  });
+});

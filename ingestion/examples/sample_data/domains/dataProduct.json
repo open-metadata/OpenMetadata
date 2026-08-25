@@ -1,0 +1,11 @@
+{
+    "name": "TestDataProduct",
+    "fullyQualifiedName": "TestDomain.TestDataProduct",
+    "displayName": "Test Data Product",
+    "description": "A sample data product for testing purposes. This data product demonstrates how to organize and manage data assets within a domain.",
+    "domains": ["TestDomain"],
+    "style": {},
+    "owners": [],
+    "experts": [],
+    "tags": []
+}

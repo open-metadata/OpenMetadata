@@ -1,0 +1,222 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom/extend-expect';
+
+// Polyfill for TextEncoder and TextDecoder
+import { TextDecoder, TextEncoder } from 'util';
+
+Object.assign(global, {
+  TextDecoder,
+  TextEncoder,
+  structuredClone: (v) => JSON.parse(JSON.stringify(v)),
+});
+
+// Reference: https://github.com/ant-design/ant-design/issues/21096
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(), // deprecated
+    removeListener: jest.fn(), // deprecated
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
+// Error:- range(...).getBoundingClientRect is not a function
+// Reference: https://github.com/jsdom/jsdom/issues/3002#issuecomment-655752934
+document.createRange = () => {
+  const range = new Range();
+
+  range.getBoundingClientRect = jest.fn();
+
+  range.getClientRects = () => {
+    return {
+      item: () => null,
+      length: 0,
+      [Symbol.iterator]: jest.fn(),
+    };
+  };
+
+  return range;
+};
+
+window.DOMMatrixReadOnly = jest.fn().mockImplementation(() => ({
+  is2D: true,
+  isIdentity: true,
+}));
+
+window.BroadcastChannel = jest.fn().mockImplementation(() => ({
+  postMessage: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  close: jest.fn(),
+}));
+
+/**
+ * mock implementation of ResizeObserver
+ */
+window.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
+/**
+ * mock implementation of IntersectionObserver
+ */
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
+/**
+ * DOMRect polyfill — jsdom does not expose the constructor, but browser code
+ * (e.g. Tippy.js fallbacks) uses `new DOMRect()` at runtime.
+ */
+if (typeof global.DOMRect === 'undefined') {
+  global.DOMRect = class DOMRect {
+    constructor(x = 0, y = 0, width = 0, height = 0) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.top = y;
+      this.right = x + width;
+      this.bottom = y + height;
+      this.left = x;
+    }
+
+    toJSON() {
+      return {
+        x: this.x,
+        y: this.y,
+        width: this.width,
+        height: this.height,
+        top: this.top,
+        right: this.right,
+        bottom: this.bottom,
+        left: this.left,
+      };
+    }
+
+    static fromRect(other) {
+      return new DOMRect(other?.x, other?.y, other?.width, other?.height);
+    }
+  };
+}
+
+/**
+ * Minimal DataTransfer polyfill — jsdom does not implement it, and the core
+ * FileUploadDropZone builds a FileList via `new DataTransfer()` when forwarding
+ * the selected files to its onDrop handlers.
+ */
+if (typeof global.DataTransfer === 'undefined') {
+  global.DataTransfer = class {
+    constructor() {
+      const files = [];
+      files.item = (index) => files[index] ?? null;
+      this.items = {
+        add: (file) => files.push(file),
+      };
+      this.files = files;
+    }
+  };
+}
+
+/**
+ * mock react-i18next
+ */
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key) => key,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
+  }),
+}));
+
+jest.mock('./utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({
+  FeedEditor: jest.fn().mockImplementation(() => 'FeedEditor'),
+}));
+/**
+ * Global mock for TableColumn.util to prevent ownerTableObject errors
+ */
+jest.mock('./utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+  columnFilterIcon: jest.fn(),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
+}));
+
+/**
+ * Global mock for AdvancedSearchClassBase to fix circular dependency issues
+ */
+jest.mock('./utils/AdvancedSearchClassBase', () => {
+  const actual = jest.requireActual('./utils/AdvancedSearchClassBase');
+
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      ...actual.default,
+      autocomplete: jest.fn().mockReturnValue(jest.fn()),
+      getQbConfigs: jest.fn().mockReturnValue({}),
+    },
+  };
+});
+
+jest.mock('./utils/EnvironmentUtils', () => ({
+  isDev: jest.fn().mockReturnValue('test'),
+}));
+
+jest.mock('./utils/i18next/LocalUtil', () => {
+  const React = require('react');
+
+  return {
+    Transi18next: jest
+      .fn()
+      .mockImplementation(({ i18nKey, renderElement, values }) => {
+        const valueArr = Object.values(values ?? {});
+
+        return React.createElement('div', { 'data-testid': i18nKey }, [
+          i18nKey,
+          renderElement,
+          valueArr,
+        ]);
+      }),
+    __esModule: true,
+    default: {
+      t: jest.fn().mockImplementation((key) => key),
+      on: jest.fn(),
+    },
+    t: jest.fn().mockImplementation((key) => key),
+    translateWithNestedKeys: jest.fn().mockImplementation((key, params) => {
+      return params ? `${key}_${JSON.stringify(params)}` : key;
+    }),
+  };
+});

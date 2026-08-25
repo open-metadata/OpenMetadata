@@ -1,0 +1,115 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Abstract definition of each step
+"""
+
+from abc import ABC, abstractmethod
+from typing import Any, Iterable, Optional  # noqa: UP035
+
+from metadata.ingestion import diagnostics
+from metadata.ingestion.api.models import Entity
+from metadata.ingestion.api.step import BulkStep, IterStep, ReturnStep, StageStep
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import get_log_name, ingestion_logger
+
+logger = ingestion_logger()
+
+
+class InvalidSourceException(Exception):  # noqa: N818
+    """
+    The source config is not getting the expected
+    service connection
+    """
+
+
+class Source(IterStep, ABC):
+    """
+    Abstract source implementation. The workflow will run
+    its next_record and pass them to the next step.
+    """
+
+    metadata: OpenMetadata
+    connection_obj: Any
+    service_connection: Any
+
+    @abstractmethod
+    def prepare(self):
+        pass
+
+    @abstractmethod
+    def test_connection(self) -> None:
+        pass
+
+    @property
+    def name(self) -> str:
+        return "Source"
+
+    def run(self) -> Iterable[Optional[Entity]]:  # noqa: UP045
+        with diagnostics.operation("source.iter"):
+            yield from super().run()
+
+
+class Sink(ReturnStep, ABC):
+    """All Sinks must inherit this base class."""
+
+    @property
+    def name(self) -> str:
+        return "Sink"
+
+    def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
+        with diagnostics.operation("sink.write", entity=get_log_name(record)):
+            return super().run(record)
+
+
+class Processor(ReturnStep, ABC):
+    """All Processor must inherit this base class"""
+
+    @property
+    def name(self) -> str:
+        return "Processor"
+
+    def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
+        with diagnostics.operation("processor.run", entity=get_log_name(record)):
+            return super().run(record)
+
+
+class Stage(StageStep, ABC):
+    """All Stages must inherit this base class."""
+
+    @property
+    def name(self) -> str:
+        return "Stage"
+
+    def run(self, record: Entity) -> None:
+        with diagnostics.operation("stage.run", entity=get_log_name(record)):
+            super().run(record)
+
+
+class BulkSink(BulkStep, ABC):
+    """All Stages must inherit this base class."""
+
+    @property
+    def name(self) -> str:
+        return "BulkSink"
+
+    def run(self) -> None:
+        """Wrap the abstract run() with the warning handler lifecycle.
+
+        BulkStep.run() is abstract and overridden directly by
+        concrete subclasses, so the handler must be scoped here.
+        """
+        self._activate_handler()
+        try:
+            with diagnostics.operation("bulksink.run"):
+                super().run()
+        finally:
+            self._deactivate_handler()

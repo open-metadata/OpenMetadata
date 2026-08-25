@@ -1,0 +1,33 @@
+{
+  "name": "Cassandra",
+  "fullyQualifiedName": "Cassandra",
+  "displayName": "Cassandra Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of collections.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to Cassandra, please validate the credentials",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the schemas/keyspaces available to the user.",
+      "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "List all the tables available within a randomly chosen database available to the user.",
+      "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege on available databases",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema/keyspace, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
+      "mandatory": false
+    }
+  ]
+}

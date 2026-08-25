@@ -1,0 +1,20 @@
+{
+  "type": "postgres",
+  "serviceName": "postgres_sample",
+  "serviceConnection": {
+    "config": {
+      "type": "Postgres",
+      "hostPort": "localhost:5432",
+      "username": "openmetadata_user",
+      "authType": {
+        "password": "openmetadata_password"
+      },
+      "database": "jaffle_shop"
+    }
+  },
+  "sourceConfig": {
+    "config": {
+      "type": "DatabaseMetadata"
+    }
+  }
+}

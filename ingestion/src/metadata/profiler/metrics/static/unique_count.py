@@ -1,0 +1,123 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Unique Count Metric definition
+"""
+
+import json
+from collections import Counter
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import column, func
+from sqlalchemy.orm import Session
+
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.profiler.metrics.core import QueryMetric
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
+from metadata.profiler.orm.functions.unique_count import (
+    UNIQUE_COUNT_GROUP_ALIAS,
+    _unique_count_query_mapper,
+)
+from metadata.profiler.orm.registry import NOT_COMPUTE, Dialects
+from metadata.utils.logger import profiler_logger
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from metadata.profiler.processor.runner import PandasRunner
+
+logger = profiler_logger()
+
+
+class UniqueCount(QueryMetric):
+    """
+    UNIQUE_COUNT Metric
+
+    Given a column, count the number of values appearing only once
+    """
+
+    schema_metric_type = MetricType.uniqueCount
+
+    @classmethod
+    def name(cls):
+        return MetricType.uniqueCount.value
+
+    @property
+    def metric_type(self):
+        return int
+
+    def query(self, sample: Optional[type], session: Optional[Session] = None):  # noqa: UP045
+        """
+        Build the Unique Count metric
+        """
+        if not session:
+            raise AttributeError("We are missing the session attribute to compute the UniqueCount.")
+
+        if self.col.type.__class__.__name__ in NOT_COMPUTE:
+            return None
+
+        # Run all queries on top of the sampled data
+        col = column(self.col.name, self.col.type)
+
+        # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for performance
+        if session.get_bind().dialect.name == Dialects.BigQuery:
+            # We are querying against the subquery output (which is a COUNT), so the type is numeric.
+            # Use an untyped column to avoid passing the original metric type (like STRING or BYTES) into the COUNTIF comparison.
+            count_col = column(UNIQUE_COUNT_GROUP_ALIAS)
+            return func.countif(count_col == 1).label(self.name())
+
+        unique_count_query = _unique_count_query_mapper[session.get_bind().dialect.name](col, session, sample)
+        only_once_sub = unique_count_query.subquery("only_once")
+        return session.query(func.count().label(self.name())).select_from(only_once_sub)
+
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
+        """
+        Build the Unique Count metric
+        """
+        if dfs is None:
+            return None
+        try:
+            computation = self.get_pandas_computation()
+            accumulator = computation.create_accumulator()
+            for df in dfs:
+                accumulator = computation.update_accumulator(accumulator, df)
+            return computation.aggregate_accumulator(accumulator)
+        except Exception as err:
+            logger.debug(f"Don't know how to process type {self.col.type} when computing Unique Count.\n Error: {err}")
+            return 0
+
+    def get_pandas_computation(self):
+        """Returns the logic to compute this metrics using Pandas"""
+        return PandasComputation[Counter, int](
+            create_accumulator=Counter,
+            update_accumulator=lambda counter, df: UniqueCount.update_accumulator(counter, df, self.col),
+            aggregate_accumulator=UniqueCount.aggregate_accumulator,
+        )
+
+    @staticmethod
+    def update_accumulator(counter: Counter, df: "pd.DataFrame", column):
+        """Computes one DataFrame chunk and updates the accumulator"""
+        values = df[column.name].dropna().to_list()
+        try:
+            counter.update(values)
+        except TypeError as err:
+            if isinstance(values, list):
+                for value in values:
+                    counter.update([json.dumps(value)])
+            else:
+                raise err  # noqa: TRY201
+        return counter
+
+    @staticmethod
+    def aggregate_accumulator(counter: Counter) -> int:
+        """Aggregates the accumulated values to calculate final metric"""
+        return len([k for k, v in counter.items() if v == 1])

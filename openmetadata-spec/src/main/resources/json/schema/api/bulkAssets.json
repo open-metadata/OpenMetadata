@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/bulkAssets.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkAssets",
+  "description": "Represents schema for adding bulk relationships to an entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.api.BulkAssets",
+  "properties": {
+    "assets": {
+      "description": "List of assets to be created against which the glossary needs to be added.",
+      "$ref": "../type/entityReferenceList.json"
+    },
+    "dryRun": {
+      "description": "If true, returns a preview of what would change without applying any modifications.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

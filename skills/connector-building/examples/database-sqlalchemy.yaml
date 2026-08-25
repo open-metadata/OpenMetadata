@@ -1,0 +1,29 @@
+# Example: Database connector using SQLAlchemy
+# Run: metadata scaffold-connector --name clickhouse --service-type database ...
+# Or pass this profile to the interactive CLI
+
+name: clickhouse
+display_name: ClickHouse
+service_type: database
+connection_type: sqlalchemy
+scheme: "clickhousedb+connect"
+default_port: 8123
+auth_types:
+  - basic
+capabilities:
+  - metadata
+  - lineage
+  - usage
+  - profiler
+  - data_diff
+description: "Column-oriented OLAP database for real-time analytics"
+docs_url: "https://clickhouse.com/docs/en/interfaces/http"
+sdk_package: "clickhouse-connect"
+api_endpoints: "N/A — uses SQLAlchemy dialect"
+docs_notes: |
+  - Uses HTTP interface on port 8123 or native TCP on 9000
+  - SQLAlchemy dialect: clickhouse-connect or clickhouse-sqlalchemy
+  - System databases to exclude: system, INFORMATION_SCHEMA, information_schema
+  - Query logs available in system.query_log table
+  - Supports materialized views (treated as tables)
+  - No stored procedures support

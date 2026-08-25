@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/openLineageConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageConfiguration",
+  "description": "Configuration for OpenLineage HTTP API integration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.OpenLineageConfiguration",
+  "properties": {
+    "enabled": {
+      "description": "Enable or disable the OpenLineage HTTP API endpoint.",
+      "type": "boolean",
+      "default": true
+    },
+    "autoCreateEntities": {
+      "description": "Automatically create Table and Pipeline entities when they are referenced in OpenLineage events but don't exist in OpenMetadata.",
+      "type": "boolean",
+      "default": true
+    },
+    "eventTypeFilter": {
+      "description": "List of OpenLineage event types to process. Only events matching these types will create lineage. Default is to only process COMPLETE events.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["START", "RUNNING", "COMPLETE", "ABORT", "FAIL", "OTHER"]
+      },
+      "default": ["COMPLETE"]
+    },
+    "defaultPipelineService": {
+      "description": "Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage jobs. This service must exist in OpenMetadata.",
+      "type": "string",
+      "default": "openlineage"
+    },
+    "namespaceToServiceMapping": {
+      "description": "Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to resolve dataset references to existing tables.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

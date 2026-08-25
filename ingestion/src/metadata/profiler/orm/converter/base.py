@@ -1,0 +1,215 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Converter logic to transform an OpenMetadata Table Entity
+to an SQLAlchemy ORM class.
+"""
+
+from typing import Optional, cast
+
+import sqlalchemy
+from sqlalchemy import MetaData
+from sqlalchemy.orm import DeclarativeBase
+
+from metadata.generated.schema.entity.data.database import Database, databaseService
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.utils.entity_reference import require_entity_reference_id
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+SQA_RESERVED_ATTRIBUTES = ["metadata"]
+
+
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:  # noqa: UP045
+    """Check whether column or table name are not uppercase for snowflake table.
+    If so, then force quoting, If not return None to let engine backend handle the logic.
+
+    Args:
+        table_or_col: a table or a column name
+    Return:
+        None or True
+    """
+    if table_service_type == databaseService.DatabaseServiceType.Snowflake:
+        return True if not str(table_or_col).isupper() else None
+
+    return None
+
+
+def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:  # noqa: UP045
+    """Check whether column name should be quoted when passed into the sql command build up.
+    This is important when a column name is the same as a reserve word and causes a sql error.
+
+    Args:
+        table_service_type: the main sql engine to determine if we should always quote.
+    Return: True or False
+    """
+
+    if table_service_type in {
+        databaseService.DatabaseServiceType.Hive,
+        databaseService.DatabaseServiceType.Impala,
+    }:
+        return True
+
+    return None
+
+
+def build_orm_col(idx: int, col: Column, table_service_type, *, _quote=None) -> sqlalchemy.Column:
+    """
+    Cook the ORM column from our metadata instance
+    information.
+
+    The first parsed column will be used arbitrarily
+    as the PK, as SQLAlchemy forces us to specify
+    at least one PK.
+
+    As this is only used for INSERT/UPDATE/DELETE,
+    there is no impact for our read-only purposes.
+    """
+    if _quote is not None:
+        quote = _quote
+    else:
+        quote = check_if_should_quote_column_name(table_service_type) or check_snowflake_case_sensitive(
+            table_service_type, col.name.root
+        )
+
+    return sqlalchemy.Column(
+        name=str(col.name.root),
+        type_=converter_registry[table_service_type]().map_types(col, table_service_type),
+        primary_key=not bool(idx),  # The first col seen is used as PK
+        quote=quote,
+        key=str(col.name.root).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
+    )
+
+
+def ometa_to_sqa_orm(
+    table: Table,
+    metadata: OpenMetadata,
+    sqa_metadata_obj: Optional[MetaData] = None,  # noqa: UP045
+) -> Optional[type]:  # noqa: UP045
+    """
+    Given an OpenMetadata instance, prepare
+    the SQLAlchemy ORM class
+    to run queries on top of it.
+
+    We are building the class dynamically using
+    `type` and passing SQLAlchemy `Base` class
+    as the bases tuple for inheritance.
+
+    Args:
+        table (Table): OpenMetadata Table instance
+        metadata (OpenMetadata): OpenMetadata connection
+        sqa_metadata_obj (MetaData): For advanced use cases, you can pass a custom MetaData object. For most cases, this
+        can be left as None so that the global_metadata object is used.
+    """
+    _metadata = sqa_metadata_obj or Base.metadata
+    table.serviceType = cast(databaseService.DatabaseServiceType, table.serviceType)  # satisfy mypy  # noqa: TC006
+
+    # SQA 2.x raises a hard error if no primary key columns are found (was just a warning in 1.x).
+    # Since build_orm_col assigns PK to the first column, we need at least one column.
+    if not table.columns:
+        logger.warning(
+            "Table '%s' has no columns. Skipping ORM class creation.",
+            table.name.root,
+        )
+        return None
+
+    orm_database_name = get_orm_database(table, metadata)
+    # SQLite does not support schemas
+    orm_schema_name = (
+        get_orm_schema(table, metadata) if table.serviceType != databaseService.DatabaseServiceType.SQLite else None
+    )
+    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(".", "_")
+
+    cols = {
+        (col.name.root + "_" if col.name.root in SQA_RESERVED_ATTRIBUTES else col.name.root): build_orm_col(
+            idx, col, table.serviceType
+        )
+        for idx, col in enumerate(table.columns)
+    }
+
+    # Type takes positional arguments in the form of (name, bases, dict)
+    orm = type(
+        orm_name,  # Output class name
+        (Base,),  # SQLAlchemy declarative base
+        {
+            "__tablename__": str(table.name.root),
+            "__table_args__": {
+                "schema": orm_schema_name,
+                "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
+                "quote": check_snowflake_case_sensitive(table.serviceType, table.name.root) or None,
+                "quote_schema": check_snowflake_case_sensitive(table.serviceType, orm_schema_name) or None,
+            },
+            **cols,
+            "metadata": _metadata,
+        },
+    )
+
+    if not issubclass(orm, Base):
+        raise ValueError("OMeta to ORM did not create a valid ORM class")  # noqa: TRY004
+    return orm
+
+
+def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
+    """
+    Build a fully qualified schema name depending on the
+    service type. For example:
+    - MySQL -> schema.table
+    - Trino -> catalog.schema.table
+    - Snowflake -> database.schema.table
+
+    The logic depends on if the service supports databases
+    or not.
+    :param table: Table being profiled
+    :param metadata: OMeta client
+    :return: qualified schema name
+    """
+
+    if table.databaseSchema is None:
+        raise ValueError("Table databaseSchema must be set")
+    schema_id = require_entity_reference_id(table.databaseSchema, "Table databaseSchema")
+    schema = cast(
+        "DatabaseSchema",
+        metadata.get_by_id(entity=DatabaseSchema, entity_id=schema_id, nullable=False),
+    )
+
+    return str(schema.name.root)
+
+
+def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
+    """get database name from database service
+
+    Args:
+        table (Table): table entity
+        metadata (OpenMetadata): metadata connection to OM server instance
+
+    Returns:
+        str
+    """
+
+    if table.database is None:
+        raise ValueError("Table database must be set")
+    database_id = require_entity_reference_id(table.database, "Table database")
+    database = cast(
+        "Database",
+        metadata.get_by_id(entity=Database, entity_id=database_id, nullable=False),
+    )
+
+    return str(database.name.root)

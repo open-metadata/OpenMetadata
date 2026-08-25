@@ -1,0 +1,47 @@
+# Fuseki configuration for OpenMetadata RDF Store
+
+@prefix :      <#> .
+@prefix fuseki: <http://jena.apache.org/fuseki#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tdb2:  <http://jena.apache.org/2016/tdb#> .
+@prefix ja:    <http://jena.hpl.hp.com/2005/11/Assembler#> .
+
+[] rdf:type fuseki:Server ;
+   fuseki:services (
+     <#openmetadata>
+   ) .
+
+<#openmetadata> rdf:type fuseki:Service ;
+    fuseki:name "openmetadata" ;
+    fuseki:serviceQuery "sparql" ;
+    fuseki:serviceQuery "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceUpload "upload" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:dataset <#dataset> .
+
+<#dataset> rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki-data/openmetadata" ;
+    tdb2:unionDefaultGraph true ;
+    .
+
+# Enable full-text search
+<#dataset> ja:textIndex (<#index>) .
+
+<#index> a text:TextIndexLucene ;
+    text:directory "/fuseki-data/lucene" ;
+    text:entityMap <#entityMap> ;
+    text:storeValues true .
+
+<#entityMap> a text:EntityMap ;
+    text:defaultField "text" ;
+    text:entityField "uri" ;
+    text:map (
+        [ text:field "text" ; 
+          text:predicate rdfs:label ]
+        [ text:field "description" ; 
+          text:predicate <http://purl.org/dc/terms/description> ]
+        [ text:field "name" ; 
+          text:predicate <https://open-metadata.org/ontology/name> ]
+    ) .

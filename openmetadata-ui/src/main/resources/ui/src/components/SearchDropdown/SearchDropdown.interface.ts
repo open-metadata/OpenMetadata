@@ -1,0 +1,54 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { ReactNode } from 'react';
+import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+
+export interface SearchDropdownProps {
+  triggerButtonSize?: 'large' | 'middle' | 'small';
+  dropdownClassName?: string;
+  label: string;
+  isSuggestionsLoading?: boolean;
+  options: SearchDropdownOption[];
+  searchKey: string;
+  selectedKeys: SearchDropdownOption[];
+  highlight?: boolean;
+  showProfilePicture?: boolean;
+  fixedOrderOptions?: boolean;
+  index?: ExploreSearchIndex;
+  onChange: (values: SearchDropdownOption[], searchKey: string) => void;
+  onGetInitialOptions?: (searchKey: string) => void;
+  onSearch: (searchText: string, searchKey: string) => void;
+  independent?: boolean; // flag to indicate if the filters are independent of aggregations
+  hideCounts?: boolean; // Determines if the count should be displayed or not.
+  hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
+  showSelectedCounts?: boolean; // Show counts instead of labels for selected items
+  hideSearchBar?: boolean; // Determines if the search bar should be hidden. Default is false
+  singleSelect?: boolean; // Enable single-select mode with radio buttons instead of checkboxes
+  // When true, every selection is applied to the query immediately (no Update button).
+  // The dropdown stays open for multi-select and closes after a single-select pick.
+  immediateApply?: boolean;
+  // Helper text shown at the bottom of the dropdown (e.g. "Pick values to refine.").
+  // Replaces the Update/Close footer when immediateApply is enabled.
+  helperText?: string;
+  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
+}
+
+export interface SearchDropdownOption {
+  key: string;
+  label: string;
+  labelKeyOptions?: Record<string, string | number | boolean>;
+  count?: number;
+  description?: string;
+  icon?: ReactNode;
+}

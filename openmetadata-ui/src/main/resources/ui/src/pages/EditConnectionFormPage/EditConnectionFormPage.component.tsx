@@ -1,0 +1,415 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Breadcrumbs,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined, startCase } from 'lodash';
+import { LoadingState, ServicesUpdateRequest } from 'Models';
+import React, {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FormPanelBody, {
+  getFormFirstPanelProps,
+} from '../../components/common/FormPanelBody/FormPanelBody.component';
+import Loader from '../../components/common/Loader/Loader';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
+import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
+import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
+import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
+import {
+  OPEN_METADATA,
+  STEPS_FOR_EDIT_SERVICE,
+} from '../../constants/Services.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
+import { useFqn } from '../../hooks/useFqn';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
+import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { getServiceType } from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+
+const ConnectionConfigForm = lazy(
+  () =>
+    import(
+      '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm'
+    )
+);
+const FiltersConfigForm = lazy(
+  () =>
+    import('../../components/Settings/Services/ServiceConfig/FiltersConfigForm')
+);
+const ServiceDocPanel = lazy(
+  () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
+);
+
+type BreadcrumbItem = { label: string; id: string; href?: string };
+
+function EditConnectionFormPage() {
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceCategory;
+  }>();
+  const { fqn: serviceFQN } = useFqn();
+  const { t } = useTranslation();
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPEN_METADATA,
+    [serviceFQN]
+  );
+  const navigate = useNavigate();
+  const [saveServiceState, setSaveServiceState] =
+    useState<LoadingState>('initial');
+  const [isConnectionVerified, setIsConnectionVerified] = useState(false);
+  const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
+  const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isError, setIsError] = useState(isOpenMetadataService);
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<BreadcrumbItem[]>(
+    []
+  );
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
+  const [serviceConfig, setServiceConfig] = useState<ServicesType>();
+  const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
+
+  const translatedSteps = useMemo(
+    () =>
+      STEPS_FOR_EDIT_SERVICE.map((step) => ({
+        ...step,
+        name: translateWithNestedKeys(step.name, step.nameData),
+      })),
+    []
+  );
+
+  const handleConfigSave = (updatedData: ConfigData) => {
+    const configData = serviceUtilClassBase.getEditConfigData(
+      serviceDetails,
+      updatedData
+    );
+
+    setServiceConfig(configData);
+    setActiveServiceStep(2);
+  };
+
+  const handleFiltersSave = async (updatedData: ConfigData) => {
+    if (isUndefined(serviceDetails)) {
+      return;
+    }
+
+    const configData: ServicesUpdateRequest = {
+      ...serviceDetails,
+      ...serviceConfig,
+      connection: {
+        config: {
+          ...serviceDetails?.connection?.config,
+          ...serviceConfig?.connection?.config,
+          ...updatedData,
+        },
+      },
+    };
+
+    const jsonPatch = compare(serviceDetails, configData);
+
+    if (isEmpty(jsonPatch)) {
+      return;
+    }
+
+    try {
+      setSaveServiceState('waiting');
+      const response = await patchService(
+        serviceCategory,
+        serviceDetails.id,
+        jsonPatch
+      );
+      setServiceConfig({
+        ...response,
+        owners: response?.owners ?? serviceDetails?.owners,
+      });
+
+      navigate(
+        connectionsRouterClassBase.getPathByServiceFQN(
+          serviceCategory,
+          serviceFQN
+        )
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setSaveServiceState('initial');
+    }
+  };
+
+  const fetchServiceDetail = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      });
+      setServiceDetails(response);
+      setSlashedBreadcrumb([
+        {
+          label: startCase(serviceCategory),
+          id: 'service-category',
+        },
+        {
+          label: getEntityName(response),
+          id: 'service-name',
+        },
+        {
+          label: t('label.edit-entity', { entity: t('label.connection') }),
+          id: 'edit-connection',
+        },
+      ]);
+    } catch (err) {
+      const error = err as AxiosError;
+      if (error.response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onCancel = () => {
+    navigate(-1);
+  };
+
+  const handleFiltersInputBackClick = () => setActiveServiceStep(1);
+
+  const handleConfirmedStepBack = () => {
+    setShowBackStepConfirm(false);
+    handleFiltersInputBackClick();
+  };
+
+  const handleBreadcrumbAction = useCallback(
+    (id: React.Key) => {
+      if (id === 'service-category') {
+        navigate(
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
+        );
+      } else if (id === 'service-name') {
+        navigate(
+          connectionsRouterClassBase.getPathByServiceFQN(
+            serviceCategory,
+            serviceFQN
+          )
+        );
+      }
+    },
+    [navigate, serviceCategory, serviceFQN]
+  );
+
+  useEffect(() => {
+    fetchServiceDetail();
+  }, [serviceFQN, serviceCategory]);
+
+  useEffect(() => {
+    serviceUtilClassBase.setEditServiceDetails(serviceDetails);
+  }, [serviceDetails, serviceCategory]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError && !isLoading) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(serviceCategory, serviceFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  const isSavingService = saveServiceState === 'waiting';
+
+  const handleFooterBack = () => {
+    if (activeServiceStep === 1) {
+      onCancel();
+    } else {
+      setShowBackStepConfirm(true);
+    }
+  };
+
+  const handleFooterNext = () => {
+    if (activeServiceStep === 1) {
+      connectionFormRef.current?.submit();
+    } else {
+      filtersFormRef.current?.submit();
+    }
+  };
+
+  const footerNextText =
+    activeServiceStep === 2 ? t('label.save') : t('label.next');
+
+  const firstPanelChildren = (
+    <FormPanelBody
+      footer={
+        <>
+          <Button
+            color="secondary"
+            data-testid="previous-button"
+            isDisabled={isSavingService}
+            size="sm"
+            type="button"
+            onPress={handleFooterBack}>
+            {t('label.back')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="next-button"
+            isDisabled={isSavingService}
+            size="sm"
+            type="button"
+            onPress={handleFooterNext}>
+            {footerNextText}
+          </Button>
+        </>
+      }>
+      <>
+        <Breadcrumbs
+          items={slashedBreadcrumb}
+          onAction={handleBreadcrumbAction}
+        />
+        <div className="tw:mt-6">
+          <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+            {getServiceLogo(
+              serviceDetails?.serviceType ?? '',
+              'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+            )}
+            <Typography
+              className="tw:m-0"
+              data-testid="header"
+              size="text-xl"
+              weight="semibold">
+              {t('message.edit-service-entity-connection', {
+                entity: serviceFQN,
+              })}
+            </Typography>
+          </div>
+
+          <ServiceFlowStepper
+            activeStep={activeServiceStep}
+            className="tw:mt-6"
+            steps={translatedSteps}
+          />
+
+          <Suspense fallback={<Loader />}>
+            <div className="tw:mt-8">
+              {activeServiceStep === 1 && (
+                <ConnectionConfigForm
+                  hideFooter
+                  data={serviceDetails}
+                  ref={connectionFormRef}
+                  serviceCategory={serviceCategory}
+                  serviceType={serviceDetails?.serviceType ?? ''}
+                  status={saveServiceState}
+                  onFocus={handleFieldFocus}
+                  onSave={async (e) => {
+                    e.formData && handleConfigSave(e.formData);
+                  }}
+                  onTestConnectionStatusChange={setIsConnectionVerified}
+                />
+              )}
+
+              {activeServiceStep === 2 && (
+                <FiltersConfigForm
+                  hideFooter
+                  data={serviceDetails}
+                  ref={filtersFormRef}
+                  serviceCategory={serviceCategory}
+                  serviceType={serviceDetails?.serviceType ?? ''}
+                  showConnectedMessage={isConnectionVerified}
+                  status={saveServiceState}
+                  onFocus={handleFieldFocus}
+                  onSave={async (e) => {
+                    e.formData && handleFiltersSave(e.formData);
+                  }}
+                />
+              )}
+            </div>
+          </Suspense>
+        </div>
+      </>
+    </FormPanelBody>
+  );
+
+  return (
+    <NavigationBlocker
+      enabled={!isSavingService}
+      renderModal={({ isOpen, onLeave, onStay }) => (
+        <NavigationGuardModal
+          isOpen={isOpen}
+          onLeave={onLeave}
+          onStay={onStay}
+        />
+      )}>
+      <>
+        <ResizablePanels
+          className="edit-connection-page content-height-with-resizable-panel tw:bg-transparent"
+          firstPanel={getFormFirstPanelProps(firstPanelChildren)}
+          hideSecondPanel={!serviceDetails?.serviceType}
+          pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+          secondPanel={{
+            children: (
+              <Suspense fallback={null}>
+                <ServiceDocPanel
+                  focusedMode
+                  activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
+                  serviceName={serviceDetails?.serviceType ?? ''}
+                  serviceType={getServiceType(serviceCategory)}
+                />
+              </Suspense>
+            ),
+            className: 'service-doc-panel content-resizable-panel-container',
+            minWidth: 400,
+            flex: 0.3,
+          }}
+        />
+        <NavigationGuardModal
+          isOpen={showBackStepConfirm}
+          onLeave={handleConfirmedStepBack}
+          onStay={() => setShowBackStepConfirm(false)}
+        />
+      </>
+    </NavigationBlocker>
+  );
+}
+
+export default withPageLayout(EditConnectionFormPage);

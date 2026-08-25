@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeOwnerAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveOwnerAction",
+  "description": "Remove Owner Action Type",
+  "type": "object",
+  "definitions": {
+    "removeOwnerActionType": {
+      "description": "Remove Owner Action Type",
+      "type": "string",
+      "enum": ["RemoveOwnerAction"],
+      "default": "RemoveOwnerAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/removeOwnerActionType",
+      "default": "RemoveOwnerAction"
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

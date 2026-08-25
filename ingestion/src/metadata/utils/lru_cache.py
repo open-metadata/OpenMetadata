@@ -1,0 +1,179 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+LRU cache
+"""
+
+import threading
+from collections import OrderedDict
+from typing import Callable, Generic, TypeVar  # noqa: UP035
+
+LRU_CACHE_SIZE = 4096
+
+T = TypeVar("T")
+
+
+class LRUCache(Generic[T]):
+    """Least Recently Used cache"""
+
+    def __init__(self, capacity: int) -> None:
+        self._cache = OrderedDict()
+        self.capacity = capacity
+        self.lock = threading.Lock()
+
+    def clear(self):
+        with self.lock:
+            self._cache = OrderedDict()
+
+    def get(self, key) -> T:
+        """
+        Returns the value associated to `key` if it exists,
+        updating the cache usage.
+        Raises `KeyError` if `key doesn't exist in the cache.
+
+        Args:
+            key: The key to get the value for
+
+        Returns:
+            The value associated to `key`
+        """
+        with self.lock:
+            self._cache.move_to_end(key)
+            return self._cache[key]
+
+    def put(self, key: str, value: T) -> None:
+        """
+        Assigns `value` to `key`, overwriting `key` if it already exists
+        in the cache and updating the cache usage.
+        If the size of the cache grows above capacity, pops the least used
+        element.
+
+        Args:
+            key: The key to assign the value to
+            value: The value to assign to the key
+        """
+        with self.lock:
+            self._cache[key] = value
+            self._cache.move_to_end(key)
+            if len(self._cache) > self.capacity:
+                self._cache.popitem(last=False)
+
+    def __contains__(self, key) -> bool:
+        with self.lock:
+            if key not in self._cache:
+                return False
+            self._cache.move_to_end(key)
+            return True
+
+    def __len__(self) -> int:
+        with self.lock:
+            return len(self._cache)
+
+    def wrap(self, key_func: Callable[..., str]) -> Callable[[Callable[..., T]], Callable[..., T]]:
+        """Decorator to cache the result of a function based on its arguments.
+
+        Example:
+        ```python
+        import time
+        from metadata.utils.lru_cache import LRUCache
+        cache = LRUCache(4096)
+
+        @cache.wrap(lambda x, y: f"{x}-{y}")
+        def add(x, y):
+            time.sleep(1)
+            return x + y
+        start1 = time.time()
+        add(1, 2)  # This will be cached and take 1 second
+        print('took', time.time() - start1, 'seconds')
+        start2 = time.time()
+        add(1, 2)  # This will return the cached value and take no time
+        print('took', time.time() - start2, 'seconds')
+        ```
+        Args:
+            key_func: A function that generates a key based on the arguments
+                of the decorated function.
+
+        Returns:
+            A decorator that caches the result of the decorated function.
+        """
+
+        def wrapper(func: Callable[..., T]):
+            def wrapped(*args, **kwargs) -> T:
+                key = key_func(*args, **kwargs)
+                if key in self:
+                    return self.get(key)
+                value = func(*args, **kwargs)
+                self.put(key, value)
+                return value
+
+            return wrapped
+
+        return wrapper
+
+
+class SkipNoneLRUCache(LRUCache[T]):
+    """A caching mechanism that does not cache `None` results"""
+
+    def wrap(self, key_func: Callable[..., str]) -> Callable[[Callable[..., T]], Callable[..., T]]:
+        """Decorator to cache the result of a function based on its arguments.
+
+        Example:
+        ```python
+        import time
+        from metadata.utils.lru_cache import SkipNoneLRUCache
+        cache = SkipNoneLRUCache(4096)
+
+        @cache.wrap(lambda x: x)
+        def noop(x: Optional[str]) -> Optional[str]:
+            time.sleep(1)
+            return x
+
+        start1 = time.time()
+        noop(1)  # This will be cached and take 1 second
+        print('took', time.time() - start1, 'seconds')
+
+        start2 = time.time()
+        noop(1)  # This will return the cached value and take no time
+        print('took', time.time() - start2, 'seconds')
+
+        start3 = time.time()
+        noop(None)  # This will wait 1 second and return without caching
+        print('took', time.time() - start3, 'seconds')
+
+        start4 = time.time()
+        noop(None)  # This will wait 1 second again and return without caching
+        print('took', time.time() - start4, 'seconds')
+        ```
+
+        Args:
+            key_func: A function that generates a key based on the arguments
+                of the decorated function.
+
+        Returns:
+            A decorator that caches the result of the decorated function.
+        """
+
+        def wrapper(func: Callable[..., T]):
+            def wrapped(*args, **kwargs) -> T:
+                key = key_func(*args, **kwargs)
+                if key in self:
+                    return self.get(key)
+                value = func(*args, **kwargs)
+
+                if value is not None:
+                    self.put(key, value)
+
+                return value
+
+            return wrapped
+
+        return wrapper

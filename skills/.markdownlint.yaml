@@ -1,0 +1,23 @@
+# markdownlint configuration for OpenMetadata Skills
+# See: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+default: true
+
+# Allow long lines (code blocks, tables, URLs)
+MD013: false
+
+# Allow duplicate headings in different sections
+MD024:
+  siblings_only: true
+
+# Allow inline HTML (used in templates)
+MD033: false
+
+# Allow bare URLs
+MD034: false
+
+# Allow multiple blank lines (readability in long docs)
+MD012: false
+
+# Allow trailing punctuation in headings
+MD026: false

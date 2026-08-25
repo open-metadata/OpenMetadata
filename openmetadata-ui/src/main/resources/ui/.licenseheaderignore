@@ -1,0 +1,107 @@
+# GitHub
+".github"
+
+# Husky
+".husky/_"
+".husky/pre-commit"
+".husky/commit-msg"
+".husky/post-commit"
+".husky/pre-push"
+".husky/prepare-commit-msg"
+".husky/prepare-commit-msg.pre-entire"
+
+# Dependencies
+/node
+/node_modules
+
+# Production
+/build
+/dist
+
+# TypeScript
+"tsconfig.tsbuildinfo"
+
+# Maven
+/target
+
+# Docker
+/docker
+
+# Assets
+*.gif
+*.avif
+*.bmp
+*.jpeg
+*.jpg
+*.svg
+*.png
+*.webp
+*.ico
+*.ttf
+*.mp4
+*.webm
+
+# Ignore files
+".dockerignore"
+".eslintignore"
+".gitignore"
+".licenseheaderignore"
+".prettierignore"
+".stylelintignore"
+
+# RC files
+".npmrc"
+".nvmrc"
+
+# Jest
+/src/test/unit/coverage
+"text-report.xml"
+
+# Playwright
+/playwright/output/
+/playwright/e2e/.cache/
+/playwright/.env
+/playwright/.auth
+
+# webpack
+/webpack
+
+# Miscellaneous
+*.json
+*.txt
+*.xml
+
+# Docs, READMEs
+*.md
+
+# OS
+Thumbs.db
+".DS_Store"
+"._*"
+".Spotlight-V100"
+".Trashes"
+
+# yarn files
+"yarn-error.log"
+"yarn.lock"
+
+# Sonar cloud
+"sonar-project.properties"
+
+# ignore antlr generated source
+src/generated/antlr
+
+# Snapshots
+*.snap
+
+# env
+".env"
+
+# Code quality ignore
+".codeqlignore"
+
+# Entire CLI
+".entire"
+
+# Claude
+".claude"

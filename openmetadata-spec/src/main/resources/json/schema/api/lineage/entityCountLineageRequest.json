@@ -1,0 +1,101 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/entityCountLineageRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityCountLineageRequest",
+  "description": "Request schema for getting lineage with entity count based pagination",
+  "javaType": "org.openmetadata.schema.api.lineage.EntityCountLineageRequest",
+  "type": "object",
+  "properties": {
+    "fqn": {
+      "description": "Entity Fqn to search lineage",
+      "type": "string"
+    },
+    "from": {
+      "description": "Starting offset for pagination (0-based)",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "size": {
+      "description": "Number of entities to return in this page",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 50
+    },
+    "nodeDepth": {
+      "description": "Filter entities by specific node depth level. Negative values for upstream (e.g., -1, -2), positive for downstream (1, 2), 0 for root entity",
+      "type": "integer",
+      "minimum": -10,
+      "maximum": 10
+    },
+    "direction": {
+      "$ref": "./lineageDirection.json",
+      "description": "Direction of lineage traversal (upstream or downstream)"
+    },
+    "maxDepth": {
+      "description": "Maximum depth to traverse in the specified direction",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 3
+    },
+    "upstreamDepth": {
+      "description": "Maximum upstream depth to compute pagination info for when requested",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "downstreamDepth": {
+      "description": "Maximum downstream depth to compute pagination info for when requested",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "isConnectedVia": {
+      "description": "Connected Via",
+      "type": "boolean"
+    },
+    "queryFilter": {
+      "description": "Query Filter",
+      "type": "string"
+    },
+    "columnFilter": {
+      "description": "Filter lineage by specific column names. Use comma-separated list (e.g., 'col1,col2') to filter columns.",
+      "type": "string"
+    },
+    "preservePaths": {
+      "description": "Preserve all paths when applying node-level filters. When true, intermediate nodes that don't match filters are kept if they're part of a path to matching nodes.",
+      "type": "boolean",
+      "default": false
+    },
+    "includePaginationInfo": {
+      "description": "Include pagination totals and depth counts in the response",
+      "type": "boolean",
+      "default": false
+    },
+    "includeDeleted": {
+      "description": "Include deleted entities",
+      "type": "boolean",
+      "default": false
+    },
+    "includeSourceFields": {
+      "description": "Include source fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "startTime": {
+      "description": "Filter lineage edges by observed time window (epoch millis), inclusive lower bound; matched via range overlap on edge createdAt/updatedAt. Note: the window is applied as a hard prune during graph traversal (point-in-time semantics) - an out-of-window edge severs discovery of everything reachable only through it, in both upstream and downstream directions. This means preservePaths does NOT extend to the time window: a node is shown only if it is reachable from the root through edges that are all in-window. Legacy edges with no timestamps always match any window (back-compat); a window query over mixed legacy and temporal data therefore returns all legacy edges.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "Filter lineage edges by observed time window (epoch millis), inclusive upper bound; matched via range overlap on edge createdAt/updatedAt. Set endTime alone (startTime unset) for an as-of/point-in-time query: edges that existed on or before this instant. See startTime for the hard-prune and preservePaths interaction notes.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["fqn", "direction"],
+  "additionalProperties": false
+}

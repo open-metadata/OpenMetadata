@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineRuntimeTrend.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Runtime Trend",
+  "description": "Day-wise pipeline runtime trend showing max, min, and average runtime",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineRuntimeTrend",
+  "properties": {
+    "timestamp": {
+      "description": "Timestamp for the date",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "date": {
+      "type": "string",
+      "description": "Date in YYYY-MM-DD format"
+    },
+    "maxRuntime": {
+      "type": "number",
+      "default": 0.0,
+      "description": "Maximum runtime in milliseconds among all pipelines executed on this date"
+    },
+    "minRuntime": {
+      "type": "number",
+      "default": 0.0,
+      "description": "Minimum runtime in milliseconds among all pipelines executed on this date"
+    },
+    "avgRuntime": {
+      "type": "number",
+      "default": 0.0,
+      "description": "Average runtime in milliseconds for pipelines executed on this date"
+    },
+    "totalPipelines": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total number of pipelines executed on this date"
+    }
+  },
+  "required": ["timestamp", "date", "totalPipelines"],
+  "additionalProperties": false
+}

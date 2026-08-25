@@ -1,0 +1,132 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../variables.less';
+
+.radio-switch {
+  .ant-radio-button-wrapper,
+  .ant-radio-button-wrapper-checked:not(
+      [class*=' ant-radio-button-wrapper-disabled']
+    ).ant-radio-button-wrapper:first-child {
+    border-color: @primary-1;
+  }
+
+  .ant-radio-button-wrapper-checked:not(
+      .ant-radio-button-wrapper-disabled
+    )::before {
+    background-color: @primary-1;
+  }
+
+  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background-color: @primary-1;
+    color: @primary-color;
+    border-color: @primary-1;
+    z-index: var(--om-z-0);
+
+    &:hover {
+      background-color: @primary-1;
+      color: @primary-color;
+      border-color: @primary-1;
+    }
+  }
+}
+
+// Global styling for segment toggle classs
+.segment-toggle {
+  background: var(--tw-color-bg-primary);
+  border-radius: @size-sm;
+  border: 1px solid @grey-20;
+
+  .ant-segmented-item {
+    color: @text-color;
+    transition: all var(--om-duration-300) ease;
+
+    &-selected {
+      background: @blue-23;
+      color: @primary-heading-color;
+      text-align: center;
+      border-radius: @size-xs;
+      .ant-segmented-item-label {
+        color: @primary-heading-color;
+      }
+
+      svg path {
+        fill: @primary-heading-color;
+      }
+    }
+  }
+
+  &:hover {
+    background: none !important;
+  }
+
+  &:focus {
+    background: none !important;
+  }
+
+  .ant-segmented:not(.ant-segmented-disabled):hover,
+  .ant-segmented:not(.ant-segmented-disabled):focus {
+    background: none !important;
+  }
+}
+.segment-toggle.ant-segmented {
+  background-color: var(--tw-color-bg-primary);
+  border-radius: @size-sm;
+}
+
+// New Radio Group Styling
+.new-radio-group {
+  border-radius: @size-xs;
+  border: 1px solid @grey-300;
+  overflow: hidden;
+
+  .ant-radio-button-wrapper {
+    color: @grey-600;
+  }
+
+  .ant-radio-button-wrapper,
+  .ant-radio-button-wrapper-checked {
+    border: none;
+  }
+
+  .ant-radio-button-wrapper:first-child {
+    border-radius: @size-xs 0 0 @size-xs;
+    border-left: none;
+  }
+  .ant-radio-button-wrapper:last-child {
+    border-radius: 0 @size-xs @size-xs 0;
+  }
+
+  .ant-radio-button-wrapper-checked {
+    color: @primary-7;
+  }
+
+  .ant-radio-button-wrapper:not(:first-child)::before {
+    width: 2px;
+  }
+
+  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background-color: @primary-50;
+
+    &::before {
+      width: 1px !important;
+      background: @grey-300;
+    }
+
+    &:hover {
+      &::before {
+        background: @grey-300;
+      }
+    }
+  }
+}

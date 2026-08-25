@@ -1,0 +1,458 @@
+package org.openmetadata.it.tests;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.SAME_THREAD)
+public class IncidentPaginationIT {
+  private static final Logger LOG = LoggerFactory.getLogger(IncidentPaginationIT.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final int TEST_DATA_SIZE = 11;
+  private static final int PAGE_SIZE = 5;
+  private OpenMetadataClient client;
+  private List<TestCase> testCases;
+  private String databaseSchemaFqn;
+  private String tableFqn;
+
+  @BeforeAll
+  public void setup() throws Exception {
+    client = SdkClients.adminClient();
+    testCases = new ArrayList<>();
+
+    long ts = System.currentTimeMillis();
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName("pagination_test_db_" + ts)
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    databaseSchemaFqn =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("pagination_test_schema_" + ts)
+                    .withDatabase(database.getFullyQualifiedName()))
+            .getFullyQualifiedName();
+
+    Table table = createTestTable();
+    tableFqn = table.getFullyQualifiedName();
+    String testDefFqn =
+        client
+            .testDefinitions()
+            .list(new ListParams().withLimit(1))
+            .getData()
+            .get(0)
+            .getFullyQualifiedName();
+
+    for (int i = 0; i < TEST_DATA_SIZE; i++) {
+      TestCase testCase = createTestCase(table, i, testDefFqn);
+      testCases.add(testCase);
+      createIncidentStatus(testCase);
+    }
+
+    waitForDataIndexed();
+  }
+
+  private void waitForDataIndexed() throws Exception {
+    String firstFqn = testCases.get(0).getFullyQualifiedName();
+    final Instant[] lastRecreation = {Instant.MIN};
+    AtomicReference<String> lastError = new AtomicReference<>("no attempts yet");
+
+    await()
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(5))
+        .conditionEvaluationListener(
+            condition -> {
+              if (!condition.isSatisfied()) {
+                LOG.warn(
+                    "waitForDataIndexed not satisfied after {} (last error: {})",
+                    condition.getElapsedTimeInMS() + "ms",
+                    lastError.get());
+              }
+            })
+        .until(
+            () -> {
+              try {
+                ListParams filteredParams =
+                    new ListParams()
+                        .withLimit(PAGE_SIZE)
+                        .withOffset(0)
+                        .withLatest(true)
+                        .addFilter("testCaseFQN", firstFqn);
+                ListResponse<TestCaseResolutionStatus> filteredResponse =
+                    client.testCaseResolutionStatuses().searchList(filteredParams);
+                if (filteredResponse.getData().size() == 1) {
+                  ListParams globalParams =
+                      new ListParams().withLimit(TEST_DATA_SIZE + 10).withLatest(true);
+                  ListResponse<TestCaseResolutionStatus> globalResponse =
+                      client.testCaseResolutionStatuses().searchList(globalParams);
+                  return globalResponse.getPaging().getTotal() >= TEST_DATA_SIZE;
+                }
+                lastError.set(
+                    "filtered size=" + filteredResponse.getData().size() + " (expected 1)");
+                // Data not found — may have been lost during a concurrent search index rebuild.
+                // Re-create incident statuses at most once per minute to trigger re-indexing.
+                if (Duration.between(lastRecreation[0], Instant.now()).toSeconds() > 60) {
+                  recreateIncidentStatuses();
+                  lastRecreation[0] = Instant.now();
+                }
+                return false;
+              } catch (Exception e) {
+                lastError.set(e.getClass().getSimpleName() + ": " + e.getMessage());
+                return false;
+              }
+            });
+  }
+
+  private void recreateIncidentStatuses() {
+    for (TestCase testCase : testCases) {
+      try {
+        createIncidentStatus(testCase);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  public void testPaginationFirstPage() throws Exception {
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().searchList(params);
+
+    assertNotNull(response);
+    assertEquals(
+        PAGE_SIZE, response.getData().size(), "First page should return " + PAGE_SIZE + " results");
+    assertEquals(
+        TEST_DATA_SIZE,
+        response.getPaging().getTotal(),
+        "Scoped total must be exactly the fixture size");
+  }
+
+  @Test
+  public void testPaginationSecondPage() throws Exception {
+    ListParams firstPageParams =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+    ListParams secondPageParams =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(PAGE_SIZE)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+
+    AtomicReference<ListResponse<TestCaseResolutionStatus>> firstPageRef = new AtomicReference<>();
+    AtomicReference<ListResponse<TestCaseResolutionStatus>> secondPageRef = new AtomicReference<>();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              ListResponse<TestCaseResolutionStatus> first =
+                  client.testCaseResolutionStatuses().searchList(firstPageParams);
+              ListResponse<TestCaseResolutionStatus> second =
+                  client.testCaseResolutionStatuses().searchList(secondPageParams);
+              assertEquals(
+                  first.getPaging().getTotal(),
+                  second.getPaging().getTotal(),
+                  "Total count should be consistent across pages");
+              firstPageRef.set(first);
+              secondPageRef.set(second);
+            });
+    ListResponse<TestCaseResolutionStatus> firstPage = firstPageRef.get();
+    ListResponse<TestCaseResolutionStatus> secondPage = secondPageRef.get();
+
+    assertNotNull(secondPage);
+    assertEquals(
+        PAGE_SIZE,
+        secondPage.getData().size(),
+        "Second page should return " + PAGE_SIZE + " results");
+
+    if (!firstPage.getData().isEmpty() && !secondPage.getData().isEmpty()) {
+      Object firstItem = firstPage.getData().get(0);
+      Object secondItem = secondPage.getData().get(0);
+      assertTrue(!firstItem.equals(secondItem), "Pages should contain different data");
+    }
+  }
+
+  @Test
+  public void testPaginationLastPage() throws Exception {
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+    ListResponse<TestCaseResolutionStatus> firstPage =
+        client.testCaseResolutionStatuses().searchList(params);
+    int total = firstPage.getPaging().getTotal();
+    int lastPageOffset = ((total - 1) / PAGE_SIZE) * PAGE_SIZE;
+
+    ListParams lastPageParams =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(lastPageOffset)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+    ListResponse<TestCaseResolutionStatus> lastPage =
+        client.testCaseResolutionStatuses().searchList(lastPageParams);
+
+    assertNotNull(lastPage);
+    assertEquals(
+        total - lastPageOffset,
+        lastPage.getData().size(),
+        "Scoped last page must hold exactly the remainder of the fixture");
+  }
+
+  @Test
+  public void testBackwardsCompatibilityNoParams() throws Exception {
+    ListParams params = new ListParams().withLatest(true);
+
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().searchList(params);
+
+    assertNotNull(response);
+    assertTrue(
+        response.getPaging().getTotal() >= TEST_DATA_SIZE,
+        "Total should be at least " + TEST_DATA_SIZE + " even without explicit pagination params");
+  }
+
+  @Test
+  public void testOffsetBeyondResults() throws Exception {
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(10000)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().searchList(params);
+
+    assertNotNull(response);
+    assertEquals(0, response.getData().size(), "Offset beyond results should return empty list");
+    assertTrue(response.getPaging().getTotal() > 0, "Total should still be accurate");
+  }
+
+  @Test
+  public void testFilteredTotalCountIsExact() throws Exception {
+    String targetFqn = testCases.get(0).getFullyQualifiedName();
+
+    await("Wait for filtered incident to be searchable by testCaseFQN")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              ListParams params =
+                  new ListParams()
+                      .withLimit(PAGE_SIZE)
+                      .withOffset(0)
+                      .withLatest(true)
+                      .addFilter("testCaseFQN", targetFqn);
+
+              ListResponse<TestCaseResolutionStatus> response =
+                  client.testCaseResolutionStatuses().searchList(params);
+
+              assertNotNull(response);
+              assertEquals(1, response.getData().size(), "Filter should return exactly 1 incident");
+              assertEquals(
+                  1,
+                  response.getPaging().getTotal(),
+                  "Total count must reflect only the filtered group, not all groups");
+            });
+  }
+
+  @Test
+  public void testSearchListSkipsOrphanedIncidentRelationship() throws Exception {
+    TestCase target = testCases.get(0);
+
+    ListParams initialParams =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("testCaseFQN", target.getFullyQualifiedName());
+    ListResponse<TestCaseResolutionStatus> initialResponse =
+        client.testCaseResolutionStatuses().searchList(initialParams);
+
+    assertEquals(1, initialResponse.getData().size(), "Expected initial incident to be searchable");
+
+    TestCaseResolutionStatus incident =
+        JsonUtils.convertValue(initialResponse.getData().get(0), TestCaseResolutionStatus.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        Entity.getCollectionDAO().relationshipDAO();
+    relationshipDAO.delete(
+        target.getId(),
+        Entity.TEST_CASE,
+        incident.getId(),
+        Entity.TEST_CASE_RESOLUTION_STATUS,
+        Relationship.PARENT_OF.ordinal());
+
+    try {
+      ListResponse<TestCaseResolutionStatus> orphanedResponse =
+          client.testCaseResolutionStatuses().searchList(initialParams);
+
+      assertNotNull(orphanedResponse);
+      assertEquals(
+          0,
+          orphanedResponse.getData().size(),
+          "Orphaned incident records should be skipped instead of failing the search listing");
+    } finally {
+      relationshipDAO.insert(
+          target.getId(),
+          incident.getId(),
+          Entity.TEST_CASE,
+          Entity.TEST_CASE_RESOLUTION_STATUS,
+          Relationship.PARENT_OF.ordinal());
+    }
+  }
+
+  @Test
+  public void testTestCasePatchDoesNotPropagateToIncidentSearchSource() throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    TestCase target = testCases.get(1);
+    ListParams params =
+        new ListParams()
+            .withLimit(1)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("testCaseFQN", target.getFullyQualifiedName());
+    ListResponse<TestCaseResolutionStatus> initialResponse =
+        client.testCaseResolutionStatuses().searchList(params);
+    assertEquals(1, initialResponse.getData().size(), "Expected initial incident to be searchable");
+
+    TestCaseResolutionStatus incident =
+        JsonUtils.convertValue(initialResponse.getData().get(0), TestCaseResolutionStatus.class);
+    String displayName = "incident propagation " + System.currentTimeMillis();
+    TestCase fetched = client.testCases().get(target.getId().toString(), "owners,domains");
+    fetched.setOwners(List.of(shared.USER1_REF));
+    fetched.setDomains(List.of(shared.DOMAIN.getEntityReference()));
+    fetched.setDisplayName(displayName);
+    client.testCases().update(fetched.getId().toString(), fetched);
+
+    await("Incident search source should not receive parent propagation")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode testCaseSource =
+                  searchSource("test_case_search_index", target.getId().toString());
+              assertEquals(
+                  displayName,
+                  testCaseSource.path("displayName").asText(),
+                  "Test case search doc should receive its own displayName update");
+
+              JsonNode source = searchIncidentSource(incident.getId().toString());
+              assertFalse(
+                  displayName.equals(source.path("testCase").path("displayName").asText()),
+                  "Incident search source must not receive parent displayName propagation");
+              assertFalse(source.has("owners"), "Incident search source must not contain owners");
+              assertFalse(source.has("domains"), "Incident search source must not contain domains");
+
+              ListResponse<TestCaseResolutionStatus> response =
+                  client.testCaseResolutionStatuses().searchList(params);
+              assertEquals(1, response.getData().size(), "Incident latest search should not fail");
+            });
+  }
+
+  private JsonNode searchIncidentSource(String incidentId) throws Exception {
+    return searchSource("test_case_resolution_status_search_index", incidentId);
+  }
+
+  private JsonNode searchSource(String indexName, String id) throws Exception {
+    String searchResponse = client.search().query("id:" + id).index(indexName).size(1).execute();
+    JsonNode hits = MAPPER.readTree(searchResponse).path("hits").path("hits");
+    assertTrue(
+        hits.isArray() && !hits.isEmpty(),
+        "Document should be present in search index " + indexName);
+    return hits.get(0).path("_source");
+  }
+
+  private Table createTestTable() throws Exception {
+    CreateTable createTable =
+        new CreateTable()
+            .withName("pagination_test_table_" + System.currentTimeMillis())
+            .withDatabaseSchema(databaseSchemaFqn)
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+
+    return client.tables().create(createTable);
+  }
+
+  private TestCase createTestCase(Table table, int index, String testDefFqn) throws Exception {
+    CreateTestCase createTestCase =
+        new CreateTestCase()
+            .withName("pagination_test_case_" + index)
+            .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+            .withTestDefinition(testDefFqn);
+
+    return client.testCases().create(createTestCase);
+  }
+
+  private void createIncidentStatus(TestCase testCase) throws Exception {
+    CreateTestCaseResolutionStatus createStatus =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withSeverity(Severity.Severity2);
+
+    client.testCaseResolutionStatuses().create(createStatus);
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/sentryConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SentryConfiguration",
+  "description": "This schema defines the Sentry Configuration for error tracking and performance monitoring.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.SentryConfiguration",
+  "properties": {
+    "enabled": {
+      "description": "Indicates whether Sentry error tracking is enabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "backendDsn": {
+      "description": "Sentry Data Source Name (DSN) for the backend.",
+      "type": "string",
+      "default": ""
+    },
+    "uiDsn": {
+      "description": "Sentry Data Source Name (DSN) for the UI.",
+      "type": "string",
+      "default": ""
+    },
+    "environment": {
+      "description": "Environment label sent to Sentry (e.g., development, staging, production).",
+      "type": "string",
+      "default": "development"
+    },
+    "serverName": {
+      "description": "Server name reported to Sentry.",
+      "type": "string",
+      "default": "openmetadata"
+    },
+    "tracesSampleRate": {
+      "description": "Sample rate for performance traces (0.0 to 1.0).",
+      "type": "number",
+      "default": 0.5,
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "debug": {
+      "description": "Enable Sentry SDK debug mode.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

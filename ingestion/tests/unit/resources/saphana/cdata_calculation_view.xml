@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" schemaVersion="2.3" id="CV_SFLIGHT_SBOOK" applyPrivilegeType="SQL_ANALYTIC_PRIVILEGE" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled" calculationScenarioType="TREE_BASED" dataCategory="CUBE" enforceSqlExecution="false" executionSemantic="UNDEFINED" outputViewType="Projection">
+  <origin/>
+  <descriptions defaultDescription="CV_SFLIGHT_SBOOK"/>
+  <metadata changedAt="2024-08-22 09:27:52.856"/>
+  <localVariables/>
+  <variableMappings/>
+  <informationModelLayout relativeWidthScenario="27"/>
+  <dataSources>
+    <DataSource id="AT_SFLIGHT" type="ATTRIBUTE_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/SFLIGHT.MODELING/attributeviews/AT_SFLIGHT</resourceUri>
+    </DataSource>
+    <DataSource id="AN_SBOOK" type="ANALYTIC_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/SFLIGHT.MODELING/analyticviews/AN_SBOOK</resourceUri>
+    </DataSource>
+  </dataSources>
+  <calculationViews>
+    <calculationView xsi:type="Calculation:AggregationView" id="Aggregation_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="MANDT"/>
+        <viewAttribute id="CARRID"/>
+        <viewAttribute id="CONNID"/>
+        <viewAttribute id="FLDATE"/>
+        <viewAttribute id="CARRNAME"/>
+        <viewAttribute id="SEATSMAX_ALL"/>
+        <viewAttribute id="SEATSOCC_ALL"/>
+        <viewAttribute id="PAYMENTSUM"/>
+        <viewAttribute id="RETURN_INDEX"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="INTEGER" id="USAGE_PCT" expressionLanguage="COLUMN_ENGINE">
+          <formula>&quot;SEATSOCC_ALL&quot;/&quot;SEATSMAX_ALL&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#AT_SFLIGHT">
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CARRID" source="CARRID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CONNID" source="CONNID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="FLDATE" source="FLDATE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CARRNAME" source="CARRNAME"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="SEATSMAX_ALL" source="SEATSMAX_ALL"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="SEATSOCC_ALL" source="SEATSOCC_ALL"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PAYMENTSUM" source="PAYMENTSUM"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="RETURN_INDEX" source="RETURN_INDEX"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="MANDT"/>
+        <viewAttribute id="CARRID"/>
+        <viewAttribute id="CONNID"/>
+        <viewAttribute id="FLDATE"/>
+        <viewAttribute id="LOCCURAM"/>
+        <viewAttribute id="LOCCURKEY"/>
+        <viewAttribute id="FORCURAM"/>
+        <viewAttribute id="FORCURKEY"/>
+      </viewAttributes>
+      <calculatedViewAttributes/>
+      <input node="#AN_SBOOK">
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CARRID" source="CARRID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CONNID" source="CONNID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="FLDATE" source="FLDATE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="LOCCURAM" source="LOCCURAM"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="LOCCURKEY" source="LOCCURKEY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="FORCURAM" source="FORCURAM"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="FORCURKEY" source="FORCURKEY"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:UnionView" id="Union_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="MANDT" transparentFilter="false"/>
+        <viewAttribute id="CARRID" transparentFilter="false"/>
+        <viewAttribute id="CONNID" transparentFilter="false"/>
+        <viewAttribute id="FLDATE" transparentFilter="false"/>
+        <viewAttribute id="CARRNAME" transparentFilter="false"/>
+        <viewAttribute id="SEATSMAX_ALL" transparentFilter="false"/>
+        <viewAttribute id="SEATSOCC_ALL" transparentFilter="false"/>
+        <viewAttribute id="PAYMENTSUM" transparentFilter="false"/>
+        <viewAttribute id="RETURN_INDEX" transparentFilter="false"/>
+        <viewAttribute id="USAGE_PCT" transparentFilter="false"/>
+      </viewAttributes>
+      <calculatedViewAttributes/>
+      <input emptyUnionBehavior="NO_ROW" node="#Aggregation_1">
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CARRID" source="CARRID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CONNID" source="CONNID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="FLDATE" source="FLDATE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CARRNAME" source="CARRNAME"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="SEATSMAX_ALL" source="SEATSMAX_ALL"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="SEATSOCC_ALL" source="SEATSOCC_ALL"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PAYMENTSUM" source="PAYMENTSUM"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="RETURN_INDEX" source="RETURN_INDEX"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="USAGE_PCT" source="USAGE_PCT"/>
+      </input>
+      <input emptyUnionBehavior="NO_ROW" node="#Projection_1">
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CARRNAME" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="SEATSMAX_ALL" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="SEATSOCC_ALL" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PAYMENTSUM" null="true" value=""/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CARRID" source="CARRID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CONNID" source="CONNID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="FLDATE" source="FLDATE"/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="RETURN_INDEX" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="USAGE_PCT" null="true" value=""/>
+      </input>
+    </calculationView>
+  </calculationViews>
+  <logicalModel id="Union_1">
+    <descriptions/>
+    <attributes>
+      <attribute id="MANDT" order="1" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="MANDT"/>
+        <keyMapping columnObjectName="Union_1" columnName="MANDT"/>
+      </attribute>
+      <attribute id="CARRID" order="2" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="CARRID"/>
+        <keyMapping columnObjectName="Union_1" columnName="CARRID"/>
+      </attribute>
+      <attribute id="CARRNAME" order="3" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="CARRNAME"/>
+        <keyMapping columnObjectName="Union_1" columnName="CARRNAME"/>
+      </attribute>
+      <attribute id="FLDATE" order="4" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="FLDATE"/>
+        <keyMapping columnObjectName="Union_1" columnName="FLDATE"/>
+      </attribute>
+      <attribute id="CONNID" order="5" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="CONNID"/>
+        <keyMapping columnObjectName="Union_1" columnName="CONNID"/>
+      </attribute>
+      <attribute id="SEATSMAX_ALL" order="6" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions/>
+        <keyMapping columnObjectName="Union_1" columnName="SEATSMAX_ALL"/>
+      </attribute>
+      <attribute id="SEATSOCC_ALL" order="7" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="SEATSOCC_ALL"/>
+        <keyMapping columnObjectName="Union_1" columnName="SEATSOCC_ALL"/>
+      </attribute>
+      <attribute id="PAYMENTSUM" order="8" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="PAYMENTSUM"/>
+        <keyMapping columnObjectName="Union_1" columnName="PAYMENTSUM"/>
+      </attribute>
+      <attribute id="RETURN_INDEX" order="9" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="RETURN_INDEX"/>
+        <keyMapping columnObjectName="Union_1" columnName="RETURN_INDEX"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes/>
+    <privateDataFoundation>
+      <tableProxies/>
+      <joins/>
+      <layout>
+        <shapes/>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="USAGE_PCT" order="10" aggregationType="sum" measureType="simple">
+        <descriptions defaultDescription="USAGE_PCT"/>
+        <measureMapping columnObjectName="Union_1" columnName="USAGE_PCT"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <localDimensions/>
+  </logicalModel>
+  <layout>
+    <shapes>
+      <shape expanded="true" modelObjectName="Output" modelObjectNameSpace="MeasureGroup">
+        <upperLeftCorner x="40" y="85"/>
+        <rectangleSize/>
+      </shape>
+      <shape expanded="true" modelObjectName="Aggregation_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="20" y="310"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Projection_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="230" y="320"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Union_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="60" y="180"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+    </shapes>
+  </layout>
+</Calculation:scenario>

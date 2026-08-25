@@ -1,0 +1,4 @@
+FROM mysql:8.0
+WORKDIR /docker-entrypoint-initdb.d
+COPY docker/mysql/mysql-script.sql .
+RUN chmod -R 775 /docker-entrypoint-initdb.d

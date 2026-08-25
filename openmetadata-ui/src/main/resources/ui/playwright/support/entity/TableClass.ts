@@ -1,0 +1,672 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
+import {
+  Column,
+  DataType,
+  Table,
+} from '../../../src/generated/entity/data/table';
+import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
+import { buildFqn, okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { fullUuid, uuid } from '../../utils/common';
+import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+  TestCaseData,
+  TestSuiteData,
+} from './Entity.interface';
+import { EntityClass } from './EntityClass';
+
+/**
+ * Database service shape used when creating tables in tests. `connection.config` is intentionally
+ * loose so tests can override with MySQL, BigQuery, or other connector configs.
+ */
+export type TableServiceConfig = {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
+  };
+};
+
+export class TableClass extends EntityClass {
+  service: TableServiceConfig;
+  database: { name: string; service: string };
+  schema: { name: string; database: string };
+  columnsName: string[];
+  entityLinkColumnsName: string[];
+  children: Column[];
+  entity: {
+    name: string;
+    displayName: string;
+    description: string;
+    columns: Column[];
+    tableType: string;
+    databaseSchema: string;
+  };
+
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  databaseResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: Table = {} as Table;
+  testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
+  testSuitePipelineResponseData: ResponseDataType[] = [];
+  testCasesResponseData: ResponseDataType[] = [];
+  queryResponseData: ResponseDataType[] = [];
+  additionalEntityTableResponseData: ResponseDataType[] = [];
+
+  constructor(
+    name?: string,
+    tableType?: string,
+    service?: Partial<TableServiceConfig>
+  ) {
+    super(EntityTypeEndpoint.Table);
+    this.serviceCategory = SERVICE_TYPE.Database;
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
+    this.type = 'Table';
+    this.childrenTabId = 'schema';
+
+    const serviceName = service?.name ?? `pw-database-service-${uuid()}`;
+    const databaseName = `pw-database-${uuid()}`;
+    const schemaName = `pw-database-schema-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Mysql',
+      connection: {
+        config: {
+          type: 'Mysql',
+          scheme: 'mysql+pymysql',
+          username: 'username',
+          authType: {
+            password: 'password',
+          },
+          hostPort: 'mysql:3306',
+          supportsMetadataExtraction: true,
+          supportsDBTExtraction: true,
+          supportsProfiler: true,
+          supportsQueryComment: true,
+        },
+      },
+      ...service,
+    };
+
+    this.database = {
+      name: databaseName,
+      service: this.service.name,
+    };
+
+    this.schema = {
+      name: schemaName,
+      database: `${this.service.name}.${this.database.name}`,
+    };
+
+    this.columnsName = [
+      `user_id${uuid()}`,
+      `shop_id${uuid()}`,
+      `name${uuid()}`,
+      `first_name${uuid()}`,
+      `last_name${uuid()}`,
+      `address${uuid()}`,
+      `mail${uuid()}`,
+      `email${uuid()}`,
+      `created_at${uuid()}`,
+    ];
+
+    this.entityLinkColumnsName = [
+      this.columnsName[0],
+      this.columnsName[1],
+      this.columnsName[2],
+      `${this.columnsName[2]}.${this.columnsName[3]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
+      this.columnsName[7],
+      this.columnsName[8],
+    ];
+
+    this.children = [
+      {
+        name: this.columnsName[0],
+        dataType: DataType.Numeric,
+        dataTypeDisplay: 'numeric',
+        description:
+          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+      },
+      {
+        name: this.columnsName[1],
+        dataType: DataType.Int,
+        dataTypeDisplay: 'int',
+        description:
+          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+      },
+      {
+        name: this.columnsName[2],
+        dataType: DataType.Varchar,
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the staff member.',
+        children: [
+          {
+            name: this.columnsName[3],
+            dataType: DataType.Struct,
+            dataLength: 100,
+            dataTypeDisplay:
+              'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+            description: 'First name of the staff member.',
+          },
+          {
+            name: this.columnsName[4],
+            dataType: DataType.Array,
+            dataLength: 100,
+            dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+            children: [
+              {
+                name: this.columnsName[5],
+                dataType: DataType.Struct,
+                dataLength: 100,
+                dataTypeDisplay:
+                  'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+                description: 'First name of the staff member.',
+              },
+              {
+                name: this.columnsName[6],
+                dataType: DataType.Array,
+                dataLength: 100,
+                dataTypeDisplay:
+                  'array<struct<type:string,provider:array<int>>>',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: this.columnsName[7],
+        dataType: DataType.Varchar,
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Email address of the staff member.',
+      },
+      {
+        name: this.columnsName[8],
+        dataType: DataType.Timestamp,
+        dataLength: 100,
+        dataTypeDisplay: 'timestamp',
+        description: 'entity created time',
+      },
+    ];
+
+    this.entity = {
+      name: name ?? `pw-table-${fullUuid()}`,
+      displayName: `pw table ${fullUuid()}`,
+      description: 'description',
+      columns: this.children,
+      tableType: tableType ?? 'SecureView',
+      databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+    };
+
+    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0]['name']}`;
+  }
+
+  private async createOrFetch<T>(
+    apiContext: APIRequestContext,
+    createPath: string,
+    fetchPath: string,
+    entityFqn: string,
+    entityName: string,
+    data: object
+  ): Promise<T> {
+    const createResponse = await apiContext.post(createPath, { data });
+
+    if (createResponse.status() === 409) {
+      // Ask for the relationship fields. The API answers `null` for anything not
+      // requested, so a bare lookup reports `domains: null` on an entity that
+      // already has a domain — and a caller that then re-applies its own
+      // `add /domains/0` is rejected with `RULE_VIOLATION: Multiple Domains are
+      // not allowed`. All four collections here declare these fields.
+      const getResponse = await apiContext.get(
+        `${fetchPath}/${encodeURIComponent(
+          entityFqn
+        )}?include=all&fields=domains,owners,tags`
+      );
+
+      if (!getResponse.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing ${entityName} "${entityFqn}" (${getResponse.status()}): ${await getResponse.text()}`
+        );
+      }
+
+      return await getResponse.json();
+    }
+
+    if (!createResponse.ok()) {
+      throw new Error(
+        `TableClass: ${entityName} create failed (${createResponse.status()}): ${await createResponse.text()}`
+      );
+    }
+
+    return await createResponse.json();
+  }
+
+  async create(apiContext: APIRequestContext) {
+    const service = await this.createOrFetch<ResponseDataType>(
+      apiContext,
+      '/api/v1/services/databaseServices',
+      '/api/v1/services/databaseServices/name',
+      buildFqn(this.service.name),
+      'service',
+      this.service
+    );
+
+    // Compose the lookup FQNs from raw names via buildFqn rather than appending to
+    // the parent's fullyQualifiedName. The parent FQN is already escaped, but the
+    // name being appended is not, so a fixture name carrying a `.` would produce a
+    // lookup for an FQN that does not exist.
+    const database = await this.createOrFetch<ResponseDataWithServiceType>(
+      apiContext,
+      '/api/v1/databases',
+      '/api/v1/databases/name',
+      buildFqn(this.service.name, this.database.name),
+      'database',
+      { ...this.database, service: service.fullyQualifiedName }
+    );
+
+    const schema = await this.createOrFetch<ResponseDataWithServiceType>(
+      apiContext,
+      '/api/v1/databaseSchemas',
+      '/api/v1/databaseSchemas/name',
+      buildFqn(this.service.name, this.database.name, this.schema.name),
+      'schema',
+      { ...this.schema, database: database.fullyQualifiedName }
+    );
+
+    const entity = await this.createOrFetch<Table>(
+      apiContext,
+      '/api/v1/tables',
+      '/api/v1/tables/name',
+      buildFqn(
+        this.service.name,
+        this.database.name,
+        this.schema.name,
+        this.entity.name
+      ),
+      'table',
+      {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      }
+    );
+
+    this.serviceResponseData = service;
+    this.databaseResponseData = database;
+    this.schemaResponseData = schema;
+    this.entityResponseData = entity;
+
+    this.childrenSelectorId =
+      this.entityResponseData.columns?.[0].fullyQualifiedName ?? '';
+
+    return {
+      service,
+      database,
+      schema,
+      entity,
+    };
+  }
+
+  async createAdditionalTable(
+    tableData: {
+      name: string;
+      displayName: string;
+      description?: string;
+      columns?: Column[];
+      databaseSchema?: string;
+    },
+    apiContext: APIRequestContext
+  ) {
+    const entityResponse = await apiContext.post('/api/v1/tables', {
+      data: {
+        ...this.entity,
+        ...tableData,
+      },
+    });
+    const entity = await okJson(
+      entityResponse,
+      'TableClass.createAdditionalTable'
+    );
+    this.additionalEntityTableResponseData = [
+      ...this.additionalEntityTableResponseData,
+      entity,
+    ];
+
+    return entity;
+  }
+
+  get() {
+    return {
+      service: this.serviceResponseData,
+      database: this.databaseResponseData,
+      schema: this.schemaResponseData,
+      entity: this.entityResponseData,
+    };
+  }
+
+  set(entityData: {
+    entity: Table;
+    service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
+  }) {
+    this.serviceResponseData = entityData.service;
+    this.databaseResponseData = entityData.database;
+    this.schemaResponseData = entityData.schema;
+    this.entityResponseData = entityData.entity;
+  }
+
+  async visitEntityPage(page: Page, searchTerm?: string) {
+    if (!this.entityResponseData.fullyQualifiedName) {
+      const { EntityDataClass } = await import('./EntityDataClass');
+      EntityDataClass.loadResponseData();
+    }
+
+    if (
+      !this.entityResponseData.fullyQualifiedName &&
+      this.entityResponseData.id
+    ) {
+      const response = await page.request.get(
+        `/api/v1/tables/${this.entityResponseData.id}`
+      );
+
+      if (response.ok()) {
+        this.entityResponseData = await response.json();
+      }
+    }
+
+    const tableFqn = this.entityResponseData.fullyQualifiedName ?? '';
+    const canUseDirectNavigation =
+      !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
+
+    if (canUseDirectNavigation && tableFqn.length > 0) {
+      await visitEntityPageByFqn({
+        page,
+        endpoint: EntityTypeEndpoint.Table,
+        fqn: tableFqn,
+      });
+
+      return;
+    }
+
+    await visitEntityPage({
+      page,
+      searchTerm: searchTerm ?? tableFqn,
+      dataTestId: `${
+        this.entityResponseData.service?.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
+    });
+  }
+
+  async createQuery(apiContext: APIRequestContext, queryText?: string) {
+    const queryResponse = await apiContext.post('/api/v1/queries', {
+      data: {
+        query:
+          queryText ??
+          `select * from ${this.entityResponseData?.fullyQualifiedName}`,
+        queryUsedIn: [{ id: this.entityResponseData?.id, type: 'table' }],
+        queryDate: Date.now(),
+        service: this.serviceResponseData?.name,
+      },
+    });
+
+    const query = await okJson(queryResponse, 'TableClass.createQuery');
+
+    this.queryResponseData.push(query);
+
+    return query;
+  }
+
+  async createTestSuiteAndPipelines(
+    apiContext: APIRequestContext,
+    testSuite?: TestSuiteData
+  ) {
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
+    }
+
+    const testSuiteData = await apiContext
+      .post('/api/v1/dataQuality/testSuites/basic', {
+        data: {
+          name: `pw-test-suite-${uuid()}`,
+          basicEntityReference: this.entityResponseData?.fullyQualifiedName,
+          description: 'Playwright test suite for table',
+          ...testSuite,
+        },
+      })
+      .then((res) => res.json());
+
+    this.testSuiteResponseData = testSuiteData;
+
+    const pipeline = await this.createTestSuitePipeline(apiContext);
+
+    return {
+      testSuiteData,
+      pipeline,
+    };
+  }
+
+  async createTestSuitePipeline(
+    apiContext: APIRequestContext,
+    testCases?: string[]
+  ) {
+    const pipelineData = await apiContext
+      .post(`/api/v1/services/ingestionPipelines`, {
+        data: {
+          airflowConfig: {
+            scheduleInterval: '0 * * * *',
+          },
+          name: `pw-test-suite-pipeline-${uuid()}`,
+          loggerLevel: 'INFO',
+          pipelineType: 'TestSuite',
+          service: {
+            id: this.testSuiteResponseData?.id,
+            type: 'testSuite',
+          },
+          sourceConfig: {
+            config: {
+              type: 'TestSuite',
+              entityFullyQualifiedName:
+                this.entityResponseData?.fullyQualifiedName,
+              testCases,
+            },
+          },
+        },
+      })
+      .then((res) => res.json());
+
+    this.testSuitePipelineResponseData.push(pipelineData);
+
+    return pipelineData;
+  }
+
+  async createTestCase(
+    apiContext: APIRequestContext,
+    testCaseData?: TestCaseData
+  ) {
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
+    }
+
+    const testCase = await apiContext
+      .post('/api/v1/dataQuality/testCases', {
+        data: {
+          name: `pw_test_case_${uuid()}`,
+          entityLink: `<#E::table::${this.entityResponseData?.fullyQualifiedName}>`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 12 },
+            { name: 'maxValue', value: 34 },
+          ],
+          ...testCaseData,
+        },
+      })
+      .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
+
+    this.testCasesResponseData.push(testCase);
+
+    return testCase;
+  }
+
+  async addTestCaseResult(
+    apiContext: APIRequestContext,
+    testCaseFqn: string,
+    testCaseResult: unknown
+  ) {
+    const testCaseResultResponse = await apiContext.post(
+      `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+        testCaseFqn
+      )}`,
+      { data: testCaseResult }
+    );
+
+    return await okJson(testCaseResultResponse, 'TableClass.addTestCaseResult');
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+    queryParams,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+    queryParams?: Record<string, string>;
+  }) {
+    if (
+      !this.entityResponseData?.fullyQualifiedName &&
+      this.entityResponseData?.id
+    ) {
+      const tableResponse = await apiContext.get(
+        `/api/v1/tables/${this.entityResponseData.id}`
+      );
+
+      if (tableResponse.ok()) {
+        this.entityResponseData = await tableResponse.json();
+      }
+    }
+
+    const tableId = this.entityResponseData?.id;
+    const tableFqn = this.entityResponseData?.fullyQualifiedName;
+
+    if (!tableId && !tableFqn) {
+      throw new Error(
+        `TableClass.patch: table id and fullyQualifiedName are missing for table "${
+          this.entityResponseData?.name ?? this.entity.name
+        }"`
+      );
+    }
+
+    const queryString = queryParams
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : '';
+
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        tableId
+          ? `/api/v1/tables/${tableId}${queryString}`
+          : `/api/v1/tables/name/${encodeURIComponent(
+              tableFqn!
+            )}${queryString}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    );
+
+    this.entityResponseData = await okJson(response, 'TableClass.patch');
+
+    return {
+      entity: this.entityResponseData,
+    };
+  }
+
+  async followTable(apiContext: APIRequestContext, userId: string) {
+    await apiContext.put(
+      `/api/v1/tables/${this.entityResponseData?.id}/followers`,
+      {
+        data: userId,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
+    const serviceResponse = await apiContext.delete(
+      `/api/v1/services/databaseServices/name/${encodeURIComponent(
+        this.serviceResponseData?.fullyQualifiedName ?? ''
+      )}?recursive=true&hardDelete=${hardDelete}`
+    );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
+    const tableResponse = await apiContext.delete(
+      `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
+    );
+
+    return tableResponse;
+  }
+
+  async restore(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.put('/api/v1/tables/restore', {
+      data: { id: this.entityResponseData?.id },
+    });
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async setOwner(
+    apiContext: APIRequestContext,
+    owner: { id: string; type: 'user' | 'team' }
+  ) {
+    return this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [owner],
+        },
+      ],
+    });
+  }
+}

@@ -1,0 +1,1081 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import Icon from '@ant-design/icons';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { isEmpty, toLower, toString } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
+import { ROUTES } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import {
+  ChangeDescription,
+  DataProduct,
+} from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { PageType } from '../../../generated/system/ui/page';
+import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
+import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { FeedCounts } from '../../../interface/feed.interface';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
+import {
+  exportDataProductToODPSYaml,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import {
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../utils/PermissionsUtils';
+import {
+  getDataProductDetailsPath,
+  getDomainPath,
+  getVersionPath,
+} from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { CoverImage } from '../../common/CoverImage/CoverImage.component';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
+import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
+import Voting from '../../Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
+import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
+import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import { DataProductMetadataModal } from '../DataProductMetadataModal';
+import { ODPSImportModal } from '../ODPSImportModal';
+import './data-products-details-page.less';
+import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
+const DataProductsDetailsPage = ({
+  dataProduct,
+  isVersionsView = false,
+  onUpdate,
+  onDelete,
+  onRefresh,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
+  onUpdateVote,
+}: DataProductsDetailsPageProps) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
+  const location = useLocation();
+  const fromMarketplace =
+    (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
+    false;
+  const { getEntityPermission } = usePermissionProvider();
+  const { tab: activeTab, version } = useRequiredParams<{
+    tab: string;
+    version: string;
+  }>();
+  const { fqn: dataProductFqn } = useFqn();
+  const [dataProductPermission, setDataProductPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [showActions, setShowActions] = useState(false);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
+    PageType.DataProduct
+  );
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [isOdpsImportOpen, setIsOdpsImportOpen] = useState(false);
+  const [isMetadataEditing, setIsMetadataEditing] = useState(false);
+  const assetTabRef = useRef<AssetsTabRef>(null);
+  const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+  const [assetCount, setAssetCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
+    useState<boolean>(false);
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
+  const [dataContract, setDataContract] = useState<DataContract>();
+  const [inputPortsCount, setInputPortsCount] = useState(0);
+  const [outputPortsCount, setOutputPortsCount] = useState(0);
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DATA_PRODUCT,
+      dataProduct.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
+  };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DATA_PRODUCT, fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const openAssetDrawer = useCallback(() => {
+    setIsAssetDrawerOpen(true);
+  }, []);
+
+  const closeAssetDrawer = useCallback(() => {
+    setIsAssetDrawerOpen(false);
+  }, []);
+
+  const fetchActiveAnnouncement = async () => {
+    try {
+      const announcements = await getActiveAnnouncements(
+        getEntityFeedLink(
+          EntityType.DATA_PRODUCT,
+          dataProduct.fullyQualifiedName ?? ''
+        )
+      );
+      if (isEmpty(announcements.data)) {
+        setActiveAnnouncement(undefined);
+      } else {
+        setActiveAnnouncement(announcements.data[0]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchDataProductContract = async () => {
+    try {
+      const contract = await getContractByEntityId(
+        dataProduct.id,
+        EntityType.DATA_PRODUCT,
+        [TabSpecificField.OWNERS]
+      );
+      setDataContract(contract);
+    } catch {
+      setDataContract(undefined);
+    }
+  };
+
+  const handleOpenAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(true);
+  };
+
+  const handleCloseAnnouncementDrawer = () => {
+    setIsAnnouncementDrawerOpen(false);
+    fetchActiveAnnouncement();
+  };
+
+  const breadcrumbItems = useMemo(() => {
+    const items: { label: string; href?: string }[] = [];
+
+    if (isMarketplace) {
+      items.push({
+        label: t('label.data-marketplace'),
+        href: ROUTES.DATA_MARKETPLACE,
+      });
+    }
+
+    items.push(
+      fromMarketplace
+        ? {
+            label: t('label.data-marketplace'),
+            href: ROUTES.DATA_MARKETPLACE,
+          }
+        : {
+            label: t('label.data-product-plural'),
+            href: dataProductBasePath,
+          }
+    );
+
+    if (dataProduct.domains && dataProduct.domains.length > 0) {
+      items.push({
+        label: getEntityName(dataProduct.domains[0]),
+        href: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
+      });
+    }
+
+    return items;
+  }, [
+    dataProduct.domains,
+    isMarketplace,
+    fromMarketplace,
+    dataProductBasePath,
+    t,
+  ]);
+
+  const [name, displayName] = useMemo(() => {
+    const defaultName = dataProduct.name;
+    const defaultDisplayName = dataProduct.displayName;
+
+    if (isVersionsView) {
+      const updatedName = getEntityVersionByField(
+        dataProduct.changeDescription as ChangeDescription,
+        EntityField.NAME,
+        defaultName
+      );
+      const updatedDisplayName = getEntityVersionByField(
+        dataProduct.changeDescription as ChangeDescription,
+        EntityField.DISPLAYNAME,
+        defaultDisplayName
+      );
+
+      return [updatedName, updatedDisplayName];
+    } else {
+      return [defaultName, defaultDisplayName];
+    }
+  }, [dataProduct, isVersionsView]);
+
+  const {
+    editDisplayNamePermission,
+    editAllPermission,
+    deleteDataProductPermission,
+  } = useMemo(() => {
+    if (isVersionsView) {
+      return {
+        editDescriptionPermission: false,
+        editOwnerPermission: false,
+        editAllPermission: false,
+      };
+    }
+
+    return {
+      editDescriptionPermission: getPrioritizedEditPermission(
+        dataProductPermission,
+        Operation.EditDescription
+      ),
+      editOwnerPermission: getPrioritizedEditPermission(
+        dataProductPermission,
+        Operation.EditOwners
+      ),
+      editAllPermission: dataProductPermission.EditAll,
+      editDisplayNamePermission: getPrioritizedEditPermission(
+        dataProductPermission,
+        Operation.EditDisplayName
+      ),
+      deleteDataProductPermission: dataProductPermission.Delete,
+    };
+  }, [dataProductPermission, isVersionsView]);
+
+  const { currentUser } = useApplicationStore();
+
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
+    [dataProduct.votes, currentUser?.id]
+  );
+
+  const handleVoteChange = useCallback(
+    async (data: VotingDataProps) => {
+      await onUpdateVote?.(data, dataProduct.id);
+    },
+    [onUpdateVote, dataProduct.id]
+  );
+
+  const fetchDataProductAssets = async () => {
+    if (dataProduct) {
+      try {
+        const queryFilter = getTermQuery({
+          'dataProducts.fullyQualifiedName':
+            dataProduct.fullyQualifiedName ?? '',
+        });
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter,
+          searchIndex: SearchIndex.ALL,
+        });
+
+        setAssetCount(res.hits.total.value ?? 0);
+      } catch (error) {
+        setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-plural-lowercase'),
+          })
+        );
+      }
+    }
+  };
+
+  const fetchDataProductPermission = useCallback(async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.DATA_PRODUCT,
+        dataProduct.id
+      );
+      setDataProductPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [dataProduct]);
+
+  const fetchPortCounts = useCallback(async () => {
+    try {
+      const data = await getDataProductPortsView(
+        dataProduct.fullyQualifiedName ?? '',
+        {
+          inputLimit: 1,
+          inputOffset: 0,
+          outputLimit: 1,
+          outputOffset: 0,
+        }
+      );
+      setInputPortsCount(data.inputPorts.paging.total);
+      setOutputPortsCount(data.outputPorts.paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const manageButtonContent: ItemType[] = [
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
+            ),
+            key: 'announcement-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleOpenAnnouncementDrawer();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(editDisplayNamePermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: t('label.data-product'),
+                })}
+                icon={EditIcon}
+                id="rename-button"
+                name={t('label.rename')}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-entity-style-description', {
+                  entity: t('label.data-product'),
+                })}
+                icon={StyleIcon}
+                id="rename-button"
+                name={t('label.style')}
+              />
+            ),
+            key: 'edit-style-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-metadata-description')}
+                icon={EditIcon}
+                id="edit-metadata-button"
+                name={t('label.edit-metadata')}
+              />
+            ),
+            key: 'edit-metadata-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsMetadataEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(deleteDataProductPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: t('label.data-product'),
+                  }
+                )}
+                icon={DeleteIcon}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-as-odps-description')}
+          icon={ExportIcon}
+          id="export-odps-button"
+          name={t('label.export-as-odps')}
+        />
+      ),
+      key: 'export-odps-button',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        try {
+          const yaml = await exportDataProductToODPSYaml(dataProduct.id ?? '');
+          downloadFile(
+            yaml,
+            `${dataProduct.name}.odps.yaml`,
+            'application/yaml'
+          );
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      },
+    },
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-odps-description')}
+                icon={ImportIcon}
+                id="import-odps-button"
+                name={t('label.import-from-odps')}
+              />
+            ),
+            key: 'import-odps-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOdpsImportOpen(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+  ];
+
+  const handleAssetSave = () => {
+    fetchDataProductAssets();
+    assetTabRef.current?.refreshAssets();
+    fetchPortCounts();
+    onRefresh?.();
+  };
+
+  const onNameSave = async (obj: { name: string; displayName?: string }) => {
+    if (dataProduct) {
+      const { name, displayName } = obj;
+
+      const updatedDetails = {
+        ...dataProduct,
+        displayName: displayName?.trim(),
+        name: name?.trim(),
+      };
+
+      try {
+        await onUpdate(updatedDetails);
+
+        // If name changed, navigate to the new URL
+        if (name && name.trim() !== dataProduct.name) {
+          navigate(getDataProductDetailsPath(name.trim(), activeTab), {
+            replace: true,
+          });
+        }
+      } catch {
+        // Error is already handled by the parent component
+      } finally {
+        setIsNameEditing(false);
+      }
+    }
+  };
+
+  const onStyleSave = async (data: Style) => {
+    const style: Style = {
+      // if color/iconURL is empty or undefined send undefined
+      color: data.color ?? undefined,
+      iconURL: data.iconURL ?? undefined,
+    };
+    const updatedDetails = {
+      ...dataProduct,
+      style,
+    };
+
+    try {
+      await onUpdate(updatedDetails);
+    } catch {
+      // Error is already handled by the parent component
+    } finally {
+      setIsStyleEditing(false);
+    }
+  };
+
+  const handleTabChange = (activeKey: string) => {
+    if (activeKey === 'assets') {
+      // refresh data products assets count when assets tab is selected
+      fetchDataProductAssets();
+    }
+    if (activeKey !== activeTab) {
+      const path = isVersionsView
+        ? getVersionPath(
+            EntityType.DATA_PRODUCT,
+            dataProductFqn,
+            toString(dataProduct.version),
+            activeKey
+          )
+        : getDataProductDetailsPath(dataProductFqn, activeKey);
+
+      navigate(path, {
+        replace: true,
+      });
+    }
+  };
+
+  const handleVersionClick = async () => {
+    const path = isVersionsView
+      ? getDataProductDetailsPath(dataProductFqn)
+      : getVersionPath(
+          EntityType.DATA_PRODUCT,
+          dataProductFqn,
+          toString(dataProduct.version)
+        );
+
+    navigate(path);
+  };
+
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
+
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+
+    const tabs = dataProductClassBase.getDataProductDetailPageTabs({
+      dataProduct,
+      isVersionsView,
+      dataProductPermission,
+      assetCount,
+      inputPortsCount,
+      outputPortsCount,
+      activeTab: activeTab as EntityTabs,
+      assetTabRef,
+      previewAsset,
+      setPreviewAsset,
+      setAssetModalVisible: openAssetDrawer,
+      handleAssetClick,
+      handleAssetSave,
+      feedCount,
+      getEntityFeedCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.DOCUMENTATION
+    );
+  }, [
+    customizedPage?.tabs,
+    dataProduct,
+    dataProductPermission,
+    previewAsset,
+    handleAssetClick,
+    handleAssetSave,
+    assetCount,
+    activeTab,
+    feedCount,
+    inputPortsCount,
+    outputPortsCount,
+  ]);
+
+  // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the
+  // URL tab is absent/not rendered so we never land on a non-existent pane.
+  const currentTab = getRenderedActiveTab(
+    tabs,
+    activeTab as EntityTabs | undefined,
+    EntityTabs.DOCUMENTATION
+  );
+
+  const iconData = useMemo(() => {
+    return (
+      <Avatar
+        size="2xl"
+        {...getEntityAvatarProps({ ...dataProduct, entityType: 'dataProduct' })}
+      />
+    );
+  }, [dataProduct]);
+
+  useEffect(() => {
+    fetchDataProductPermission();
+    fetchDataProductAssets();
+    fetchTaskCounts();
+    fetchActivityCount();
+    fetchActiveAnnouncement();
+    fetchDataProductContract();
+    fetchPortCounts();
+  }, [dataProductFqn, fetchPortCounts]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(
+        tabs[0],
+        activeTab as EntityTabs,
+        PageType.DataProduct
+      ),
+    [tabs[0], activeTab]
+  );
+
+  const dataContractLatestResultButton = useMemo(() => {
+    if (
+      dataContract?.latestResult?.status &&
+      [
+        ContractExecutionStatus.Aborted,
+        ContractExecutionStatus.Failed,
+        ContractExecutionStatus.Running,
+      ].includes(dataContract.latestResult.status)
+    ) {
+      const icon = getDataContractStatusIcon(dataContract.latestResult.status);
+
+      return (
+        <Button
+          className={classNames(
+            'data-contract-latest-result-button',
+            toLower(dataContract.latestResult.status)
+          )}
+          data-testid="data-contract-latest-result-btn"
+          icon={icon ? <Icon component={icon} /> : null}
+          onClick={() => {
+            handleTabChange(EntityTabs.CONTRACT);
+          }}>
+          {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
+            entity: t('label.contract'),
+          })}
+        </Button>
+      );
+    }
+
+    return null;
+  }, [dataContract]);
+
+  const statusBadge = useMemo(() => {
+    const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
+      EntityType.DATA_PRODUCT
+    );
+    const entityStatus =
+      'entityStatus' in dataProduct
+        ? dataProduct.entityStatus
+        : EntityStatus.Unprocessed;
+
+    return shouldShowStatus && entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={entityStatus} />
+    ) : null;
+  }, [dataProduct]);
+
+  if (isCustomPageLoading) {
+    return <Loader />;
+  }
+
+  const content = (
+    <>
+      <div
+        className="data-product-details tw:flex tw:flex-col tw:gap-1.5"
+        data-testid="data-product-details">
+        <CoverImage
+          imageUrl={
+            (dataProduct.style as Style & { coverImage?: { url?: string } })
+              ?.coverImage?.url
+          }
+          position={
+            (
+              dataProduct.style as Style & {
+                coverImage?: { position?: string };
+              }
+            )?.coverImage?.position
+              ? {
+                  y:
+                    (
+                      dataProduct.style as Style & {
+                        coverImage?: { position?: string };
+                      }
+                    )?.coverImage?.position ?? '',
+                }
+              : undefined
+          }
+        />
+        <GenericProvider<DataProduct>
+          newTagsUI
+          activeTab={currentTab}
+          currentVersionData={dataProduct}
+          customizedPage={customizedPage}
+          data={dataProduct}
+          isTabExpanded={isTabExpanded}
+          isVersionView={isVersionsView}
+          permissions={dataProductPermission}
+          type={EntityType.DATA_PRODUCT}
+          onUpdate={onUpdate}>
+          <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
+            <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
+              <EntityHeader
+                breadcrumb={[]}
+                entityData={{ ...dataProduct, displayName, name }}
+                entityType={EntityType.DATA_PRODUCT}
+                handleFollowingClick={handleFollowingClick}
+                icon={iconData}
+                isFollowing={isFollowing}
+                isFollowingLoading={isFollowingLoading}
+                serviceName=""
+                suffix={
+                  <>
+                    {statusBadge}
+                    <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
+                  </>
+                }
+                titleColor={dataProduct.style?.color}
+              />
+            </div>
+            <div className="tw:shrink-0 tw:max-w-full">
+              <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+                {dataProductClassBase.getRequestDataAccessButton()}
+
+                {!isVersionsView && dataProductPermission.Create && (
+                  <Button
+                    data-testid="data-product-details-add-button"
+                    type="primary"
+                    onClick={openAssetDrawer}>
+                    {t('label.add-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                  </Button>
+                )}
+
+                <ButtonGroup className="spaced" size="small">
+                  {dataContractLatestResultButton}
+
+                  {onUpdateVote && (
+                    <Voting
+                      voteStatus={voteStatus}
+                      votes={dataProduct.votes}
+                      onUpdateVote={handleVoteChange}
+                    />
+                  )}
+
+                  {dataProduct?.version && (
+                    <Tooltip
+                      title={t(
+                        `label.${
+                          isVersionsView
+                            ? 'exit-version-history'
+                            : 'version-plural-history'
+                        }`
+                      )}>
+                      <Button
+                        className={classNames('', {
+                          'text-primary border-primary': version,
+                        })}
+                        data-testid="version-button"
+                        icon={<Icon component={VersionIcon} />}
+                        onClick={handleVersionClick}>
+                        <Typography.Text
+                          className={classNames('', {
+                            'text-primary': version,
+                          })}>
+                          {toString(dataProduct.version)}
+                        </Typography.Text>
+                      </Button>
+                    </Tooltip>
+                  )}
+
+                  {!isVersionsView && manageButtonContent.length > 0 && (
+                    <Dropdown
+                      align={{ targetOffset: [-12, 0] }}
+                      className="m-l-xs"
+                      menu={{
+                        items: manageButtonContent,
+                      }}
+                      open={showActions}
+                      overlayClassName="domain-manage-dropdown-list-container"
+                      overlayStyle={{ width: '350px' }}
+                      placement="bottomRight"
+                      trigger={['click']}
+                      onOpenChange={setShowActions}>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.data-product'),
+                        })}>
+                        <Button
+                          className="domain-manage-dropdown-button tw-px-1.5"
+                          data-testid="manage-button"
+                          icon={
+                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                          }
+                          onClick={() => setShowActions(true)}
+                        />
+                      </Tooltip>
+                    </Dropdown>
+                  )}
+                </ButtonGroup>
+
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {dataProductClassBase.getRequestDataAccessBanner()}
+
+          <div className="data-product-details-page-tabs tw:w-full">
+            <div className="tw:p-5">
+              <Tabs
+                destroyInactiveTabPane
+                activeKey={currentTab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                onChange={handleTabChange}
+              />
+            </div>
+          </div>
+        </GenericProvider>
+      </div>
+
+      <EntityNameModal<DataProduct>
+        allowRename
+        entity={dataProduct}
+        title={t('label.edit-entity', {
+          entity: t('label.name'),
+        })}
+        visible={isNameEditing}
+        onCancel={() => setIsNameEditing(false)}
+        onSave={onNameSave}
+      />
+      <DeleteModal
+        entityTitle={dataProduct.name}
+        message={t('message.delete-entity-message', {
+          entity: dataProduct.name,
+        })}
+        open={isDelete}
+        onCancel={() => setIsDelete(false)}
+        onDelete={onDelete}
+      />
+
+      <AssetSelectionDrawer
+        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+          name: dataProduct.domains
+            ?.map((domain) => getEntityName(domain))
+            .join(', '),
+        })}
+        entityFqn={dataProductFqn}
+        open={isAssetDrawerOpen}
+        queryFilter={
+          getQueryFilterToIncludeDomain(
+            dataProduct.domains
+              ?.map((domain) => domain.fullyQualifiedName)
+              .join(', ') ?? '',
+            dataProduct.fullyQualifiedName ?? ''
+          ) as QueryFilterInterface
+        }
+        type={AssetsOfEntity.DATA_PRODUCT}
+        onCancel={closeAssetDrawer}
+        onSave={() => {
+          fetchDataProductAssets();
+          assetTabRef.current?.refreshAssets();
+          activeTab !== 'assets' && handleTabChange('assets');
+        }}
+      />
+
+      <StyleModal
+        open={isStyleEditing}
+        style={dataProduct.style}
+        onCancel={() => setIsStyleEditing(false)}
+        onSubmit={onStyleSave}
+      />
+
+      <AnnouncementDrawer
+        createPermission={editAllPermission}
+        entityFQN={dataProduct.fullyQualifiedName ?? ''}
+        entityType={EntityType.DATA_PRODUCT}
+        open={isAnnouncementDrawerOpen}
+        onClose={handleCloseAnnouncementDrawer}
+      />
+
+      <ODPSImportModal
+        domainFqn={dataProduct.domains?.[0]?.fullyQualifiedName}
+        existingDataProduct={dataProduct}
+        open={isOdpsImportOpen}
+        onClose={() => setIsOdpsImportOpen(false)}
+        onSuccess={() => {
+          // The ODPS import endpoint already persists the entity; use the
+          // refetch hook rather than feeding the returned object back through
+          // onUpdate, which would compute a JSON patch against stale local
+          // state and resubmit the import's diff as a regular PATCH.
+          setIsOdpsImportOpen(false);
+          onRefresh?.();
+        }}
+      />
+
+      <DataProductMetadataModal
+        dataProduct={dataProduct}
+        open={isMetadataEditing}
+        onCancel={() => setIsMetadataEditing(false)}
+        onSubmit={async (values) => {
+          try {
+            await onUpdate({
+              ...dataProduct,
+              dataProductType: values.dataProductType,
+              visibility: values.visibility,
+              portfolioPriority: values.portfolioPriority,
+            });
+          } catch {
+            // Error is already handled by the parent component
+          } finally {
+            setIsMetadataEditing(false);
+          }
+        }}
+      />
+    </>
+  );
+
+  return (
+    <>
+      <HeaderBreadcrumb items={breadcrumbItems} />
+      <div className="domain-page-container">{content}</div>
+    </>
+  );
+};
+
+export default DataProductsDetailsPage;

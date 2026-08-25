@@ -1,0 +1,217 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Test Sagemaker.
+"""
+
+from unittest import TestCase
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.entity.data.mlmodel import MlStore
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.source.mlmodel.sagemaker.metadata import SagemakerSource
+
+ML_MODEL_SERVICE_MOCK = "unittest_sagemaker"
+
+MODELS_MOCK = [
+    {
+        "ModelName": "model_1",
+        "ModelArn": "arn::model_1",
+        "CreationTime": "2020-01-01 00:00:00",
+    },
+    {
+        "ModelName": "model_2",
+        "ModelArn": "arn::model_2",
+        "CreationTime": "2020-01-01 00:00:00",
+    },
+    {
+        "ModelName": "model_3",
+        "ModelArn": "arn::model_3",
+        "CreationTime": "2020-01-01 00:00:00",
+    },
+]
+
+MODEL_DESCRIPTIONS_MOCK = {
+    "model_1": {
+        "PrimaryContainer": {
+            "Image": "image_1",
+            "ModelDataUrl": "file://storage_1",
+        }
+    },
+    "model_2": {
+        "PrimaryContainer": {
+            "ModelDataUrl": "file://storage_2",
+        }
+    },
+    "model_3": {},
+}
+
+EXPECTED_MODELS = [
+    CreateMlModelRequest(
+        name="model_1",
+        algorithm="mlmodel",
+        mlStore=MlStore(storage="file://storage_1", imageRepository="image_1"),
+        service=ML_MODEL_SERVICE_MOCK,
+    ),
+    CreateMlModelRequest(
+        name="model_2",
+        algorithm="mlmodel",
+        mlStore=MlStore(storage="file://storage_2"),
+        service=ML_MODEL_SERVICE_MOCK,
+    ),
+    CreateMlModelRequest(name="model_3", algorithm="mlmodel", mlStore=None, service=ML_MODEL_SERVICE_MOCK),
+]
+
+REGISTERED_MODELS_SUMMARY_MOCK = [
+    {"ModelPackageGroupName": "registered_model_1"},
+    {"ModelPackageGroupName": "registered_model_2"},
+]
+
+REGISTERED_MODELS_DESCRIPTION_MOCK = {
+    "registered_model_1": {
+        "ModelPackageGroupName": "registered_model_1",
+        "ModelPackageGroupArn": "arn::registered_model_1",
+        "ModelPackageGroupDescription": "Test registered model 1",
+        "CreationTime": "2024-01-01 00:00:00",
+    },
+    "registered_model_2": {
+        "ModelPackageGroupName": "registered_model_2",
+        "ModelPackageGroupArn": "arn::registered_model_2",
+        "CreationTime": "2024-01-02 00:00:00",
+    },
+}
+
+EXPECTED_REGISTERED_MODELS = [
+    {
+        "ModelName": "registered_model_1",
+        "ModelArn": "arn::registered_model_1",
+        "description": "Test registered model 1",
+        "CreationTime": "2024-01-01 00:00:00",
+    },
+    {
+        "ModelName": "registered_model_2",
+        "ModelArn": "arn::registered_model_2",
+        "description": None,
+        "CreationTime": "2024-01-02 00:00:00",
+    },
+]
+
+
+class PaginatorMock:
+    def __init__(self, data):
+        self.data = data
+
+    def paginate(self):
+        yield self.data
+
+
+class SagemakerClientMock:
+    def __init__(self):
+        pass
+
+    def list_models(self, *args, **kwargs):
+        return {"Models": MODELS_MOCK, "NextToken": None}
+
+    def describe_model(self, modelName: str, *args, **kwargs):  # noqa: N803
+        return MODEL_DESCRIPTIONS_MOCK.get(modelName)
+
+    def get_paginator(self, operation_name: str):
+        if operation_name == "list_model_package_groups":
+            return PaginatorMock({"ModelPackageGroupSummaryList": REGISTERED_MODELS_SUMMARY_MOCK})
+        return None
+
+    def describe_model_package_group(self, ModelPackageGroupName: str):  # noqa: N803
+        return REGISTERED_MODELS_DESCRIPTION_MOCK.get(ModelPackageGroupName)
+
+
+sagemaker_config = {
+    "source": {
+        "type": "sagemaker",
+        "serviceName": ML_MODEL_SERVICE_MOCK,
+        "serviceConnection": {
+            "config": {
+                "type": "SageMaker",
+                "awsConfig": {
+                    "awsAccessKeyId": "access_key",
+                    "awsSecretAccessKey": "secret_access_key",
+                    "awsSessionToken": "session_token",
+                    "awsRegion": "us-east-1",
+                },
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "MlModelMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        }
+    },
+}
+
+
+class SagemakerTest(TestCase):
+    @patch("metadata.ingestion.source.mlmodel.sagemaker.metadata.SagemakerSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = parse_workflow_config_gracefully(sagemaker_config)
+        self.sagemaker_source = SagemakerSource.create(
+            sagemaker_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        self.sagemaker_source.sagemaker = SagemakerClientMock()
+
+        self.sagemaker_source.context.get().__dict__["mlmodel_service"] = ML_MODEL_SERVICE_MOCK
+
+    def test_ccreate_ml_model_request_is_correct(self):
+        for i, mlmodel in enumerate(self.sagemaker_source.get_mlmodels()):
+            assert self.sagemaker_source.yield_mlmodel(mlmodel) == Either(right=EXPECTED_MODELS[i])
+
+    def test_list_registered_models(self):
+        registered_models = self.sagemaker_source.list_registered_models()
+        assert len(registered_models) == len(EXPECTED_REGISTERED_MODELS)
+        for i, model in enumerate(registered_models):
+            assert model["ModelName"] == EXPECTED_REGISTERED_MODELS[i]["ModelName"]
+            assert model["ModelArn"] == EXPECTED_REGISTERED_MODELS[i]["ModelArn"]
+            assert model["description"] == EXPECTED_REGISTERED_MODELS[i]["description"]
+            assert model["CreationTime"] == EXPECTED_REGISTERED_MODELS[i]["CreationTime"]
+
+
+def test_owned_connection_closed_when_test_connection_fails():
+    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.create_connection") as mock_create_connection:
+        owned_connection = mock_create_connection.return_value
+        with (
+            patch(
+                "metadata.ingestion.source.mlmodel.mlmodel_service.run_test_connection",
+                side_effect=RuntimeError("cannot connect"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            SagemakerSource.create(sagemaker_config["source"], MagicMock())
+
+        owned_connection.close.assert_called_once()

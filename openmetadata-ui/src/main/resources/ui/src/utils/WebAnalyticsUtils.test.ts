@@ -1,0 +1,95 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
+import { postWebAnalyticEvent } from './../rest/WebAnalyticsAPI';
+import { getAnalyticInstance, trackPageView } from './WebAnalyticsUtils';
+
+const userId = 'userId';
+
+jest.mock('rest/WebAnalyticsAPI', () => ({
+  postWebAnalyticEvent: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('@analytics/session-utils', () => ({
+  ...jest.requireActual('@analytics/session-utils'),
+  getSession: jest
+    .fn()
+    .mockReturnValue({ id: '19c85e4f-7679-4fba-813f-e72108d914c4' }),
+}));
+
+const MOCK_ANALYTICS_DATA: AnalyticsData = {
+  payload: {
+    type: 'page',
+    properties: {
+      title: 'OpenMetadata',
+      url: 'http://localhost/',
+      path: '/',
+      hash: '',
+      search: '?page=1',
+      width: 1440,
+      height: 284,
+      referrer: 'http://localhost:3000/explore/tables?page=1',
+    },
+    event: 'Explore',
+    meta: {
+      rid: '7a14e508-5cbc-4bf9-b922-0607a2ff2aa5',
+      ts: 1680246874535,
+      hasCallback: true,
+    },
+    anonymousId: '7a14e508-5cbc-4bf9-b922-0607a2ff2aa5',
+  },
+};
+
+const EXPECTED_PAGE_VIEW_PAYLOAD = {
+  eventType: 'PageView',
+  eventData: {
+    fullUrl: 'http://localhost/',
+    url: '/',
+    userId: 'test',
+    sessionId: '19c85e4f-7679-4fba-813f-e72108d914c4',
+  },
+  timestamp: 1680246874535,
+};
+
+describe('Web Analytics utils', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('getAnalyticInstance Should return the analytic instance and must have plugins, storage, page and setAnonymousId property', () => {
+    const instance = getAnalyticInstance(userId);
+
+    expect(instance).toHaveProperty('plugins');
+
+    expect(instance).toHaveProperty('storage');
+
+    expect(instance).toHaveProperty('page');
+
+    expect(instance).toHaveProperty('setAnonymousId');
+  });
+
+  it('trackPageView should send only the minimum payload required for DAU/MAU and entity view aggregation', () => {
+    trackPageView(MOCK_ANALYTICS_DATA, 'test');
+
+    expect(postWebAnalyticEvent).toHaveBeenCalledWith(
+      EXPECTED_PAGE_VIEW_PAYLOAD
+    );
+  });
+
+  it('trackPageView should be a no-op when userId is missing', () => {
+    trackPageView(MOCK_ANALYTICS_DATA, undefined);
+
+    expect(postWebAnalyticEvent).not.toHaveBeenCalled();
+  });
+});

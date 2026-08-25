@@ -1,0 +1,171 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.term-relation-graph-container {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  position: relative;
+
+  &:fullscreen {
+    background: var(--om-color-white);
+    padding: var(--om-space-16);
+  }
+
+  .term-relation-graph-card {
+    height: 100%;
+
+    .ant-card-body {
+      height: calc(100% - 56px);
+      display: flex;
+      flex-direction: column;
+      padding: var(--om-space-16);
+    }
+  }
+
+  .term-relation-graph-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--om-space-16);
+    margin-bottom: var(--om-space-16);
+    padding-bottom: var(--om-space-16);
+    border-bottom: 1px solid var(--om-legacy-color-f0f0f0);
+
+    .depth-control {
+      display: flex;
+      align-items: center;
+      gap: var(--om-space-8);
+      min-width: 200px;
+
+      .control-label {
+        white-space: nowrap;
+        font-weight: var(--om-font-weight-medium);
+      }
+
+      .depth-slider {
+        flex: 1;
+        min-width: 120px;
+      }
+    }
+
+    .relation-type-filter {
+      display: flex;
+      align-items: center;
+      gap: var(--om-space-8);
+      flex-wrap: wrap;
+
+      .control-label {
+        white-space: nowrap;
+        font-weight: var(--om-font-weight-medium);
+      }
+
+      .ant-checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--om-space-4);
+
+        .ant-checkbox-wrapper {
+          margin-right: 0;
+        }
+      }
+    }
+
+    .layout-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--om-space-8);
+      margin-left: auto;
+
+      .ant-select {
+        min-width: 140px;
+      }
+    }
+  }
+
+  .term-relation-graph-canvas {
+    flex: 1;
+    min-height: 400px;
+    border: 1px solid var(--om-legacy-color-f0f0f0);
+    border-radius: var(--om-radius-lg);
+    background: linear-gradient(135deg, var(--om-color-gray-50) 0%, var(--om-color-gray-100) 100%);
+  }
+
+  .term-relation-graph-loading,
+  .term-relation-graph-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 400px;
+    background: var(--om-color-gray-50);
+    border-radius: var(--om-radius-lg);
+  }
+
+  .term-relation-node-details {
+    position: absolute;
+    bottom: 80px;
+    right: 32px;
+    width: 280px;
+    box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-15);
+
+    .ant-typography {
+      display: block;
+
+      &.ant-typography-secondary {
+        margin-bottom: var(--om-space-12);
+        font-size: var(--om-font-size-xs);
+      }
+    }
+
+    .node-actions {
+      margin-top: var(--om-space-8);
+      display: flex;
+      gap: var(--om-space-8);
+    }
+  }
+
+  .term-relation-graph-legend {
+    position: absolute;
+    bottom: 32px;
+    left: 32px;
+    background: var(--om-legacy-color-255-255-255-0-95);
+    padding: var(--om-space-12);
+    border-radius: var(--om-radius-lg);
+    box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
+
+    .legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--om-space-12);
+      margin-top: var(--om-space-8);
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: var(--om-space-6);
+
+        .legend-color {
+          width: 20px;
+          height: 3px;
+          border-radius: var(--om-radius-xs);
+        }
+
+        .ant-typography {
+          font-size: var(--om-font-size-xs);
+          text-transform: capitalize;
+        }
+      }
+    }
+  }
+}

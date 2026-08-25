@@ -1,0 +1,275 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import {
+  DATA_CONSUMER_RULES,
+  ORGANIZATION_POLICY_RULES,
+  VIEW_ALL_RULE,
+} from '../constant/permission';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
+import { UserClass } from '../support/user/UserClass';
+import { getApiContext, redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+
+let policy: PolicyClass;
+let role: RolesClass;
+
+export const initializePermissions = async (
+  page: Page,
+  effect: 'allow' | 'deny',
+  operations: string[],
+  resources: string[] = ['All']
+) => {
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  policy = new PolicyClass();
+
+  const policyRules = [
+    ...VIEW_ALL_RULE,
+    {
+      name: `Global${effect}AllOperationsPolicy`,
+      resources,
+      operations,
+      effect,
+    },
+  ];
+
+  await policy.create(apiContext, policyRules);
+
+  role = new RolesClass();
+  await role.create(apiContext, [policy.responseData.name]);
+
+  return { apiContext, policy, role };
+};
+
+export const setupUserWithPolicy = async (
+  apiContext: APIRequestContext,
+  user: UserClass,
+  policy: PolicyClass,
+  role: RolesClass,
+  policyRules: Array<{
+    name: string;
+    resources: string[];
+    operations: string[];
+    effect: string;
+  }>
+) => {
+  await user.create(apiContext, false);
+  const pol = await policy.create(apiContext, policyRules);
+  const rol = await role.create(apiContext, [pol.fullyQualifiedName]);
+  await user.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/roles/0',
+        value: { id: rol.id, type: 'role', name: rol.name },
+      },
+    ],
+  });
+};
+
+export const assignRoleToUser = async (page: Page, testUser: UserClass) => {
+  const { apiContext } = await getApiContext(page);
+
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'replace',
+        path: '/roles',
+        value: [
+          {
+            id: role.responseData.id,
+            type: 'role',
+            name: role.responseData.name,
+          },
+        ],
+      },
+    ],
+  });
+};
+
+export const checkNoPermissionPlaceholder = async (
+  page: Page,
+  label: string | RegExp,
+  permission = false
+) => {
+  const labelText =
+    typeof label === 'string' ? label : label.source.replace(/^\/|\/$/g, ''); // remove leading/trailing slashes
+
+  const placeholder = page
+    .getByLabel(label)
+    .locator('[data-testid="permission-error-placeholder"]');
+
+  if (permission) {
+    await expect(placeholder).not.toBeVisible();
+  } else {
+    await expect(placeholder).toBeVisible();
+    await expect(placeholder).toContainText(
+      `You don't have necessary permissions. Please check with the admin to get the View ${labelText} permission.`
+    );
+  }
+};
+
+export const validateViewPermissions = async (
+  page: Page,
+  permission?: {
+    viewSampleData?: boolean;
+    viewQueries?: boolean;
+    viewTests?: boolean;
+    editDisplayName?: boolean;
+  }
+) => {
+  // check Add domain permission
+  await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
+
+  if (permission?.editDisplayName) {
+    const editDisplayNameButton = page.locator(
+      '[data-testid="edit-displayName-button"]'
+    );
+    await expect(editDisplayNameButton.first()).toBeVisible({
+      timeout: 30_000,
+    });
+  } else {
+    await expect(
+      page.locator('[data-testid="edit-displayName-button"]')
+    ).toHaveCount(0);
+  }
+
+  // check edit owner permission
+  await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
+  // check edit description permission
+  await expect(
+    page.locator('[data-testid="edit-description"]')
+  ).not.toBeVisible();
+  // check edit tier permission
+  await expect(page.locator('[data-testid="edit-tier"]')).not.toBeVisible();
+
+  // check add tags button
+  await expect(
+    page.locator(
+      '[data-testid="tags-container"] > [data-testid="entity-tags"] .ant-tag'
+    )
+  ).not.toBeVisible();
+  // check add glossary term button
+  await expect(
+    page.locator(
+      '[data-testid="glossary-container"] > [data-testid="entity-tags"] .ant-tag'
+    )
+  ).not.toBeVisible();
+
+  // check manage button
+  await expect(page.locator('[data-testid="manage-button"]')).toHaveCount(
+    permission?.editDisplayName ? 1 : 0
+  );
+
+  if (permission?.editDisplayName) {
+    await page.click('[data-testid="manage-button"]');
+    await page.click('[data-testid="rename-button"]');
+    await page.fill('#displayName', 'updated-table-name');
+    const updateDisplayNameResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('api/v1/tables/') && response.status() === 200
+    );
+    await page.click('[data-testid="save-button"]');
+
+    await updateDisplayNameResponse;
+
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).toContainText('updated-table-name');
+  }
+
+  await page.click('[data-testid="sample_data"]');
+  await waitForAllLoadersToDisappear(page);
+  await checkNoPermissionPlaceholder(
+    page,
+    /Sample Data/,
+    permission?.viewSampleData
+  );
+  await page.click('[data-testid="table_queries"]');
+  await waitForAllLoadersToDisappear(page);
+  await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
+
+  await page.click('[data-testid="profiler"]');
+  await waitForAllLoadersToDisappear(page);
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+  await waitForAllLoadersToDisappear(page);
+  await checkNoPermissionPlaceholder(
+    page,
+    /Data Observability/,
+    permission?.viewTests
+  );
+  await page.click('[data-testid="lineage"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+
+  await page.click('[data-testid="custom_properties"]');
+  await waitForAllLoadersToDisappear(page);
+  await checkNoPermissionPlaceholder(page, /Custom Properties/);
+};
+
+export const updateDefaultDataConsumerPolicy = async (
+  apiContext: APIRequestContext
+) => {
+  const dataConsumerRoleResponse = await apiContext
+    .get('/api/v1/policies/name/DataConsumerPolicy')
+    .then((response) => response.json());
+
+  await apiContext.patch(`/api/v1/policies/${dataConsumerRoleResponse.id}`, {
+    data: [
+      {
+        op: 'replace',
+        path: '/rules',
+        value: DATA_CONSUMER_RULES,
+      },
+    ],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
+};
+
+export const updateDefaultOrganizationPolicy = async (
+  apiContext: APIRequestContext
+) => {
+  const orgPolicyResponse = await apiContext
+    .get('/api/v1/policies/name/OrganizationPolicy')
+    .then((response) => response.json());
+
+  await apiContext.patch(`/api/v1/policies/${orgPolicyResponse.id}`, {
+    data: [
+      {
+        op: 'replace',
+        path: '/rules',
+        value: ORGANIZATION_POLICY_RULES,
+      },
+    ],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
+};
+
+export const cleanupPermissions = async (apiContext: APIRequestContext) => {
+  if (role?.responseData?.id) {
+    await role.delete(apiContext);
+  }
+  if (policy?.responseData?.id) {
+    await policy.delete(apiContext);
+  }
+};

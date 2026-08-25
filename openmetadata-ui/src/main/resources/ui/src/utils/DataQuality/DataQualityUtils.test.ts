@@ -1,0 +1,1414 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
+import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { TestCaseType } from '../../enums/TestSuite.enum';
+import { Table } from '../../generated/entity/data/table';
+import { DataQualityReport } from '../../generated/tests/dataQualityReport';
+import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
+import {
+  DataQualityDimensions,
+  TestDataType,
+  TestDefinition,
+  TestPlatform,
+} from '../../generated/tests/testDefinition';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
+import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import {
+  buildDataQualityDashboardFilters,
+  buildDataQualityTableFilters,
+  buildMustEsFilterForDataProducts,
+  buildMustEsFilterForOwner,
+  buildMustEsFilterForTags,
+  buildMustEsFilterForTier,
+  buildTestCaseParams,
+  createTestCaseParameters,
+  createUpdatedTestCasePatch,
+  filterTestCasesByTableAndColumn,
+  getColumnFilterEntityLink,
+  getColumnFilterOptions,
+  getColumnNameFromColumnFilterKey,
+  getEntityLinkForColumnFilter,
+  getSelectedOptionsFromKeys,
+  getServiceTypeForTestDefinition,
+  getTestCaseFiltersValue,
+  getTestCaseTabPath,
+  parseColumnAggregateBuckets,
+  transformToTestCaseStatusObject,
+} from './DataQualityPureUtils';
+jest.mock('../../constants/profiler.constant', () => ({
+  TEST_CASE_FILTERS: {
+    table: 'tableFqn',
+    platform: 'testPlatforms',
+    type: 'testCaseType',
+    status: 'testCaseStatus',
+    lastRun: 'lastRunRange',
+    tier: 'tier',
+    tags: 'tags',
+    service: 'serviceName',
+    dimension: 'dataQualityDimension',
+    dataProduct: 'dataProductFqn',
+  },
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
+jest.mock('../date-time/DateTimeUtils', () => ({
+  formatDate: jest.fn((timestamp: number) => String(timestamp)),
+  formatDateTimeLong: jest.fn(),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
+  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
+}));
+
+jest.mock('../TablePureUtils', () => ({
+  generateEntityLink: jest.fn().mockImplementation((fqn: string) => {
+    return `<#E::table::${fqn}>`;
+  }),
+  getTierTags: jest.fn().mockReturnValue(undefined),
+}));
+
+jest.mock('../FeedUtilsPure', () => ({
+  getEntityFQN: jest.fn((link: string) => {
+    const match = link?.match(/^<#E::table::(.+?)(?:::columns::[^>]+)?>$/);
+
+    return match ? match[1] : link;
+  }),
+}));
+
+jest.mock('../EntityPureUtils', () => ({
+  getColumnNameFromEntityLink: jest.fn((link: string) => {
+    const match = link?.match(/::columns::([^>]+)/);
+
+    return match ? match[1] : link;
+  }),
+}));
+
+describe('DataQualityUtils', () => {
+  describe('getTestCaseTabPath', () => {
+    it('preserves supported dashboard filters in the test-case details link', () => {
+      const path = getTestCaseTabPath(TestCaseStatus.Failed, {
+        startTs: 100,
+        endTs: 200,
+        tags: ['PII.Sensitive'],
+        tier: ['Tier.Tier1'],
+        dataProductFqns: ['marketing'],
+        entityFQN: 'service.db.schema.table',
+        serviceName: 'service',
+        dataQualityDimension: 'Accuracy',
+      });
+
+      expect(path.pathname).toBe('/data-quality/test-cases');
+      expect(path.search).toContain('testCaseStatus=Failed');
+      expect(path.search).toContain('lastRunRange%5BstartTs%5D=100');
+      expect(path.search).toContain('lastRunRange%5BendTs%5D=200');
+      expect(path.search).toContain('lastRunRange%5Bkey%5D=customRange');
+      expect(path.search).toContain('lastRunRange%5Btitle%5D=100%20-%3E%20200');
+      expect(path.search).toContain('tags%5B%5D=PII.Sensitive');
+      expect(path.search).toContain('tier=Tier.Tier1');
+      expect(path.search).toContain('dataProductFqn=marketing');
+      expect(path.search).toContain('tableFqn=service.db.schema.table');
+      expect(path.search).toContain('serviceName=service');
+      expect(path.search).toContain('dataQualityDimension=Accuracy');
+    });
+  });
+
+  describe('buildTestCaseParams', () => {
+    it('should return an empty object if params is undefined', () => {
+      const params = undefined;
+      const filters = ['lastRun', 'table'];
+
+      const result = buildTestCaseParams(params, filters);
+
+      expect(result).toEqual({});
+    });
+
+    it('should return the updated test case parameters with the applied filters', () => {
+      const params = {
+        endTimestamp: 1234567890,
+        startTimestamp: 1234567890,
+        entityLink: 'table1',
+        testPlatforms: [TestPlatform.Dbt],
+      } as ListTestCaseParamsBySearch;
+      const filters = ['lastRunRange', 'tableFqn'];
+
+      const result = buildTestCaseParams(params, filters);
+
+      expect(result).toEqual({
+        endTimestamp: 1234567890,
+        startTimestamp: 1234567890,
+        entityLink: 'table1',
+      });
+    });
+  });
+
+  describe('createTestCaseParameters', () => {
+    const mockDefinition = {
+      parameterDefinition: [
+        { name: 'arrayParam', dataType: TestDataType.Array },
+        { name: 'stringParam', dataType: TestDataType.String },
+      ],
+    } as TestDefinition;
+
+    it('should return an empty array for empty parameters', () => {
+      const result = createTestCaseParameters({}, mockDefinition);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle parameters not matching any definition', () => {
+      const params = { unrelatedParam: 'value' };
+      const result = createTestCaseParameters(params, mockDefinition);
+
+      expect(result).toEqual([{ name: 'unrelatedParam', value: 'value' }]);
+    });
+
+    it('should handle a mix of string and array parameters', () => {
+      const params = {
+        stringParam: 'stringValue',
+        arrayParam: [{ value: 'arrayValue1' }, { value: 'arrayValue2' }],
+      };
+      const expected = [
+        { name: 'stringParam', value: 'stringValue' },
+        {
+          name: 'arrayParam',
+          value: JSON.stringify(['arrayValue1', 'arrayValue2']),
+        },
+      ];
+      const result = createTestCaseParameters(params, mockDefinition);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('should ignore array items without a value', () => {
+      const params = {
+        arrayParam: [{ value: '' }, { value: 'validValue' }],
+      };
+      const expected = [
+        { name: 'arrayParam', value: JSON.stringify(['validValue']) },
+      ];
+      const result = createTestCaseParameters(params, mockDefinition);
+
+      expect(result).toEqual(expected);
+    });
+
+    it('should return undefined if params not present', () => {
+      const result = createTestCaseParameters(undefined, undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return params value for sqlExpression test defination type', () => {
+      const data = {
+        params: {
+          sqlExpression: 'select * from dim_address',
+          strategy: 'COUNT',
+          threshold: '12',
+        },
+        selectedDefinition: {
+          parameterDefinition: [
+            {
+              name: 'sqlExpression',
+              displayName: 'SQL Expression',
+              dataType: 'STRING',
+              description: 'SQL expression to run against the table',
+              required: true,
+              optionValues: [],
+            },
+            {
+              name: 'strategy',
+              displayName: 'Strategy',
+              dataType: 'ARRAY',
+              description:
+                'Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)',
+              required: false,
+              optionValues: ['ROWS', 'COUNT'],
+            },
+            {
+              name: 'threshold',
+              displayName: 'Threshold',
+              dataType: 'NUMBER',
+              description:
+                'Threshold to use to determine if the test passes or fails (defaults to 0).',
+              required: false,
+              optionValues: [],
+            },
+          ],
+        } as TestDefinition,
+      };
+
+      const expected = [
+        {
+          name: 'sqlExpression',
+          value: 'select * from dim_address',
+        },
+        {
+          name: 'strategy',
+          value: 'COUNT',
+        },
+        {
+          name: 'threshold',
+          value: '12',
+        },
+      ];
+
+      const result = createTestCaseParameters(
+        data.params,
+        data.selectedDefinition
+      );
+
+      expect(result).toEqual(expected);
+    });
+  });
+
+  describe('getTestCaseFiltersValue', () => {
+    const testCaseSearchParams = {
+      testCaseType: 'column',
+      testCaseStatus: 'Success',
+      searchValue: 'between',
+      testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
+      lastRunRange: {
+        startTs: '1720417883445',
+        endTs: '1721022683445',
+        key: 'last7days',
+        title: 'Last 7 days',
+      },
+      tags: ['PII.None'],
+      tier: 'Tier.Tier1',
+      serviceName: 'sample_data',
+      dataQualityDimension: 'Accuracy',
+      dataProductFqn: 'Marketing',
+      tableFqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+    } as unknown as TestCaseSearchParams;
+
+    it('should correctly process values and selectedFilter', () => {
+      const selectedFilter = [
+        'testCaseStatus',
+        'testCaseType',
+        'searchValue',
+        'testPlatforms',
+        'lastRunRange',
+        'tags',
+        'tier',
+        'serviceName',
+        'dataQualityDimension',
+        'dataProductFqn',
+        'tableFqn',
+      ];
+
+      const expected = {
+        endTimestamp: '1721022683445',
+        startTimestamp: '1720417883445',
+        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
+        testCaseType: 'column',
+        testCaseStatus: 'Success',
+        tags: ['PII.None'],
+        tier: 'Tier.Tier1',
+        serviceName: 'sample_data',
+        dataQualityDimension: 'Accuracy',
+        dataProductFqn: 'Marketing',
+      };
+
+      const result = getTestCaseFiltersValue(
+        testCaseSearchParams,
+        selectedFilter
+      );
+
+      expect(result).toEqual(expected);
+    });
+
+    it('should only create params based on selected filters', () => {
+      const selectedFilter = ['testPlatforms', 'lastRunRange'];
+
+      const expected = {
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
+        endTimestamp: '1721022683445',
+        startTimestamp: '1720417883445',
+      };
+
+      const result = getTestCaseFiltersValue(
+        testCaseSearchParams,
+        selectedFilter
+      );
+
+      expect(result).toEqual(expected);
+    });
+
+    it('should only create params based on selected filters and available data', () => {
+      const testCaseSearchParams = {
+        testCaseType: 'column',
+        testCaseStatus: 'Success',
+        searchValue: 'between',
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
+        tags: ['PII.None'],
+        tier: 'Tier.Tier1',
+      } as unknown as TestCaseSearchParams;
+      const selectedFilter = ['testPlatforms', 'tags', 'testCaseStatus'];
+
+      const expected = {
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
+        tags: ['PII.None'],
+        testCaseStatus: 'Success',
+      };
+
+      const result = getTestCaseFiltersValue(
+        testCaseSearchParams,
+        selectedFilter
+      );
+
+      expect(result).toEqual(expected);
+    });
+
+    it('should not send params if selected filter is empty', () => {
+      const selectedFilter: string[] = [];
+
+      const result = getTestCaseFiltersValue(
+        testCaseSearchParams,
+        selectedFilter
+      );
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('buildMustEsFilterForOwner', () => {
+    it('should return nested filter for owner when isTestCaseResult is false', () => {
+      const ownerFqn = 'owner1';
+      const expectedFilter = {
+        nested: {
+          path: 'owners',
+          query: {
+            term: {
+              'owners.name': ownerFqn,
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForOwner(ownerFqn)).toEqual(expectedFilter);
+    });
+
+    it('should return nested filter for test case owner when isTestCaseResult is true', () => {
+      const ownerFqn = 'owner2';
+      const expectedFilter = {
+        nested: {
+          path: 'testCase.owners',
+          query: {
+            term: {
+              'testCase.owners.name': ownerFqn,
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForOwner(ownerFqn, true)).toEqual(expectedFilter);
+    });
+  });
+
+  describe('buildMustEsFilterForTags', () => {
+    it('should return filter for tags when isTestCaseResult is false', () => {
+      const tags = ['tag1', 'tag2'];
+      const expectedFilter = {
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'tags.tagFQN': 'tag1' } },
+                { match: { 'tags.tagFQN': 'tag2' } },
+              ],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags)).toEqual(expectedFilter);
+    });
+
+    it('should return filter for test case tags when isTestCaseResult is true', () => {
+      const tags = ['tag1', 'tag2'];
+      const expectedFilter = {
+        nested: {
+          path: 'testCase.tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'testCase.tags.tagFQN': 'tag1' } },
+                { match: { 'testCase.tags.tagFQN': 'tag2' } },
+              ],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags, true)).toEqual(expectedFilter);
+    });
+
+    it('should handle empty tags array', () => {
+      const tags: string[] = [];
+      const expectedFilter = {
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags)).toEqual(expectedFilter);
+    });
+
+    it('should handle empty tags array with isTestCaseResult true', () => {
+      const tags: string[] = [];
+      const expectedFilter = {
+        nested: {
+          path: 'testCase.tags',
+          query: {
+            bool: {
+              should: [],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags, true)).toEqual(expectedFilter);
+    });
+  });
+
+  describe('buildMustEsFilterForTier', () => {
+    it('should return bool/should filter using tier.tagFQN when isTestCaseResult is false', () => {
+      const tiers = ['Tier.Tier1', 'Tier.Tier2'];
+      const expectedFilter = {
+        bool: {
+          should: [
+            { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+            { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+          ],
+          minimum_should_match: 1,
+        },
+      };
+
+      expect(buildMustEsFilterForTier(tiers)).toEqual(expectedFilter);
+    });
+
+    it('should return bool/should filter using testCase.tier.tagFQN when isTestCaseResult is true', () => {
+      const tiers = ['Tier.Tier1', 'Tier.Tier2'];
+      const expectedFilter = {
+        bool: {
+          should: [
+            { term: { 'testCase.tier.tagFQN': 'Tier.Tier1' } },
+            { term: { 'testCase.tier.tagFQN': 'Tier.Tier2' } },
+          ],
+          minimum_should_match: 1,
+        },
+      };
+
+      expect(buildMustEsFilterForTier(tiers, true)).toEqual(expectedFilter);
+    });
+
+    it('should return filter with single tier', () => {
+      const tiers = ['Tier.Tier3'];
+      const expectedFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'Tier.Tier3' } }],
+          minimum_should_match: 1,
+        },
+      };
+
+      expect(buildMustEsFilterForTier(tiers)).toEqual(expectedFilter);
+    });
+
+    it('should not use tags.tagFQN field path for tier (regression check)', () => {
+      const tiers = ['Tier.Tier1'];
+      const result = buildMustEsFilterForTier(tiers);
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).not.toContain('tags.tagFQN');
+      expect(resultStr).toContain('tier.tagFQN');
+    });
+
+    it('should not use tags.tagFQN field path for tier in testCaseResult context (regression check)', () => {
+      const tiers = ['Tier.Tier1'];
+      const result = buildMustEsFilterForTier(tiers, true);
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).not.toContain('tags.tagFQN');
+      expect(resultStr).toContain('testCase.tier.tagFQN');
+    });
+  });
+
+  describe('transformToTestCaseStatusObject', () => {
+    it('should return correct counts for basic input', () => {
+      const inputData = [
+        { document_count: '4', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'aborted' },
+      ];
+      const expectedOutput = {
+        success: 4,
+        failed: 3,
+        aborted: 1,
+        total: 8,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return zeros for empty input', () => {
+      const inputData: DataQualityReport['data'] = [];
+      const expectedOutput = {
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for all success input', () => {
+      const inputData = [
+        { document_count: '2', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'success' },
+      ];
+      const expectedOutput = {
+        success: 5,
+        failed: 0,
+        aborted: 0,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for all failed input', () => {
+      const inputData = [
+        { document_count: '2', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'failed' },
+      ];
+      const expectedOutput = {
+        success: 0,
+        failed: 5,
+        aborted: 0,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for all aborted input', () => {
+      const inputData = [
+        { document_count: '2', 'testCaseResult.testCaseStatus': 'aborted' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'aborted' },
+      ];
+      const expectedOutput = {
+        success: 0,
+        failed: 0,
+        aborted: 5,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for mixed statuses input', () => {
+      const inputData = [
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'aborted' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'failed' },
+      ];
+      const expectedOutput = {
+        success: 2,
+        failed: 2,
+        aborted: 1,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should exclude unsupported status buckets from the total', () => {
+      const inputData = [
+        { document_count: '67', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '34', 'testCaseResult.testCaseStatus': 'aborted' },
+        { document_count: '32', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '12', 'testCaseResult.testCaseStatus': 'unknown' },
+      ];
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual({
+        success: 67,
+        failed: 32,
+        aborted: 34,
+        total: 133,
+      });
+    });
+  });
+
+  describe('buildDataQualityDashboardFilters', () => {
+    it('should include deleted:false filter by default', () => {
+      const result = buildDataQualityDashboardFilters({});
+
+      expect(result).toEqual([
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should include deleted:false filter along with other filters', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          serviceName: 'test-service',
+          testPlatforms: [TestPlatform.Dbt],
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          term: {
+            'service.name.keyword': 'test-service',
+          },
+        },
+        {
+          terms: {
+            testPlatforms: [TestPlatform.Dbt],
+          },
+        },
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should include data product filters when dataProductFqns are provided', () => {
+      const fqns = ['domain.dp1', 'domain.dp2'];
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          dataProductFqns: fqns,
+        },
+      });
+
+      expect(result).toEqual([
+        buildMustEsFilterForDataProducts(fqns),
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should use buildMustEsFilterForTags for tags when not table API', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tags: ['PII.None', 'PII.Sensitive'],
+        },
+      });
+
+      expect(result).toContainEqual({
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'tags.tagFQN': 'PII.None' } },
+                { match: { 'tags.tagFQN': 'PII.Sensitive' } },
+              ],
+            },
+          },
+        },
+      });
+    });
+
+    it('should use buildMustEsFilterForTier for tier when not table API', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tier: ['Tier.Tier1', 'Tier.Tier2'],
+        },
+      });
+
+      expect(result).toContainEqual({
+        bool: {
+          should: [
+            { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+            { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+    });
+
+    it('should use tier.tagFQN field (not tags.tagFQN) for tier filter (regression check)', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tier: ['Tier.Tier1'],
+        },
+      });
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).toContain('tier.tagFQN');
+      expect(resultStr).not.toContain('"tags.tagFQN":"Tier.Tier1"');
+    });
+
+    it('should include both separate tags and tier filters when both provided and not table API', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tags: ['PII.None'],
+          tier: ['Tier.Tier1'],
+        },
+      });
+
+      const tagsFilter = result.find(
+        (f: Record<string, unknown>) => 'nested' in f
+      );
+      const tierFilter = result.find(
+        (f: Record<string, unknown>) =>
+          'bool' in f && JSON.stringify(f).includes('tier.tagFQN')
+      );
+
+      expect(tagsFilter).toBeDefined();
+      expect(tierFilter).toBeDefined();
+    });
+
+    it('preserves table-index filtering for legacy isTableApi callers', () => {
+      const result = buildDataQualityDashboardFilters({
+        // Keep this legacy option covered because private consumers can call
+        // the exported helper directly even though current UI code does not.
+        isTableApi: true,
+        filters: {
+          tags: ['PII.Sensitive'],
+          entityFQN: 'service.db.schema.table',
+          testCaseStatus: TestCaseStatus.Success,
+          testCaseType: TestCaseType.column,
+          startTs: 100,
+          endTs: 200,
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          bool: {
+            should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }],
+          },
+        },
+        {
+          term: {
+            'fullyQualifiedName.keyword': 'service.db.schema.table',
+          },
+        },
+        { term: { deleted: false } },
+      ]);
+    });
+
+    it('includes every test-case filter in the report query', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          ownerFqn: 'owner',
+          certification: ['Certification.Gold'],
+          tags: ['PII.Sensitive'],
+          tier: ['Tier.Tier1'],
+          dataProductFqns: ['Marketing'],
+          entityFQN: 'service.db.schema.table',
+          serviceName: 'service',
+          testPlatforms: [TestPlatform.Dbt],
+          dataQualityDimension: 'Accuracy',
+          testCaseStatus: TestCaseStatus.Success,
+          testCaseType: TestCaseType.column,
+          startTs: 100,
+          endTs: 200,
+        },
+      });
+      const query = JSON.stringify(result);
+
+      [
+        'owners.name',
+        'certification.tagLabel.tagFQN',
+        'tags.tagFQN',
+        'tier.tagFQN',
+        'dataProducts.fullyQualifiedName',
+        'originEntityFQN',
+        'service.name.keyword',
+        'testPlatforms',
+        'dataQualityDimension',
+        'testCaseResult.testCaseStatus',
+        'entityLink',
+        'testCaseResult.timestamp',
+      ].forEach((field) => expect(query).toContain(field));
+    });
+
+    it('uses a terms query when multiple test case statuses are selected', () => {
+      const statuses = [TestCaseStatus.Success, TestCaseStatus.Queued];
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          testCaseStatus: statuses,
+        },
+      });
+
+      expect(result).toContainEqual({
+        terms: {
+          'testCaseResult.testCaseStatus': statuses,
+        },
+      });
+    });
+
+    it('matches test cases with a missing dimension for No Dimension', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          dataQualityDimension: DataQualityDimensions.NoDimension,
+        },
+      });
+
+      expect(result).toContainEqual({
+        bool: {
+          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        },
+      });
+      expect(result).not.toContainEqual({
+        term: { dataQualityDimension: DataQualityDimensions.NoDimension },
+      });
+    });
+
+    it('should not add tier filter when tier array is empty', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tier: [],
+        },
+      });
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).not.toContain('tier.tagFQN');
+    });
+
+    it('should prefix data product field for nested test case documents', () => {
+      expect(buildMustEsFilterForDataProducts(['a.b'], 'testCase.')).toEqual({
+        bool: {
+          should: [
+            { term: { 'testCase.dataProducts.fullyQualifiedName': 'a.b' } },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+    });
+  });
+
+  describe('buildDataQualityTableFilters', () => {
+    it('includes table fields and excludes test-case-only filters', () => {
+      const result = buildDataQualityTableFilters({
+        ownerFqn: 'owner',
+        tags: ['PII.Sensitive'],
+        tier: ['Tier.Tier1'],
+        certification: ['Certification.Gold'],
+        dataProductFqns: ['Marketing'],
+        serviceName: 'service',
+        entityFQN: 'service.db.schema.table',
+        testPlatforms: [TestPlatform.Dbt],
+        dataQualityDimension: 'Accuracy',
+        testCaseStatus: TestCaseStatus.Success,
+        testCaseType: TestCaseType.column,
+        startTs: 100,
+        endTs: 200,
+      });
+      const query = JSON.stringify(result);
+
+      expect(result).toContainEqual({
+        term: { 'service.name.keyword': 'service' },
+      });
+      expect(result).toContainEqual({
+        term: { 'fullyQualifiedName.keyword': 'service.db.schema.table' },
+      });
+      expect(query).toContain('owners.name');
+      expect(query).toContain('tags.tagFQN');
+      expect(query).toContain('tier.tagFQN');
+      expect(query).toContain('certification.tagLabel.tagFQN');
+      expect(query).toContain('dataProducts.fullyQualifiedName');
+      expect(query).not.toContain('testPlatforms');
+      expect(query).not.toContain('dataQualityDimension');
+      expect(query).not.toContain('testCaseStatus');
+      expect(query).not.toContain('testCaseType');
+      expect(query).not.toContain('entityLink');
+      expect(query).not.toContain('testCaseResult.timestamp');
+    });
+  });
+
+  describe('getServiceTypeForTestDefinition', () => {
+    it('should return serviceType when table has serviceType property', () => {
+      const table = {
+        id: 'test-id',
+        name: 'test-table',
+        serviceType: 'BigQuery',
+      } as Table;
+
+      const result = getServiceTypeForTestDefinition(table);
+
+      expect(result).toBe('BigQuery');
+    });
+
+    it('should return serviceType for different service types', () => {
+      const serviceTypes = [
+        'Snowflake',
+        'PostgreSQL',
+        'MySQL',
+        'Redshift',
+        'Postgres',
+      ];
+
+      serviceTypes.forEach((serviceType) => {
+        const table = {
+          id: 'test-id',
+          name: 'test-table',
+          serviceType,
+        } as Table;
+
+        const result = getServiceTypeForTestDefinition(table);
+
+        expect(result).toBe(serviceType);
+      });
+    });
+
+    it('should return undefined when table does not have serviceType', () => {
+      const table = {
+        id: 'test-id',
+        name: 'test-table',
+      } as Table;
+
+      const result = getServiceTypeForTestDefinition(table);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when table is undefined', () => {
+      const result = getServiceTypeForTestDefinition();
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when table is null', () => {
+      const result = getServiceTypeForTestDefinition(null as unknown as Table);
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getColumnFilterOptions', () => {
+    const mockTableCase: TestCase = {
+      id: 'tc-1',
+      name: 'test_1',
+      entityLink: '<#E::table::service.db.schema.tableA>',
+    } as TestCase;
+
+    const mockColumnCase1: TestCase = {
+      id: 'tc-2',
+      name: 'test_2',
+      entityLink: '<#E::table::service.db.schema.tableA::columns::col1>',
+    } as TestCase;
+
+    const mockColumnCase2: TestCase = {
+      id: 'tc-3',
+      name: 'test_3',
+      entityLink: '<#E::table::service.db.schema.tableB::columns::col2>',
+    } as TestCase;
+
+    it('returns empty array for empty items', () => {
+      expect(getColumnFilterOptions([])).toEqual([]);
+    });
+
+    it('returns empty array when no items have column links', () => {
+      expect(getColumnFilterOptions([mockTableCase])).toEqual([]);
+    });
+
+    it('returns one option per unique table::column key', () => {
+      const items = [mockColumnCase1, mockColumnCase2];
+
+      expect(getColumnFilterOptions(items)).toEqual([
+        {
+          key: 'service.db.schema.tableA::col1',
+          label: 'col1',
+        },
+        {
+          key: 'service.db.schema.tableB::col2',
+          label: 'col2',
+        },
+      ]);
+    });
+
+    it('deduplicates by table::column key', () => {
+      const sameCol = {
+        ...mockColumnCase1,
+        id: 'tc-4',
+        name: 'test_4',
+      };
+      const items = [mockColumnCase1, sameCol];
+
+      expect(getColumnFilterOptions(items)).toHaveLength(1);
+      expect(getColumnFilterOptions(items)[0].label).toBe('col1');
+    });
+  });
+
+  describe('getSelectedOptionsFromKeys', () => {
+    const options = [
+      { key: 'k1', label: 'Label 1' },
+      { key: 'k2', label: 'Label 2' },
+    ];
+
+    it('returns empty array for empty keys', () => {
+      expect(
+        getSelectedOptionsFromKeys([], options, (k) => `default-${k}`)
+      ).toEqual([]);
+    });
+
+    it('returns matching options for keys found in options', () => {
+      expect(
+        getSelectedOptionsFromKeys(['k1', 'k2'], options, (k) => `default-${k}`)
+      ).toEqual([
+        { key: 'k1', label: 'Label 1' },
+        { key: 'k2', label: 'Label 2' },
+      ]);
+    });
+
+    it('uses getDefaultLabel for keys not in options', () => {
+      expect(
+        getSelectedOptionsFromKeys(
+          ['k1', 'missing'],
+          options,
+          (k) => `fallback-${k}`
+        )
+      ).toEqual([
+        { key: 'k1', label: 'Label 1' },
+        { key: 'missing', label: 'fallback-missing' },
+      ]);
+    });
+  });
+
+  describe('filterTestCasesByTableAndColumn', () => {
+    const mockTableCase: TestCase = {
+      id: 'tc-1',
+      name: 'test_1',
+      entityLink: '<#E::table::service.db.schema.tableA>',
+    } as TestCase;
+
+    const mockColumnCase1: TestCase = {
+      id: 'tc-2',
+      name: 'test_2',
+      entityLink: '<#E::table::service.db.schema.tableA::columns::col1>',
+    } as TestCase;
+
+    const mockColumnCase2: TestCase = {
+      id: 'tc-3',
+      name: 'test_3',
+      entityLink: '<#E::table::service.db.schema.tableB::columns::col2>',
+    } as TestCase;
+
+    const items = [mockTableCase, mockColumnCase1, mockColumnCase2];
+
+    it('returns all items when no filters applied', () => {
+      expect(filterTestCasesByTableAndColumn(items, [], [])).toHaveLength(3);
+    });
+
+    it('filters by table when filterTables is non-empty', () => {
+      const tableKey = 'service.db.schema.tableA';
+
+      expect(filterTestCasesByTableAndColumn(items, [tableKey], [])).toEqual([
+        mockTableCase,
+        mockColumnCase1,
+      ]);
+    });
+
+    it('filters by column when filterColumns is non-empty', () => {
+      const columnKey = 'service.db.schema.tableA::col1';
+
+      expect(filterTestCasesByTableAndColumn(items, [], [columnKey])).toEqual([
+        mockColumnCase1,
+      ]);
+    });
+
+    it('excludes table-only test cases when filtering by column', () => {
+      const columnKey = 'service.db.schema.tableA::col1';
+
+      expect(
+        filterTestCasesByTableAndColumn(items, [], [columnKey])
+      ).not.toContainEqual(mockTableCase);
+    });
+
+    it('applies both table and column filters when both provided', () => {
+      const tableKey = 'service.db.schema.tableA';
+      const columnKey = 'service.db.schema.tableA::col1';
+
+      expect(
+        filterTestCasesByTableAndColumn(items, [tableKey], [columnKey])
+      ).toEqual([mockColumnCase1]);
+    });
+
+    it('returns empty array when table filter matches no items', () => {
+      expect(
+        filterTestCasesByTableAndColumn(items, ['nonexistent.table'], [])
+      ).toEqual([]);
+    });
+  });
+
+  describe('parseColumnAggregateBuckets', () => {
+    it('returns empty array for empty buckets', () => {
+      expect(parseColumnAggregateBuckets([])).toEqual([]);
+      expect(parseColumnAggregateBuckets([], 'table.fqn')).toEqual([]);
+    });
+
+    it('maps buckets to options with key and label when no tableFqn', () => {
+      const buckets = [{ key: 'col1' }, { key: 'col2' }];
+
+      expect(parseColumnAggregateBuckets(buckets)).toEqual([
+        { key: 'col1', label: 'col1' },
+        { key: 'col2', label: 'col2' },
+      ]);
+    });
+
+    it('prefixes key with tableFqn:: when tableFqn provided', () => {
+      const buckets = [{ key: 'col1' }];
+
+      expect(
+        parseColumnAggregateBuckets(buckets, 'svc.db.schema.table')
+      ).toEqual([{ key: 'svc.db.schema.table::col1', label: 'col1' }]);
+    });
+
+    it('deduplicates by key', () => {
+      const buckets = [{ key: 'col1' }, { key: 'col1' }];
+
+      expect(parseColumnAggregateBuckets(buckets)).toHaveLength(1);
+    });
+
+    it('skips buckets with undefined key', () => {
+      const buckets = [{ key: 'col1' }, { key: undefined }, { key: 'col2' }];
+
+      expect(parseColumnAggregateBuckets(buckets)).toEqual([
+        { key: 'col1', label: 'col1' },
+        { key: 'col2', label: 'col2' },
+      ]);
+    });
+  });
+
+  describe('getEntityLinkForColumnFilter', () => {
+    it('returns entity link for table and column', () => {
+      const result = getEntityLinkForColumnFilter(
+        'sample_snowflake.ANALYTICS_DB.prod.customer_360',
+        'customer_id'
+      );
+
+      expect(result).toContain('table');
+      expect(result).toContain('columns');
+      expect(result).toContain('customer_id');
+      expect(result).toContain('customer_360');
+    });
+  });
+
+  describe('getColumnFilterEntityLink', () => {
+    it('returns undefined when key has no ::', () => {
+      expect(getColumnFilterEntityLink('col1')).toBeUndefined();
+    });
+
+    it('returns undefined when key contains ::columns::', () => {
+      expect(
+        getColumnFilterEntityLink('<#E::table::sample.table::columns::id>')
+      ).toBeUndefined();
+    });
+
+    it('returns undefined when key starts with <#E', () => {
+      expect(
+        getColumnFilterEntityLink(
+          '<#E::table::sample.table::columns::id>::something'
+        )
+      ).toBeUndefined();
+    });
+
+    it('returns entity link when key is tableFqn::columnName', () => {
+      const result = getColumnFilterEntityLink(
+        'sample_snowflake.ANALYTICS_DB.prod.customer_360::customer_id'
+      );
+
+      expect(result).toBeDefined();
+      expect(result).toContain('customer_id');
+    });
+  });
+
+  describe('getColumnNameFromColumnFilterKey', () => {
+    it('returns undefined for empty or whitespace key', () => {
+      expect(getColumnNameFromColumnFilterKey('')).toBeUndefined();
+      expect(getColumnNameFromColumnFilterKey('   ')).toBeUndefined();
+    });
+
+    it('returns key as-is when no ::', () => {
+      expect(getColumnNameFromColumnFilterKey('zip')).toBe('zip');
+    });
+
+    it('returns part after last :: when key contains ::', () => {
+      expect(
+        getColumnNameFromColumnFilterKey(
+          'sample_snowflake.ANALYTICS_DB.prod.customer_360::zip'
+        )
+      ).toBe('zip');
+    });
+  });
+
+  describe('createUpdatedTestCasePatch', () => {
+    const classificationTag: TagLabel = {
+      tagFQN: 'PII.Sensitive',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+
+    const baseTestCase = {
+      id: 'test-case-id',
+      name: 'test_case',
+      displayName: 'Old name',
+      entityLink: '<#E::table::svc.db.schema.tbl::columns::col>',
+    } as TestCase;
+
+    const baseValue = {
+      params: {},
+      displayName: 'Old name',
+      tags: [],
+      glossaryTerms: [],
+    } as unknown as TestCaseFormType;
+
+    const hasTagsOp = (patch: { path: string }[]) =>
+      patch.some((op) => op.path === '/tags' || op.path.startsWith('/tags/'));
+
+    it('should not emit a tags op when test case has no tags and none are added', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: { ...baseValue, displayName: 'New name' },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(false);
+      expect(patch).toContainEqual({
+        op: 'replace',
+        path: '/displayName',
+        value: 'New name',
+      });
+    });
+
+    it('should not emit a tags op when existing tags are unchanged', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, tags: [classificationTag] },
+        value: {
+          ...baseValue,
+          displayName: 'New name',
+          tags: [classificationTag],
+        },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(false);
+      expect(patch).toContainEqual({
+        op: 'replace',
+        path: '/displayName',
+        value: 'New name',
+      });
+    });
+
+    it('should emit a tags op when existing tags are cleared', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, tags: [classificationTag] },
+        value: { ...baseValue, tags: [], glossaryTerms: [] },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(true);
+    });
+
+    it('should keep the original tags when only parameters are edited', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, tags: [classificationTag] },
+        value: baseValue,
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(hasTagsOp(patch)).toBe(false);
+    });
+
+    it('should include fields returned by createTestCaseObject (e.g. Collate useDynamicAssertion)', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: baseValue,
+        createTestCaseObject: {
+          parameterValues: [],
+          useDynamicAssertion: true,
+        },
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch).toContainEqual({
+        op: 'add',
+        path: '/useDynamicAssertion',
+        value: true,
+      });
+    });
+
+    it('should preserve existing dimension fields when only parameters are edited', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: {
+          ...baseTestCase,
+          dimensionColumns: ['col_a'],
+          topDimensions: 5,
+        } as TestCase,
+        value: baseValue,
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(
+        patch.some(
+          (op) =>
+            op.path === '/dimensionColumns' ||
+            op.path.startsWith('/dimensionColumns/')
+        )
+      ).toBe(false);
+      expect(patch.some((op) => op.path === '/topDimensions')).toBe(false);
+    });
+  });
+});

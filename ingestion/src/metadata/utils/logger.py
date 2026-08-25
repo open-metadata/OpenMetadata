@@ -1,0 +1,406 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Module centralising logger configs
+"""
+
+import logging
+import re
+from copy import deepcopy
+from enum import Enum
+from functools import singledispatch
+from types import DynamicClassAttribute
+from typing import Any, Dict, Optional, Union  # noqa: UP035
+
+from metadata.data_quality.api.models import (
+    TableAndTests,
+    TestCaseResultResponse,
+    TestCaseResults,
+)
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
+from metadata.generated.schema.type.queryParserData import QueryParserData
+from metadata.generated.schema.type.tableQuery import TableQueries
+from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
+from metadata.ingestion.models.patch_request import PatchRequest
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.utils import model_str
+
+METADATA_LOGGER = "metadata"
+BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
+logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+
+REDACTED_KEYS = {"serviceConnection", "securityConfig"}
+
+
+class Loggers(Enum):
+    """
+    Enum for loggers
+    """
+
+    OMETA = "OMetaAPI"
+    CLI = "Metadata"
+    PROFILER = "Profiler"
+    SAMPLER = "Sampler"
+    PII = "PII"
+    INGESTION = "Ingestion"
+    UTILS = "Utils"
+    GREAT_EXPECTATIONS = "GreatExpectations"
+    PROFILER_INTERFACE = "ProfilerInterface"
+    TEST_SUITE = "TestSuite"
+    QUERY_RUNNER = "QueryRunner"
+    APP = "App"
+    REVERSE_INGESTION = "ReverseIngestion"
+    DIAGNOSTICS = "Diagnostics"
+
+    @DynamicClassAttribute
+    def value(self):
+        """Centralize the metadata logger under `metadata.NAME`"""
+        # Disabling linting, false positive as it does not find _value_
+        return METADATA_LOGGER + "." + self._value_  # pylint: disable=no-member
+
+
+class ANSI(Enum):
+    BRIGHT_RED = "\u001b[31;1m"
+    BOLD = "\u001b[1m"
+    BRIGHT_CYAN = "\u001b[36;1m"
+    YELLOW = "\u001b[33;1m"
+    GREEN = "\u001b[32;1m"
+    ENDC = "\033[0m"
+    BLUE = "\u001b[34;1m"
+    MAGENTA = "\u001b[35;1m"
+
+
+def ometa_logger():
+    """
+    Method to get the OMETA logger
+    """
+
+    return logging.getLogger(Loggers.OMETA.value)
+
+
+def cli_logger():
+    """
+    Method to get the CLI logger
+    """
+
+    return logging.getLogger(Loggers.CLI.value)
+
+
+def profiler_logger():
+    """
+    Method to get the PROFILER logger
+    """
+
+    return logging.getLogger(Loggers.PROFILER.value)
+
+
+def sampler_logger():
+    """
+    Method to get the SAMPLER logger
+    """
+
+    return logging.getLogger(Loggers.SAMPLER.value)
+
+
+def pii_logger():
+    """
+    Method to get the PROFILER logger
+    """
+
+    return logging.getLogger(Loggers.PII.value)
+
+
+def test_suite_logger():
+    """
+    Method to get the TEST SUITE logger
+    """
+
+    return logging.getLogger(Loggers.TEST_SUITE.value)
+
+
+def profiler_interface_registry_logger():
+    """
+    Method to get the PROFILER INTERFACE logger
+    """
+
+    return logging.getLogger(Loggers.PROFILER_INTERFACE.value)
+
+
+def ingestion_logger():
+    """
+    Method to get the INGESTION logger
+    """
+
+    return logging.getLogger(Loggers.INGESTION.value)
+
+
+def reverse_ingestion_logger():
+    """
+    Method to get the REVERSE INGESTION logger
+    """
+
+    return logging.getLogger(Loggers.REVERSE_INGESTION.value)
+
+
+def utils_logger():
+    """
+    Method to get the UTILS logger
+    """
+
+    return logging.getLogger(Loggers.UTILS.value)
+
+
+def great_expectations_logger():
+    """
+    Method to get the GREAT EXPECTATIONS logger
+    """
+
+    return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
+
+
+def app_logger():
+    """
+    Method to get the APP logger
+    """
+
+    return logging.getLogger(Loggers.APP.value)
+
+
+def query_runner_logger():
+    """
+    Method to get the QUERY_RUNNER logger
+    """
+
+    return logging.getLogger(Loggers.QUERY_RUNNER.value)
+
+
+def diag_logger():
+    """
+    Method to get the DIAGNOSTICS logger.
+
+    The diagnostics subsystem (heartbeats, watchdog warnings,
+    non-signal-context dumps) emits through this logger so output is
+    picked up by whatever handlers the workflow has configured —
+    console, StreamableLogHandler (S3), file, etc. Signal-handler
+    paths still write to raw stderr because Python's logging module is
+    not signal-safe (per-handler RLocks).
+    """
+
+    return logging.getLogger(Loggers.DIAGNOSTICS.value)
+
+
+def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
+    """
+    Set all loggers levels
+    :param level: logging level
+    """
+    logging.getLogger(METADATA_LOGGER).setLevel(level)
+
+
+def log_ansi_encoded_string(
+    color: Optional[ANSI] = None,  # noqa: UP045
+    bold: bool = False,
+    message: str = "",
+    level=logging.INFO,
+):
+    utils_logger().log(
+        level=level,
+        msg=f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}",
+    )
+
+
+@singledispatch
+def get_log_name(record: Entity) -> Optional[str]:  # noqa: UP045
+    try:
+        if hasattr(record, "name"):
+            return f"{type(record).__name__} [{getattr(record, 'name').root}]"  # noqa: B009
+        if hasattr(record, "table") and hasattr(record.table, "name"):
+            return f"{type(record).__name__} [{record.table.name.root}]"
+        return f"{type(record).__name__} [{record.entity.name.root}]"
+    except Exception:
+        return str(record)
+
+
+@get_log_name.register
+def _(record: OMetaTagAndClassification) -> str:
+    """
+    Given a LineageRequest, parse its contents to return
+    a string that we can log
+    """
+    name = record.fqn.root if record.fqn else record.classification_request.name.root
+    return f"{type(record).__name__} [{name}]"
+
+
+@get_log_name.register
+def _(record: AddLineageRequest) -> str:
+    """
+    Given a LineageRequest, parse its contents to return
+    a string that we can log
+    """
+
+    from_entity = record.edge.fromEntity
+    type_ = from_entity.type
+
+    # name can be informed or not
+    name_str = f"name: {from_entity.name}, " if from_entity.name else ""
+
+    if from_entity.id:
+        identifier = f"id: {model_str(from_entity.id)}"
+    elif from_entity.fullyQualifiedName:
+        identifier = f"fullyQualifiedName: {model_str(from_entity.fullyQualifiedName)}"
+    else:
+        identifier = "unresolved reference"
+
+    return f"{type_} [{name_str}{identifier}]"
+
+
+@get_log_name.register
+def _(record: OMetaFQNLineageRequest) -> str:
+    return (
+        f"{type(record).__name__} "
+        f"[{record.from_entity_type}: {record.from_entity_fqn} -> {record.to_entity_type}: {record.to_entity_fqn}]"
+    )
+
+
+@get_log_name.register
+def _(record: DeleteEntity) -> str:
+    """
+    Capture information about the deleted Entity
+    """
+    return f"{type(record.entity).__name__} [{record.entity.name.root}]"
+
+
+@get_log_name.register
+def _(record: OMetaLifeCycleData) -> str:
+    """
+    Capture the lifecycle changes of an Entity
+    """
+    return f"{record.entity.__name__} Lifecycle [{record.entity_fqn}]"
+
+
+@get_log_name.register
+def _(record: TableAndTests) -> str:
+    if record.table:
+        return f"Tests for [{record.table.fullyQualifiedName.root}]"
+
+    return f"Test Suite [{record.executable_test_suite.name.root}]"
+
+
+@get_log_name.register
+def _(record: TestCaseResults) -> str:
+    """We don't want to log this in the status"""
+    return ",".join(set(result.testCase.name.root for result in record.test_results))  # noqa: C401
+
+
+@get_log_name.register
+def _(record: TestCaseResultResponse) -> str:
+    return record.testCase.fullyQualifiedName.root
+
+
+@get_log_name.register
+def _(record: OMetaPipelineStatus) -> str:
+    return f"Pipeline Status [{record.pipeline_fqn}]"
+
+
+@get_log_name.register
+def _(record: PatchRequest) -> str:
+    """Get the log of the new entity"""
+    return get_log_name(record.new_entity)
+
+
+@get_log_name.register
+def _(record: TableQueries) -> str:
+    """Get the log of the TableQuery"""
+    return f"Table Queries [{len(record.queries)}]"
+
+
+@get_log_name.register
+def _(record: QueryParserData) -> str:
+    """Get the log of the ParsedData"""
+    return f"Usage ParsedData [{len(record.parsedData)}]"
+
+
+@get_log_name.register
+def _(record: DataContractResult) -> str:
+    """Get the log of the DataContractResult"""
+    return f"DataContractResult for [{record.dataContractFQN.root}]; status: {record.contractExecutionStatus.value}]"
+
+
+@get_log_name.register
+def _(record: OMetaUserProfile) -> str:
+    """Get the log of the new entity"""
+    return (
+        f"User Profile: {get_log_name(record.user)},"
+        f"Teams: {record.teams if record.teams else 'None'}, \nRoles: {record.roles if record.roles else 'None'}"
+    )
+
+
+class StatusWarningHandler(logging.Handler):
+    """
+    Logging handler that intercepts WARNING-level records from our metadata
+    loggers and forwards them to the workflow Status object so the final
+    summary reflects the true warning count.
+
+    Records from Status.failed() (module="status") and the Step framework
+    error handling (module="step") are skipped — those are already counted
+    as failures, not warnings.
+    """
+
+    _SKIP_MODULES = frozenset({"status", "step"})
+
+    def __init__(self, status: Any) -> None:
+        super().__init__(level=logging.WARNING)
+        self._status = status
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Only capture WARNING; ERROR/CRITICAL are already tracked as failures by Step.run()
+        if record.levelno != logging.WARNING:
+            return
+        if record.module in self._SKIP_MODULES:
+            return
+        try:
+            self._status.warning(
+                key=record.module,
+                reason=record.getMessage(),
+            )
+        except Exception:  # pylint: disable=broad-except
+            self.handleError(record)
+
+
+def sanitize_url_credentials(message: str) -> str:
+    """Mask credentials embedded in URLs (e.g., https://token@host)"""
+    return re.sub(r"https://[^@]+@", "https://****@", message)
+
+
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:  # noqa: UP006, UP007
+    config_copy = deepcopy(config)
+
+    def traverse_and_modify(obj):
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key in REDACTED_KEYS:
+                    obj[key] = "REDACTED"
+                else:
+                    traverse_and_modify(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                traverse_and_modify(item)
+
+    traverse_and_modify(config_copy)
+    return config_copy

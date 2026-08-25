@@ -1,0 +1,131 @@
+import { Avatar } from '@/components/base/avatar/avatar';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
+import { fontSizeClass } from '@/utils/tailwindClasses';
+import { Check } from '@untitledui/icons';
+import { isValidElement, useContext } from 'react';
+import type { ListBoxItemProps as AriaListBoxItemProps } from 'react-aria-components';
+import {
+  ListBoxItem as AriaListBoxItem,
+  Text as AriaText,
+} from 'react-aria-components';
+import type { SelectItemType } from './select';
+import { SelectContext } from './select';
+
+const sizes = {
+  sm: 'tw:p-2 tw:pr-2.5',
+  md: 'tw:p-2.5 tw:pl-2',
+};
+
+interface SelectItemProps
+  extends Omit<AriaListBoxItemProps<SelectItemType>, 'id'>,
+    SelectItemType {}
+
+export const SelectItem = ({
+  label,
+  id,
+  value,
+  avatarUrl,
+  supportingText,
+  isDisabled,
+  icon: Icon,
+  className,
+  children,
+  ...props
+}: SelectItemProps) => {
+  const { fontSize, size } = useContext(SelectContext);
+
+  const labelOrChildren =
+    label || (typeof children === 'string' ? children : '');
+  const textValue = supportingText
+    ? labelOrChildren + ' ' + supportingText
+    : labelOrChildren;
+
+  return (
+    <AriaListBoxItem
+      id={id}
+      isDisabled={isDisabled}
+      textValue={textValue}
+      value={
+        value ?? {
+          id,
+          label: labelOrChildren,
+          avatarUrl,
+          supportingText,
+          isDisabled,
+          icon: Icon,
+        }
+      }
+      {...props}
+      className={(state) =>
+        cx(
+          'tw:w-full tw:px-1.5 tw:py-px tw:outline-hidden',
+          typeof className === 'function' ? className(state) : className
+        )
+      }>
+      {(state) => (
+        <div
+          className={cx(
+            // `outline-hidden` removed: the outline now draws the focus indicator (it
+            // replaced a ring, which WebKit does not pixel-snap).
+            'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:select-none',
+            state.isSelected && 'tw:bg-active',
+            state.isDisabled && 'tw:cursor-not-allowed',
+            state.isFocused && 'tw:bg-primary_hover',
+            state.isFocusVisible &&
+              'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
+
+            // Icon styles
+            'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary',
+            state.isDisabled && 'tw:*:data-icon:text-fg-disabled',
+
+            sizes[size]
+          )}>
+          {avatarUrl ? (
+            <Avatar alt={label} aria-hidden="true" size="xs" src={avatarUrl} />
+          ) : isReactComponent(Icon) ? (
+            <Icon data-icon aria-hidden="true" />
+          ) : isValidElement(Icon) ? (
+            Icon
+          ) : null}
+
+          <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
+            <AriaText
+              className={cx(
+                'tw:truncate tw:whitespace-nowrap tw:text-primary',
+                fontSizeClass[fontSize],
+                state.isDisabled && 'tw:text-disabled'
+              )}
+              slot="label">
+              {label ||
+                (typeof children === 'function' ? children(state) : children)}
+            </AriaText>
+
+            {supportingText && (
+              <AriaText
+                className={cx(
+                  'tw:whitespace-nowrap tw:text-tertiary',
+                  fontSizeClass[fontSize],
+                  state.isDisabled && 'tw:text-disabled'
+                )}
+                slot="description">
+                {supportingText}
+              </AriaText>
+            )}
+          </div>
+
+          {state.isSelected && (
+            <Check
+              aria-hidden="true"
+              className={cx(
+                'tw:ml-auto tw:text-fg-brand-primary',
+                size === 'sm' ? 'tw:size-4 tw:stroke-[2.5px]' : 'tw:size-5',
+                state.isDisabled && 'tw:text-fg-disabled'
+              )}
+            />
+          )}
+        </div>
+      )}
+    </AriaListBoxItem>
+  );
+};

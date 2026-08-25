@@ -1,0 +1,259 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "IngestionPipeline": {
+        "@id": "om:IngestionPipeline",
+        "@type": "om:Entity"
+      },
+      "Workflow": {
+        "@id": "om:Workflow",
+        "@type": "om:Entity"
+      },
+      "WorkflowDefinition": {
+        "@id": "om:WorkflowDefinition",
+        "@type": "om:Entity"
+      },
+      "WorkflowInstance": {
+        "@id": "om:WorkflowInstance",
+        "@type": "om:Entity"
+      },
+      "WorkflowInstanceState": {
+        "@id": "om:WorkflowInstanceState",
+        "@type": "om:Entity"
+      },
+      "EventSubscription": {
+        "@id": "om:EventSubscription",
+        "@type": "om:Entity"
+      },
+      "KPI": {
+        "@id": "om:KPI",
+        "@type": "om:Entity"
+      },
+      "DataInsightChart": {
+        "@id": "om:DataInsightChart",
+        "@type": "om:Entity"
+      },
+      "DataInsightCustomChart": {
+        "@id": "om:DataInsightCustomChart",
+        "@type": "om:Entity"
+      },
+      "WebAnalyticEvent": {
+        "@id": "om:WebAnalyticEvent",
+        "@type": "om:Entity"
+      },
+      "App": {
+        "@id": "om:App",
+        "@type": "om:Entity"
+      },
+      "AppMarketPlaceDefinition": {
+        "@id": "om:AppMarketPlaceDefinition",
+        "@type": "om:Entity"
+      },
+      "Document": {
+        "@id": "om:Document",
+        "@type": "om:Entity"
+      },
+      "Page": {
+        "@id": "om:Page",
+        "@type": "om:Entity"
+      },
+      "pipelineType": {
+        "@id": "om:pipelineType",
+        "@type": "xsd:string"
+      },
+      "sourceConfig": {
+        "@id": "om:hasSourceConfig",
+        "@type": "@json"
+      },
+      "openMetadataServerConnection": {
+        "@id": "om:hasServerConnection",
+        "@type": "@json"
+      },
+      "airflowConfig": {
+        "@id": "om:hasAirflowConfig",
+        "@type": "@json"
+      },
+      "loggerLevel": {
+        "@id": "om:hasLoggerLevel",
+        "@type": "xsd:string"
+      },
+      "deployed": {
+        "@id": "om:isDeployed",
+        "@type": "xsd:boolean"
+      },
+      "enabled": {
+        "@id": "om:isEnabled",
+        "@type": "xsd:boolean"
+      },
+      "pipelineStatuses": {
+        "@id": "om:hasPipelineStatus",
+        "@type": "@json"
+      },
+      "workflowType": {
+        "@id": "om:workflowType",
+        "@type": "xsd:string"
+      },
+      "workflowDefinition": {
+        "@id": "om:hasWorkflowDefinition",
+        "@type": "@id"
+      },
+      "workflowState": {
+        "@id": "om:hasWorkflowState",
+        "@type": "xsd:string"
+      },
+      "startedAt": {
+        "@id": "om:startedAt",
+        "@type": "xsd:dateTime"
+      },
+      "endedAt": {
+        "@id": "om:endedAt",
+        "@type": "xsd:dateTime"
+      },
+      "response": {
+        "@id": "om:hasResponse",
+        "@type": "@json"
+      },
+      "request": {
+        "@id": "om:hasRequest",
+        "@type": "@json"
+      },
+      "status": {
+        "@id": "om:hasStatus",
+        "@type": "xsd:string"
+      },
+      "alertType": {
+        "@id": "om:alertType",
+        "@type": "xsd:string"
+      },
+      "trigger": {
+        "@id": "om:hasTrigger",
+        "@type": "@json"
+      },
+      "filteringRules": {
+        "@id": "om:hasFilteringRule",
+        "@type": "@json"
+      },
+      "destinations": {
+        "@id": "om:hasDestination",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "batchSize": {
+        "@id": "om:batchSize",
+        "@type": "xsd:integer"
+      },
+      "timeout": {
+        "@id": "om:timeout",
+        "@type": "xsd:integer"
+      },
+      "readTimeout": {
+        "@id": "om:readTimeout",
+        "@type": "xsd:integer"
+      },
+      "subscriptionType": {
+        "@id": "om:subscriptionType",
+        "@type": "xsd:string"
+      },
+      "subscriptionConfig": {
+        "@id": "om:hasSubscriptionConfig",
+        "@type": "@json"
+      },
+      "metricType": {
+        "@id": "om:metricType",
+        "@type": "xsd:string"
+      },
+      "targetValue": {
+        "@id": "om:targetValue",
+        "@type": "xsd:double"
+      },
+      "startDate": {
+        "@id": "om:startDate",
+        "@type": "xsd:dateTime"
+      },
+      "endDate": {
+        "@id": "om:endDate",
+        "@type": "xsd:dateTime"
+      },
+      "kpiResult": {
+        "@id": "om:hasKPIResult",
+        "@type": "@json"
+      },
+      "chartDetails": {
+        "@id": "om:hasChartDetails",
+        "@type": "@json"
+      },
+      "chartDataModel": {
+        "@id": "om:hasChartDataModel",
+        "@type": "@json"
+      },
+      "chartUrl": {
+        "@id": "om:hasChartUrl",
+        "@type": "@id"
+      },
+      "chartType": {
+        "@id": "om:chartType",
+        "@type": "xsd:string"
+      },
+      "appType": {
+        "@id": "om:appType",
+        "@type": "xsd:string"
+      },
+      "appConfiguration": {
+        "@id": "om:hasAppConfiguration",
+        "@type": "@json"
+      },
+      "appSchedule": {
+        "@id": "om:hasAppSchedule",
+        "@type": "@json"
+      },
+      "bot": {
+        "@id": "om:hasBot",
+        "@type": "@id"
+      },
+      "appPrivateConfig": {
+        "@id": "om:hasAppPrivateConfig",
+        "@type": "@json"
+      },
+      "documentType": {
+        "@id": "om:documentType",
+        "@type": "xsd:string"
+      },
+      "entityType": {
+        "@id": "om:documentForEntityType",
+        "@type": "xsd:string"
+      },
+      "entityId": {
+        "@id": "om:documentForEntity",
+        "@type": "@id"
+      },
+      "data": {
+        "@id": "om:hasDocumentData",
+        "@type": "@json"
+      },
+      "pages": {
+        "@id": "om:hasPage",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "pageType": {
+        "@id": "om:pageType",
+        "@type": "xsd:string"
+      },
+      "layout": {
+        "@id": "om:hasLayout",
+        "@type": "@json"
+      },
+      "personas": {
+        "@id": "om:hasPersona",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "knowledgePanels": {
+        "@id": "om:hasKnowledgePanel",
+        "@type": "@json",
+        "@container": "@list"
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/datafactoryConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DataFactoryConnection",
+    "description": "Azure Data Factory Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.DataFactoryConnection",
+    "definitions": {
+      "DataFactoryType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["DataFactory"],
+        "default": "DataFactory"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/DataFactoryType",
+        "default": "DataFactory"
+      },
+      "subscription_id": {
+        "title": "Subscription ID",
+        "description": "The azure subscription identifier.",
+        "type": "string"
+      },
+      "resource_group_name": {
+        "title": "Resource Group name",
+        "description": "The name of your resource group the data factory is associated with.",
+        "type": "string"
+      },
+      "factory_name": {
+        "title": "Azure Data Factory name",
+        "description": "The name of your azure data factory.",
+        "type": "string"
+      },
+      "run_filter_days": {
+        "title": "Azure Data Factory pipeline runs day filter",
+        "description": "Number of days in the past to filter pipeline runs.",
+        "type": "integer",
+        "default": 7
+      },
+      "configSource": {
+        "title": "Azure Data Factory Configuration",
+        "description": "Available sources to fetch metadata.",
+        "$ref": "../../../../security/credentials/azureCredentials.json"
+      },
+      "pipelineFilterPattern": {
+        "description": "Regex exclude pipelines.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Default Pipeline Filter Pattern"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["subscription_id", "resource_group_name", "factory_name"]
+  }
+  

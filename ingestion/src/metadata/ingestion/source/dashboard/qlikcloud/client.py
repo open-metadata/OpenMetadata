@@ -1,0 +1,250 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+REST Auth & Client for QlikCloud
+"""
+
+import json
+import re
+import traceback
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
+
+from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
+    QlikCloudConnection,
+)
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.source.dashboard.qlikcloud.constants import (
+    APP_LOADMODEL_REQ,
+    CREATE_SHEET_SESSION,
+    GET_LOADMODEL_LAYOUT,
+    GET_SCRIPT,
+    GET_SHEET_LAYOUT,
+    OPEN_DOC_REQ,
+)
+from metadata.ingestion.source.dashboard.qlikcloud.models import (
+    QlikApp,
+    QlikAppResponse,
+    QlikDataFile,
+    QlikDataFiles,
+    QlikScriptResult,
+    QlikSpace,
+    QlikSpaceResponse,
+)
+from metadata.ingestion.source.dashboard.qliksense.models import (
+    QlikDataModelResult,
+    QlikSheet,
+    QlikSheetResult,
+    QlikTable,
+)
+from metadata.utils.constants import AUTHORIZATION_HEADER
+from metadata.utils.helpers import clean_uri
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+API_VERSION = "api"
+API_LIMIT = 100
+
+
+class QlikCloudClient:
+    """
+    Client Handling API communication with QlikCloud
+    """
+
+    def __init__(
+        self,
+        config: QlikCloudConnection,
+    ):
+        self.config = config
+        self.socket_connection = None
+
+        client_config: ClientConfig = ClientConfig(
+            base_url=clean_uri(self.config.hostPort),
+            api_version=API_VERSION,
+            auth_header=AUTHORIZATION_HEADER,
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
+        )
+        self.client = TrackedREST(client_config, source_name="qlikcloud")
+
+    def connect_websocket(self, dashboard_id: str = None) -> None:  # noqa: RUF013
+        """
+        Method to initialise websocket connection
+        """
+        # pylint: disable=import-outside-toplevel
+        import ssl
+
+        from websocket import create_connection
+
+        if self.socket_connection:
+            self.socket_connection.close()
+        self.socket_connection = create_connection(
+            f"wss://{clean_uri(self.config.hostPort.host)}/app/{dashboard_id or ''}",
+            sslopt={"cert_reqs": ssl.CERT_REQUIRED},
+            header={"Authorization": f"Bearer {self.config.token.get_secret_value()}"},
+        )
+        self.socket_connection.recv()
+
+    def close_websocket(self) -> None:
+        if self.socket_connection:
+            self.socket_connection.close()
+
+    def _websocket_send_request(self, request: dict, response: bool = False) -> Optional[Dict]:  # noqa: UP006, UP045
+        """
+        Method to send request to websocket
+
+        request: data required to be sent to websocket
+        response: is json response required?
+        """
+        self.socket_connection.send(json.dumps(request))
+        resp = self.socket_connection.recv()
+        if response:
+            return json.loads(resp)
+        return None
+
+    def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:  # noqa: UP006
+        """
+        Get dashboard chart list
+        """
+        try:
+            self.connect_websocket(dashboard_id)
+            OPEN_DOC_REQ.update({"params": [dashboard_id]})
+            self._websocket_send_request(OPEN_DOC_REQ)
+            self._websocket_send_request(CREATE_SHEET_SESSION)
+            sheets = self._websocket_send_request(GET_SHEET_LAYOUT, response=True)
+            data = QlikSheetResult(**sheets)
+            return data.result.qLayout.qAppObjectList.qItems  # noqa: TRY300
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch the dashboard charts")
+        return []
+
+    def get_dashboards_list(self) -> Iterable[QlikApp]:
+        """
+        Get List of all apps
+        """
+        try:
+            link = f"/v1/items?resourceType=app&limit={API_LIMIT}"
+            while True:
+                resp_apps = self.client.get(link)
+                if resp_apps:
+                    resp = QlikAppResponse(**resp_apps)
+                    yield from resp.apps
+                    if resp.links and resp.links.next and resp.links.next.href:
+                        link = resp.links.next.href.replace(f"{self.config.hostPort}{API_VERSION}", "")
+                    else:
+                        break
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch the app list")
+
+    def get_dashboards_list_test_conn(self) -> Iterable[QlikApp]:  # noqa: RET503
+        resp_apps = self.client.get("/v1/items?resourceType=app")
+        if resp_apps:
+            resp = QlikAppResponse(**resp_apps)
+            return list(resp.apps)
+
+    def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikApp]:  # noqa: UP045
+        """
+        Get App Details
+        """
+        if not dashboard_id:
+            return None  # don't call api if dashboard_id is None
+        try:
+            resp_dashboard = self.client.get(f"/v1/apps/{dashboard_id}")
+            if resp_dashboard:
+                return QlikApp(**resp_dashboard.get("attributes"))
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
+        return None
+
+    def get_dashboard_models(self) -> List[QlikTable]:  # noqa: UP006
+        """
+        Get dashboard data models
+        """
+        try:
+            self._websocket_send_request(APP_LOADMODEL_REQ)
+            models = self._websocket_send_request(GET_LOADMODEL_LAYOUT, response=True)
+            data_models = QlikDataModelResult(**models)
+            layout = data_models.result.qLayout
+            parsed_datamodels = []
+            if isinstance(layout, list):
+                tables = []
+                for layout in data_models.result.qLayout:
+                    tables.extend(layout.value.tables)
+                parsed_datamodels.extend(tables)
+            else:
+                parsed_datamodels.extend(layout.tables)
+            script_tables = self.get_script_tables()
+            if script_tables:
+                parsed_datamodels.extend(script_tables)
+            # get data files
+            data_files = self.get_data_files()
+            if data_files:
+                parsed_datamodels.extend(data_files)
+            return parsed_datamodels  # noqa: TRY300
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch the dashboard datamodels")
+        return []
+
+    def get_projects_list(self) -> Iterable[QlikSpace]:
+        """
+        Get list of all spaces
+        """
+        try:
+            link = f"/v1/spaces?limit={API_LIMIT}"
+            while True:
+                resp_spaces = self.client.get(link)
+                if resp_spaces:
+                    resp = QlikSpaceResponse(**resp_spaces)
+                    yield from resp.spaces
+                    if resp.links and resp.links.next and resp.links.next.href:
+                        link = resp.links.next.href.replace(f"{self.config.hostPort}{API_VERSION}", "")
+                    else:
+                        break
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch the space list")
+
+    def get_script_tables(self) -> Optional[List[QlikTable]]:  # noqa: UP006, UP045
+        """Get script tables from the dashboard script"""
+        script_tables = []
+        try:
+            script_response = self._websocket_send_request(GET_SCRIPT, response=True)
+            script_result = QlikScriptResult(**script_response)
+            if script_result.result.qScript:
+                script_value = script_result.result.qScript
+                matches = re.findall(r'FROM\s+["\']?([a-zA-Z0-9_.]+)["\']?', script_value, re.IGNORECASE)
+                if isinstance(matches, list):
+                    for table in matches:
+                        table_name = table.split(".")[-1]
+                        script_tables.append(QlikTable(tableName=table_name))
+            if not script_tables:
+                logger.warning("No script tables found")
+            return script_tables  # noqa: TRY300
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch the script tables")
+        return script_tables
+
+    def get_data_files(self) -> List[QlikDataFile]:  # noqa: UP006
+        """Get data files from the Qlik API"""
+        data_files = []
+        try:
+            resp = self.client.get("/v1/data-files?includeAllSpaces=true")
+            parsed_resp = QlikDataFiles(**resp)
+            data_files = parsed_resp.data or []
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.error("Failed to fetch data files from api `/v1/data-files`")
+        return data_files

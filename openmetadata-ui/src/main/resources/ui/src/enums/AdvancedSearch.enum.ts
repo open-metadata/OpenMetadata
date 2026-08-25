@@ -1,0 +1,129 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+export enum SuggestionField {
+  COLUMN = 'column_suggest',
+  DATABASE = 'database_suggest',
+  SCHEMA = 'schema_suggest',
+  SERVICE = 'service_suggest',
+  CHART = 'chart_suggest',
+  DATA_MODEL = 'data_model_suggest',
+  TASK = 'task_suggest',
+  ROOT = 'suggest',
+  SERVICE_TYPE = 'serviceType',
+}
+
+export enum AdvancedFields {
+  COLUMN = 'column_suggest',
+  DATABASE = 'database_suggest',
+  SCHEMA = 'schema_suggest',
+  SERVICE = 'service_suggest',
+  CHART = 'chart_suggest',
+  DATA_MODEL = 'data_model_suggest',
+  TASK = 'task_suggest',
+  FIELD = 'field_suggest',
+}
+
+// This enum contains list of fields that are used in the advanced search for elastic search query
+export enum EntityFields {
+  SERVICE_TYPE = 'serviceType',
+  DATA_MODEL_TYPE = 'dataModelType',
+  ENTITY_TYPE = 'entityType',
+  ENTITY_TYPE_KEYWORD = 'entityType.keyword',
+  TABLE_TYPE = 'tableType',
+  COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
+  DISPLAY_NAME_KEYWORD = 'displayName.keyword',
+  DISPLAY_NAME_ACTUAL_CASE = 'displayName.actualCase',
+  NAME_KEYWORD = 'name.keyword',
+  GLOSSARY = 'glossary.name.keyword',
+  CLASSIFICATION = 'classification.name.keyword',
+  DOMAINS = 'domains.displayName.keyword',
+  DATA_MODEL = 'dataModels.displayName.keyword',
+  CONTAINER_COLUMN = 'dataModel.columns.name.keyword',
+  PROJECT = 'project.keyword',
+  SCHEMA_FIELD = 'messageSchema.schemaFields.name.keyword',
+  FEATURE = 'mlFeatures.name',
+  FIELD = 'fields.name.keyword',
+  OWNERS = 'ownerDisplayName',
+  TAG = 'tags.tagFQN',
+  TIER = 'tier.tagFQN',
+  CLASSIFICATION_TAGS = 'classificationTags',
+  GLOSSARY_TERMS = 'glossaryTags',
+  CERTIFICATION = 'certification.tagLabel.tagFQN',
+  DOMAIN_TYPE = 'domainType.keyword',
+  DATA_PRODUCT_TYPE = 'dataProductType',
+  LIFECYCLE_STAGE = 'lifecycleStage',
+  VISIBILITY = 'visibility',
+  PORTFOLIO_PRIORITY = 'portfolioPriority',
+  SERVICE = 'service.displayName.keyword',
+  DATABASE = 'database.displayName.keyword',
+  DATABASE_NAME = 'database.name.keyword',
+  DATABASE_SCHEMA = 'databaseSchema.displayName.keyword',
+  DATABASE_DISPLAY_NAME = 'database.displayName',
+  DATABASE_SCHEMA_DISPLAY_NAME = 'databaseSchema.displayName',
+  DATABASE_SCHEMA_NAME = 'databaseSchema.name.keyword',
+  COLUMN = 'columns.name.keyword',
+  COLUMN_TAG = 'columns.tags.tagFQN',
+  DATA_TYPE = 'dataType',
+  TABLE_NAME = 'table.name.keyword',
+  TABLE_DISPLAY_NAME = 'table.displayName.keyword',
+  API_COLLECTION = 'apiCollection.displayName.keyword',
+  CHART = 'charts.displayName.keyword',
+  TASK = 'tasks.displayName.keyword',
+  ENTITY_STATUS = 'entityStatus',
+  REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
+  RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
+  SERVICE_NAME = 'service.name.keyword',
+  SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
+  TAGS_LABEL_TYPE = 'tags.labelType',
+  TIER_LABEL_TYPE = 'tier.labelType',
+  CREATED_BY = 'createdBy',
+  DATA_PRODUCT = 'dataProducts.displayName.keyword',
+  FULLY_QUALIFIED_NAME = 'fullyQualifiedName',
+  PARENT = 'parent.displayName.keyword',
+  DIRECTORY = 'directory.displayName.keyword',
+  FILE_TYPE = 'fileType',
+  FILE_EXTENSION = 'fileExtension',
+  LAST_MODIFIED_BY = 'lastModifiedBy',
+  SPREADSHEET = 'spreadsheet.displayName.keyword',
+}
+
+// This enum contains list of fields that are there in the object of the entity
+// For example, in Glossary object, there are fields like name, description, parent, etc.
+export enum EntityReferenceFields {
+  REVIEWERS = 'reviewers',
+  OWNERS = 'owners',
+  DATABASE = 'database.name',
+  DATABASE_SCHEMA = 'databaseSchema.name',
+  DESCRIPTION = 'description',
+  NAME = 'name',
+  DISPLAY_NAME = 'displayName',
+  TAG = 'tags',
+  COLUMN_TAG = 'columns.tags',
+  GLOSSARY_TERM = 'glossaryTerm',
+  TIER = 'tier',
+  DOMAIN = 'domains',
+  DATA_PRODUCTS = 'dataProducts',
+  TABLE_TYPE = 'tableType',
+  EXTENSION = 'extension',
+  SERVICE = 'service.name',
+  UPDATED_BY = 'updatedBy',
+  CHANGE_DESCRIPTION = 'changeDescription',
+  DELETED = 'deleted',
+  UPDATED_AT = 'updatedAt',
+  VERSION = 'version',
+  RELATED_TERMS = 'relatedTerms',
+  SYNONYMS = 'synonyms',
+  ENTITY_STATUS = 'entityStatus',
+  TEST_SUITE = 'testSuite.name',
+}

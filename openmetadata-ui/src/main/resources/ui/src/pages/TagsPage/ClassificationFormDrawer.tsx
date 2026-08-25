@@ -1,0 +1,109 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Button,
+  SlideoutMenu,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { isUndefined } from 'lodash';
+import { FC, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import TagsForm from './TagsForm';
+import { ClassificationFormDrawerProps } from './TagsPage.interface';
+
+const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
+  open,
+  form,
+  classifications,
+  isTier,
+  isLoading,
+  editClassification,
+  isSystemClassification,
+  permissions,
+  onClose,
+  onSubmit,
+}) => {
+  const { t } = useTranslation();
+  const submitRef = useRef<() => void>(() => void 0);
+  const isEditing = !isUndefined(editClassification);
+
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
+
+  return (
+    <SlideoutMenu
+      className="tw:z-999"
+      data-testid="classification-form-drawer"
+      isOpen={open}
+      width={480}
+      onOpenChange={handleOpenChange}>
+      {({ close }) => (
+        <>
+          <SlideoutMenu.Header data-testid="drawer-header" onClose={close}>
+            <Typography as="h4" data-testid="drawer-heading">
+              {isEditing
+                ? t('label.edit-entity', {
+                    entity: t('label.classification'),
+                  })
+                : t('label.adding-new-classification')}
+            </Typography>
+          </SlideoutMenu.Header>
+
+          <SlideoutMenu.Content>
+            <TagsForm
+              isClassification
+              showMutuallyExclusive
+              data={classifications}
+              form={form}
+              initialValues={editClassification}
+              isEditing={isEditing}
+              isSystemTag={isSystemClassification}
+              isTier={isTier}
+              permissions={permissions}
+              submitRef={submitRef}
+              onSubmit={onSubmit}
+            />
+          </SlideoutMenu.Content>
+
+          <SlideoutMenu.Footer>
+            <div className="tw:flex tw:justify-end tw:gap-4">
+              <Button
+                color="tertiary"
+                data-testid="cancel-button"
+                onClick={close}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="save-button"
+                isDisabled={isLoading}
+                isLoading={isLoading}
+                onClick={() => submitRef.current()}>
+                {t('label.save')}
+              </Button>
+            </div>
+          </SlideoutMenu.Footer>
+        </>
+      )}
+    </SlideoutMenu>
+  );
+};
+
+export default ClassificationFormDrawer;

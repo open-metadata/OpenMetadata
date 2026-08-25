@@ -1,0 +1,911 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Mixin class containing PATCH specific methods
+
+To be used by OpenMetadata class
+"""
+
+import json
+import traceback
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union, cast  # noqa: UP035
+from uuid import UUID
+
+from pydantic import BaseModel
+
+from metadata.generated.schema.entity.automations.response.queryRunnerResponse import (
+    QueryRunnerResponse,
+)
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
+from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.reverseIngestionResponse import (
+    ReverseIngestionResponse,
+)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import EntityLink, Markdown
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.lifeCycle import LifeCycle
+from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.patch_request import build_patch
+from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
+from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
+    OMetaPatchMixinBase,
+    PatchField,
+    PatchOperation,
+    PatchPath,
+)
+from metadata.ingestion.ometa.utils import model_str
+from metadata.pii.types import ClassifiableEntityType
+from metadata.sampler.entity_adapters import EntityAdapter, adapter_for
+from metadata.utils.deprecation import deprecated
+from metadata.utils.logger import get_log_name, ometa_logger
+
+logger = ometa_logger()
+
+T = TypeVar("T", bound=BaseModel)
+
+OWNER_TYPES: List[str] = ["user", "team"]  # noqa: UP006
+
+# Bounded retries for optimistic-concurrency (If-Match) column patches. On HTTP
+# 412 the entity changed under us, so we refetch and rebuild against fresh state
+# instead of silently overwriting a concurrent edit (the wrong-column-tag hazard
+# when columns are added/removed/reordered between read and write).
+MAX_OPTIMISTIC_LOCK_RETRIES = 3
+
+
+def _is_precondition_failed(exc: Exception) -> bool:
+    """True if `exc` is a 412 Precondition Failed raised by a stale If-Match."""
+    return isinstance(exc, APIError) and (getattr(exc, "status_code", None) == 412 or getattr(exc, "code", None) == 412)
+
+
+def _entity_etag(entity: BaseModel) -> Optional[str]:  # noqa: UP045
+    """Weak ``If-Match`` validator for optimistic-concurrency writes: ``W/"<version>"``.
+
+    Mirrors the server's ``EntityETag.generateWeakETag`` — the form ``validateETag`` accepts via
+    ``isWeakMatch`` — and deliberately NOT the strong ``generateETag``. The strong ETag hashes the
+    serialized entity, and a PATCH validates it against the repository's own ``patchFields``
+    projection while the GET that publishes it serializes the caller's ``fields``. Those two
+    projections differ, so a strong ETag can never match on a conditional write and every patch
+    would 412 into a non-conditional fallback.
+
+    The version is projection-independent, is bumped on every update, and is what the server's own
+    row-level compare-and-swap keys on — exactly the optimistic-lock semantics wanted here: reject
+    the write if the entity moved between our read and our write. Weak-match support predates every
+    server release that honours ``If-Match`` at all, so older servers either accept this or ignore
+    the header entirely.
+
+    The rendering must byte-match Java's ``Double.toString``, and does so *without* depending on
+    the ``multipleOf: 0.1`` invariant on ``entityVersion``: both sides emit the shortest string that
+    round-trips to the same double (Python since 3.1, Java since JDK 19), so they agree for any
+    number of decimal places. Do not reformat this with a fixed precision — ``:.1f`` would render a
+    hypothetical ``1.25`` as ``1.2`` and silently degrade every conditional write to the
+    non-conditional fallback. The one divergence left is unreachable: Java switches to scientific
+    notation at ``1e7`` (``1.0E7``) where Python does not, which an entity would need ~10^8 updates
+    to reach.
+
+    Returns ``None`` when ``version`` is absent so the caller falls back to a non-conditional
+    write. (Jetty strips any inbound ``--gzip`` suffix from ``If-Match``, so the bare value
+    matches the server's validator.)
+    """
+    version = getattr(entity, "version", None)
+    if version is None:
+        return None
+    return f'W/"{model_str(version)}"'
+
+
+def _summarize_patch(patch: Any) -> str:
+    """Return op count and `op:path` list for a JSON Patch, without values.
+
+    Values are intentionally excluded — they may contain descriptions, sample
+    data, or tag content that should not be logged.
+    """
+    if patch is None:
+        return "<patch not built>"
+    try:
+        ops = json.loads(str(patch))
+    except (ValueError, TypeError):
+        return "<unparsable patch>"
+    if not isinstance(ops, list):
+        return "<patch is not a list>"
+    op_paths = [f"{op.get('op', '?')}:{op.get('path', '?')}" for op in ops if isinstance(op, dict)]
+    return f"{len(ops)} op(s) [{', '.join(op_paths)}]"
+
+
+def convert_uuids_to_strings(obj: Any) -> Any:
+    """
+    Recursively convert UUID objects to strings for JSON serialization
+    """
+    if isinstance(obj, UUID):
+        return str(obj)
+    elif isinstance(obj, dict):  # noqa: RET505
+        return {key: convert_uuids_to_strings(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_uuids_to_strings(item) for item in obj]
+    else:
+        return obj
+
+
+def update_column_tags(
+    columns: List[Column],  # noqa: UP006
+    column_tag: ColumnTag,
+    operation: PatchOperation,
+) -> None:
+    """
+    Inplace update for the incoming column list
+    """
+    for col in columns:
+        if str(col.fullyQualifiedName.root).lower() == column_tag.column_fqn.lower():
+            if operation == PatchOperation.REMOVE:
+                for tag in col.tags:
+                    if tag.tagFQN == column_tag.tag_label.tagFQN:
+                        col.tags.remove(tag)
+            else:
+                col.tags.append(column_tag.tag_label)
+            break
+
+        if col.children:
+            update_column_tags(col.children, column_tag, operation)
+
+
+def update_column_description(
+    columns: List[Column],  # noqa: UP006
+    column_descriptions: List[ColumnDescription],  # noqa: UP006
+    force: bool = False,
+) -> None:
+    """
+    Inplace update for the incoming column list
+    """
+    col_dict = {col.column_fqn.lower(): col.description for col in column_descriptions}
+    for col in columns:
+        # For dbt the column names in OM and dbt are not always in the same case.
+        # We'll match the column names in case insensitive way
+        desc_column = col_dict.get(col.fullyQualifiedName.root.lower())
+        if desc_column:
+            if col.description and not force:
+                # If the description is already present and force is not passed,
+                # description will not be overridden
+                continue
+
+            col.description = desc_column  # Keep the Markdown type
+
+        if col.children:
+            update_column_description(col.children, column_descriptions, force)
+
+
+class OMetaPatchMixin(OMetaPatchMixinBase):
+    """
+    OpenMetadata API methods related to Tables.
+
+    To be inherited by OpenMetadata
+    """
+
+    client: REST
+
+    def patch(  # pylint: disable=too-many-arguments
+        self,
+        entity: Type[T],  # noqa: UP006
+        source: T,
+        destination: T,
+        allowed_fields: Optional[Dict] = None,  # noqa: UP006, UP045
+        restrict_update_fields: Optional[List] = None,  # noqa: UP006, UP045
+        array_entity_fields: Optional[List] = None,  # noqa: UP006, UP045
+        override_metadata: Optional[bool] = False,  # noqa: UP045
+        skip_on_failure: Optional[bool] = True,  # noqa: UP045
+        if_match: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Given an Entity type and Source entity and Destination entity,
+        generate a JSON Patch and apply it.
+
+        This method provides fine-grained control over entity updates and can
+        override fields that create_or_update() cannot due to server-side restrictions
+        across various entity types. Use override_metadata=True to force updates of
+        protected metadata fields.
+
+        Args
+            entity (T): Entity Type
+            source: Source payload which is current state of the source in OpenMetadata
+            destination: payload with changes applied to the source.
+            allowed_fields: List of field names to filter from source and destination models
+            restrict_update_fields: List of field names which will only support add operation
+            array_entity_fields: List of array fields to sort for consistent patching
+            override_metadata: Whether to override existing metadata fields. Set to True
+                to force updates of protected fields across various entity types.
+            skip_on_failure: Whether to skip the patch operation on failure (default: True)
+            if_match: Optional ETag for optimistic-concurrency control. When set, it is
+                sent as the ``If-Match`` header so the server rejects the write with HTTP
+                412 if the entity changed since the ETag was read, instead of silently
+                overwriting the concurrent edit.
+
+        Returns
+            Updated Entity
+        """
+        patch = None
+        try:
+            patch = build_patch(
+                source=source,
+                destination=destination,
+                allowed_fields=allowed_fields,
+                restrict_update_fields=restrict_update_fields,
+                array_entity_fields=array_entity_fields,
+                override_metadata=override_metadata,
+                skip_on_failure=skip_on_failure,
+            )
+
+            if not patch:
+                return None
+
+            res = self.client.patch(
+                path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
+                data=str(patch),
+                headers={"If-Match": if_match} if if_match else None,
+            )
+            return entity(**res)
+
+        except Exception as exc:
+            # A stale If-Match (HTTP 412) must always surface so optimistic-lock
+            # callers can refetch and retry — never swallow it via skip_on_failure.
+            if if_match and _is_precondition_failed(exc):
+                raise
+            logger.debug(traceback.format_exc())
+            patch_summary = _summarize_patch(patch)
+            entity_name = get_log_name(source)
+            if skip_on_failure:
+                logger.warning(
+                    f"Failed to update {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc} | Patch ops: {patch_summary}"
+                )
+                return None
+            raise RuntimeError(
+                f"Failed to update {entity_name}. The patch operation failed. "
+                f"Set 'skip_on_failure=True' to skip failed patches. "
+                f"Error: {exc} | Patch ops: {patch_summary}"
+            ) from exc
+
+    def patch_description(
+        self,
+        entity: Type[T],  # noqa: UP006
+        source: T,
+        description: str,
+        force: bool = False,
+        skip_on_failure: bool = True,
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Given an Entity type and ID, JSON PATCH the description.
+
+        This method is useful when you need to update descriptions that cannot be
+        overridden through create_or_update() due to server-side business rules
+        across various entity types. Use force=True to override existing descriptions.
+
+        Args
+            entity (T): Entity Type
+            source: source entity object
+            description: new description to add
+            force: if True, we will patch any existing description. Otherwise, we will maintain
+                the existing data. Set to True to override existing descriptions across entity types.
+            skip_on_failure: if True, return None on failure instead of raising exception
+        Returns
+            Updated Entity
+        """
+        try:
+            if isinstance(source, TestCase):
+                instance: Optional[T] = self._fetch_entity_if_exists(  # noqa: UP045
+                    entity=entity,
+                    entity_id=source.id,
+                    fields=["testDefinition", "testSuite"],
+                )
+            else:
+                instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)  # noqa: UP045
+
+            if not instance:
+                return None
+
+            if instance.description and not force:
+                # If the description is already present and force is not passed,
+                # description will not be overridden
+                return None
+
+            # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
+            destination = source.model_copy(deep=True)
+            destination.description = Markdown(description)
+
+            return self.patch(
+                entity=entity,
+                source=source,
+                destination=destination,
+                skip_on_failure=skip_on_failure,
+            )
+        except Exception as exc:
+            if skip_on_failure:
+                logger.debug(traceback.format_exc())
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to patch description for {entity_name}. The patch operation was skipped. Reason: {exc}"
+                )
+                return None
+            else:  # noqa: RET505
+                raise
+
+    def patch_table_constraints(
+        self,
+        table: Table,
+        constraints: List[TableConstraint],  # noqa: UP006
+    ) -> Optional[T]:  # noqa: UP045
+        """Given an Entity ID, JSON PATCH the table constraints of table
+
+        Args
+            source_table: Origin table
+            description: new description to add
+            table_constraints: table constraints to add
+
+        Returns
+            Updated Entity
+        """
+        instance: Table = self._fetch_entity_if_exists(entity=Table, entity_id=table.id, fields=["tableConstraints"])
+
+        if not instance:
+            return None
+
+        table.tableConstraints = instance.tableConstraints
+
+        destination = table.model_copy(deep=True)
+        destination.tableConstraints = constraints
+
+        return self.patch(entity=Table, source=table, destination=destination)
+
+    def patch_test_case_definition(
+        self,
+        test_case: TestCase,
+        entity_link: str,
+        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,  # noqa: UP006, UP045
+        compute_passed_failed_row_count: Optional[bool] = False,  # noqa: UP045
+    ) -> Optional[TestCase]:  # noqa: UP045
+        """Given a test case and a test case definition JSON PATCH the test case
+
+        Args
+            test_case: test case object
+            test_case_definition: test case definition to add
+        """
+        source: TestCase = self._fetch_entity_if_exists(
+            entity=TestCase,
+            entity_id=test_case.id,
+            fields=["testDefinition", "testSuite"],  # type: ignore
+        )  # type: ignore
+
+        if not source:
+            return None
+
+        destination = source.model_copy(deep=True)
+
+        destination.entityLink = EntityLink(entity_link)
+        if test_case_parameter_values:
+            destination.parameterValues = test_case_parameter_values
+        if compute_passed_failed_row_count != source.computePassedFailedRowCount:
+            destination.computePassedFailedRowCount = compute_passed_failed_row_count
+
+        return self.patch(entity=TestCase, source=source, destination=destination)
+
+    def patch_tags(
+        self,
+        entity: Type[T],  # noqa: UP006
+        source: T,
+        tag_labels: List[TagLabel],  # noqa: UP006
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+        skip_on_failure: bool = True,
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Given an Entity type and ID, JSON PATCH the tag.
+
+        Args
+            entity (T): Entity Type
+            source: Source entity object
+            tag_label: TagLabel to add or remove
+            operation: Patch Operation to add or remove the tag.
+            skip_on_failure: if True, return None on failure instead of raising exception
+        Returns
+            Updated Entity
+        """
+        try:
+            instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["tags"])  # noqa: UP045
+            if not instance:
+                return None
+
+            # Initialize empty tag list or the last updated tags
+            source.tags = instance.tags or []
+            destination = source.model_copy(deep=True)
+
+            tag_fqns = {label.tagFQN.root for label in tag_labels}
+
+            if operation == PatchOperation.REMOVE:
+                for tag in destination.tags:
+                    if tag.tagFQN.root in tag_fqns:
+                        destination.tags.remove(tag)
+            else:
+                destination.tags.extend(tag_labels)
+
+            return self.patch(
+                entity=entity,
+                source=source,
+                destination=destination,
+                skip_on_failure=skip_on_failure,
+            )
+        except Exception as exc:
+            if skip_on_failure:
+                logger.debug(traceback.format_exc())
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. Reason: {exc}"
+                )
+                return None
+            else:  # noqa: RET505
+                raise
+
+    def patch_tag(
+        self,
+        entity: Type[T],  # noqa: UP006
+        source: T,
+        tag_label: TagLabel,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+        skip_on_failure: bool = True,
+    ) -> Optional[T]:  # noqa: UP045
+        """Will be deprecated in 1.3"""
+        logger.warning("patch_tag will be deprecated in 1.3. Use `patch_tags` instead.")
+        return self.patch_tags(
+            entity=entity,
+            source=source,
+            tag_labels=[tag_label],
+            operation=operation,
+            skip_on_failure=skip_on_failure,
+        )
+
+    def patch_owner(
+        self,
+        entity: Type[T],  # noqa: UP006
+        source: T,
+        owners: EntityReferenceList = None,
+        force: bool = False,
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
+        not owner ID are provided, the owner is removed.
+
+        Args
+            entity (T): Entity Type of the entity to be patched
+            entity_id: ID of the entity to be patched
+            owner: Entity Reference of the owner. If None, the owner will be removed
+            force: if True, we will patch any existing owner. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["owners"])  # noqa: UP045
+
+        if not instance:
+            return None
+
+        # Don't change existing data without force
+        if instance.owners and instance.owners.root and not force:
+            # If a owner is already present and force is not passed,
+            # owner will not be overridden
+            return None
+
+        destination = deepcopy(instance)
+        destination.owners = owners
+
+        return self.patch(entity=entity, source=instance, destination=destination)
+
+    def _prepare_destination_for_column_tags(
+        self,
+        entity: ClassifiableEntityType,
+        instance: ClassifiableEntityType,
+        column_tags: List[ColumnTag],  # noqa: UP006
+        operation: PatchOperation,
+        adapter: "EntityAdapter",
+    ) -> ClassifiableEntityType | None:
+        columns = adapter.get_columns(instance)
+        if columns is None:
+            logger.warning(
+                "Entity %s has no columns, skipping column tag patch",
+                entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__,
+            )
+            return None
+        adapter.set_columns(entity, columns)
+        destination = entity.model_copy(deep=True)
+        dest_columns = adapter.get_columns(destination)
+        if dest_columns is not None:
+            for column_tag in column_tags or []:
+                update_column_tags(dest_columns, column_tag, operation)
+        return destination
+
+    def patch_column_tags(
+        self,
+        entity: ClassifiableEntityType,
+        column_tags: List[ColumnTag],  # noqa: UP006
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+    ) -> Optional[T]:  # noqa: UP045
+        """Given an Entity ID, JSON PATCH the tag of the column
+
+        Args
+            entity: Classifiable entity (Table, Container, …) to update
+            column_tags: List of ColumnTag to add or remove
+            operation: Patch Operation to add or remove
+        Returns
+            Updated Entity
+        """
+
+        adapter = adapter_for(entity)
+        if adapter is None:
+            logger.warning(
+                "Unsupported entity type for column tag patching: %s",
+                type(entity).__name__,
+            )
+            return None
+
+        entity_type = type(entity)
+        entity_label = entity.fullyQualifiedName.root if entity.fullyQualifiedName else entity_type.__name__
+        last_error: Optional[APIError] = None  # noqa: UP045
+        last_rejected_etag: Optional[str] = None  # noqa: UP045
+        for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
+            instance = self._fetch_entity_if_exists(
+                entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields
+            )
+            if not instance:
+                return None
+
+            destination = self._prepare_destination_for_column_tags(entity, instance, column_tags, operation, adapter)
+            if destination is None:
+                return None
+
+            # Derive If-Match from the just-fetched instance so a concurrent modification is
+            # rejected (412) and retried, instead of silently overwriting a shifted column array.
+            # If the SAME (unchanged) instance was already rejected, the conditional header is
+            # unusable (e.g. client/server ETag-format drift) and would loop to a silent drop;
+            # fall back to a non-conditional write so the change is not lost (last-write-wins).
+            instance_etag = _entity_etag(instance)
+            falling_back = instance_etag is not None and instance_etag == last_rejected_etag
+            if falling_back:
+                logger.warning(
+                    "If-Match [%s] was rejected for [%s] even though its version did not move, so the "
+                    "precondition cannot be satisfied (client/server validator mismatch); writing "
+                    "without optimistic locking so the column tag change is not dropped.",
+                    instance_etag,
+                    entity_label,
+                )
+            try:
+                patched_entity = self.patch(
+                    entity=entity_type,
+                    source=entity,
+                    destination=destination,
+                    if_match=None if falling_back else instance_etag,
+                )
+            except APIError as exc:
+                if _is_precondition_failed(exc):
+                    last_error = exc
+                    last_rejected_etag = instance_etag
+                    if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                        logger.info(
+                            "If-Match [%s] rejected while patching column tags on [%s]; refetching "
+                            "against the current version and retrying (attempt %d/%d)",
+                            instance_etag,
+                            entity_label,
+                            attempt + 1,
+                            MAX_OPTIMISTIC_LOCK_RETRIES,
+                        )
+                        continue
+                    break  # retries exhausted -> warn and return None below
+                raise
+            else:
+                if patched_entity is None:
+                    logger.debug(
+                        "Empty PATCH result. Either everything is up to date or the column names are not in [%s]",
+                        entity_label,
+                    )
+                return cast("T | None", patched_entity)
+
+        logger.warning(
+            "Column tag change for [%s] was NOT persisted after %d optimistic-lock retries "
+            "(persistent concurrent modification); last error: %s",
+            entity_label,
+            MAX_OPTIMISTIC_LOCK_RETRIES,
+            last_error,
+        )
+        return None
+
+    @deprecated(message="Use metadata.patch_column_tags instead", release="1.3.1")
+    def patch_column_tag(
+        self,
+        table: Table,
+        column_fqn: str,
+        tag_label: TagLabel,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+    ) -> Optional[T]:  # noqa: UP045
+        """Will be deprecated in 1.3"""
+        return self.patch_column_tags(
+            entity=table,
+            column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=tag_label)],
+            operation=operation,
+        )
+
+    @deprecated(message="Use metadata.patch_column_descriptions instead", release="1.3.1")
+    def patch_column_description(
+        self,
+        table: Table,
+        column_fqn: str,
+        description: str,
+        force: bool = False,
+    ) -> Optional[T]:  # noqa: UP045
+        """Given an Table , Column FQN, JSON PATCH the description of the column
+
+        Args
+            src_table: origin Table object
+            column_fqn: FQN of the column to update
+            description: new description to add
+            force: if True, we will patch any existing description. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        return self.patch_column_descriptions(
+            table=table,
+            column_descriptions=[ColumnDescription(column_fqn=column_fqn, description=Markdown(description))],
+            force=force,
+        )
+
+    def patch_column_descriptions(
+        self,
+        table: Table,
+        column_descriptions: List[ColumnDescription],  # noqa: UP006
+        force: bool = False,
+    ) -> Optional[T]:  # noqa: UP045
+        """Given an Table , Column Descriptions, JSON PATCH the description of the column
+
+        Args
+            src_table: origin Table object
+            column_descriptions: List of ColumnDescription object
+            force: if True, we will patch any existing description. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        if not column_descriptions:
+            return None
+
+        table_label = table.fullyQualifiedName.root if table.fullyQualifiedName else Table.__name__
+        last_error: Optional[APIError] = None  # noqa: UP045
+        last_rejected_etag: Optional[str] = None  # noqa: UP045
+        for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
+            instance: Optional[Table] = self._fetch_entity_if_exists(  # noqa: UP045
+                entity=Table, entity_id=table.id
+            )
+            if not instance:
+                return None
+
+            # Make sure we run the patch against the last updated data from the API
+            table.columns = instance.columns
+
+            destination = table.model_copy(deep=True)
+            update_column_description(destination.columns, column_descriptions, force)
+
+            # Derive If-Match from the just-fetched instance so a concurrent modification is
+            # rejected (412) and retried, instead of silently overwriting it. If the SAME
+            # (unchanged) instance was already rejected, the conditional header is unusable
+            # (e.g. client/server ETag-format drift) and would loop to a silent drop; fall back
+            # to a non-conditional write so the change is not lost (last-write-wins).
+            instance_etag = _entity_etag(instance)
+            falling_back = instance_etag is not None and instance_etag == last_rejected_etag
+            if falling_back:
+                logger.warning(
+                    "If-Match [%s] was rejected for [%s] even though its version did not move, so the "
+                    "precondition cannot be satisfied (client/server validator mismatch); writing "
+                    "without optimistic locking so the column description change is not dropped.",
+                    instance_etag,
+                    table_label,
+                )
+            try:
+                patched_entity = self.patch(
+                    entity=Table,
+                    source=table,
+                    destination=destination,
+                    if_match=None if falling_back else instance_etag,
+                )
+            except APIError as exc:
+                if _is_precondition_failed(exc):
+                    last_error = exc
+                    last_rejected_etag = instance_etag
+                    if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                        logger.info(
+                            "If-Match [%s] rejected while patching column descriptions on [%s]; "
+                            "refetching against the current version and retrying (attempt %d/%d)",
+                            instance_etag,
+                            table_label,
+                            attempt + 1,
+                            MAX_OPTIMISTIC_LOCK_RETRIES,
+                        )
+                        continue
+                    break  # retries exhausted -> warn and return None below
+                raise
+            else:
+                if patched_entity is None:
+                    logger.debug(
+                        f"Empty PATCH result. Either everything is up to date or "
+                        f"columns are not matching for [{table_label}]"
+                    )
+                return cast("T | None", patched_entity)
+
+        logger.warning(
+            "Column description change for [%s] was NOT persisted after %d optimistic-lock retries "
+            "(persistent concurrent modification); last error: %s",
+            table_label,
+            MAX_OPTIMISTIC_LOCK_RETRIES,
+            last_error,
+        )
+        return None
+
+    def patch_automation_workflow_response(
+        self,
+        automation_workflow: AutomationWorkflow,
+        result: Union[TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse],  # noqa: UP007
+        workflow_status: WorkflowStatus,
+    ) -> None:
+        """
+        Given an AutomationWorkflow, JSON PATCH the status and response.
+        """
+        # mode="json" recursively renders every enum/UUID/datetime to a
+        # JSON-native value (the step-level status, skipReason and diagnosis
+        # included), so json.dumps below never hits a bare enum object.
+        result_data: Dict = {  # noqa: UP006
+            PatchField.PATH: PatchPath.RESPONSE,
+            PatchField.VALUE: result.model_dump(mode="json"),
+            PatchField.OPERATION: PatchOperation.ADD,
+        }
+        status_data: Dict = {  # noqa: UP006
+            PatchField.PATH: PatchPath.STATUS,
+            PatchField.OPERATION: PatchOperation.ADD,
+            PatchField.VALUE: workflow_status.value,
+        }
+
+        try:
+            resp = self.client.patch(
+                path=f"{self.get_suffix(AutomationWorkflow)}/{model_str(automation_workflow.id)}",
+                data=json.dumps([result_data, status_data]),
+            )
+            if resp is None:
+                logger.error(
+                    "PATCH returned None for automation workflow "
+                    f"[{model_str(automation_workflow)}] — the server may have rejected the request"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
+            )
+
+    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> Optional[Entity]:  # noqa: UP045
+        """
+        Patch life cycle data for a entity
+
+        :param entity: Entity to update the life cycle for
+        :param life_cycle_data: Life Cycle data to add
+        """
+        try:
+            destination = entity.model_copy(deep=True)
+            destination.lifeCycle = life_cycle
+            return self.patch(entity=type(entity), source=entity, destination=destination)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.root}: {exc}")
+            return None
+
+    def patch_domain(
+        self,
+        entity: Type[T],  # noqa: UP006
+        source: T,
+        domains: EntityReferenceList = None,
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Given an Entity type and ID, JSON PATCH the domain.
+
+        Args
+            entity (T): Entity Type of the entity to be patched
+            source: Source entity object
+            domains: Entity Reference List of the domains. If None, the domain will be removed
+        Returns
+            Updated Entity
+        """
+        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["domains"])  # noqa: UP045
+
+        if not instance:
+            return None
+
+        # Check if domains are already the same, skip if identical
+        if instance.domains and instance.domains.root and domains and domains.root:
+            existing_domain_ids = {str(d.id) for d in instance.domains.root}
+            new_domain_ids = {str(d.id) for d in domains.root}
+            if existing_domain_ids == new_domain_ids:
+                return None
+
+        destination = deepcopy(instance)
+        destination.domains = domains
+
+        return self.patch(entity=entity, source=instance, destination=destination)
+
+    def patch_custom_properties(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        custom_properties: Dict[str, Any],  # noqa: UP006
+        force: bool = False,
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Given an Entity type and ID, JSON PATCH the custom properties.
+
+        Args
+            entity (T): Entity Type
+            entity_id: ID
+            custom_properties: Dictionary of custom properties to add/update
+            force: if True, we will overwrite all existing custom properties. Otherwise, we will merge
+                with existing data.
+        Returns
+            Updated Entity
+        """
+        instance = self.get_by_id(entity=entity, entity_id=entity_id)
+
+        if not instance:
+            logger.warning(f"Cannot find an instance of {entity.__name__} with the given ID.")
+            return None
+
+        # Get existing custom properties from extension
+        existing_custom_properties = {}
+        if hasattr(instance, "extension") and instance.extension:  # noqa: SIM102
+            if hasattr(instance.extension, "root") and isinstance(instance.extension.root, dict):
+                existing_custom_properties = instance.extension.root.copy()
+
+        # Merge with new properties if not forcing
+        if not force and existing_custom_properties:
+            # Merge new properties with existing ones
+            final_properties = {**existing_custom_properties, **custom_properties}
+        else:
+            final_properties = custom_properties
+
+        # Convert UUID objects to strings for JSON serialization
+        final_properties = convert_uuids_to_strings(final_properties)
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
+                data=json.dumps(
+                    [
+                        {
+                            PatchField.OPERATION: (
+                                PatchOperation.REPLACE if existing_custom_properties else PatchOperation.ADD
+                            ),
+                            PatchField.PATH: "/extension",
+                            PatchField.VALUE: final_properties,
+                        }
+                    ]
+                ),
+            )
+            return entity(**res)
+
+        except Exception as exc:
+            logger.error(f"Error trying to PATCH custom properties for {entity.__name__}: {entity_id} - {exc}")
+            logger.debug(traceback.format_exc())
+            return None

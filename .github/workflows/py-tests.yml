@@ -1,0 +1,57 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: py-tests
+on:
+  merge_group:
+  workflow_dispatch:
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+
+jobs:
+  # Owns the unit-test and coverage jobs; they are database-independent, so
+  # py-tests-postgres must not also run them.
+  # -s true: distribution comes from the shared build job. -i false: no test needs Airflow.
+  python:
+    uses: ./.github/workflows/py-tests-shared.yml
+    with:
+      compose-args: "-m no-ui -s true -i false"
+      artifact-prefix: py
+      test-profile: python-integration
+      run-unit-tests: true
+      run-coverage: true
+    secrets: inherit
+
+  # The sole required check for this workflow. Must stay in the caller: inside
+  # py-tests-shared.yml it would report as "py-tests / python / <job>".
+  py-tests-status:
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-status (ignored label)' || 'py-tests-status' }}
+    needs: python
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the shared Python pipeline succeeded
+        env:
+          PIPELINE_RESULT: ${{ needs.python.result }}
+        run: |
+          if [ "$PIPELINE_RESULT" != "success" ]; then
+            echo "Shared Python pipeline did not succeed: $PIPELINE_RESULT"
+            exit 1
+          fi
+        shell: bash

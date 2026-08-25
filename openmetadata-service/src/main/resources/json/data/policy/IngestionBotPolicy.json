@@ -1,0 +1,25 @@
+{
+  "name": "IngestionBotPolicy",
+  "displayName": "Ingestion Bot Policy",
+  "fullyQualifiedName": "IngestionBotPolicy",
+  "description": "Policy for ingestion Bots to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "IngestionBotRule-Allow",
+      "description" : "Allow ingestion bots to create/update/delete data entities",
+      "resources" : ["All"],
+      "operations": ["Create", "BulkCreate", "BulkUpdate", "EditAll", "ViewAll", "Delete", "Trigger"],
+      "effect": "allow"
+    },
+    {
+      "name": "DisplayName-Deny",
+      "description" : "Deny bots to update display name",
+      "resources" : ["All"],
+      "operations": ["EditDisplayName"],
+      "effect": "deny"
+    }
+  ]
+}

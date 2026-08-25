@@ -1,0 +1,153 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import { redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { settingClick } from '../../utils/sidebar';
+import { searchTeam } from '../../utils/team';
+import { EntityReference } from '../entity/Entity.interface';
+type ResponseDataType = {
+  name: string;
+  displayName: string;
+  description: string;
+  teamType: string;
+  id?: string;
+  fullyQualifiedName?: string;
+  users?: string[];
+  defaultRoles?: string[];
+  policies?: string[];
+  owners?: EntityReference[];
+  isJoinable?: boolean;
+};
+
+export class TeamClass {
+  data: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
+
+  constructor(data?: ResponseDataType) {
+    const id = uuid();
+    this.data = data ?? {
+      name: `PW%team-${id}`,
+      displayName: `PW Team ${id}`,
+      description: 'playwright team description',
+      teamType: 'Group',
+      users: [],
+      policies: [],
+    };
+  }
+
+  setTeamType(teamType: string) {
+    this.data.teamType = teamType;
+  }
+
+  get() {
+    return this.responseData;
+  }
+
+  async visitTeamPage(page: Page) {
+    const teamName = this.responseData?.name ?? this.data.name;
+    const expectedDisplayName =
+      this.responseData?.displayName ?? this.data.displayName;
+    const directTeamPath = `/settings/members/teams/${encodeURIComponent(
+      teamName
+    )}`;
+
+    await page.goto(directTeamPath, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+    const teamHeading = page.getByTestId('team-heading');
+    if (await teamHeading.isVisible().catch(() => false)) {
+      await expect(teamHeading).toHaveText(expectedDisplayName);
+
+      return;
+    }
+
+    const fetchOrganizationResponse = page.waitForResponse(
+      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2CdefaultPersona%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+    );
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+    await fetchOrganizationResponse;
+
+    await searchTeam(page, expectedDisplayName);
+
+    const teamLink = page
+      .getByRole('link', { name: expectedDisplayName })
+      .first();
+    await expect(teamLink).toBeVisible({ timeout: 60000 });
+    const teamHref = await teamLink.getAttribute('href');
+
+    if (teamHref) {
+      await page.goto(teamHref, { waitUntil: 'domcontentloaded' });
+    } else {
+      await teamLink.click();
+    }
+
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await expect(page.getByTestId('team-heading')).toHaveText(
+      expectedDisplayName
+    );
+  }
+
+  async create(apiContext: APIRequestContext) {
+    const response = await apiContext.post('/api/v1/teams', {
+      data: this.data,
+    });
+    const data = await okJson(response, 'TeamClass.create');
+    this.responseData = data;
+
+    return data;
+  }
+
+  async delete(apiContext: APIRequestContext) {
+    const response = await apiContext.delete(
+      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
+    );
+
+    return await response.json();
+  }
+
+  getTeamDisplayName() {
+    return this.responseData.displayName;
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/teams/${this.responseData.id}`, {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      })
+    );
+
+    this.responseData = await okJson(response, 'TeamClass.patch');
+
+    return await okJson(response, 'TeamClass.patch');
+  }
+
+  async addUser(apiContext: APIRequestContext, userId: string) {
+    return this.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/users/-',
+        value: {
+          id: userId,
+          type: 'user',
+        },
+      },
+    ]);
+  }
+}

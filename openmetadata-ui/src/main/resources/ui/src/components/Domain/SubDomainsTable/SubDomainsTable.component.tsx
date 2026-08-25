@@ -1,0 +1,240 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Card,
+  Input,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
+import { SearchLg } from '@untitledui/icons';
+import { debounce, isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { useDelete } from '../../common/atoms/actions/useDelete';
+import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
+import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
+import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTableColumns';
+import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
+import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
+import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ViewToggle, { ViewMode } from '../../common/ViewToggle/ViewToggle';
+import { useSubdomainListingData } from './hooks/useSubdomainListingData';
+import { SubDomainsTableProps } from './SubDomainsTable.interface';
+
+const SubDomainsTable = ({
+  domainFqn,
+  permissions,
+  onAddSubDomain,
+  subDomainsCount,
+  onDeleteSubDomain,
+}: SubDomainsTableProps) => {
+  const { t } = useTranslation();
+  const subdomainListing = useSubdomainListingData({
+    parentDomainFqn: domainFqn,
+  });
+
+  const { quickFilters, defaultFilters } = useDomainFilters({
+    isSubDomain: true,
+    aggregations: subdomainListing.aggregations || undefined,
+    parsedFilters: subdomainListing.parsedFilters,
+    onFilterChange: subdomainListing.handleFilterChange,
+  });
+
+  const { filterSelectionDisplay } = useFilterSelection({
+    urlState: subdomainListing.urlState,
+    filterConfigs: defaultFilters,
+    parsedFilters: subdomainListing.parsedFilters,
+    onFilterChange: subdomainListing.handleFilterChange,
+  });
+
+  const [searchInputValue, setSearchInputValue] = useState(
+    subdomainListing.urlState.searchQuery ?? ''
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(subdomainListing.handleSearchChange, 300),
+    [subdomainListing.handleSearchChange]
+  );
+
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(subdomainListing.urlState.searchQuery ?? '');
+  }, [subdomainListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const { renderDomainCard } = useDomainCardTemplates();
+
+  const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
+    useDomainTableColumns({
+      nameLabelKey: 'label.sub-domain',
+      tagSize: 'lg',
+    });
+
+  const selectedSubdomainEntities = useMemo(
+    () =>
+      subdomainListing.entities.filter((entity) =>
+        subdomainListing.selectedEntities.includes(entity.id)
+      ),
+    [subdomainListing.entities, subdomainListing.selectedEntities]
+  );
+
+  const { deleteIconButton, deleteModal } = useDelete({
+    entityType: 'domains',
+    entityLabel: 'Sub-domain',
+    selectedEntities: selectedSubdomainEntities,
+    onDeleteComplete: () => {
+      subdomainListing.clearSelection();
+      subdomainListing.refetch();
+      onDeleteSubDomain();
+    },
+  });
+
+  useEffect(() => {
+    if (subDomainsCount) {
+      subdomainListing.refetch();
+    }
+  }, [subDomainsCount]);
+
+  const isSearchOrFilterActive = useCallback(
+    () => hasActiveSearchOrFilter(subdomainListing.urlState),
+    [subdomainListing.urlState]
+  );
+
+  const content = useMemo(() => {
+    if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
+      if (isSearchOrFilterActive()) {
+        return (
+          <ErrorPlaceHolder
+            className="border-none"
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      }
+
+      return (
+        <ErrorPlaceHolder
+          buttonId="subdomain-add-button"
+          buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
+          className="border-none"
+          heading={t('message.no-data-message', {
+            entity: t('label.sub-domain-lowercase-plural'),
+          })}
+          icon={<FolderEmptyIcon />}
+          permission={permissions.Create}
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
+          onClick={onAddSubDomain}
+        />
+      );
+    }
+
+    if (view === ViewMode.Table) {
+      return (
+        <>
+          <EntityListingTable
+            ariaLabel={t('label.sub-domain')}
+            columns={subDomainColumns}
+            entities={subdomainListing.entities}
+            loading={subdomainListing.loading}
+            renderCell={renderSubDomainCell}
+            selectedEntities={subdomainListing.selectedEntities}
+            onEntityClick={subdomainListing.actionHandlers.onEntityClick}
+            onSelect={subdomainListing.handleSelect}
+            onSelectAll={subdomainListing.handleSelectAll}
+          />
+          <PaginationCardDefault
+            page={subdomainListing.currentPage}
+            total={subdomainListing.totalPages}
+            onPageChange={subdomainListing.handlePageChange}
+          />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <EntityCardView
+          entities={subdomainListing.entities}
+          loading={subdomainListing.loading}
+          renderCard={renderDomainCard}
+          onEntityClick={subdomainListing.actionHandlers.onEntityClick}
+        />
+        <PaginationCardDefault
+          page={subdomainListing.currentPage}
+          total={subdomainListing.totalPages}
+          onPageChange={subdomainListing.handlePageChange}
+        />
+      </>
+    );
+  }, [
+    subdomainListing.loading,
+    subdomainListing.entities,
+    subdomainListing.selectedEntities,
+    subdomainListing.actionHandlers,
+    subdomainListing.currentPage,
+    subdomainListing.totalPages,
+    subdomainListing.handlePageChange,
+    isSearchOrFilterActive,
+    view,
+    renderSubDomainCell,
+    renderDomainCard,
+    permissions.Create,
+    onAddSubDomain,
+    t,
+  ]);
+
+  return (
+    <>
+      <Card style={{ marginBottom: 20 }} variant="elevated">
+        <Box
+          className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
+          direction="col"
+          gap={4}>
+          <Box align="center" direction="row" gap={5}>
+            <Input
+              className="tw:max-w-60"
+              icon={SearchLg}
+              placeholder={t('label.search-entity', {
+                entity: t('label.sub-domain'),
+              })}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
+            {quickFilters}
+            <Box className="tw:ml-auto" />
+            <ViewToggle value={view} onChange={setView} />
+            {deleteIconButton}
+          </Box>
+          {filterSelectionDisplay}
+        </Box>
+        {content}
+      </Card>
+      {deleteModal}
+    </>
+  );
+};
+
+export default SubDomainsTable;

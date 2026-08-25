@@ -1,0 +1,4618 @@
+package org.openmetadata.service.search;
+
+import static org.openmetadata.common.utils.CommonUtil.capitalizeFirst;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
+import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
+import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.CASCADE_SERVICE_STYLE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
+import static org.openmetadata.service.search.SearchClient.REMOVE_FOLLOWERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.DATABASE_ID;
+import static org.openmetadata.service.search.SearchConstants.DATABASE_SCHEMA_ID;
+import static org.openmetadata.service.search.SearchConstants.DOMAINS_ID;
+import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
+import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
+import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.search.SearchConstants.HITS;
+import static org.openmetadata.service.search.SearchConstants.ID;
+import static org.openmetadata.service.search.SearchConstants.PARENT;
+import static org.openmetadata.service.search.SearchConstants.PARENT_ID;
+import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
+import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
+import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
+import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.UsageDetails;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.nlq.NLQService;
+import org.openmetadata.service.search.nlq.NLQServiceFactory;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
+import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
+import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
+import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+
+@Slf4j
+public class SearchRepository {
+
+  private volatile SearchClient searchClient;
+
+  /**
+   * Upper bound on parent ids packed into a single inherited-domain child-propagation terms query,
+   * kept well under Elasticsearch's default {@code index.max_terms_count} (65536). A normal move
+   * carries far fewer and stays one update-by-query.
+   */
+  private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
+
+  /**
+   * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
+   * cascade ES mutations ({@link #updateEntityIndex}, {@link #updateEntity(EntityReference)}, the
+   * {@code update*ByFqnPrefix} / {@code updateAssetDomains*} bulk rewrites, plus the direct {@code
+   * getSearchClient().*} cascade calls routed through {@link #deferIfFlushScopeActive}) capture their
+   * blocking Elasticsearch round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so NO Elasticsearch call runs while a pooled DB
+   * connection is held, then drains the captured closures after commit. A deadlock replay re-runs the
+   * flush body, so the scope is reset per attempt and the closures are drained exactly once after the
+   * final successful commit. {@code null} means "no scope active" and the mutation executes inline —
+   * every non-flush caller (reindex apps, the post-commit search-index handler, lineage jobs) is
+   * unaffected.
+   */
+  private static final ThreadLocal<List<DeferredSearchWrite>> DEFERRED_SEARCH_WRITES =
+      new ThreadLocal<>();
+
+  /**
+   * A captured search-index mutation plus the locator of the entity whose document it rewrites. When
+   * a post-commit drain fails the round trip, {@code entityId}/{@code entityFqn}/{@code entityType}
+   * are enqueued to the durable, entity-keyed {@link SearchIndexRetryQueue} so the document is
+   * rebuilt from the committed source-of-truth DB rows on retry instead of silently losing the
+   * cascade rewrite. A {@code null} locator means the mutation already self-enqueues on failure (the
+   * {@code SearchRepository.update*} methods wrap their own try/catch), so the drain only logs.
+   */
+  public record DeferredSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
+  public record ScriptedPartialUpdate(
+      String script, Map<String, Object> parameters, boolean scriptedUpsert) {
+    public ScriptedPartialUpdate(String script, Map<String, Object> parameters) {
+      this(script, parameters, false);
+    }
+
+    /**
+     * Converts null document fields into explicit removals for the relationship-preserving
+     * scripted-upsert contract. Omitting a null parameter leaves the old value untouched in the
+     * existing search document.
+     */
+    public Map<String, Object> parametersForIndexing() {
+      if (!scriptedUpsert || parameters.values().stream().noneMatch(Objects::isNull)) {
+        return parameters;
+      }
+
+      Map<String, Object> normalizedParameters = new LinkedHashMap<>();
+      Set<String> fieldsToRemove = new TreeSet<>();
+      Object configuredRemovals = parameters.get("fieldsToRemove");
+      if (configuredRemovals instanceof Iterable<?> removals) {
+        for (Object field : removals) {
+          if (field != null) {
+            fieldsToRemove.add(field.toString());
+          }
+        }
+      }
+      parameters.forEach(
+          (field, value) -> {
+            if ("fieldsToRemove".equals(field)) {
+              return;
+            }
+            if (value == null) {
+              fieldsToRemove.add(field);
+            } else {
+              normalizedParameters.put(field, value);
+            }
+          });
+      if (!fieldsToRemove.isEmpty()) {
+        normalizedParameters.put("fieldsToRemove", List.copyOf(fieldsToRemove));
+      }
+      return normalizedParameters;
+    }
+  }
+
+  private record RelationshipRevisionSpec(
+      String relationshipField,
+      String revisionField,
+      String replacementScript,
+      String documentUpdateScript) {}
+
+  private static RelationshipRevisionSpec relationshipRevisionSpec(
+      String relationshipField, String revisionField) {
+    String replacementScript =
+        """
+        if (ctx._source.%2$s == null || params.%2$s >= ctx._source.%2$s) {
+          ctx._source.%1$s = params.%1$s;
+          ctx._source.%2$s = params.%2$s;
+        }
+        """
+            .formatted(relationshipField, revisionField);
+    String documentUpdateScript =
+        """
+        def preserveRelationship = ctx._source.containsKey('%1$s') || ctx._source.containsKey('%2$s');
+        for (k in params.keySet()) {
+          if (k != 'fieldsToRemove' && (!preserveRelationship || (k != '%1$s' && k != '%2$s'))) {
+            ctx._source.put(k, params.get(k));
+          }
+        }
+        if (params.containsKey('fieldsToRemove')) {
+          for (field in params.fieldsToRemove) {
+            if (!preserveRelationship || (field != '%1$s' && field != '%2$s')) {
+              ctx._source.remove(field);
+            }
+          }
+        }
+        """
+            .formatted(relationshipField, revisionField);
+    return new RelationshipRevisionSpec(
+        relationshipField, revisionField, replacementScript, documentUpdateScript);
+  }
+
+  private static RelationshipRevisionSpec relationshipRevisionSpec(EntityInterface entity) {
+    if (entity == null || entity.getEntityReference() == null) {
+      return null;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (Entity.TEST_CASE.equals(entityType)) {
+      return TEST_CASE_RELATIONSHIP_REVISION;
+    }
+    if (Entity.TEST_SUITE.equals(entityType)
+        && entity instanceof TestSuite testSuite
+        && Boolean.FALSE.equals(testSuite.getBasic())) {
+      return TEST_SUITE_RELATIONSHIP_REVISION;
+    }
+    return null;
+  }
+
+  public static void applyRelationshipRevision(
+      EntityInterface entity, Map<String, Object> document, Long relationshipRevision) {
+    if (relationshipRevision == null) {
+      return;
+    }
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null) {
+      throw new IllegalArgumentException(
+          "Relationship revisions can only update test cases and logical test suites");
+    }
+    document.put(revisionSpec.revisionField(), relationshipRevision);
+  }
+
+  /**
+   * Open a search-write deferral scope on the current thread. While open, the cascade ES mutations
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call —
+   * the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that calls
+   * {@link #drainSearchWriteDeferred()} after commit and {@link #clearSearchWriteDeferred()} on
+   * failure.
+   */
+  public static boolean beginSearchWriteDeferral() {
+    boolean opened = DEFERRED_SEARCH_WRITES.get() == null;
+    if (opened) {
+      DEFERRED_SEARCH_WRITES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackSearchWriteToCheckpoint(int)} its own contributions on a deadlock replay without
+   * disturbing closures the outer owner captured.
+   */
+  public static int searchWriteCheckpoint() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackSearchWriteToCheckpoint(int checkpoint) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginSearchWriteDeferral} and close the scope. */
+  public static List<DeferredSearchWrite> drainSearchWriteDeferred() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    DEFERRED_SEARCH_WRITES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearSearchWriteDeferred() {
+    DEFERRED_SEARCH_WRITES.remove();
+  }
+
+  /** {@code true} while a flush has opened a search-write deferral scope on the current thread. */
+  public static boolean isSearchWriteDeferralActive() {
+    return DEFERRED_SEARCH_WRITES.get() != null;
+  }
+
+  private static boolean deferSearchWrite(DeferredSearchWrite write) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    boolean captured = deferred != null;
+    if (captured) {
+      deferred.add(write);
+    }
+    return captured;
+  }
+
+  /**
+   * Capture {@code esWrite} for post-commit execution when a flush deferral scope is open on this
+   * thread; otherwise run it inline. The locator is used to enqueue the entity to the durable
+   * search-index retry outbox if the deferred round trip later fails. Use this for the direct {@code
+   * getSearchClient().*} cascade rewrites that bypass the {@code SearchRepository.update*} methods
+   * (glossary-term / classification / container FQN-prefix updates) so they too never run inside the
+   * transaction handle.
+   */
+  public void deferIfFlushScopeActive(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    deferOrRunSearchWrite(esWrite, operation, entityId, entityFqn, entityType);
+  }
+
+  /**
+   * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
+   * SearchRepository} instance in scope (e.g. the static {@code
+   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
+   * entityFqn} locator drives durable retry on a failed post-commit drain.
+   */
+  public static void deferOrRunSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    if (!deferSearchWrite(
+        new DeferredSearchWrite(esWrite, operation, entityId, entityFqn, entityType))) {
+      // No flush deferral scope is open (a non-flush cascade rewrite): run it synchronously inline
+      // on the request thread so the rewrite is read-your-write visible when the request returns.
+      esWrite.run();
+    }
+  }
+
+  @Getter private Map<String, IndexMapping> entityIndexMap;
+  private Map<String, IndexMapping> aliasIndexMap;
+
+  /**
+   * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
+   * the alias normally points at (e.g. {@code openmetadata_table_search_index}). While an entry
+   * is present, every live write that resolves through {@link #getWriteIndexName(IndexMapping)}
+   * targets the staged index directly — so the writes survive the final alias swap that would
+   * otherwise promote a pre-snapshot index and drop the old one that held them.
+   *
+   * <p>Keying by canonical index name lets any write site route correctly even if it does not
+   * have the entity type in scope (deletes by FQN prefix, script updates, child propagation, …).
+   */
+  private final Map<String, String> activeStagedIndices = new ConcurrentHashMap<>();
+
+  private final String language;
+
+  @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
+
+  private static final Set<String> SERVICE_ENTITY_SET =
+      Set.of(
+          Entity.DATABASE_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.SECURITY_SERVICE,
+          Entity.API_SERVICE,
+          Entity.DRIVE_SERVICE);
+
+  private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
+
+  /**
+   * Fields currently supported by {@link #getScriptWithParams(EntityInterface, Map, ChangeDescription)}.
+   *
+   * <p>When a non-versioned update touches any other field, we must fall back to full document
+   * indexing to avoid stale search documents.
+   */
+  private static final Set<String> PARTIAL_SCRIPT_SUPPORTED_FIELDS =
+      Set.of(
+          FIELD_DESCRIPTION,
+          FIELD_FOLLOWERS,
+          FIELD_USAGE_SUMMARY,
+          "extension",
+          "queryUsedIn",
+          "votes",
+          "pipelineStatus");
+
+  private static final String TESTS = "tests";
+  private static final String TEST_SUITES_REVISION = "testSuitesRevision";
+  private static final String TESTS_REVISION = "testsRevision";
+  private static final RelationshipRevisionSpec TEST_CASE_RELATIONSHIP_REVISION =
+      relationshipRevisionSpec(TEST_SUITES, TEST_SUITES_REVISION);
+  private static final RelationshipRevisionSpec TEST_SUITE_RELATIONSHIP_REVISION =
+      relationshipRevisionSpec(TESTS, TESTS_REVISION);
+
+  @Getter private final ElasticSearchConfiguration searchConfiguration;
+  @Getter private final int maxDBConnections;
+
+  @Getter private final String clusterAlias;
+
+  @Getter
+  public final List<String> dataInsightReports =
+      List.of(
+          ENTITY_REPORT_DATA,
+          WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
+          WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+          RAW_COST_ANALYSIS_REPORT_DATA,
+          AGGREGATED_COST_ANALYSIS_REPORT_DATA);
+
+  public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
+
+  protected NLQService nlqService;
+
+  @Getter private EmbeddingClient embeddingClient;
+  @Getter private VectorIndexService vectorIndexService;
+  @Getter private VectorEmbeddingHandler vectorEmbeddingHandler;
+  @Getter private volatile String vectorServiceInitError;
+  private volatile boolean vectorServiceInitialized = false;
+
+  public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
+    this.maxDBConnections = maxDBConnections;
+    searchConfiguration = config;
+    searchClient = buildSearchClient(searchConfiguration);
+    searchIndexFactory = buildIndexFactory();
+    language =
+        searchConfiguration != null && searchConfiguration.getSearchIndexMappingLanguage() != null
+            ? searchConfiguration.getSearchIndexMappingLanguage().value()
+            : "en";
+    clusterAlias = searchConfiguration != null ? searchConfiguration.getClusterAlias() : "";
+    loadIndexMappings();
+    registerSearchIndexHandler();
+  }
+
+  /**
+   * Register the SearchIndexHandler as the primary handler for search indexing operations.
+   * This handler will handle the actual search indexing when entities are created/updated/deleted.
+   */
+  private void registerSearchIndexHandler() {
+    try {
+      EntityLifecycleEventDispatcher dispatcher = EntityLifecycleEventDispatcher.getInstance();
+      SearchIndexHandler searchHandler = new SearchIndexHandler(this);
+      // Drop any stale handler bound to a previous SearchRepository instance. Test suites and
+      // app bootstrap construct SearchRepository more than once and replace the singleton via
+      // Entity.setSearchRepository(...); without this the dispatcher keeps delivering events to
+      // the first instance and state maintained on the current instance (e.g. activeStagedIndices
+      // used for reindex write-routing) is never consulted.
+      dispatcher.unregisterHandler(searchHandler.getHandlerName());
+      dispatcher.registerHandler(searchHandler);
+      LOG.info("Successfully registered SearchIndexHandler for entity lifecycle events");
+    } catch (Exception e) {
+      LOG.error("Failed to register SearchIndexHandler", e);
+    }
+  }
+
+  public SearchClient getSearchClient() {
+    if (searchClient == null) {
+      synchronized (SearchRepository.class) {
+        if (searchClient == null) {
+          searchClient = buildSearchClient(searchConfiguration);
+        }
+      }
+    }
+    return searchClient;
+  }
+
+  private void loadIndexMappings() {
+    IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
+    entityIndexMap = mappingLoader.getIndexMapping();
+    aliasIndexMap = buildAliasIndexMap(entityIndexMap);
+  }
+
+  private static Map<String, IndexMapping> buildAliasIndexMap(
+      Map<String, IndexMapping> mappingsByKey) {
+    Map<String, IndexMapping> mappingsByAlias = new HashMap<>();
+    if (mappingsByKey != null) {
+      for (IndexMapping mapping : mappingsByKey.values()) {
+        String alias = mapping.getAlias(null);
+        if (alias != null && !mappingsByKey.containsKey(alias)) {
+          mappingsByAlias.putIfAbsent(alias, mapping);
+        }
+      }
+    }
+    return mappingsByAlias;
+  }
+
+  public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
+    SearchClient sc;
+
+    // Initialize NLQ service first
+    initializeNLQService(config);
+
+    if (config != null
+        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+      sc = new OpenSearchClient(config, nlqService);
+    } else {
+      sc = new ElasticSearchClient(config, nlqService);
+    }
+    return sc;
+  }
+
+  public SearchIndexFactory buildIndexFactory() {
+    return new SearchIndexFactory();
+  }
+
+  public ElasticSearchConfiguration.SearchType getSearchType() {
+    return searchClient.getSearchType();
+  }
+
+  public void createIndexes() {
+    RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
+    ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    if (context != null) {
+      for (String entityType : context.getEntities()) {
+        try {
+          String originalIndex = context.getOriginalIndex(entityType).orElse(null);
+          String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
+          String activeIndex = context.getOriginalIndex(entityType).orElse(null);
+          String stagedIndex = context.getStagedIndex(entityType).orElse(null);
+          String canonicalAlias = context.getCanonicalAlias(entityType).orElse(null);
+          Set<String> existingAliases = context.getExistingAliases(entityType);
+          Set<String> parentAliases =
+              new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
+
+          EntityReindexContext entityReindexContext =
+              EntityReindexContext.builder()
+                  .entityType(entityType)
+                  .originalIndex(originalIndex)
+                  .canonicalIndex(canonicalIndex)
+                  .activeIndex(activeIndex)
+                  .stagedIndex(stagedIndex)
+                  .stagedChunkIndex(context.getStagedChunkIndex().orElse(null))
+                  .canonicalAliases(canonicalAlias)
+                  .existingAliases(existingAliases)
+                  .parentAliases(parentAliases)
+                  .build();
+          recreateIndexHandler.finalizeReindex(entityReindexContext, true);
+        } catch (Exception ex) {
+          LOG.error("Failed to recreate index for entity {}", entityType, ex);
+        }
+      }
+    }
+  }
+
+  public void updateIndexes() {
+    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+      updateIndex(entry.getValue());
+    }
+  }
+
+  public int createMissingIndexes() {
+    LOG.info("Checking for missing search indexes...");
+    int parallelism = SeedDataGate.getInstance().getSearchInitParallelism();
+    int created;
+    if (parallelism == 1) {
+      created = (int) entityIndexMap.entrySet().stream().filter(this::createMissingIndex).count();
+    } else {
+      created = createMissingIndexesInParallel(parallelism);
+    }
+    if (created > 0) {
+      LOG.info(
+          "Created {} missing indexes out of {} total entity types",
+          created,
+          entityIndexMap.size());
+    } else {
+      LOG.info("All {} indexes already exist", entityIndexMap.size());
+    }
+    return created;
+  }
+
+  private int createMissingIndexesInParallel(int parallelism) {
+    List<Callable<Boolean>> tasks =
+        entityIndexMap.entrySet().stream()
+            .<Callable<Boolean>>map(entry -> () -> createMissingIndex(entry))
+            .toList();
+    try (ExecutorService executor =
+        Executors.newFixedThreadPool(
+            parallelism, Thread.ofPlatform().name("search-init-", 0).factory())) {
+      int created = 0;
+      for (Future<Boolean> result : executor.invokeAll(tasks)) {
+        try {
+          if (result.get()) {
+            created++;
+          }
+        } catch (ExecutionException exception) {
+          LOG.warn("Search index initialization task failed", exception.getCause());
+        }
+      }
+      return created;
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Search index initialization was interrupted", exception);
+      return 0;
+    }
+  }
+
+  private boolean createMissingIndex(Map.Entry<String, IndexMapping> entry) {
+    try {
+      if (indexExists(entry.getValue())) {
+        reconcileAliases(entry.getValue());
+        return false;
+      }
+      createIndex(entry.getValue());
+      if (indexExists(entry.getValue())) {
+        LOG.info("Created missing index for entity type: {}", entry.getKey());
+        return true;
+      }
+      LOG.warn("Missing index for {} was not created", entry.getKey());
+    } catch (Exception exception) {
+      LOG.warn("Failed to create missing index for {}: {}", entry.getKey(), exception.getMessage());
+    }
+    return false;
+  }
+
+  /**
+   * Attaches the Data Insights aliases declared in indexMapping.json to an index that already
+   * exists. Only DI aliases are reconciled here (not parent/short aliases, which the reindex
+   * machinery owns) so startup side effects stay scoped to the newly introduced aliases. Alias
+   * adds are idempotent, so this is a no-op when the index already carries them. Without it, a DI
+   * alias introduced in a newer release would never attach to an upgraded cluster, since
+   * createIndex only creates aliases for indices it creates.
+   */
+  private void reconcileAliases(IndexMapping indexMapping) {
+    List<String> dataInsightAliases = indexMapping.getDataInsightAliases(clusterAlias);
+    if (nullOrEmpty(dataInsightAliases)) {
+      return;
+    }
+    try {
+      searchClient.addIndexAlias(indexMapping, dataInsightAliases.toArray(new String[0]));
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to reconcile Data Insights aliases for index {}: {}",
+          indexMapping.getIndexName(clusterAlias),
+          e.getMessage());
+    }
+  }
+
+  public void createOrUpdateIndexTemplates() {
+    createOrUpdateIndexTemplates(1, true);
+  }
+
+  public void createOrUpdateIndexTemplates(int createdIndexCount) {
+    createOrUpdateIndexTemplates(createdIndexCount, false);
+  }
+
+  private void createOrUpdateIndexTemplates(int createdIndexCount, boolean force) {
+    IndexTemplateBuildResult buildResult = buildIndexTemplateDefinitions();
+    Map<String, IndexTemplateDefinition> templates = buildResult.templates();
+    String fingerprint =
+        SeedDataGate.fingerprint(
+            templates.entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().mappingContent(),
+                        (left, right) -> left,
+                        TreeMap::new)));
+    if (!force
+        && buildResult.failures() == 0
+        && !SeedDataGate.getInstance()
+            .shouldUpdateSearchTemplates(fingerprint, createdIndexCount)) {
+      if (indexTemplatesMatch(templates)) {
+        LOG.info(
+            "Index template fingerprint markers match; skipping {} template updates",
+            templates.size());
+        SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+        return;
+      }
+      LOG.info("Index template drift detected in the search cluster; rebuilding templates");
+    }
+
+    LOG.info("Creating/updating index templates for all entities...");
+    int success = 0;
+    int failed = buildResult.failures();
+    int skipped = entityIndexMap.size() - templates.size() - failed;
+    for (Map.Entry<String, IndexTemplateDefinition> entry : templates.entrySet()) {
+      try {
+        IndexTemplateDefinition template = entry.getValue();
+        searchClient.createOrUpdateIndexTemplate(
+            entry.getKey(), template.indexPattern(), template.mappingContent());
+        success++;
+      } catch (Exception exception) {
+        failed++;
+        LOG.warn("Failed to create index template for {}", entry.getKey(), exception);
+      }
+    }
+    if (failed == 0) {
+      SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+    } else {
+      SeedDataGate.getInstance().recordSearchTemplateFailure();
+    }
+    LOG.info(
+        "Index templates creation completed. Success: {}, Failed: {}, Skipped: {}, Total: {}",
+        success,
+        failed,
+        skipped,
+        entityIndexMap.size());
+  }
+
+  private IndexTemplateBuildResult buildIndexTemplateDefinitions() {
+    Map<String, IndexTemplateDefinition> templates = new LinkedHashMap<>();
+    int failures = 0;
+    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+      String indexName;
+      String mappingContent;
+      try {
+        IndexMapping indexMapping = entry.getValue();
+        indexName = indexMapping.getIndexName(clusterAlias);
+        mappingContent = readIndexMapping(indexMapping);
+      } catch (Exception exception) {
+        failures++;
+        LOG.warn("Failed to read index template for {}", entry.getKey(), exception);
+        continue;
+      }
+      if (mappingContent == null) {
+        failures++;
+        LOG.warn("No mapping content found for entity type: {}", entry.getKey());
+        continue;
+      }
+      try {
+        mappingContent = enrichForElasticsearch(mappingContent);
+        templates.put(
+            "om_" + indexName, new IndexTemplateDefinition(indexName + "*", mappingContent));
+      } catch (IllegalStateException exception) {
+        // Embedding dimension mismatch (or similar misconfiguration). Surface immediately so
+        // startup/reindex fails loudly and operators must reindex — silencing this would let
+        // a broken vector setup keep running with mismatched dims.
+        throw exception;
+      } catch (Exception exception) {
+        failures++;
+        LOG.warn("Failed to enrich index template for {}", entry.getKey(), exception);
+      }
+    }
+    return new IndexTemplateBuildResult(templates, failures);
+  }
+
+  private record IndexTemplateBuildResult(
+      Map<String, IndexTemplateDefinition> templates, int failures) {}
+
+  private record IndexTemplateDefinition(String indexPattern, String mappingContent) {}
+
+  private boolean indexTemplatesMatch(Map<String, IndexTemplateDefinition> templates) {
+    try {
+      Map<String, String> expectedFingerprints =
+          templates.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          searchClient.indexTemplateFingerprint(
+                              entry.getValue().indexPattern(), entry.getValue().mappingContent()),
+                      (left, right) -> left,
+                      TreeMap::new));
+      Map<String, String> liveFingerprints = searchClient.getIndexTemplateFingerprints("om_*");
+      return expectedFingerprints.entrySet().stream()
+          .allMatch(
+              expected ->
+                  Objects.equals(liveFingerprints.get(expected.getKey()), expected.getValue()));
+    } catch (Exception exception) {
+      LOG.warn(
+          "Unable to verify index template fingerprints; templates will be rebuilt: {}",
+          exception.getMessage());
+      return false;
+    }
+  }
+
+  public void createOrUpdateIndexTemplate(String entityType) throws IOException {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    if (indexMapping == null) {
+      throw new IllegalArgumentException("No index mapping found for entity type: " + entityType);
+    }
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    String templateName = "om_" + indexName;
+    String indexPattern = indexName + "*";
+    String mappingContent = enrichForElasticsearch(readIndexMapping(indexMapping));
+    if (mappingContent == null) {
+      throw new IllegalArgumentException("No mapping content found for entity type: " + entityType);
+    }
+    searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+    LOG.info("Created/updated index template '{}' for entity type '{}'", templateName, entityType);
+  }
+
+  public void prepareForReindex() {
+    initializeVectorSearchService();
+  }
+
+  public synchronized void initializeVectorSearchService() {
+    if (vectorServiceInitialized) {
+      return;
+    }
+
+    ElasticSearchConfiguration cfg = getSearchConfiguration();
+    if (!isVectorEmbeddingEnabled()) {
+      LOG.info("Vector embedding is not enabled, skipping initialization");
+      return;
+    }
+
+    LLMConfiguration llmConfig = LlmConfigHolder.get();
+    try {
+      this.embeddingClient = createEmbeddingClient(llmConfig);
+
+      if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+        os.org.opensearch.client.opensearch.OpenSearchClient osClient =
+            ((OpenSearchClient) getSearchClient()).getNewClient();
+        OpenSearchVectorService.init(osClient, embeddingClient);
+        this.vectorIndexService = OpenSearchVectorService.getInstance();
+      } else {
+        var esClient = ((ElasticSearchClient) getSearchClient()).getNewClient();
+        int knnMultiplier = resolveKnnNumCandidatesMultiplier(cfg);
+        ElasticSearchVectorService.init(esClient, embeddingClient, knnMultiplier);
+        this.vectorIndexService = ElasticSearchVectorService.getInstance();
+      }
+
+      this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
+
+      vectorServiceInitialized = true;
+      this.vectorServiceInitError = null;
+
+      ensureHybridSearchPipeline();
+
+      LOG.info(
+          "Vector search service initialized with provider={}, dimension={}",
+          resolveEmbeddingProvider(llmConfig),
+          embeddingClient.getDimension());
+    } catch (Exception e) {
+      this.vectorServiceInitError = e.toString();
+      LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
+    }
+  }
+
+  private static int resolveKnnNumCandidatesMultiplier(ElasticSearchConfiguration cfg) {
+    NaturalLanguageSearchConfiguration nlCfg = cfg.getNaturalLanguageSearch();
+    if (nlCfg != null
+        && nlCfg.getKnnNumCandidatesMultiplier() != null
+        && nlCfg.getKnnNumCandidatesMultiplier() >= 1) {
+      return nlCfg.getKnnNumCandidatesMultiplier();
+    }
+    return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
+  }
+
+  public void ensureHybridSearchPipeline() {
+    if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
+      return;
+    }
+    // Hybrid search pipeline is an OpenSearch-specific feature (RRF via _search/pipeline).
+    // Skip silently for Elasticsearch instead of logging a misleading warning every restart.
+    if (!(vectorIndexService instanceof OpenSearchVectorService)) {
+      return;
+    }
+
+    ElasticSearchConfiguration cfg = getSearchConfiguration();
+    NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
+    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.4;
+    double semanticWeight =
+        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.6;
+
+    try {
+      SearchSettings ss =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      if (ss != null && ss.getGlobalSettings() != null) {
+        if (ss.getGlobalSettings().getKeywordWeight() != null) {
+          keywordWeight = ss.getGlobalSettings().getKeywordWeight();
+        }
+        if (ss.getGlobalSettings().getSemanticWeight() != null) {
+          semanticWeight = ss.getGlobalSettings().getSemanticWeight();
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
+    }
+
+    updateHybridSearchPipeline(keywordWeight, semanticWeight);
+  }
+
+  public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
+      openSearchVectorService.ensureHybridSearchPipeline(keywordWeight, semanticWeight);
+    } else {
+      LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
+    }
+  }
+
+  public Optional<String> checkHybridSearchPipeline() {
+    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
+      return openSearchVectorService.checkHybridSearchPipeline();
+    }
+    return Optional.empty();
+  }
+
+  public IndexMapping getIndexMapping(String entityType) {
+    return entityIndexMap.get(entityType);
+  }
+
+  /**
+   * Register a staged index as the live-write target for {@code entityType} while a reindex
+   * populates it. Must be paired with {@link #unregisterStagedIndex(String, String)} once the
+   * alias swap is complete so writes go back through the canonical alias.
+   */
+  public void registerStagedIndex(String entityType, String stagedIndex) {
+    if (entityType == null || stagedIndex == null) {
+      return;
+    }
+    String canonical = canonicalIndexFor(entityType);
+    if (canonical == null) {
+      LOG.warn(
+          "Cannot register staged index '{}' for entity '{}': no IndexMapping found",
+          stagedIndex,
+          entityType);
+      return;
+    }
+    activeStagedIndices.put(canonical, stagedIndex);
+    LOG.info(
+        "Routing live writes for canonical index '{}' (entity '{}') to staged index '{}' until reindex promotes it",
+        canonical,
+        entityType,
+        stagedIndex);
+  }
+
+  /** Clear the staged-index routing for {@code entityType} if it matches {@code stagedIndex}. */
+  public void unregisterStagedIndex(String entityType, String stagedIndex) {
+    if (entityType == null || stagedIndex == null) {
+      return;
+    }
+    String canonical = canonicalIndexFor(entityType);
+    if (canonical == null) {
+      return;
+    }
+    if (activeStagedIndices.remove(canonical, stagedIndex)) {
+      LOG.info(
+          "Cleared staged-index routing for canonical index '{}' (entity '{}', was '{}')",
+          canonical,
+          entityType,
+          stagedIndex);
+    }
+  }
+
+  private String canonicalIndexFor(String entityType) {
+    IndexMapping mapping = entityIndexMap.get(entityType);
+    return mapping != null ? mapping.getIndexName(clusterAlias) : null;
+  }
+
+  /**
+   * Centralized resolution of the index name a live write should target. Every write path that
+   * ultimately calls {@link IndexMapping#getIndexName(String)} should route through this method
+   * so it transparently picks up the staged index when a reindex is in flight. Returns the
+   * canonical index name when nothing is staged.
+   */
+  public String getWriteIndexName(IndexMapping indexMapping) {
+    if (indexMapping == null) {
+      return null;
+    }
+    String canonical = indexMapping.getIndexName(clusterAlias);
+    return routeToStagedIfActive(canonical);
+  }
+
+  /**
+   * Centralized routing for writes that already hold a resolved canonical index name — i.e. the
+   * value of {@link IndexMapping#getIndexName(String)}, NOT a short alias such as the result of
+   * {@link IndexMapping#getAlias(String)} or any of the parent aliases. If a reindex has
+   * registered a staged index for {@code canonicalIndexName}, returns the staged name; otherwise
+   * returns {@code canonicalIndexName} unchanged. Pass non-canonical aliases through unchanged
+   * since the routing map only knows about canonical names.
+   */
+  public String routeToStagedIfActive(String canonicalIndexName) {
+    if (canonicalIndexName == null) {
+      return null;
+    }
+    String staged = activeStagedIndices.get(canonicalIndexName);
+    return staged != null ? staged : canonicalIndexName;
+  }
+
+  /**
+   * @deprecated Use {@link #getWriteIndexName(IndexMapping)} directly. The {@code entityType}
+   *     argument is ignored; the canonical name is resolved from the supplied {@code
+   *     indexMapping}.
+   */
+  @Deprecated(forRemoval = true)
+  public String resolveWriteIndex(String entityType, IndexMapping indexMapping) {
+    return getWriteIndexName(indexMapping);
+  }
+
+  /**
+   * Returns the index targets a write should fan out to so it survives an in-flight reindex.
+   *
+   * <ul>
+   *   <li>When {@code aliasOrIndex} is a known canonical entity index name (i.e. matches the
+   *       value of {@link IndexMapping#getIndexName(String)} for some registered entity), the
+   *       result is the input plus the single staged index for that entity (if any). Avoids
+   *       fanning out an entity-scoped update-by-query — e.g. {@code updateDomainFqnByPrefix}
+   *       targeting only the domain index — onto unrelated staged indices.
+   *   <li>When {@code aliasOrIndex} is a multi-entity alias such as {@code GLOBAL_SEARCH_ALIAS}
+   *       or {@code DATA_ASSET_SEARCH_ALIAS}, the result is the input plus every currently
+   *       staged index, since the original update can match documents whose owning entity
+   *       type is being reindexed.
+   * </ul>
+   *
+   * <p>Without this fan-out, update-by-query operations rooted on shared aliases would update
+   * only the about-to-be-discarded active index and lose their effect on alias swap.
+   */
+  public List<String> getWriteFanoutTargets(String aliasOrIndex) {
+    if (aliasOrIndex == null) {
+      return new ArrayList<>(activeStagedIndices.values());
+    }
+    List<String> targets = new ArrayList<>();
+    targets.add(aliasOrIndex);
+    if (isKnownCanonicalIndex(aliasOrIndex)) {
+      String staged = activeStagedIndices.get(aliasOrIndex);
+      if (staged != null) {
+        targets.add(staged);
+      }
+    } else {
+      targets.addAll(activeStagedIndices.values());
+    }
+    return targets;
+  }
+
+  private boolean isKnownCanonicalIndex(String name) {
+    if (entityIndexMap == null || name == null) {
+      return false;
+    }
+    for (IndexMapping mapping : entityIndexMap.values()) {
+      if (mapping != null && name.equals(mapping.getIndexName(clusterAlias))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
+   * query. Handles four shapes:
+   *
+   * <ul>
+   *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
+   *       {@code entityIndexMap} and resolved to the canonical {@code *_search_index} name.
+   *       This is the bug fix — without resolving, ES would treat {@code "table"} as an alias
+   *       and expand it to every index that has that alias attached, including
+   *       {@code column_search_index} (because {@code tableColumn} declares {@code "table"} as
+   *       a {@code parentAlias}). Resolving here bypasses ES's alias expansion entirely so a
+   *       query for tables only hits the table index.
+   *   <li><b>Compound alias</b> (e.g. {@code "all"}, {@code "dataAsset"}): no entry in
+   *       {@code entityIndexMap}, no canonical index, so the alias passes through and ES
+   *       resolves it natively across the entities that have registered the alias. This is the
+   *       intended behavior — searching {@code dataAsset} should surface every data-asset
+   *       entity.
+   *   <li><b>Canonical / legacy index name</b> (e.g. {@code "table_search_index"}): not a key
+   *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
+   *       the legacy behavior.
+   *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
+   *       internal code paths that hand back a resolved value don't double-prefix.
+   * </ul>
+   *
+   * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
+   * {@code ","}) are dropped instead of materializing as a bare cluster prefix; if every token
+   * is empty the original input is returned unchanged so downstream ES surfaces a normal
+   * "unknown index" error instead of an empty-target failure.
+   */
+  public String getIndexOrAliasName(String name) {
+    if (nullOrEmpty(name)) {
+      return name;
+    }
+    String prefix =
+        clusterAlias == null || clusterAlias.isEmpty() ? null : clusterAlias + INDEX_NAME_SEPARATOR;
+    String resolved =
+        Arrays.stream(name.split(","))
+            .map(String::trim)
+            .filter(t -> !t.isEmpty())
+            .map(t -> resolveSingleAliasToken(t, prefix))
+            .collect(Collectors.joining(","));
+    return resolved.isEmpty() ? name : resolved;
+  }
+
+  private String resolveSingleAliasToken(String token, String clusterPrefix) {
+    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+      return token;
+    }
+    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    if (mapping == null && aliasIndexMap != null) {
+      mapping = aliasIndexMap.get(token);
+    }
+    if (mapping != null) {
+      return mapping.getIndexName(clusterAlias);
+    }
+    return clusterPrefix == null ? token : clusterPrefix + token;
+  }
+
+  private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
+      Map.of(Entity.TABLE, Set.of(Entity.TABLE_COLUMN));
+
+  public List<String> getChildIndexAliases(String entityType) {
+    Set<String> rbacChildren = RBAC_CHILD_TYPES.getOrDefault(entityType, Set.of());
+    List<String> aliases = new ArrayList<>();
+    for (String childEntityType : rbacChildren) {
+      IndexMapping childMapping = entityIndexMap.get(childEntityType);
+      if (childMapping != null) {
+        String alias = childMapping.getAlias(null);
+        if (alias != null) {
+          aliases.add(alias);
+        }
+      }
+    }
+    return aliases;
+  }
+
+  public String getIndexNameWithoutAlias(String fullIndexName) {
+    if (clusterAlias != null
+        && !clusterAlias.isEmpty()
+        && fullIndexName.startsWith(clusterAlias + INDEX_NAME_SEPARATOR)) {
+      return fullIndexName.substring((clusterAlias + INDEX_NAME_SEPARATOR).length());
+    }
+    return fullIndexName;
+  }
+
+  public boolean indexExists(IndexMapping indexMapping) {
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    if (searchClient.indexExists(indexName)) {
+      return true;
+    }
+    return !searchClient.getIndicesByAlias(indexName).isEmpty();
+  }
+
+  public void createIndex(IndexMapping indexMapping) {
+    try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      if (!indexExists(indexMapping)) {
+        // Clean up any lingering alias with the same name
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
+
+        String indexMappingContent = readIndexMapping(indexMapping);
+        searchClient.createIndex(indexMapping, indexMappingContent);
+        searchClient.createAliases(indexMapping);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          String.format(FAILED_TO_CREATE_INDEX_MESSAGE),
+          indexMapping.getIndexName(clusterAlias),
+          e);
+    }
+  }
+
+  public void updateIndex(IndexMapping indexMapping) {
+    try {
+      String indexMappingContent = readIndexMapping(indexMapping);
+      if (indexExists(indexMapping)) {
+        searchClient.updateIndex(indexMapping, indexMappingContent);
+      } else {
+        searchClient.createIndex(indexMapping, indexMappingContent);
+      }
+      searchClient.createAliases(indexMapping);
+    } catch (Exception e) {
+      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias));
+    }
+  }
+
+  public void deleteIndex(IndexMapping indexMapping) {
+    try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      if (searchClient.indexExists(indexName)) {
+        searchClient.deleteIndex(indexMapping);
+      } else {
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to Delete Index for entity {} due to ",
+          indexMapping.getIndexName(clusterAlias),
+          e);
+    }
+  }
+
+  /**
+   * The effective index mapping for an entity: the bundled classpath resource, field-safety hardened
+   * on the fly by {@link SearchIndexSettings#harden} at index-creation time.
+   */
+  public String readIndexMapping(IndexMapping indexMapping) {
+    String mapping = getHardenedResourceMapping(indexMapping);
+    if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
+      mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
+    }
+    return mapping;
+  }
+
+  private String enrichForElasticsearch(String mappingContent) {
+    if (getSearchType() != ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
+      return mappingContent;
+    }
+    return nullOrEmpty(mappingContent)
+        ? mappingContent
+        : EsUtils.enrichIndexMappingForElasticsearch(mappingContent);
+  }
+
+  private String getHardenedResourceMapping(IndexMapping indexMapping) {
+    String result = null;
+    try (InputStream in =
+        getClass()
+            .getResourceAsStream(
+                String.format(
+                    indexMapping.getIndexMappingFile(), language.toLowerCase(Locale.ROOT)))) {
+      if (in != null) {
+        result =
+            SearchIndexSettings.harden(new String(in.readAllBytes()), SearchFieldLimits.active());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to read index Mapping file due to ", e);
+    }
+    return result;
+  }
+
+  /**
+   * Create search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void createEntityIndex(EntityInterface entity) {
+    if (entity == null) {
+      LOG.warn("Entity is null, cannot create index.");
+      return;
+    }
+
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    if (!Entity.isSearchIndexable(entity)) {
+      deleteEntityIndex(entity);
+      return;
+    }
+
+    String entityId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    if (shouldSkipStreamingIndexing(
+        entityType, entityId, entity.getFullyQualifiedName(), "createEntityIndex")) {
+      return;
+    }
+    try {
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+      String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+      searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
+
+      if (Entity.TABLE.equals(entityType)) {
+        indexTableColumns((Table) entity);
+      }
+    } catch (Exception ie) {
+      SearchIndexRetryQueue.enqueue(
+          entityId,
+          entity.getFullyQualifiedName(),
+          entityType,
+          SearchIndexRetryQueue.failureReason("createEntityIndex", ie));
+      LOG.error(
+          "Issue creating new search document for entity [{}] and entityType [{}]",
+          entityId,
+          entityType,
+          ie);
+    } finally {
+      RequestLatencyContext.endSearchOperation(searchSample);
+    }
+  }
+
+  private void indexTableColumns(Table table) {
+    if (table.getColumns() == null || table.getColumns().isEmpty()) {
+      return;
+    }
+
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      LOG.debug("Column index mapping not found, skipping column indexing");
+      return;
+    }
+
+    List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<Map<String, String>> docs = new ArrayList<>();
+
+    for (Column column : flattenedColumns) {
+      try {
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
+        String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
+        docs.add(Collections.singletonMap(columnId, doc));
+      } catch (Exception e) {
+        LOG.error(
+            "Issue indexing column [{}] for table [{}]: {}",
+            column.getFullyQualifiedName(),
+            table.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+
+    if (!docs.isEmpty()) {
+      try {
+        searchClient.createEntities(getWriteIndexName(columnIndexMapping), docs);
+      } catch (Exception e) {
+        LOG.error(
+            "Issue bulk indexing columns for table [{}]: {}",
+            table.getFullyQualifiedName(),
+            e.getMessage());
+        if (e instanceof RuntimeException re) {
+          throw re;
+        }
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private void deleteTableColumns(Table table) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    try {
+      searchClient.deleteEntityByFields(
+          List.of(getWriteIndexName(columnIndexMapping)),
+          List.of(new ImmutablePair<>("table.id", table.getId().toString())));
+    } catch (Exception e) {
+      LOG.error(
+          "Issue deleting columns for table [{}]: {}",
+          table.getFullyQualifiedName(),
+          e.getMessage());
+      if (e instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Remove descendant column docs when a table's ancestor (databaseService / database /
+   * databaseSchema) is hard-deleted recursively.
+   *
+   * <p>Column docs live in a flat secondary index ({@code column_search_index}). A table's own
+   * delete prunes them via {@link #deleteTableColumns} (by {@code table.id}), but a recursive
+   * service/database/schema hard delete skips the per-table search dispatch
+   * ({@code descendantsCoveredByAncestorCascade}) and the ancestor's {@link #deleteOrUpdateChildren}
+   * cascade only targets the service childAliases, which do not include {@code tableColumn} — so
+   * without this prune the descendant column docs linger in search. Column docs carry
+   * {@code service.id} / {@code database.id} / {@code databaseSchema.id}, so delete by whichever
+   * ancestor the deleted entity is.
+   */
+  private void deleteDescendantColumns(EntityInterface entity, String entityType) {
+    String columnParentField =
+        switch (entityType) {
+          case Entity.DATABASE_SERVICE -> SERVICE_ID;
+          case Entity.DATABASE -> DATABASE_ID;
+          case Entity.DATABASE_SCHEMA -> DATABASE_SCHEMA_ID;
+          default -> null;
+        };
+    if (columnParentField != null) {
+      IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+      if (columnIndexMapping != null) {
+        try {
+          searchClient.deleteEntityByFields(
+              List.of(getWriteIndexName(columnIndexMapping)),
+              List.of(new ImmutablePair<>(columnParentField, entity.getId().toString())));
+        } catch (Exception e) {
+          LOG.error(
+              "Issue deleting descendant columns for {} [{}]: {}",
+              entityType,
+              entity.getFullyQualifiedName(),
+              e.getMessage());
+          if (e instanceof RuntimeException re) {
+            throw re;
+          }
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+
+  private void syncTableColumns(Table table, ChangeDescription changeDescription) {
+    // Check if columns were actually modified
+    boolean columnsChanged = hasColumnsChanged(changeDescription);
+
+    if (columnsChanged) {
+      // Columns were added/removed/modified - do full reindex
+      deleteTableColumns(table);
+      indexTableColumns(table);
+    } else {
+      // Only inherited fields changed - use efficient update
+      updateTableColumnsInheritedFields(table);
+    }
+  }
+
+  private boolean hasColumnsChanged(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return true; // Default to full reindex if no change description
+    }
+
+    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
+            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
+        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
+            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
+        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
+            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
+  }
+
+  private void updateTableColumnsInheritedFields(Table table) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    try {
+      // Build the inherited fields update map
+      Map<String, Object> inheritedFields = new HashMap<>();
+
+      // Update table reference fields
+      Map<String, Object> tableRef = new HashMap<>();
+      tableRef.put("id", table.getId().toString());
+      tableRef.put("name", table.getName());
+      tableRef.put(
+          "displayName",
+          table.getDisplayName() != null && !table.getDisplayName().isBlank()
+              ? table.getDisplayName()
+              : table.getName());
+      tableRef.put("fullyQualifiedName", table.getFullyQualifiedName());
+      tableRef.put("description", table.getDescription());
+      tableRef.put("deleted", table.getDeleted());
+      tableRef.put("type", Entity.TABLE);
+      inheritedFields.put("table", tableRef);
+
+      // Update inherited fields from table
+      inheritedFields.put("deleted", table.getDeleted() != null && table.getDeleted());
+      inheritedFields.put("updatedAt", table.getUpdatedAt());
+      inheritedFields.put("updatedBy", table.getUpdatedBy());
+      inheritedFields.put("version", table.getVersion());
+
+      if (table.getService() != null) {
+        inheritedFields.put("service", SearchIndexUtils.toEntityRefMap(table.getService()));
+      }
+      if (table.getDatabase() != null) {
+        inheritedFields.put("database", SearchIndexUtils.toEntityRefMap(table.getDatabase()));
+      }
+      if (table.getDatabaseSchema() != null) {
+        inheritedFields.put(
+            "databaseSchema", SearchIndexUtils.toEntityRefMap(table.getDatabaseSchema()));
+      }
+      if (table.getServiceType() != null) {
+        inheritedFields.put("serviceType", table.getServiceType().toString());
+      }
+      if (table.getOwners() != null) {
+        inheritedFields.put("owners", buildEntityRefListWithDisplayName(table.getOwners()));
+      }
+      if (table.getDomains() != null) {
+        inheritedFields.put("domains", buildEntityRefListWithDisplayName(table.getDomains()));
+      }
+      if (table.getFollowers() != null) {
+        inheritedFields.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
+      }
+
+      int totalVotes =
+          nullOrEmpty(table.getVotes())
+              ? 0
+              : Math.max(table.getVotes().getUpVotes() - table.getVotes().getDownVotes(), 0);
+      inheritedFields.put("totalVotes", totalVotes);
+
+      // Use updateChildren to efficiently update all columns for this table
+      searchClient.updateChildren(
+          List.of(getWriteIndexName(columnIndexMapping)),
+          new ImmutablePair<>("table.id", table.getId().toString()),
+          new ImmutablePair<>(DEFAULT_UPDATE_SCRIPT, inheritedFields));
+
+      LOG.debug(
+          "Efficiently updated inherited fields for columns of table [{}]",
+          table.getFullyQualifiedName());
+    } catch (Exception e) {
+      LOG.error(
+          "Issue updating inherited fields for columns of table [{}]: {}. Falling back to full reindex.",
+          table.getFullyQualifiedName(),
+          e.getMessage());
+      try {
+        deleteTableColumns(table);
+        indexTableColumns(table);
+      } catch (Exception fallbackEx) {
+        LOG.error(
+            "Fallback column reindex also failed for [{}]",
+            table.getFullyQualifiedName(),
+            fallbackEx);
+      }
+    }
+  }
+
+  private List<Map<String, Object>> buildEntityRefListWithDisplayName(
+      List<EntityReference> entities) {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    return entities.stream().map(SearchIndexUtils::toEntityRefMap).toList();
+  }
+
+  /**
+   * Create search indexes for multiple entities only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void createEntitiesIndex(List<EntityInterface> entities) throws IOException {
+    if (!nullOrEmpty(entities)) {
+      String entityType = null;
+      for (EntityInterface entity : entities) {
+        try {
+          EntityReference entityReference = entity != null ? entity.getEntityReference() : null;
+          if (entityReference != null) {
+            entityType = entityReference.getType();
+            if (!nullOrEmpty(entityType)) {
+              break;
+            }
+          }
+        } catch (Exception ie) {
+          LOG.error("Issue resolving entity type for bulk search index create", ie);
+        }
+      }
+      if (nullOrEmpty(entityType)) {
+        return;
+      }
+      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+      try {
+        if (!getSearchClient().isClientAvailable()) {
+          for (EntityInterface entity : entities) {
+            try {
+              if (Entity.isSearchIndexable(entity)) {
+                SearchIndexRetryQueue.enqueue(
+                    entity.getId() != null ? entity.getId().toString() : null,
+                    entity.getFullyQualifiedName(),
+                    entityType,
+                    "createEntitiesIndex: Search client unavailable");
+              }
+            } catch (Exception ie) {
+              LOG.error(
+                  "Issue checking search indexability for entity [{}] and entityType [{}]",
+                  entity != null ? entity.getId() : null,
+                  entityType,
+                  ie);
+            }
+          }
+          return;
+        }
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        List<Map<String, String>> docs = new ArrayList<>();
+        for (EntityInterface entity : entities) {
+          try {
+            if (!Entity.isSearchIndexable(entity)) {
+              continue;
+            }
+            SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+            String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+            docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+          } catch (Exception ie) {
+            LOG.error(
+                "Issue in building search document for entity [{}] and entityType [{}]",
+                entity != null ? entity.getId() : null,
+                entityType,
+                ie);
+          }
+        }
+
+        if (docs.isEmpty()) {
+          return;
+        }
+
+        searchClient.createEntities(getWriteIndexName(indexMapping), docs);
+
+        if (Entity.TABLE.equals(entityType)) {
+          indexColumnsForTables(entities);
+        }
+      } finally {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
+    }
+  }
+
+  private static final int COLUMN_BATCH_SIZE = 500;
+
+  private void indexColumnsForTables(List<EntityInterface> entities) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    String indexName = getWriteIndexName(columnIndexMapping);
+    List<Map<String, String>> allColumnDocs = new ArrayList<>();
+
+    for (EntityInterface entity : entities) {
+      Table table = (Table) entity;
+      if (table.getColumns() == null || table.getColumns().isEmpty()) {
+        continue;
+      }
+
+      List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+      for (Column column : flattenedColumns) {
+        try {
+          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+          String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
+          String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
+          allColumnDocs.add(Collections.singletonMap(columnId, doc));
+
+          if (allColumnDocs.size() >= COLUMN_BATCH_SIZE) {
+            searchClient.createEntities(indexName, allColumnDocs);
+            allColumnDocs.clear();
+          }
+        } catch (Exception e) {
+          LOG.error(
+              "Issue indexing column [{}] for table [{}]: {}",
+              column.getFullyQualifiedName(),
+              table.getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+    }
+
+    if (!allColumnDocs.isEmpty()) {
+      try {
+        searchClient.createEntities(indexName, allColumnDocs);
+      } catch (Exception e) {
+        LOG.error("Issue bulk indexing columns: {}", e.getMessage());
+      }
+    }
+  }
+
+  /**
+   * Create search indexes for multiple entities and dispatch lifecycle events.
+   * This method maintains backward compatibility.
+   */
+  public void createEntities(List<EntityInterface> entities) throws IOException {
+    // For backward compatibility, just call the index-only method
+    // EntityRepository now handles lifecycle event dispatching
+    createEntitiesIndex(entities);
+  }
+
+  public void createTimeSeriesEntity(EntityTimeSeriesInterface entity) {
+    if (entity != null) {
+      String entityType;
+      if (entity instanceof ReportData reportData) {
+        // Report data type is an entity itself where each report data type has its own index
+        entityType = reportData.getReportDataType().toString();
+      } else {
+        entityType = entity.getEntityReference().getType();
+      }
+      String entityId = entity.getId().toString();
+      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+      try {
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+        searchClient.createTimeSeriesEntity(getWriteIndexName(indexMapping), entityId, doc);
+      } catch (Exception ie) {
+        SearchIndexRetryQueue.enqueue(
+            entityId,
+            entity.getEntityReference() != null
+                ? entity.getEntityReference().getFullyQualifiedName()
+                : null,
+            entityType,
+            SearchIndexRetryQueue.failureReason("createTimeSeriesEntity", ie));
+        LOG.error(
+            "Issue creating new search document for entity [{}] and entityType [{}]",
+            entityId,
+            entityType,
+            ie);
+      } finally {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
+    }
+  }
+
+  public void updateTimeSeriesEntity(EntityTimeSeriesInterface entityTimeSeries) {
+    if (entityTimeSeries != null) {
+      String entityType = entityTimeSeries.getEntityReference().getType();
+      String entityId = entityTimeSeries.getId().toString();
+      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+      try {
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        SearchIndex elasticSearchIndex =
+            searchIndexFactory.buildIndex(entityType, entityTimeSeries);
+        Map<String, Object> doc = elasticSearchIndex.buildSearchIndexDoc();
+        searchClient.updateEntity(
+            getWriteIndexName(indexMapping), entityId, doc, DEFAULT_UPDATE_SCRIPT);
+      } catch (RuntimeException e) {
+        SearchIndexRetryQueue.enqueue(
+            entityId,
+            entityTimeSeries.getEntityReference() != null
+                ? entityTimeSeries.getEntityReference().getFullyQualifiedName()
+                : null,
+            entityType,
+            SearchIndexRetryQueue.failureReason("updateTimeSeriesEntity", e));
+        LOG.error(
+            "Issue updating the search document for entity [{}] and entityType [{}]",
+            entityId,
+            entityType,
+            e);
+      } finally {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
+    }
+  }
+
+  /**
+   * Capture this entity-index rewrite for post-commit drain when a flush deferral scope is open on
+   * the current thread (it is reached from a rename/move/domain cascade inside the wrapped DB
+   * transaction). The entity locator is retained so a failed post-commit drain re-enqueues this
+   * entity to the durable retry outbox. Returns {@code false} (run inline) for every non-flush
+   * caller — the post-commit search-index handler, reindex apps, lineage jobs.
+   */
+  private boolean deferEntityIndex(EntityInterface entity, Long relationshipRevision) {
+    EntityReference ref = entity.getEntityReference();
+    return deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityIndex(entity, relationshipRevision),
+            "updateEntityIndex",
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            ref != null ? ref.getType() : null));
+  }
+
+  /**
+   * Update search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void updateEntityIndex(EntityInterface entity) {
+    updateEntityIndex(entity, null);
+  }
+
+  public void updateEntityIndex(EntityInterface entity, Long relationshipRevision) {
+    if (entity == null) {
+      LOG.warn("Entity is null, cannot update index.");
+      return;
+    }
+    if (deferEntityIndex(entity, relationshipRevision)) {
+      return;
+    }
+
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    if (!Entity.isSearchIndexable(entity)) {
+      deleteEntityIndex(entity);
+      return;
+    }
+
+    String entityType = entity.getEntityReference().getType();
+    String entityId = entity.getId().toString();
+    if (shouldSkipStreamingIndexing(
+        entityType, entityId, entity.getFullyQualifiedName(), "updateEntityIndex")) {
+      return;
+    }
+
+    // Start timing search operation
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    long startTime = System.currentTimeMillis();
+
+    try {
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      String scriptTxt = DEFAULT_UPDATE_SCRIPT;
+      Map<String, Object> doc = new HashMap<>();
+
+      ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+
+      if (relationshipRevision != null) {
+        RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+        if (revisionSpec == null) {
+          throw new IllegalArgumentException(
+              "Relationship revisions can only update test cases and logical test suites");
+        }
+        SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+        doc =
+            new HashMap<>(
+                searchIndex.buildSearchIndexDoc(
+                    DocBuildContext.withRelationshipRevision(relationshipRevision)));
+        doc =
+            SearchIndexUtils.stripDocMapIfOversized(
+                doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+        applyRelationshipRevision(entity, doc, relationshipRevision);
+        scriptTxt = revisionSpec.replacementScript();
+      } else {
+        boolean isNonVersionedUpdate =
+            changeDescription != null
+                && entity.getChangeDescription() != null
+                && Objects.equals(
+                    entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+        ScriptedPartialUpdate partialUpdate =
+            buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
+        if (partialUpdate != null) {
+          scriptTxt = partialUpdate.script();
+          doc = partialUpdate.parameters();
+        } else {
+          if (isNonVersionedUpdate && changeDescription != null) {
+            LOG.debug(
+                "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
+                entityType,
+                entityId,
+                getChangedFieldNames(changeDescription));
+          }
+          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+          doc = searchIndex.buildSearchIndexDoc();
+          doc =
+              SearchIndexUtils.stripDocMapIfOversized(
+                  doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+          ScriptedPartialUpdate relationshipDocumentUpdate =
+              buildRelationshipDocumentUpdate(entity, doc);
+          if (relationshipDocumentUpdate != null) {
+            scriptTxt = relationshipDocumentUpdate.script();
+            doc = relationshipDocumentUpdate.parametersForIndexing();
+          }
+        }
+      }
+
+      searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+
+      if (Entity.TABLE.equals(entityType)) {
+        try {
+          syncTableColumns((Table) entity, changeDescription);
+        } catch (Exception e) {
+          LOG.error(
+              "Column sync failed for [{}], continuing with propagation",
+              entity.getFullyQualifiedName(),
+              e);
+        }
+      }
+
+      long updateTime = System.currentTimeMillis() - startTime;
+
+      // Only propagate if fields that affect children have changed
+      long propagateTime = 0;
+      if (requiresPropagation(changeDescription, entityType, entity)) {
+        // Time propagation operations
+        startTime = System.currentTimeMillis();
+        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
+        propagateTime = System.currentTimeMillis() - startTime;
+
+        LOG.info(
+            "Search index update with propagation - entity: {}, type: {}, update: {}ms, propagate: {}ms, total: {}ms",
+            entityId,
+            entityType,
+            updateTime,
+            propagateTime,
+            updateTime + propagateTime);
+      } else {
+        LOG.info(
+            "Search index update without propagation - entity: {}, type: {}, update: {}ms",
+            entityId,
+            entityType,
+            updateTime);
+      }
+
+      // Record search index metrics
+      Tags tags = Tags.of("entity_type", entityType, "operation", "update");
+      Metrics.timer("search.index.update", tags)
+          .record(updateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+      if (propagateTime > 0) {
+        Metrics.timer("search.index.propagate", tags)
+            .record(propagateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+        Metrics.counter("search.index.propagation.executed", tags).increment();
+      } else {
+        Metrics.counter("search.index.propagation.skipped", tags).increment();
+      }
+    } catch (Exception ie) {
+      enqueueEntityRetry(entity, "updateEntityIndex", ie);
+      LOG.error(
+          "Issue updating the search document for entity [{}] and entityType [{}]",
+          entityId,
+          entityType,
+          ie);
+    } finally {
+      // End search timing
+      if (searchSample != null) {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
+    }
+  }
+
+  public void bulkIndexPipelineExecutions(
+      Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
+    try {
+      String indexName = routeToStagedIfActive(getIndexOrAliasName("pipeline_status_search_index"));
+      List<Map<String, String>> docsAndIds = new ArrayList<>();
+      for (PipelineStatus pipelineStatus : pipelineStatuses) {
+        PipelineExecutionIndex pipelineExecutionIndex =
+            new PipelineExecutionIndex(pipeline, pipelineStatus);
+        Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
+        String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
+        String docJson = JsonUtils.pojoToJson(doc);
+        docsAndIds.add(Map.of(docId, docJson));
+      }
+      searchClient.createEntities(indexName, docsAndIds);
+      LOG.debug(
+          "Bulk indexed {} pipeline executions for {}",
+          pipelineStatuses.size(),
+          pipeline.getFullyQualifiedName());
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          pipeline.getId() != null ? pipeline.getId().toString() : null,
+          pipeline.getFullyQualifiedName(),
+          Entity.PIPELINE,
+          SearchIndexRetryQueue.failureReason("bulkIndexPipelineExecutions", e));
+      LOG.error("Failed to bulk index pipeline executions in Elasticsearch", e);
+    }
+  }
+
+  public void updateEntity(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntity(entityReference),
+            "updateEntity",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    // Fetch only the fields this entity's search index needs, never "*". For container
+    // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
+    // large catalogs — and can OOM the server on a single live update. The required-field
+    // set is the same one the reindex pipeline uses, so live updates and reindex stay
+    // consistent and bounded.
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+    EntityInterface entity =
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+    entity.setChangeDescription(null);
+    updateEntityIndex(entity);
+  }
+
+  /**
+   * Re-index a moved asset AND propagate its (re-derived) domains to its inherited descendants in
+   * search. Used by the Domain-page asset add/remove route: on add the re-read domains are the newly
+   * assigned domain; on remove they are whatever the asset now inherits from its own ancestry (or
+   * none). Reuses the same rebuilt-from-DB read {@link #updateEntity(EntityReference)} performs — so
+   * it inherits its deferral (drained post-commit under a flush scope; read-your-writes inline
+   * otherwise) and correctness — then fans the same re-derived domains out to children through the
+   * inherited-guarded {@code ADD_DOMAINS_SCRIPT}, leaving descendants with an explicit domain
+   * untouched.
+   */
+  public void updateEntityAndPropagateInheritedDomainsToChildren(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityAndPropagateInheritedDomainsToChildren(entityReference),
+            "updateEntityAndPropagateInheritedDomainsToChildren",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+    EntityInterface entity =
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+    entity.setChangeDescription(null);
+    updateEntityIndex(entity);
+    propagateInheritedDomainsForType(
+        entityReference.getType(),
+        List.of(entityReference.getId()),
+        listOrEmpty(entity.getDomains()));
+  }
+
+  /**
+   * Re-read each referenced entity with the same bounded field set {@link
+   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
+   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
+   * into a single bulk request. Duplicate references are resolved only once; chunking of the
+   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
+   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   */
+  public void updateEntitiesByReference(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return;
+    }
+    Set<String> seen = new HashSet<>();
+    List<EntityInterface> entities = new ArrayList<>(references.size());
+    for (EntityReference reference : references) {
+      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
+      // re-index needlessly. Skip malformed refs too.
+      if (reference == null
+          || reference.getId() == null
+          || reference.getType() == null
+          || !seen.add(reference.getType() + ":" + reference.getId())) {
+        continue;
+      }
+      try {
+        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
+        String fields =
+            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
+        EntityInterface entity =
+            entityRepository.get(
+                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entity.setChangeDescription(null);
+        entities.add(entity);
+      } catch (EntityNotFoundException e) {
+        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
+        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
+        // entity's own delete cascade removes its document.
+        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      }
+    }
+    updateEntitiesIndex(entities);
+  }
+
+  /**
+   * Bulk update multiple entities in the search index. This is much more efficient than calling
+   * updateEntity() for each entity individually.
+   *
+   * <p>This method groups entities by type before indexing to ensure each entity goes to the
+   * correct index. This is critical during multi-level imports where entities of different types
+   * may be batched together.
+   *
+   * @param entities List of entities to update in the search index
+   */
+  public void updateEntitiesIndex(List<? extends EntityInterface> entities) {
+    updateEntitiesIndexInternal(entities, Map.of());
+  }
+
+  public void updateEntitiesIndex(
+      List<? extends EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+    updateEntitiesIndexInternal(entities, relationshipRevisions);
+  }
+
+  private void updateEntitiesIndexInternal(
+      List<? extends EntityInterface> entities, Map<UUID, Long> suppliedRelationshipRevisions) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, Long> relationshipRevisions =
+        suppliedRelationshipRevisions == null
+            ? Map.of()
+            : Map.copyOf(suppliedRelationshipRevisions);
+
+    // Keep only the latest state per (entityType, entityId) within the same bulk call.
+    // This avoids repeated writes/propagation for duplicates in a single request.
+    Map<String, EntityInterface> dedupedEntities = new LinkedHashMap<>();
+    for (EntityInterface entity : entities) {
+      if (entity == null || entity.getId() == null || entity.getEntityReference() == null) {
+        continue;
+      }
+      String entityType = entity.getEntityReference().getType();
+      if (nullOrEmpty(entityType)) {
+        continue;
+      }
+      String key = entityType + ":" + entity.getId();
+      dedupedEntities.remove(key);
+      dedupedEntities.put(key, entity);
+    }
+    if (dedupedEntities.isEmpty()) {
+      return;
+    }
+
+    // Group entities by their actual type to ensure each goes to the correct index
+    Map<String, List<EntityInterface>> entitiesByType = new HashMap<>();
+    for (EntityInterface entity : dedupedEntities.values()) {
+      if (entity == null
+          || entity.getEntityReference() == null
+          || !checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+        continue;
+      }
+
+      String actualType = entity.getEntityReference().getType();
+      entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
+    }
+
+    int batchSize = 100;
+    int maxConcurrentRequests = 5;
+    long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
+    List<EntityInterface> propagationCandidates = new ArrayList<>();
+
+    // Process each entity type separately to ensure correct index routing
+    for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<EntityInterface> typeEntities = new ArrayList<>();
+      for (EntityInterface entity : entry.getValue()) {
+        if (Entity.isSearchIndexable(entity)) {
+          typeEntities.add(entity);
+        } else {
+          // Mirror updateEntityIndex: a now-non-indexable entity (e.g. a memory flipped to
+          // PRIVATE/SHARED) must have its stale document removed from the index.
+          deleteEntityIndex(entity);
+        }
+      }
+      if (typeEntities.isEmpty()) {
+        continue;
+      }
+      Map<String, EntityInterface> typeEntitiesById =
+          typeEntities.stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      entity -> entity.getId().toString(), Function.identity()));
+      Map<String, EntityInterface> typeEntitiesByFqn =
+          typeEntities.stream()
+              .filter(entity -> !nullOrEmpty(entity.getFullyQualifiedName()))
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      EntityInterface::getFullyQualifiedName,
+                      Function.identity(),
+                      (first, ignored) -> first));
+
+      if (!getSearchClient().isClientAvailable()) {
+        for (EntityInterface entity : typeEntities) {
+          enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
+        }
+        continue;
+      }
+
+      BulkSink bulkSink = null;
+      boolean bulkWriteAttempted = false;
+      boolean bulkWriteReturned = false;
+      Set<String> failedEntityIds = ConcurrentHashMap.newKeySet();
+      Set<String> failedEntityFqns = ConcurrentHashMap.newKeySet();
+      AtomicInteger recordedBulkFailures = new AtomicInteger();
+      try {
+        bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+        bulkSink.setFailureCallback(
+            (failedEntityType, failedEntityId, failedEntityFqn, errorMessage, stage) -> {
+              recordedBulkFailures.incrementAndGet();
+              if (!nullOrEmpty(failedEntityId)) {
+                failedEntityIds.add(failedEntityId);
+              }
+              if (!nullOrEmpty(failedEntityFqn)) {
+                failedEntityFqns.add(failedEntityFqn);
+              }
+              EntityInterface failedEntity =
+                  !nullOrEmpty(failedEntityId) ? typeEntitiesById.get(failedEntityId) : null;
+              if (failedEntity == null && !nullOrEmpty(failedEntityFqn)) {
+                failedEntity = typeEntitiesByFqn.get(failedEntityFqn);
+              }
+              String failureReason = "updateEntitiesBulk " + stage + ": " + errorMessage;
+              if (failedEntity != null) {
+                enqueueEntityRetry(failedEntity, failureReason);
+              } else {
+                SearchIndexRetryQueue.enqueue(
+                    failedEntityId, failedEntityFqn, failedEntityType, failureReason);
+              }
+            });
+        Map<String, Object> contextData = new HashMap<>();
+        contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+        if (!relationshipRevisions.isEmpty()) {
+          contextData.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, relationshipRevisions);
+        }
+        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
+        bulkWriteAttempted = true;
+        bulkSink.write(typeEntities, contextData);
+        bulkWriteReturned = true;
+        boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+        StepStats sinkStats = bulkSink.getStats();
+        if (!completed
+            || recordedBulkFailures.get() > 0
+            || (sinkStats != null
+                && Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0) > 0)) {
+          throw new IOException(
+              "Bulk entity update did not complete successfully for type " + entityType);
+        }
+        propagationCandidates.addAll(typeEntities);
+      } catch (Exception e) {
+        LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
+        boolean bulkSinkQuiescent = false;
+        StepStats finalSinkStats = null;
+        if (bulkSink != null) {
+          bulkSinkQuiescent = closeBulkSinkAndCheckQuiescent(bulkSink);
+          finalSinkStats = bulkSink.getStats();
+          bulkSink = null;
+        }
+        if (!bulkWriteAttempted) {
+          for (EntityInterface entity : typeEntities) {
+            try {
+              Long relationshipRevision = relationshipRevisions.get(entity.getId());
+              if (relationshipRevision == null) {
+                updateEntityIndex(entity);
+              } else {
+                updateEntityIndex(entity, relationshipRevision);
+              }
+            } catch (Exception ex) {
+              LOG.error(
+                  "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+            }
+          }
+        } else {
+          Set<String> confirmedEntityIds = new HashSet<>();
+          if (bulkWriteReturned && bulkSinkQuiescent && finalSinkStats != null) {
+            addConfirmedPropagationCandidates(
+                typeEntities,
+                finalSinkStats,
+                recordedBulkFailures.get(),
+                failedEntityIds,
+                failedEntityFqns,
+                propagationCandidates,
+                confirmedEntityIds);
+          }
+          for (EntityInterface entity : typeEntities) {
+            String entityId = entity.getId().toString();
+            String entityFqn = entity.getFullyQualifiedName();
+            if (confirmedEntityIds.contains(entityId)
+                || failedEntityIds.contains(entityId)
+                || (entityFqn != null && failedEntityFqns.contains(entityFqn))) {
+              continue;
+            }
+            enqueueEntityRetry(
+                entity,
+                "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
+                e);
+          }
+        }
+      } finally {
+        if (bulkSink != null) {
+          closeBulkSinkAndCheckQuiescent(bulkSink);
+        }
+      }
+    }
+
+    propagateEntitiesAfterBulkFlush(propagationCandidates);
+  }
+
+  private boolean closeBulkSinkAndCheckQuiescent(BulkSink bulkSink) {
+    try {
+      bulkSink.close();
+      return bulkSink.getActiveBulkRequestCount() == 0;
+    } catch (Exception e) {
+      LOG.warn("Error closing bulk sink", e);
+      return false;
+    }
+  }
+
+  private void addConfirmedPropagationCandidates(
+      List<EntityInterface> entities,
+      StepStats sinkStats,
+      int recordedFailures,
+      Set<String> failedEntityIds,
+      Set<String> failedEntityFqns,
+      List<EntityInterface> propagationCandidates,
+      Set<String> confirmedEntityIds) {
+    int failedRecords = Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0);
+    if (failedRecords == 0 && recordedFailures == 0) {
+      propagationCandidates.addAll(entities);
+      entities.forEach(entity -> confirmedEntityIds.add(entity.getId().toString()));
+      return;
+    }
+    if (recordedFailures < failedRecords) {
+      LOG.warn(
+          "Skipping bulk propagation because only {} of {} failed records were identified",
+          recordedFailures,
+          failedRecords);
+      return;
+    }
+    for (EntityInterface entity : entities) {
+      if (!failedEntityIds.contains(entity.getId().toString())
+          && (entity.getFullyQualifiedName() == null
+              || !failedEntityFqns.contains(entity.getFullyQualifiedName()))) {
+        propagationCandidates.add(entity);
+        confirmedEntityIds.add(entity.getId().toString());
+      }
+    }
+  }
+
+  private void propagateEntitiesAfterBulkFlush(Iterable<EntityInterface> entities) {
+    int candidates = 0;
+    int propagated = 0;
+    long startTime = System.currentTimeMillis();
+
+    for (EntityInterface entity : entities) {
+      if (entity == null || entity.getId() == null || entity.getEntityReference() == null) {
+        continue;
+      }
+      String entityType = entity.getEntityReference().getType();
+      if (!checkIfIndexingIsSupported(entityType)) {
+        continue;
+      }
+
+      ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
+      ChangeDescription changeDescription =
+          !isNullOrEmptyChangeDescription(incrementalChangeDescription)
+              ? incrementalChangeDescription
+              : entity.getChangeDescription();
+
+      if (!requiresPropagation(changeDescription, entityType, entity)) {
+        continue;
+      }
+
+      candidates++;
+      try {
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
+        propagated++;
+      } catch (Exception e) {
+        LOG.error(
+            "Error propagating bulk search updates for entity {} of type {}",
+            entity.getId(),
+            entityType,
+            e);
+      }
+    }
+
+    if (candidates > 0) {
+      LOG.info(
+          "Bulk propagation phase completed: candidates={}, propagated={}, durationMs={}",
+          candidates,
+          propagated,
+          System.currentTimeMillis() - startTime);
+    }
+  }
+
+  void propagateEntityAfterRetry(
+      EntityInterface entity, ChangeDescription propagationChangeDescription) throws IOException {
+    if (entity == null || entity.getId() == null || entity.getEntityReference() == null) {
+      return;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (!checkIfIndexingIsSupported(entityType)
+        || !requiresPropagation(propagationChangeDescription, entityType, entity)) {
+      return;
+    }
+    propagateEntitySearchChanges(
+        entity, entityType, propagationChangeDescription, entityIndexMap.get(entityType));
+  }
+
+  private void propagateEntitySearchChanges(
+      EntityInterface entity,
+      String entityType,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping)
+      throws IOException {
+    propagateInheritedFieldsToChildren(
+        entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
+    propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
+    propagateCertificationTags(entityType, entity, changeDescription);
+    propagateServiceStyle(entityType, entity, changeDescription);
+    propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+  }
+
+  private void enqueueEntityRetry(EntityInterface entity, String failureReason) {
+    if (entity == null) {
+      return;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!isNullOrEmptyChangeDescription(changeDescription)) {
+      SearchIndexRetryQueue.enqueueWithPropagation(entity, changeDescription, failureReason);
+      return;
+    }
+    String entityType =
+        entity.getEntityReference() != null ? entity.getEntityReference().getType() : "";
+    SearchIndexRetryQueue.enqueue(
+        entity.getId() != null ? entity.getId().toString() : null,
+        entity.getFullyQualifiedName(),
+        entityType,
+        failureReason);
+  }
+
+  private void enqueueEntityRetry(EntityInterface entity, String operation, Throwable failure) {
+    if (entity == null) {
+      return;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!isNullOrEmptyChangeDescription(changeDescription)) {
+      SearchIndexRetryQueue.enqueueWithPropagation(entity, changeDescription, operation, failure);
+      return;
+    }
+    SearchIndexRetryQueue.enqueue(entity, operation, failure);
+  }
+
+  public void updateEntitiesBulk(List<? extends EntityInterface> entities) {
+    updateEntitiesIndex(entities);
+  }
+
+  /**
+   * Bulk updates domain references for assets when a data product's domain changes. This is more
+   * efficient than updating each entity individually as it uses a single update-by-query operation.
+   *
+   * @param dataProductFqn the fully qualified name of the data product
+   * @param oldDomainFqns list of old domain FQNs to remove from assets
+   * @param newDomains list of new domain references to add to assets
+   */
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
+            "updateAssetDomainsForDataProduct",
+            null,
+            dataProductFqn,
+            null))) {
+      return;
+    }
+    Timer.Sample s = RequestLatencyContext.startSearchOperation();
+    if (!getSearchClient().isClientAvailable()) {
+      SearchIndexRetryQueue.enqueue(
+          null, dataProductFqn, "updateAssetDomainsForDataProduct: Search client unavailable");
+      return;
+    }
+    try {
+      getSearchClient().updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null,
+          dataProductFqn,
+          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
+    } finally {
+      RequestLatencyContext.endSearchOperation(s);
+    }
+  }
+
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains),
+            "updateAssetDomainsByIds",
+            null,
+            null,
+            null))) {
+      return;
+    }
+    Timer.Sample s = RequestLatencyContext.startSearchOperation();
+
+    if (!getSearchClient().isClientAvailable()) {
+      for (UUID assetId : listOrEmpty(assetIds)) {
+        SearchIndexRetryQueue.enqueue(
+            assetId != null ? assetId.toString() : null,
+            null,
+            "updateAssetDomainsByIds: Search client unavailable");
+      }
+      return;
+    }
+    try {
+      getSearchClient().updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+    } catch (Exception e) {
+      for (UUID assetId : listOrEmpty(assetIds)) {
+        SearchIndexRetryQueue.enqueue(
+            assetId != null ? assetId.toString() : null,
+            null,
+            SearchIndexRetryQueue.failureReason("updateAssetDomainsByIds", e));
+      }
+    } finally {
+      RequestLatencyContext.endSearchOperation(s);
+    }
+  }
+
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateDomainFqnByPrefix(oldFqn, newFqn),
+            "updateDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
+    Timer.Sample s = RequestLatencyContext.startSearchOperation();
+    if (!getSearchClient().isClientAvailable()) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, "updateDomainFqnByPrefix: Search client unavailable");
+      return;
+    }
+    try {
+      getSearchClient().updateDomainFqnByPrefix(oldFqn, newFqn);
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
+    } finally {
+      RequestLatencyContext.endSearchOperation(s);
+    }
+  }
+
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainFqnByPrefix(oldFqn, newFqn),
+            "updateAssetDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
+    Timer.Sample s = RequestLatencyContext.startSearchOperation();
+
+    if (!getSearchClient().isClientAvailable()) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, "updateAssetDomainFqnByPrefix: Search client unavailable");
+      return;
+    }
+    try {
+      getSearchClient().updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
+    } finally {
+      RequestLatencyContext.endSearchOperation(s);
+    }
+  }
+
+  public boolean checkIfIndexingIsSupported(String entityType) {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    if (indexMapping == null) {
+      LOG.debug("Index mapping is not supported for entity type: {}", entityType);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Targeted partial update of a single field in an entity's search document via a Painless script,
+   * without rebuilding the whole document. Used to keep a derived denormalized field fresh when a
+   * related entity changes. The ES write is routed through {@link #deferIfFlushScopeActive} so it is
+   * drained after commit when a flush scope is open, never blocking while a DB connection is held.
+   */
+  public void updateEntityFieldInSearch(
+      String entityType, String entityId, String entityFqn, String field, Object value) {
+    if (!checkIfIndexingIsSupported(entityType)) {
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    Map<String, Object> params = new HashMap<>();
+    params.put(field, value);
+    String indexName = getWriteIndexName(indexMapping);
+    String script = String.format("ctx._source.%s = params.%s;", field, field);
+    deferIfFlushScopeActive(
+        () -> searchClient.updateEntity(indexName, entityId, params, script),
+        "updateEntityFieldInSearch:" + field,
+        entityId,
+        entityFqn,
+        entityType);
+  }
+
+  /**
+   * Determines if changes require propagation to child entities.
+   * Only propagate when fields that actually affect children have been modified.
+   */
+  private boolean requiresPropagation(
+      ChangeDescription changeDescription, String entityType, EntityInterface entity) {
+    if (changeDescription == null) return false;
+
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    Set<String> propagatedFields =
+        repository.getSearchPropagationDescriptors().stream()
+            .map(PropagationDescriptor::fieldName)
+            .collect(Collectors.toSet());
+
+    return Stream.of(
+            changeDescription.getFieldsAdded(),
+            changeDescription.getFieldsUpdated(),
+            changeDescription.getFieldsDeleted())
+        .flatMap(List::stream)
+        .anyMatch(field -> propagatedFields.contains(field.getName()));
+  }
+
+  public void propagateInheritedFieldsToChildren(
+      String entityType,
+      String entityId,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface entity)
+      throws IOException {
+    if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity, entityType);
+      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
+        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+          propagateToDomainChildren(entityId, indexMapping, updates);
+        } else {
+          String parentFieldName = resolveParentFieldName(entityType, updates);
+          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+          List<String> entityChildren =
+              filterChildAliasesByCapability(
+                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
+          if (!nullOrEmpty(entityChildren)) {
+            searchClient.updateChildren(entityChildren, parentMatch, updates);
+          }
+        }
+      }
+    }
+  }
+
+  private List<String> filterChildAliasesByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = indexMapping.getChildAliases();
+    if (nullOrEmpty(childAliases)) {
+      return List.of();
+    }
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliases.stream()
+        .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
+  }
+
+  private String resolveParentFieldName(
+      String entityType, Pair<String, Map<String, Object>> updates) {
+    if (!updates.getValue().isEmpty()
+        && (updates.getValue().keySet().stream()
+                .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
+            || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
+      if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
+        return SERVICE_ID;
+      }
+    }
+    return entityType + ".id";
+  }
+
+  /**
+   * Pushes a moved asset's new domains onto its inherited descendants in search. The asset-move
+   * routes (data product domain change, Domain page asset move) reindex only the direct asset's own
+   * doc, so descendants that inherit their domain keep the stale value in search even though the
+   * entity page recomputes it on read. This mirrors the child fan-out a normal entity update
+   * performs, reusing {@code ADD_DOMAINS_SCRIPT} which overwrites a child only when its domain is
+   * empty or inherited, leaving descendants that carry an explicit domain untouched.
+   *
+   * <p>The {@code updateByQuery} fan-out is routed through {@link #deferIfFlushScopeActive}, so when
+   * the move runs inside a create/update flush its blocking Elasticsearch round trip is drained after
+   * the DB commit rather than while a pooled DB connection is held, matching the sibling {@code
+   * updateEntity} / {@code updateAssetDomainsByIds} writes.
+   */
+  public void propagateInheritedDomainsToChildren(
+      List<EntityReference> assets, List<EntityReference> newDomains) {
+    if (!nullOrEmpty(assets)) {
+      Map<String, List<UUID>> assetIdsByType =
+          assets.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      EntityReference::getType,
+                      Collectors.mapping(EntityReference::getId, Collectors.toList())));
+      assetIdsByType.forEach(
+          (entityType, assetIds) ->
+              propagateInheritedDomainsForType(entityType, assetIds, newDomains));
+    }
+  }
+
+  private void propagateInheritedDomainsForType(
+      String entityType, List<UUID> assetIds, List<EntityReference> newDomains) {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    List<String> childAliases =
+        indexMapping == null
+            ? List.of()
+            : filterChildAliasesByCapability(
+                indexMapping, capability -> capability == null || !capability.isTimeSeries());
+    if (!nullOrEmpty(childAliases)) {
+      Pair<String, Map<String, Object>> updates = buildInheritedDomainUpdate(newDomains);
+      String parentField = resolveParentFieldName(entityType, updates);
+      List<String> parentIds = assetIds.stream().map(UUID::toString).toList();
+      // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count on an
+      // extreme bulk move; a normal move stays a single update-by-query.
+      for (int start = 0; start < parentIds.size(); start += MAX_PARENT_IDS_PER_TERMS_QUERY) {
+        List<String> chunk =
+            List.copyOf(
+                parentIds.subList(
+                    start, Math.min(start + MAX_PARENT_IDS_PER_TERMS_QUERY, parentIds.size())));
+        updateChildrenForInheritedDomains(childAliases, parentField, chunk, updates, entityType);
+      }
+    }
+  }
+
+  private Pair<String, Map<String, Object>> buildInheritedDomainUpdate(
+      List<EntityReference> newDomains) {
+    List<EntityReference> inheritedDomains =
+        newDomains == null
+            ? new ArrayList<>()
+            : JsonUtils.deepCopyList(newDomains, EntityReference.class);
+    inheritedDomains.forEach(domain -> domain.setInherited(true));
+    return new ImmutablePair<>(ADD_DOMAINS_SCRIPT, Map.of("updatedDomains", inheritedDomains));
+  }
+
+  private void updateChildrenForInheritedDomains(
+      List<String> childAliases,
+      String parentField,
+      List<String> parentIds,
+      Pair<String, Map<String, Object>> updates,
+      String entityType) {
+    deferIfFlushScopeActive(
+        () -> {
+          try {
+            searchClient.updateChildren(childAliases, parentField, parentIds, updates);
+          } catch (IOException e) {
+            String reason =
+                SearchIndexRetryQueue.failureReason("propagateInheritedDomainsToChildren", e);
+            parentIds.forEach(id -> SearchIndexRetryQueue.enqueue(id, null, entityType, reason));
+          }
+        },
+        "propagateInheritedDomainsToChildren",
+        null,
+        null,
+        entityType);
+  }
+
+  private void propagateToDomainChildren(
+      String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    searchClient.updateChildren(
+        List.of(getWriteIndexName(indexMapping)),
+        new ImmutablePair<>(PARENT_ID, domainId),
+        updates);
+    searchClient.updateChildren(
+        List.of(getWriteIndexName(entityIndexMap.get(Entity.DATA_PRODUCT))),
+        new ImmutablePair<>(DOMAINS_ID, domainId),
+        updates);
+  }
+
+  public void propagateGlossaryTags(
+      String entityType, String glossaryFQN, ChangeDescription changeDescription) {
+    Map<String, Object> fieldData = new HashMap<>();
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (propagateFields.contains(field.getName())) {
+          List<TagLabel> tagLabels =
+              JsonUtils.readObjects((String) field.getNewValue(), TagLabel.class);
+          tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+          fieldData.put("tagAdded", tagLabels);
+        }
+      }
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (propagateFields.contains(field.getName())) {
+          List<TagLabel> tagLabels =
+              JsonUtils.readObjects((String) field.getOldValue(), TagLabel.class);
+          tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+          fieldData.put("tagDeleted", tagLabels);
+        }
+      }
+      searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>(TAGS_FQN, glossaryFQN),
+          new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
+    }
+  }
+
+  private static final String CERTIFICATION_FIELD = "certification";
+  private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
+
+  public void propagateCertificationTags(
+      String entityType, EntityInterface entity, ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return;
+    }
+
+    if (Entity.TAG.equalsIgnoreCase(entityType)) {
+      handleTagEntityUpdate((Tag) entity, changeDescription);
+    } else {
+      handleEntityCertificationUpdate(entity, changeDescription);
+    }
+  }
+
+  private void handleTagEntityUpdate(Tag tagEntity, ChangeDescription changeDescription) {
+    String allowedClassification = getCertificationClassificationFromSettings();
+    if (allowedClassification == null) return;
+    if (!allowedClassification.equals(tagEntity.getClassification().getFullyQualifiedName()))
+      return;
+
+    String oldFQN = tagEntity.getFullyQualifiedName();
+    for (FieldChange field : changeDescription.getFieldsUpdated()) {
+      if (FIELD_NAME.equals(field.getName()) && field.getOldValue() != null) {
+        String parentFQN = FullyQualifiedName.getParentFQN(tagEntity.getFullyQualifiedName());
+        if (!nullOrEmpty(parentFQN)) {
+          oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
+        } else {
+          oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
+        }
+        break;
+      }
+    }
+    updateCertificationInSearch(tagEntity, oldFQN);
+  }
+
+  private void updateCertificationInSearch(Tag tagEntity, String oldFQN) {
+    Map<String, Object> paramMap = new HashMap<>();
+    paramMap.put("name", tagEntity.getName());
+    paramMap.put("description", tagEntity.getDescription());
+    paramMap.put("tagFQN", tagEntity.getFullyQualifiedName());
+    paramMap.put("style", tagEntity.getStyle());
+    searchClient.updateChildren(
+        DATA_ASSET_SEARCH_ALIAS,
+        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, oldFQN),
+        new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+  }
+
+  private String getCertificationClassificationFromSettings() {
+    return SettingsCache.getSettingOrDefault(
+            SettingsType.ASSET_CERTIFICATION_SETTINGS,
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"),
+            AssetCertificationSettings.class)
+        .getAllowedClassification();
+  }
+
+  private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
+    if (!isCertificationUpdated(change)) {
+      return;
+    }
+
+    AssetCertification certification = getCertificationFromEntity(entity);
+    updateEntityCertificationInSearch(entity, certification);
+    cascadeCertificationToChildren(entity, certification);
+  }
+
+  private void propagateServiceStyle(
+      String entityType, EntityInterface entity, ChangeDescription change) {
+    if (!SERVICE_ENTITY_SET.contains(entityType)
+        || !Entity.entityHasField(entityType, FIELD_STYLE)
+        || !isStyleUpdated(change)) {
+      return;
+    }
+    cascadeServiceStyleToChildren(entity, entity.getStyle());
+  }
+
+  private void cascadeServiceStyleToChildren(EntityInterface service, Style style) {
+    String type = service.getEntityReference().getType();
+    IndexMapping indexMapping = entityIndexMap.get(type);
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("style", style);
+
+    Pair<String, String> parentMatch = new ImmutablePair<>(SERVICE_ID, service.getId().toString());
+
+    try {
+      searchClient.updateChildren(
+          childAliases, parentMatch, new ImmutablePair<>(CASCADE_SERVICE_STYLE_SCRIPT, params));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to cascade style for service [{}]: {}",
+          service.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  // Pushes the cert change onto every child search doc denormalized from this
+  // entity. Without this the cert filter on the DQ dashboard (which queries
+  // children like test_case/test_case_result/test_case_resolution_status by
+  // `certification.tagLabel.tagFQN`) would silently use the stale cert until a
+  // reindex. RAW_REPLACE in PropagationDescriptor can't be used because it
+  // restores the old value on delete; we drive a dedicated script instead.
+  private void cascadeCertificationToChildren(
+      EntityInterface entity, AssetCertification certification) {
+    String type = entity.getEntityReference().getType();
+    if (!Entity.TABLE.equalsIgnoreCase(type)) {
+      // Scope: Table only. Dashboard/ApiCollection children also have cert in
+      // their mappings; extend here when those denormalization paths are added.
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(Entity.TABLE);
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("certification", certification); // null when cert was removed
+
+    Pair<String, String> parentMatch = new ImmutablePair<>("table.id", entity.getId().toString());
+
+    try {
+      searchClient.updateChildren(
+          childAliases, parentMatch, new ImmutablePair<>(CASCADE_CERTIFICATION_SCRIPT, params));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to cascade certification for table [{}]: {}",
+          entity.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  private boolean isCertificationUpdated(ChangeDescription change) {
+    return Stream.concat(
+            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+            change.getFieldsDeleted().stream())
+        .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
+  }
+
+  private boolean isStyleUpdated(ChangeDescription change) {
+    return Stream.concat(
+            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+            change.getFieldsDeleted().stream())
+        .anyMatch(fieldChange -> FIELD_STYLE.equals(fieldChange.getName()));
+  }
+
+  private AssetCertification getCertificationFromEntity(EntityInterface entity) {
+    return (AssetCertification) EntityUtil.getEntityField(entity, CERTIFICATION_FIELD);
+  }
+
+  private void updateEntityCertificationInSearch(
+      EntityInterface entity, AssetCertification certification) {
+    IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
+    String indexName = getWriteIndexName(indexMapping);
+    Map<String, Object> paramMap = new HashMap<>();
+
+    if (certification != null && certification.getTagLabel() != null) {
+      paramMap.put("name", certification.getTagLabel().getName());
+      paramMap.put("description", certification.getTagLabel().getDescription());
+      paramMap.put("tagFQN", certification.getTagLabel().getTagFQN());
+      paramMap.put("style", certification.getTagLabel().getStyle());
+    } else {
+      paramMap.put("name", null);
+      paramMap.put("description", null);
+      paramMap.put("tagFQN", null);
+      paramMap.put("style", null);
+    }
+
+    searchClient.updateEntity(
+        indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
+  }
+
+  public void propagateToRelatedEntities(
+      String entityType,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface entity) {
+
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
+      String indexName = getWriteIndexName(indexMapping);
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (field.getName().contains(PARENT)) {
+          String oldParentFQN = entity.getName();
+          String newParentFQN = entity.getFullyQualifiedName();
+          // Propagate FQN updates to all subchildren
+          searchClient.updateByFqnPrefix(
+              indexName, oldParentFQN, newParentFQN, FIELD_FULLY_QUALIFIED_NAME);
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (field.getName().contains(PARENT)) {
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          String originalFqn =
+              FullyQualifiedName.add(
+                  entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          String updatedFqn = entity.getFullyQualifiedName();
+          searchClient.updateByFqnPrefix(
+              indexName, originalFqn, updatedFqn, FIELD_FULLY_QUALIFIED_NAME);
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (field.getName().contains(PARENT)) {
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Remove the parent field from the entity in search
+          String parentFieldPath = "parent";
+          Map<String, Object> params = new HashMap<>();
+          params.put("field", parentFieldPath);
+          searchClient.updateEntity(
+              indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
+
+          // Propagate FQN updates to all subchildren
+          String originalFqn =
+              FullyQualifiedName.add(
+                  entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          searchClient.updateByFqnPrefix(
+              indexName, originalFqn, entity.getName(), FIELD_FULLY_QUALIFIED_NAME);
+        }
+      }
+    } else if (changeDescription != null
+        && (entityType.equalsIgnoreCase(Entity.CLASSIFICATION)
+            || entityType.equalsIgnoreCase(Entity.GLOSSARY)
+            || entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
+            || entityType.equalsIgnoreCase(Entity.TAG))) {
+
+      // Update the assets associated with the tags/terms in classification/glossary
+      Map<String, Object> paramMap = new HashMap<>();
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        String parentFQN = FullyQualifiedName.getParentFQN(entity.getFullyQualifiedName());
+        String oldFQN;
+        String newFQN;
+
+        if (!nullOrEmpty(parentFQN)) {
+          oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
+          newFQN = FullyQualifiedName.add(parentFQN, field.getNewValue().toString());
+        } else {
+          oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
+          newFQN = FullyQualifiedName.quoteName(field.getNewValue().toString());
+        }
+
+        if (FIELD_NAME.equals(field.getName())) {
+          searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
+        }
+
+        if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
+          Map<String, Object> updates = new HashMap<>();
+          updates.put("displayName", field.getNewValue().toString());
+          paramMap.put("tagFQN", entity.getFullyQualifiedName());
+          paramMap.put("updates", updates);
+          searchClient.updateChildren(
+              GLOBAL_SEARCH_ALIAS,
+              new ImmutablePair<>(TAGS_FQN, entity.getFullyQualifiedName()),
+              new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
+        }
+      }
+    }
+  }
+
+  private Pair<String, Map<String, Object>> getInheritedFieldChanges(
+      ChangeDescription changeDescription, EntityInterface entity, String entityType) {
+    StringBuilder scriptTxt = new StringBuilder();
+    Map<String, Object> fieldData = new HashMap<>();
+
+    if (changeDescription != null) {
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      Map<String, PropagationDescriptor> descriptorMap =
+          repo.getSearchPropagationDescriptors().stream()
+              .collect(Collectors.toMap(PropagationDescriptor::fieldName, Function.identity()));
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        PropagationDescriptor desc = descriptorMap.get(field.getName());
+        if (desc != null) appendDeleteScript(scriptTxt, fieldData, field, desc, entity);
+      }
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        PropagationDescriptor desc = descriptorMap.get(field.getName());
+        if (desc != null) appendUpdateScript(scriptTxt, fieldData, field, desc, entity);
+      }
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        PropagationDescriptor desc = descriptorMap.get(field.getName());
+        if (desc != null) appendAddScript(scriptTxt, fieldData, field, desc, entity);
+      }
+    }
+    return new ImmutablePair<>(scriptTxt.toString(), fieldData);
+  }
+
+  private void appendAddScript(
+      StringBuilder script,
+      Map<String, Object> data,
+      FieldChange field,
+      PropagationDescriptor desc,
+      EntityInterface entity) {
+    switch (desc.propagationType()) {
+      case ENTITY_REFERENCE_LIST -> {
+        if (field.getName().equals(FIELD_FOLLOWERS)) {
+          List<EntityReference> refs = copyWithInheritedFlag(entity.getFollowers());
+          data.put("updatedFollowers", refs);
+          script.append(ADD_FOLLOWERS_SCRIPT);
+        } else {
+          List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
+          refs.forEach(r -> r.setInherited(true));
+          data.put("updated" + capitalizeFirst(field.getName()), refs);
+          script.append(generateAddListScript(field.getName()));
+        }
+      }
+      case TAG_LABEL_LIST -> {
+        List<TagLabel> tagLabels =
+            JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        data.put("tagAdded", tagLabels);
+        script.append(generateAddTagLabelListScript());
+      }
+      case ENTITY_REFERENCE -> {
+        EntityReference ref =
+            JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+        script.append(
+            String.format(
+                PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName()));
+        data.put(field.getName(), ref);
+      }
+      case NESTED_FIELD -> {
+        data.put(field.getName(), field.getNewValue().toString());
+        script.append(
+            String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
+      }
+      case SIMPLE_VALUE -> {
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
+      }
+      case RAW_REPLACE -> {
+        data.put(field.getName(), field.getNewValue());
+        script.append(
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
+      }
+    }
+    script.append(" ");
+  }
+
+  private void appendDeleteScript(
+      StringBuilder script,
+      Map<String, Object> data,
+      FieldChange field,
+      PropagationDescriptor desc,
+      EntityInterface entity) {
+    switch (desc.propagationType()) {
+      case ENTITY_REFERENCE_LIST -> {
+        if (field.getName().equals(FIELD_FOLLOWERS)) {
+          List<EntityReference> refs = copyWithInheritedFlag(entity.getFollowers());
+          data.put("removedFollowers", refs);
+          script.append(REMOVE_FOLLOWERS_SCRIPT);
+        } else {
+          List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
+          refs.forEach(r -> r.setInherited(true));
+          data.put("removed" + capitalizeFirst(field.getName()), refs);
+          script.append(generateRemoveListScript(field.getName()));
+        }
+      }
+      case TAG_LABEL_LIST -> {
+        List<TagLabel> tagLabels =
+            JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        data.put("tagDeleted", tagLabels);
+        script.append(generateDeleteTagLabelListScript());
+      }
+      case ENTITY_REFERENCE -> {
+        Object oldValue = field.getOldValue();
+        if (!nullOrEmpty(oldValue)) {
+          EntityReference ref = JsonUtils.readValue(oldValue.toString(), EntityReference.class);
+          script.append(
+              String.format(
+                  REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                  field.getName(),
+                  field.getName(),
+                  field.getName()));
+          data.put(field.getName(), ref);
+        }
+      }
+      case SIMPLE_VALUE -> {
+        script.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+      }
+      case RAW_REPLACE -> {
+        data.put(field.getName(), field.getOldValue());
+        script.append(
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
+      }
+    }
+    script.append(" ");
+  }
+
+  private void appendUpdateScript(
+      StringBuilder script,
+      Map<String, Object> data,
+      FieldChange field,
+      PropagationDescriptor desc,
+      EntityInterface entity) {
+    switch (desc.propagationType()) {
+      case ENTITY_REFERENCE_LIST -> {
+        if (field.getName().equals(FIELD_FOLLOWERS)) {
+          List<EntityReference> refs = copyWithInheritedFlag(entity.getFollowers());
+          data.put("updatedFollowers", refs);
+          script.append(ADD_FOLLOWERS_SCRIPT);
+        } else {
+          List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
+          refs.forEach(r -> r.setInherited(true));
+          data.put("updated" + capitalizeFirst(field.getName()), refs);
+          script.append(generateAddListScript(field.getName()));
+        }
+      }
+      case TAG_LABEL_LIST -> {
+        List<TagLabel> addedTags =
+            JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
+        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        List<TagLabel> deletedTags =
+            JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
+        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        data.put("tagAdded", addedTags);
+        data.put("tagDeleted", deletedTags);
+        script.append(generateUpdateTagLabelListScript());
+      }
+      case ENTITY_REFERENCE -> {
+        EntityReference ref =
+            JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+        script.append(
+            String.format(
+                UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName()));
+        data.put(
+            "entityBeforeUpdate",
+            JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
+        data.put(field.getName(), ref);
+      }
+      case SIMPLE_VALUE -> {
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
+      }
+      case NESTED_FIELD -> {
+        data.put(field.getName(), field.getNewValue().toString());
+        script.append(
+            String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
+      }
+      case RAW_REPLACE -> {
+        data.put(field.getName(), field.getNewValue());
+        script.append(
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
+      }
+    }
+    script.append(" ");
+  }
+
+  private List<EntityReference> resolveEntityReferenceList(
+      String fieldName, EntityInterface entity) {
+    return switch (fieldName) {
+      case "owners" -> entity.getOwners() != null
+          ? JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class)
+          : List.of();
+      case "domains" -> entity.getDomains() != null
+          ? JsonUtils.deepCopyList(entity.getDomains(), EntityReference.class)
+          : List.of();
+      case "dataProducts" -> entity.getDataProducts() != null
+          ? JsonUtils.deepCopyList(entity.getDataProducts(), EntityReference.class)
+          : List.of();
+      case "followers" -> entity.getFollowers() != null
+          ? JsonUtils.deepCopyList(entity.getFollowers(), EntityReference.class)
+          : List.of();
+      default -> List.of();
+    };
+  }
+
+  private String generateAddListScript(String fieldName) {
+    String cap = capitalizeFirst(fieldName);
+    return String.format(
+        """
+        if (ctx._source.%s == null || ctx._source.%s.isEmpty() ||
+            (ctx._source.%s.size() > 0 && ctx._source.%s[0] != null && ctx._source.%s[0].inherited == true)) {
+          ctx._source.%s = params.updated%s;
+        }
+        """,
+        fieldName, fieldName, fieldName, fieldName, fieldName, fieldName, cap);
+  }
+
+  private String generateRemoveListScript(String fieldName) {
+    String cap = capitalizeFirst(fieldName);
+    // Re-add the (inherited) refs only when the child keeps no explicit value of its own.
+    // A domain/owner change is recorded as delete-old + add-new, so this delete branch runs with
+    // params.removed<Field> holding the parent's NEW inherited refs; without the emptiness guard it
+    // would append them onto children that carry an explicit value, matching generateAddListScript.
+    return String.format(
+        """
+        if (ctx._source.%s != null) {
+          ctx._source.%s.removeIf(item -> item.inherited == true);
+          if (ctx._source.%s.isEmpty()) {
+            ctx._source.%s.addAll(params.removed%s);
+          }
+        }
+        """,
+        fieldName, fieldName, fieldName, fieldName, cap);
+  }
+
+  private String generateAddTagLabelListScript() {
+    return """
+        if (ctx._source.tags == null) {
+          ctx._source.tags = [];
+        }
+        if (params.tagAdded != null) {
+          for (def newTag : params.tagAdded) {
+            boolean exists = false;
+            for (def existing : ctx._source.tags) {
+              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) {
+              ctx._source.tags.add(newTag);
+            }
+          }
+        }
+        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  private String generateDeleteTagLabelListScript() {
+    return """
+        if (ctx._source.tags != null && params.tagDeleted != null) {
+          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+            for (int j = 0; j < params.tagDeleted.size(); j++) {
+              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                ctx._source.tags.remove(i);
+                break;
+              }
+            }
+          }
+        }
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  private String generateUpdateTagLabelListScript() {
+    return """
+        if (ctx._source.tags != null && params.tagDeleted != null) {
+          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+            for (int j = 0; j < params.tagDeleted.size(); j++) {
+              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                ctx._source.tags.remove(i);
+                break;
+              }
+            }
+          }
+        }
+        if (ctx._source.tags == null) {
+          ctx._source.tags = [];
+        }
+        if (params.tagAdded != null) {
+          for (def newTag : params.tagAdded) {
+            boolean exists = false;
+            for (def existing : ctx._source.tags) {
+              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) {
+              ctx._source.tags.add(newTag);
+            }
+          }
+        }
+        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    try {
+      IndexMapping indexMapping = getIndexMapping(entityType);
+      searchClient.deleteByScript(getWriteIndexName(indexMapping), scriptTxt, params);
+    } catch (Exception ie) {
+      LOG.error("Issue deleting search document for entityType [{}]", entityType, ie);
+    } finally {
+      RequestLatencyContext.endSearchOperation(searchSample);
+    }
+  }
+
+  /**
+   * Delete search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void deleteEntityIndex(EntityInterface entity) {
+    if (entity == null) {
+      LOG.debug("Entity or EntityReference is null, cannot perform delete.");
+      return;
+    }
+
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    String entityId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    if (shouldSkipStreamingIndexing(
+        entityType, entityId, entity.getFullyQualifiedName(), "deleteEntityIndex")) {
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    try {
+      searchClient.deleteEntity(getWriteIndexName(indexMapping), entityId);
+      deleteOrUpdateChildren(entity, indexMapping);
+      if (Entity.TABLE.equals(entityType)) {
+        deleteTableColumns((Table) entity);
+      } else {
+        deleteDescendantColumns(entity, entityType);
+      }
+    } catch (Exception ie) {
+      SearchIndexRetryQueue.enqueue(
+          entityId,
+          entity.getFullyQualifiedName(),
+          SearchIndexRetryQueue.failureReason("deleteEntityIndex", ie));
+      LOG.error(
+          "Issue deleting the search document for entityID [{}] and entityType [{}]",
+          entityId,
+          entityType,
+          ie);
+    } finally {
+      RequestLatencyContext.endSearchOperation(searchSample);
+    }
+  }
+
+  public void deleteEntityByFQNPrefix(EntityInterface entity) {
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      String fqn = entity.getFullyQualifiedName();
+      if (!getSearchClient().isClientAvailable()) {
+        SearchIndexRetryQueue.enqueue(
+            entity.getId() != null ? entity.getId().toString() : null,
+            fqn,
+            "deleteEntityByFQNPrefix: Search client unavailable");
+        return;
+      }
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+      try {
+        searchClient.deleteEntityByFQNPrefix(getWriteIndexName(indexMapping), fqn);
+      } catch (Exception ie) {
+        SearchIndexRetryQueue.enqueue(
+            entity.getId() != null ? entity.getId().toString() : null,
+            fqn,
+            SearchIndexRetryQueue.failureReason("deleteEntityByFQNPrefix", ie));
+        LOG.error(
+            "Issue deleting the search document for entityFQN [{}] and entityType [{}]",
+            fqn,
+            entityType,
+            ie);
+      } finally {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
+    }
+  }
+
+  public void deleteTimeSeriesEntityById(EntityTimeSeriesInterface entity) {
+    if (entity != null) {
+      String entityId = entity.getId().toString();
+      String entityType = entity.getEntityReference().getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+      try {
+        searchClient.deleteEntity(getWriteIndexName(indexMapping), entityId);
+      } catch (Exception ie) {
+        SearchIndexRetryQueue.enqueue(
+            entityId,
+            entity.getEntityReference() != null
+                ? entity.getEntityReference().getFullyQualifiedName()
+                : null,
+            entityType,
+            SearchIndexRetryQueue.failureReason("deleteTimeSeriesEntityById", ie));
+        LOG.error(
+            "Issue deleting the search document for entityID [{}] and entityType [{}]",
+            entityId,
+            entityType,
+            ie);
+      } finally {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
+    }
+  }
+
+  /**
+   * Soft delete or restore search index for an entity only (no lifecycle events).
+   * This method is used by SearchIndexHandler.
+   */
+  public void softDeleteOrRestoreEntityIndex(EntityInterface entity, boolean delete) {
+    if (entity == null) {
+      LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
+      return;
+    }
+
+    if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
+      LOG.debug(
+          "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    String entityId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    if (shouldSkipStreamingIndexing(
+        entityType, entityId, entity.getFullyQualifiedName(), "softDeleteOrRestoreEntityIndex")) {
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    try {
+      searchClient.softDeleteOrRestoreEntity(
+          getWriteIndexName(indexMapping), entityId, script.painless());
+      softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+
+      if (Entity.TABLE.equals(entityType)) {
+        softDeleteOrRestoreTableColumns((Table) entity, delete);
+      }
+    } catch (Exception ie) {
+      SearchIndexRetryQueue.enqueue(
+          entityId,
+          entity.getFullyQualifiedName(),
+          SearchIndexRetryQueue.failureReason("softDeleteOrRestoreEntityIndex", ie));
+      LOG.error(
+          "Issue soft deleting the search document for entityID [{}] and entityType [{}]",
+          entityId,
+          entityType,
+          ie);
+    } finally {
+      RequestLatencyContext.endSearchOperation(searchSample);
+    }
+  }
+
+  private void softDeleteOrRestoreTableColumns(Table table, boolean delete) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    SoftDeleteScript script = new SoftDeleteScript(delete);
+    try {
+      searchClient.updateChildren(
+          List.of(columnIndexMapping.getIndexName(clusterAlias)),
+          new ImmutablePair<>("table.id", table.getId().toString()),
+          new ImmutablePair<>(script.painless(), null));
+    } catch (Exception e) {
+      LOG.error(
+          "Issue soft deleting/restoring columns for table [{}]: {}",
+          table.getFullyQualifiedName(),
+          e.getMessage());
+      if (e instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
+      throws IOException {
+    String docId = entity.getId().toString();
+    String entityType = entity.getEntityReference().getType();
+    switch (entityType) {
+      case Entity.DOMAIN -> {
+        // Assets store the domain in the plural "domains" array, so strip the deleted domain from
+        // every referencing asset by matching domains.id. Matching the singular "domain" field left
+        // stale references behind, which a same-named recreated domain then inherited (#28923).
+        searchClient.updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>("domains.id", docId),
+            new ImmutablePair<>(
+                REMOVE_DOMAINS_CHILDREN_SCRIPT, Collections.singletonMap("id", docId)));
+        // we are doing below because we want to delete the data products with domain when domain is
+        // deleted
+        searchClient.deleteEntityByFields(
+            indexMapping.getChildAliases(clusterAlias),
+            List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      }
+      case Entity.DATA_PRODUCT -> searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("dataProducts.id", docId),
+          new ImmutablePair<>(
+              REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+
+      case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
+          new ImmutablePair<>(
+              REMOVE_TAGS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      case Entity.TEST_SUITE -> {
+        TestSuite testSuite = (TestSuite) entity;
+        if (Boolean.TRUE.equals(testSuite.getBasic())) {
+          searchClient.deleteEntityByFields(
+              indexMapping.getChildAliases(clusterAlias),
+              List.of(new ImmutablePair<>("testSuite.id", docId)));
+        } else {
+          searchClient.updateChildren(
+              indexMapping.getChildAliases(clusterAlias),
+              new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
+              new ImmutablePair<>(
+                  REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
+                  Collections.singletonMap("suiteId", testSuite.getId().toString())));
+        }
+      }
+      case Entity.API_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.DATABASE_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.SECURITY_SERVICE,
+          Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
+          indexMapping.getChildAliases(clusterAlias),
+          List.of(new ImmutablePair<>("service.id", docId)));
+        // Knowledge Center pages are nested via FQN (parent.fqn -> parent.fqn.child),
+        // not via a parent.id field on the child doc. A recursive hard-delete on the
+        // parent must therefore also remove every descendant from search by FQN
+        // prefix; otherwise stale child docs survive in the index and re-appear in
+        // hierarchy / search results until a full reindex.
+      case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
+      default -> {
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.deleteEntityByFields(
+              indexNames, List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
+      }
+    }
+  }
+
+  public void softDeleteOrRestoredChildren(
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete)
+      throws IOException {
+    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
+    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
+    SoftDeleteScript script = new SoftDeleteScript(delete);
+    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
+    if (targets.isEmpty()) {
+      return;
+    }
+    String entityType = entityReference.getType();
+    // Service entities propagate child deletions through a shared service.id field; everything
+    // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
+    // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
+    String parentIdField =
+        SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
+    searchClient.softDeleteOrRestoreChildren(
+        targets,
+        script.painless(),
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
+  }
+
+  public String getScriptWithParams(
+      EntityInterface entity,
+      Map<String, Object> fieldAddParams,
+      ChangeDescription changeDescription) {
+    List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
+    StringBuilder scriptTxt = new StringBuilder();
+    fieldAddParams.put("updatedAt", entity.getUpdatedAt());
+    scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
+    for (FieldChange fieldChange : fieldsAdded) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
+        @SuppressWarnings("unchecked")
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
+        List<String> newFollowers = new ArrayList<>();
+        for (EntityReference follower : entityReferences) {
+          newFollowers.add(follower.getId().toString());
+        }
+        fieldAddParams.put(fieldChange.getName(), newFollowers);
+        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
+    }
+
+    for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
+        @SuppressWarnings("unchecked")
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
+        for (EntityReference follower : entityReferences) {
+          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
+        }
+        scriptTxt.append(
+            "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
+      }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        scriptTxt.append("ctx._source.description = null;");
+      }
+    }
+
+    for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
+        UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
+        fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
+        scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
+      }
+      if (entity.getEntityReference().getType().equals(QUERY)
+          && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+        fieldAddParams.put(
+            fieldChange.getName(),
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(),
+                new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("votes")) {
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        scriptTxt.append("ctx._source.votes = params.votes;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
+        scriptTxt.append(
+            "if (ctx._source.containsKey('pipelineStatus')) { ctx._source.pipelineStatus = params.newPipelineStatus; } else { ctx._source['pipelineStatus'] = params.newPipelineStatus;}");
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
+      }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
+      }
+    }
+    return scriptTxt.toString();
+  }
+
+  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(EntityInterface entity) {
+    return buildBulkScriptedPartialUpdate(entity, null);
+  }
+
+  public ScriptedPartialUpdate buildRelationshipDocumentUpdate(
+      EntityInterface entity, Map<String, Object> document) {
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null || document == null) {
+      return null;
+    }
+    return new ScriptedPartialUpdate(
+        revisionSpec.documentUpdateScript(), new HashMap<>(document), true);
+  }
+
+  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(
+      EntityInterface entity, Long relationshipRevision) {
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null || relationshipRevision == null) {
+      return null;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (changeDescription != null) {
+      if (!Set.of(revisionSpec.relationshipField()).equals(getChangedFieldNames(changeDescription))
+          || !hasRelationshipReplacement(changeDescription, revisionSpec.relationshipField())) {
+        return null;
+      }
+      boolean isNonVersionedUpdate =
+          entity.getChangeDescription() != null
+              && Objects.equals(
+                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+      if (!isNonVersionedUpdate) {
+        return null;
+      }
+    }
+    Map<String, Object> parameters = new HashMap<>();
+    Object relationships = JsonUtils.getMap(entity).get(revisionSpec.relationshipField());
+    parameters.put(
+        revisionSpec.relationshipField(), relationships == null ? List.of() : relationships);
+    parameters.put(revisionSpec.revisionField(), relationshipRevision);
+    return new ScriptedPartialUpdate(revisionSpec.replacementScript(), parameters);
+  }
+
+  private ScriptedPartialUpdate buildScriptedPartialUpdate(
+      EntityInterface entity, ChangeDescription changeDescription, boolean isNonVersionedUpdate) {
+    if (!isNonVersionedUpdate || !canUseScriptedPartialUpdate(changeDescription)) {
+      return null;
+    }
+    Map<String, Object> parameters = new HashMap<>();
+    String script = getScriptWithParams(entity, parameters, changeDescription);
+    return new ScriptedPartialUpdate(script, parameters);
+  }
+
+  private ChangeDescription getEffectiveChangeDescription(EntityInterface entity) {
+    ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
+    return !isNullOrEmptyChangeDescription(incrementalChangeDescription)
+        ? incrementalChangeDescription
+        : entity.getChangeDescription();
+  }
+
+  private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
+    Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
+    return !changedFieldNames.isEmpty()
+        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
+        && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
+        && !hasRelationshipReplacement(changeDescription, TESTS);
+  }
+
+  private boolean hasRelationshipReplacement(
+      ChangeDescription changeDescription, String relationshipField) {
+    return changeDescription != null
+        && listOrEmpty(changeDescription.getFieldsUpdated()).stream()
+            .anyMatch(fieldChange -> relationshipField.equals(fieldChange.getName()));
+  }
+
+  private Set<String> getChangedFieldNames(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return Collections.emptySet();
+    }
+
+    Set<String> changedFields = new HashSet<>();
+    listOrEmpty(changeDescription.getFieldsAdded())
+        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
+    listOrEmpty(changeDescription.getFieldsUpdated())
+        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
+    listOrEmpty(changeDescription.getFieldsDeleted())
+        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
+    return changedFields;
+  }
+
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchClient.search(request, subjectContext);
+  }
+
+  public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
+      throws IOException {
+    SearchRequest countRequest =
+        new SearchRequest()
+            .withQuery(baseRequest.getQuery())
+            .withIndex(baseRequest.getIndex())
+            .withQueryFilter(baseRequest.getQueryFilter())
+            .withPostFilter(baseRequest.getPostFilter())
+            .withDeleted(baseRequest.getDeleted())
+            .withDomains(baseRequest.getDomains())
+            .withApplyDomainFilter(baseRequest.getApplyDomainFilter())
+            .withSize(0)
+            .withFrom(0)
+            .withFetchSource(false)
+            .withTrackTotalHits(true)
+            .withIncludeAggregations(false);
+    SearchResultListMapper countResult = searchClient.searchForExport(countRequest, subjectContext);
+    long total = countResult.getTotal();
+    if (total > Integer.MAX_VALUE) {
+      throw new IllegalStateException("Search results count exceeds supported maximum: " + total);
+    }
+    return (int) total;
+  }
+
+  public void exportSearchResultsCsvStream(
+      SearchRequest baseRequest,
+      SubjectContext subjectContext,
+      int totalHits,
+      int from,
+      java.io.OutputStream output)
+      throws IOException {
+    java.io.BufferedWriter writer =
+        new java.io.BufferedWriter(
+            new java.io.OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
+    try {
+      writer.write(SearchResultCsvExporter.CSV_HEADER);
+      writer.newLine();
+      writer.flush();
+
+      if (totalHits > 0) {
+        writeCsvBatches(baseRequest, subjectContext, writer, totalHits, from);
+      }
+    } finally {
+      writer.flush();
+    }
+  }
+
+  private void writeCsvBatches(
+      SearchRequest baseRequest,
+      SubjectContext subjectContext,
+      java.io.BufferedWriter writer,
+      int totalHits,
+      int from)
+      throws IOException {
+    long startTime = System.currentTimeMillis();
+    long timeoutMs = 5 * 60 * 1000L;
+    int exported = 0;
+    int maxIterations = (totalHits / SearchResultCsvExporter.BATCH_SIZE) + 2;
+    int iteration = 0;
+    List<Object> searchAfter = null;
+
+    String sortField = resolveSortField(baseRequest.getSortFieldParam());
+    List<String> sourceFields = buildSourceFields(sortField);
+
+    while (exported < totalHits && iteration < maxIterations) {
+      iteration++;
+      enforceTimeout(startTime, timeoutMs);
+
+      int remaining = totalHits - exported;
+      int batchSize = Math.min(SearchResultCsvExporter.BATCH_SIZE, remaining);
+      SearchRequest batchRequest =
+          buildBatchRequest(baseRequest, sortField, sourceFields, searchAfter, batchSize);
+
+      // On the first batch, use from-based pagination to skip to the requested offset.
+      // Subsequent batches use search_after (set above from the previous batch).
+      if (iteration == 1 && from > 0) {
+        batchRequest.withFrom(from);
+      }
+
+      SearchResultListMapper batch = searchClient.searchForExport(batchRequest, subjectContext);
+
+      if (batch.getResults().isEmpty()) {
+        break;
+      }
+
+      for (Map<String, Object> source : batch.getResults()) {
+        if (exported >= totalHits) {
+          break;
+        }
+        writer.write(SearchResultCsvExporter.toCsvRow(source));
+        writer.newLine();
+        exported++;
+      }
+      writer.flush();
+
+      if (batch.getLastHitSortValues() != null) {
+        searchAfter = Arrays.asList(batch.getLastHitSortValues());
+      } else {
+        break;
+      }
+    }
+    writer.flush();
+  }
+
+  private String resolveSortField(String sortFieldParam) {
+    if (sortFieldParam == null || sortFieldParam.isEmpty() || "_score".equals(sortFieldParam)) {
+      return "fullyQualifiedName";
+    }
+    return sortFieldParam;
+  }
+
+  private List<String> buildSourceFields(String sortField) {
+    List<String> sourceFields = new ArrayList<>(SearchResultCsvExporter.EXPORT_SOURCE_FIELDS);
+    // Dynamically include the sort field in _source so that callers can inspect it.
+    // Note: sort values for search_after come from hit.sort[], not _source, but
+    // including the field in _source is useful for debugging and completeness.
+    if (!sourceFields.contains(sortField)) {
+      sourceFields.add(sortField);
+    }
+    return sourceFields;
+  }
+
+  private void enforceTimeout(long startTime, long timeoutMs) {
+    if (System.currentTimeMillis() - startTime > timeoutMs) {
+      throw new IllegalStateException(
+          "Export timed out after 5 minutes. Please add filters to reduce the result set.");
+    }
+  }
+
+  private SearchRequest buildBatchRequest(
+      SearchRequest baseRequest,
+      String sortField,
+      List<String> sourceFields,
+      List<Object> searchAfter,
+      int batchSize) {
+    return new SearchRequest()
+        .withQuery(baseRequest.getQuery())
+        .withIndex(baseRequest.getIndex())
+        .withQueryFilter(baseRequest.getQueryFilter())
+        .withPostFilter(baseRequest.getPostFilter())
+        .withDeleted(baseRequest.getDeleted())
+        .withDomains(baseRequest.getDomains())
+        .withApplyDomainFilter(baseRequest.getApplyDomainFilter())
+        .withSize(batchSize)
+        .withFrom(0)
+        .withFetchSource(true)
+        .withTrackTotalHits(false)
+        .withIncludeAggregations(false)
+        .withIncludeSourceFields(sourceFields)
+        .withSortFieldParam(sortField)
+        .withSortOrder(baseRequest.getSortOrder() != null ? baseRequest.getSortOrder() : "asc")
+        .withSearchAfter(searchAfter);
+  }
+
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
+    return searchClient.previewSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithNLQ(request, subjectContext);
+  }
+
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithDirectQuery(request, subjectContext);
+  }
+
+  public Response getDocument(String indexName, UUID entityId) throws IOException {
+    return searchClient.getDocByID(indexName, entityId.toString());
+  }
+
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    return listWithOffset(filter, limit, offset, entityType, searchSortFilter, q, null);
+  }
+
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        queryString);
+  }
+
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext);
+  }
+
+  public SearchResultListMapper listWithDeepPagination(
+      String entityType,
+      String query,
+      String filter,
+      String[] fields,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithDeepPagination(
+        index.getIndexName(clusterAlias),
+        query,
+        filter,
+        fields,
+        searchSortFilter,
+        size,
+        searchAfter);
+  }
+
+  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+    return searchClient.searchBySourceUrl(sourceUrl);
+  }
+
+  public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    return searchLineage(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineage(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted) throws IOException {
+    return searchPlatformLineage(alias, queryFilter, deleted, null);
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted, SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result = searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return LineageDomainFilter.prune(result, subjectContext, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException {
+    return searchLineageWithDirection(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
+    return searchClient.getLineagePaginationInfo(
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return searchLineageByEntityCount(request, null);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageByEntityCount(request);
+    return LineageDomainFilter.prune(result, subjectContext, request.getFqn());
+  }
+
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    return searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, null);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
+  }
+
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  public SearchLineageResult searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    return searchLineageForExport(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType, null);
+  }
+
+  public SearchLineageResult searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType)));
+    return LineageDomainFilter.prune(result, subjectContext, fqn);
+  }
+
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      throws IOException {
+    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+  }
+
+  public Response aggregate(AggregationRequest request) throws IOException {
+    return searchClient.aggregate(request);
+  }
+
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    return searchClient.getEntityTypeCounts(request, index);
+  }
+
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return searchClient.getEntityTypeCounts(request, index, subjectContext);
+  }
+
+  public JsonObject aggregate(
+      String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
+      throws IOException {
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType));
+  }
+
+  public JsonObject aggregate(
+      String query,
+      String entityType,
+      SearchAggregation searchAggregation,
+      SearchListFilter filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType), subjectContext);
+  }
+
+  public DataQualityReport genericAggregation(
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata, subjectContext);
+  }
+
+  public Response listDataInsightChartResult(
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
+      String dataReportIndex)
+      throws IOException {
+    return searchClient.listDataInsightChartResult(
+        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
+  }
+
+  public List<EntityReference> getEntitiesContainingFQNFromES(
+      String entityFQN, int size, String indexName) {
+    try {
+      String queryFilter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
+              ReindexingUtil.escapeDoubleQuotes(entityFQN));
+
+      SearchRequest searchRequest =
+          new SearchRequest()
+              .withQuery("")
+              .withSize(size)
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .withFrom(0)
+              .withQueryFilter(queryFilter)
+              .withFetchSource(true)
+              .withTrackTotalHits(false)
+              .withSortFieldParam("_score")
+              .withDeleted(false)
+              .withSortOrder("desc")
+              .withIncludeSourceFields(new ArrayList<>());
+
+      // Execute the search and parse the response
+      Response response = search(searchRequest, null);
+      String json = (String) response.getEntity();
+      Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
+
+      // Extract hits from the response JSON and create entity references
+      for (Iterator<JsonNode> it =
+              ((ArrayNode) Objects.requireNonNull(JsonUtils.extractValue(json, HITS, HITS)))
+                  .elements();
+          it.hasNext(); ) {
+        JsonNode jsonNode = it.next();
+        String id = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, ID);
+        String fqn = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, FULLY_QUALIFIED_NAME);
+        String type = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, ENTITY_TYPE);
+        if (!nullOrEmpty(fqn) && !nullOrEmpty(type)) {
+          fqns.add(
+              new EntityReference()
+                  .withId(UUID.fromString(id))
+                  .withFullyQualifiedName(fqn)
+                  .withType(type));
+        }
+      }
+
+      return new ArrayList<>(fqns);
+    } catch (Exception ex) {
+      LOG.error("Error while getting entities from ES for validation", ex);
+    }
+    return new ArrayList<>();
+  }
+
+  public Set<String> getSearchEntities() {
+    return new HashSet<>(entityIndexMap.keySet());
+  }
+
+  private boolean shouldSkipStreamingIndexing(
+      String entityType, String entityId, String entityFqn, String operation) {
+    if (!getSearchClient().isClientAvailable()) {
+      SearchIndexRetryQueue.enqueue(
+          entityId, entityFqn, entityType, operation + ": Search client unavailable");
+      return true;
+    }
+    return false;
+  }
+
+  public void deleteRelationshipFromSearch(UUID fromTableId, UUID toTableId) {
+    String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
+    try {
+      searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
+          new ImmutablePair<>(
+              REMOVE_ENTITY_RELATIONSHIP, Collections.singletonMap("docId", relationDocId)));
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueue(
+          fromTableId.toString(),
+          null,
+          Entity.TABLE,
+          SearchIndexRetryQueue.failureReason("deleteRelationshipFromSearch", e));
+      LOG.error(
+          "Failed to delete relationship from search for {}: {}", relationDocId, e.getMessage());
+    }
+  }
+
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    return searchClient.getQueryCostRecords(serviceName);
+  }
+
+  public void initializeNLQService(ElasticSearchConfiguration config) {
+    try {
+      NaturalLanguageSearchConfiguration nlqConfig = config.getNaturalLanguageSearch();
+      if (nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled())) {
+        nlqService = NLQServiceFactory.createNLQService(config);
+        LOG.info("Initialized NLQ service with provider: {}", nlqConfig.getProviderClass());
+      } else {
+        LOG.info("Natural language search is not enabled");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize NLQ service", e);
+    }
+  }
+
+  public BulkSink createBulkSink(
+      int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
+    ElasticSearchConfiguration.SearchType searchType = getSearchType();
+    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    } else {
+      return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    }
+  }
+
+  public RecreateIndexHandler createReindexHandler() {
+    return new RecreateWithEmbeddings();
+  }
+
+  public boolean isVectorEmbeddingEnabled() {
+    ElasticSearchConfiguration cfg = getSearchConfiguration();
+    return cfg != null
+        && cfg.getNaturalLanguageSearch() != null
+        && Boolean.TRUE.equals(cfg.getNaturalLanguageSearch().getSemanticSearchEnabled());
+  }
+
+  @SuppressWarnings("unused")
+  public <T> T getHighLevelClient() {
+    return searchClient.getHighLevelClient();
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationshipWithDirection(entityRelationshipRequest);
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationship(entityRelationshipRequest);
+  }
+
+  public org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
+      getSchemaEntityRelationship(
+          String schemaFqn,
+          String queryFilter,
+          String includeSourceFields,
+          int offset,
+          int limit,
+          int from,
+          int size,
+          boolean deleted)
+          throws IOException {
+    return searchClient.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  private static List<EntityReference> copyWithInheritedFlag(List<EntityReference> references) {
+    if (references == null || references.isEmpty()) {
+      return new ArrayList<>();
+    }
+    List<EntityReference> inheritedReferences =
+        JsonUtils.deepCopyList(references, EntityReference.class);
+    inheritedReferences.forEach(ref -> ref.setInherited(true));
+    return inheritedReferences;
+  }
+
+  private String reformatVectorIndexWithDimension(String mapping, int dimension) {
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      JsonNode root = mapper.readTree(mapping);
+      if (root.has("mappings")) {
+        JsonNode mappings = root.get("mappings");
+        com.fasterxml.jackson.databind.node.ObjectNode meta =
+            ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
+        meta.put(
+                "embedding_model",
+                embeddingClient != null ? embeddingClient.getModelId() : "unknown")
+            .put("embedding_dimension", dimension);
+      }
+      return mapper.writeValueAsString(root);
+    } catch (Exception e) {
+      LOG.warn("Failed to set embedding _meta in mapping JSON", e);
+      return mapping;
+    }
+  }
+
+  protected EmbeddingClient createEmbeddingClient(LLMConfiguration llmConfig) {
+    LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
+    String provider =
+        embeddings != null && embeddings.getProvider() != null
+            ? embeddings.getProvider().value()
+            : "bedrock";
+
+    return switch (provider.toLowerCase()) {
+      case "bedrock" -> {
+        if (embeddings == null || embeddings.getBedrock() == null) {
+          throw new IllegalStateException(
+              "Bedrock configuration is required when using bedrock provider");
+        }
+        yield new BedrockEmbeddingClient(llmConfig);
+      }
+      case "openai" -> {
+        if (llmConfig.getOpenai() == null || embeddings.getOpenai() == null) {
+          throw new IllegalStateException(
+              "OpenAI configuration is required when using openai provider");
+        }
+        yield new OpenAIEmbeddingClient(llmConfig);
+      }
+      case "google" -> {
+        if (llmConfig.getGoogle() == null || embeddings.getGoogle() == null) {
+          throw new IllegalStateException(
+              "Google configuration is required when using google provider");
+        }
+        yield new GoogleEmbeddingClient(llmConfig);
+      }
+      case "djl" -> {
+        if (embeddings.getDjl() == null) {
+          throw new IllegalStateException("DJL configuration is required when using djl provider");
+        }
+        yield new DjlEmbeddingClient(llmConfig);
+      }
+      default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
+    };
+  }
+
+  private static String resolveEmbeddingProvider(LLMConfiguration llmConfig) {
+    String provider = "unknown";
+    if (llmConfig != null
+        && llmConfig.getEmbeddings() != null
+        && llmConfig.getEmbeddings().getProvider() != null) {
+      provider = llmConfig.getEmbeddings().getProvider().value();
+    }
+    return provider;
+  }
+
+  public String getModelIdentifier() {
+    return embeddingClient != null ? embeddingClient.getModelId() : null;
+  }
+
+  /**
+   * Initialize advanced search features that depend on application settings.
+   * This method is called during Phase 2 of application startup after
+   * settings cache has been initialized and database settings are available.
+   *
+   * Currently initializes lineage builders that require LINEAGE_SETTINGS.
+   */
+  public void initializeLineageComponents() {
+    LOG.info("Initializing lineage components for SearchRepository");
+
+    if (searchClient != null) {
+      try {
+        searchClient.initializeLineageBuilders();
+        LOG.info("Lineage components initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize lineage components", e);
+      }
+    } else {
+      LOG.warn("Cannot initialize lineage components - SearchClient is null");
+    }
+  }
+}

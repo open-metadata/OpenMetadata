@@ -1,0 +1,122 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Avatar, Typography } from '@openmetadata/ui-core-components';
+import { useCallback, useMemo } from 'react';
+import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
+import {
+  DATAPRODUCT_DEFAULT_QUICK_FILTERS,
+  DATAPRODUCT_FILTERS,
+} from '../../../constants/DataProduct.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../../utils/TagsPureUtils';
+import { useListingData } from '../../common/atoms/compositions/useListingData';
+import {
+  CellRenderer,
+  ColumnConfig,
+  ListingData,
+} from '../../common/atoms/shared/types';
+
+export const useDataProductListingData = (): ListingData<DataProduct> => {
+  const { dataProductBasePath } = useMarketplaceStore();
+  const filterKeys = DATAPRODUCT_DEFAULT_QUICK_FILTERS;
+  const filterConfigs = DATAPRODUCT_FILTERS;
+
+  const getDomains = useCallback(
+    (dataProduct: DataProduct) => dataProduct.domains || [],
+    []
+  );
+
+  const columns: ColumnConfig<DataProduct>[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        labelKey: 'label.data-product',
+        render: 'custom',
+        customRenderer: 'dataProductName',
+      },
+      { key: 'owners', labelKey: 'label.owner', render: 'owners' },
+      {
+        key: 'glossaryTerms',
+        labelKey: 'label.glossary-term-plural',
+        render: 'tags',
+        getValue: (dp: DataProduct) => getGlossaryTags(dp.tags),
+      },
+      {
+        key: 'domains',
+        labelKey: 'label.domain-plural',
+        render: 'domains',
+        getValue: getDomains,
+      },
+      {
+        key: 'classificationTags',
+        labelKey: 'label.tag-plural',
+        render: 'tags',
+        getValue: (dp: DataProduct) => getClassificationTags(dp.tags),
+      },
+      { key: 'experts', labelKey: 'label.expert-plural', render: 'owners' },
+    ],
+    [getDomains]
+  );
+
+  const renderers: CellRenderer<DataProduct> = useMemo(
+    () => ({
+      dataProductName: (entity: DataProduct) => {
+        const entityName = getEntityName(entity);
+        const showName =
+          entity.displayName &&
+          entity.name &&
+          entity.displayName !== entity.name;
+
+        return (
+          <div className="tw:flex tw:items-center tw:gap-1.5">
+            <Avatar size="lg" {...getEntityAvatarProps(entity)} />
+            <div>
+              <Typography className="tw:leading-5" weight="medium">
+                {entityName}
+              </Typography>
+              {showName && (
+                <Typography
+                  className="tw:leading-4 tw:text-secondary"
+                  size="text-xs">
+                  {entity.name}
+                </Typography>
+              )}
+            </div>
+          </div>
+        );
+      },
+    }),
+    []
+  );
+
+  const listingData = useListingData<DataProduct>({
+    searchIndex: SearchIndex.DATA_PRODUCT,
+    baseFilter: '', // No parent filter for data products
+    pageSize: TABLE_CARD_PAGE_SIZE,
+    filterKeys,
+    filterConfigs,
+    columns,
+    renderers,
+    basePath: dataProductBasePath,
+  });
+
+  return listingData;
+};

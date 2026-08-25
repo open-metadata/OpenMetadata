@@ -1,0 +1,29 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
+import { Thread } from '../../../../generated/entity/feed/thread';
+
+export interface FeedCardBodyV1Props {
+  feed?: Thread;
+  activity?: ActivityEvent;
+  isEditPost: boolean;
+  className?: string;
+  message: string;
+  isPost?: boolean;
+  isOpenInDrawer?: boolean;
+  onUpdate?: (message: string) => void;
+  onEditCancel?: () => void;
+  showThread?: boolean;
+  isForFeedTab?: boolean;
+  isFeedWidget?: boolean;
+}

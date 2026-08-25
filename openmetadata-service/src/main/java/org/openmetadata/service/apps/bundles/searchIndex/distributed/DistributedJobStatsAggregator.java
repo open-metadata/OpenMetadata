@@ -1,0 +1,694 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.apps.bundles.searchIndex.distributed;
+
+import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.system.EntityStats;
+import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
+import org.openmetadata.service.apps.scheduler.OmAppJobListener;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.socket.WebSocketManager;
+
+/**
+ * Aggregates distributed job statistics and broadcasts updates via WebSocket.
+ *
+ * <p>This component periodically polls the database for job statistics and broadcasts updates to
+ * connected WebSocket clients, providing a centralized view of distributed indexing progress.
+ */
+@Slf4j
+public class DistributedJobStatsAggregator {
+
+  /** Default polling interval in milliseconds */
+  public static final long DEFAULT_POLL_INTERVAL_MS = 1000;
+
+  /** Minimum polling interval to avoid excessive DB load */
+  private static final long MIN_POLL_INTERVAL_MS = 500;
+
+  /**
+   * Once the underlying job has been in a non-running state (STOPPING or any terminal status) for
+   * longer than this, the aggregator self-stops. The executor's {@code finally} block in {@code
+   * execute()} is supposed to call {@link #stop()}, but if a worker thread is wedged that block
+   * never runs and the aggregator polls forever — burning CPU and continuously broadcasting a
+   * status that overwrites the user-visible STOPPED in the UI.
+   */
+  static final long SHUTDOWN_GRACE_MS = 30_000L;
+
+  private final DistributedSearchIndexCoordinator coordinator;
+  private final UUID jobId;
+  private final UUID appId;
+  private final Long appStartTime;
+  private final long pollIntervalMs;
+  private final AtomicBoolean running = new AtomicBoolean(false);
+  private ScheduledExecutorService scheduler;
+
+  private ReindexingProgressListener progressListener;
+  private ReindexingJobContext jobContext;
+  private final AtomicReference<IndexJobStatus> lastNotifiedStatus = new AtomicReference<>();
+  private long lastBroadcastSuccess = -1;
+  private long lastBroadcastFailed = -1;
+  private volatile BulkSink bulkSink;
+  private String cachedRunType;
+  private AppSchedule cachedScheduleInfo;
+  private volatile long shutdownObservedAtMs = 0L;
+
+  public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
+    this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
+  }
+
+  /** Constructor with custom poll interval (for testing) */
+  public DistributedJobStatsAggregator(
+      DistributedSearchIndexCoordinator coordinator, UUID jobId, long pollIntervalMs) {
+    this(coordinator, jobId, null, null, pollIntervalMs);
+  }
+
+  public DistributedJobStatsAggregator(
+      DistributedSearchIndexCoordinator coordinator,
+      UUID jobId,
+      UUID appId,
+      Long appStartTime,
+      long pollIntervalMs) {
+    this.coordinator = coordinator;
+    this.jobId = jobId;
+    this.appId = appId;
+    this.appStartTime = appStartTime;
+    this.pollIntervalMs = Math.max(pollIntervalMs, MIN_POLL_INTERVAL_MS);
+  }
+
+  /**
+   * Set a progress listener to receive callbacks during job execution.
+   *
+   * @param listener The progress listener
+   * @param context The job context for listener callbacks
+   */
+  public void setProgressListener(
+      ReindexingProgressListener listener, ReindexingJobContext context) {
+    this.progressListener = listener;
+    this.jobContext = context;
+  }
+
+  public void setBulkSink(BulkSink sink) {
+    this.bulkSink = sink;
+  }
+
+  /** Safely convert long to int, capping at Integer.MAX_VALUE to prevent overflow */
+  private static int safeToInt(long value) {
+    if (value > Integer.MAX_VALUE) {
+      return Integer.MAX_VALUE;
+    }
+    if (value < Integer.MIN_VALUE) {
+      return Integer.MIN_VALUE;
+    }
+    return (int) value;
+  }
+
+  /**
+   * Start the stats aggregation and broadcasting.
+   */
+  public void start() {
+    if (running.compareAndSet(false, true)) {
+      cacheAppRunRecordFields();
+
+      scheduler =
+          Executors.newSingleThreadScheduledExecutor(
+              Thread.ofPlatform()
+                  .name("reindex-stats-aggregator-" + jobId.toString().substring(0, 8))
+                  .factory());
+
+      scheduler.scheduleAtFixedRate(
+          this::aggregateAndBroadcast, 0, pollIntervalMs, TimeUnit.MILLISECONDS);
+
+      LOG.info("Started stats aggregator for job {} with interval {}ms", jobId, pollIntervalMs);
+    }
+  }
+
+  private void cacheAppRunRecordFields() {
+    if (appId == null || appStartTime == null) {
+      return;
+    }
+    try {
+      CollectionDAO dao = coordinator.getCollectionDAO();
+      String json =
+          dao.appExtensionTimeSeriesDao()
+              .getByAppIdAndTimestamp(
+                  appId.toString(), appStartTime, AppExtension.ExtensionType.STATUS.toString());
+      if (json != null) {
+        AppRunRecord record = JsonUtils.readValue(json, AppRunRecord.class);
+        cachedRunType = record.getRunType();
+        cachedScheduleInfo = record.getScheduleInfo();
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not cache AppRunRecord fields for aggregator", e);
+    }
+  }
+
+  /**
+   * Stop the stats aggregation. Idempotent — repeated calls (e.g. executor stop racing
+   * self-stop) shut the scheduler down at most once.
+   */
+  public void stop() {
+    boolean wasRunning = running.compareAndSet(true, false);
+    // Use the running CAS to gate the LOG line, but always attempt scheduler shutdown so a
+    // caller that previously flipped running=false (self-stop) can still drive the scheduler
+    // termination on a separate thread without deadlocking on its own task.
+    shutdownScheduler();
+    if (wasRunning) {
+      LOG.info("Stopped stats aggregator for job {}", jobId);
+    }
+  }
+
+  private final java.util.concurrent.atomic.AtomicBoolean schedulerShutDown =
+      new java.util.concurrent.atomic.AtomicBoolean(false);
+
+  private void shutdownScheduler() {
+    if (scheduler == null || !schedulerShutDown.compareAndSet(false, true)) {
+      return;
+    }
+    scheduler.shutdown();
+    try {
+      if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+        scheduler.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      scheduler.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Check if the aggregator is running.
+   *
+   * @return true if running
+   */
+  public boolean isRunning() {
+    return running.get();
+  }
+
+  /**
+   * Aggregate stats from the database and broadcast via WebSocket.
+   */
+  private void aggregateAndBroadcast() {
+    try {
+      SearchIndexJob job = coordinator.getJobWithAggregatedStats(jobId);
+      if (job == null) {
+        LOG.warn("Job {} not found, stopping aggregator", jobId);
+        stop();
+        return;
+      }
+
+      IndexJobStatus status = job.getStatus();
+      boolean shutdownInitiated = status == IndexJobStatus.STOPPING || job.isTerminal();
+      if (shouldSelfStop(shutdownInitiated, status)) {
+        return;
+      }
+
+      // Skip broadcast if stats haven't changed (reduces log noise and DB load)
+      boolean statsChanged =
+          job.getSuccessRecords() != lastBroadcastSuccess
+              || job.getFailedRecords() != lastBroadcastFailed;
+
+      if (!statsChanged && !job.isTerminal()) {
+        return;
+      }
+
+      lastBroadcastSuccess = job.getSuccessRecords();
+      lastBroadcastFailed = job.getFailedRecords();
+
+      // Fetch server stats once and reuse for all conversions
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats =
+          fetchServerStats(job);
+
+      // Convert to WebSocket message format
+      AppRunRecord appRecord = convertToAppRunRecord(job, serverStats);
+
+      // Broadcast via WebSocket AND notify progress listener — but skip both during the user-
+      // initiated STOPPING phase. The {@code AppScheduler.updateAndBroadcastStoppedStatus} path
+      // already wrote AppRunRecord.status=STOPPED. If we keep building AppRunRecord from the
+      // search_index_job row (still STOPPING), we overwrite that STOPPED in the UI for the
+      // entire drain period and the user's Stop click looks like it did nothing.
+      //
+      // The progress listener has its own override path: {@code QuartzProgressListener.
+      // onProgressUpdate} flips the in-memory status back to RUNNING when {@code pendingErrors
+      // > 0} and broadcasts a fresh AppRunRecord — so we have to skip it too, not just
+      // {@code broadcastStats}. STOPPING is non-terminal in {@code notifyProgressListener}'s
+      // switch, so skipping it doesn't drop any onJobStopped/onJobCompleted callbacks; those
+      // fire when the job moves to STOPPED/COMPLETED and we resume notifying.
+      if (status != IndexJobStatus.STOPPING) {
+        broadcastStats(appRecord);
+        notifyProgressListener(job, serverStats);
+      }
+
+      if (job.isTerminal()) {
+        LOG.info(
+            "Job {} reached terminal state {}, aggregator will self-stop within {}ms",
+            jobId,
+            status,
+            SHUTDOWN_GRACE_MS);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error aggregating stats for job {}", jobId, e);
+    }
+  }
+
+  /**
+   * Track when shutdown was first observed. If we sit in STOPPING (or any terminal state) past
+   * {@link #SHUTDOWN_GRACE_MS} without the executor calling {@link #stop()}, self-stop. Returns
+   * true when the aggregator self-stopped and the caller should bail out of this cycle.
+   */
+  private boolean shouldSelfStop(boolean shutdownInitiated, IndexJobStatus status) {
+    if (!shutdownInitiated) {
+      shutdownObservedAtMs = 0L;
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    if (shutdownObservedAtMs == 0L) {
+      shutdownObservedAtMs = now;
+      return false;
+    }
+    if (now - shutdownObservedAtMs > SHUTDOWN_GRACE_MS) {
+      LOG.warn(
+          "Job {} stuck in {} for >{}ms, self-stopping aggregator (executor never called stop)",
+          jobId,
+          status,
+          SHUTDOWN_GRACE_MS);
+      // The polling task runs ON `scheduler`. Calling stop() inline would deadlock —
+      // scheduler.awaitTermination(5s) blocks waiting for *this* task to finish, and the task
+      // can't finish until awaitTermination returns. We split the work: flip `running=false`
+      // synchronously (so the next poll cycle bails out immediately and isRunning() reflects
+      // the new state), and hand the scheduler termination off to a daemon thread that runs
+      // after this task returns. Both paths converge in stop(): wherever it's called, the
+      // schedulerShutDown CAS makes scheduler.shutdown() run at most once.
+      running.set(false);
+      Thread shutdownThread =
+          new Thread(this::shutdownScheduler, "stats-aggregator-self-stop-" + jobId);
+      shutdownThread.setDaemon(true);
+      shutdownThread.start();
+      LOG.info("Stopped stats aggregator for job {} (self-stop)", jobId);
+      return true;
+    }
+    return false;
+  }
+
+  private CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats fetchServerStats(
+      SearchIndexJob job) {
+    try {
+      return coordinator
+          .getCollectionDAO()
+          .searchIndexServerStatsDAO()
+          .getAggregatedStats(job.getId().toString());
+    } catch (Exception e) {
+      LOG.debug("Could not fetch aggregated server stats for job {}", job.getId(), e);
+      return null;
+    }
+  }
+
+  private Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> fetchVectorStatsByEntity(
+      SearchIndexJob job) {
+    try {
+      return coordinator
+          .getCollectionDAO()
+          .searchIndexServerStatsDAO()
+          .getStatsByEntityType(job.getId().toString())
+          .stream()
+          .collect(
+              java.util.stream.Collectors.toMap(
+                  CollectionDAO.SearchIndexServerStatsDAO.EntityStats::entityType,
+                  e -> e,
+                  (a, b) -> a));
+    } catch (Exception e) {
+      LOG.debug("Could not fetch per-entity vector stats for job {}", job.getId(), e);
+      return java.util.Collections.emptyMap();
+    }
+  }
+
+  /**
+   * Notify the progress listener about job status and progress.
+   *
+   * @param job The current job state
+   */
+  private void notifyProgressListener(
+      SearchIndexJob job,
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats) {
+    if (progressListener == null || jobContext == null) {
+      return;
+    }
+
+    try {
+      Stats stats = convertToStats(job, serverStats);
+      IndexJobStatus currentStatus = job.getStatus();
+      IndexJobStatus previousStatus = lastNotifiedStatus.get();
+
+      // Set distributed metadata on context so listeners can include it in broadcasts
+      if (jobContext instanceof DistributedJobContext distributedContext) {
+        if (job.getServerStats() != null && !job.getServerStats().isEmpty()) {
+          distributedContext.setDistributedMetadata("serverStats", job.getServerStats());
+          distributedContext.setDistributedMetadata("serverCount", job.getServerStats().size());
+        }
+        if (serverStats != null) {
+          distributedContext.setDistributedMetadata("aggregatedServerStats", serverStats);
+        }
+        distributedContext.setDistributedMetadata("distributedJobId", job.getId().toString());
+        distributedContext.setDistributedMetadata("progressPercent", job.getProgressPercent());
+        if (job.getEntityStats() != null) {
+          distributedContext.setDistributedMetadata("entityTypeCount", job.getEntityStats().size());
+        }
+      }
+
+      // Always notify progress updates
+      progressListener.onProgressUpdate(stats, jobContext);
+
+      // Notify status transitions only once
+      if (currentStatus != previousStatus) {
+        lastNotifiedStatus.set(currentStatus);
+
+        long elapsedMillis =
+            job.getStartedAt() != null ? System.currentTimeMillis() - job.getStartedAt() : 0;
+
+        switch (currentStatus) {
+          case COMPLETED -> progressListener.onJobCompleted(stats, elapsedMillis);
+          case COMPLETED_WITH_ERRORS -> progressListener.onJobCompletedWithErrors(
+              stats, elapsedMillis);
+          case FAILED -> progressListener.onJobFailed(
+              stats,
+              new RuntimeException(
+                  job.getErrorMessage() != null
+                      ? job.getErrorMessage()
+                      : "Distributed job failed"));
+          case STOPPED -> progressListener.onJobStopped(stats);
+          default -> {
+            /* No special notification for other states */
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error notifying progress listener for job {}", jobId, e);
+    }
+  }
+
+  /**
+   * Convert SearchIndexJob to Stats format for listener callbacks.
+   *
+   * @param job The distributed job
+   * @return Stats object
+   */
+  private Stats convertToStats(
+      SearchIndexJob job,
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr) {
+    Stats stats = new Stats();
+
+    long jobWarnings = warningRecords(job);
+
+    StepStats jobStats = new StepStats();
+    jobStats.setTotalRecords(safeToInt(job.getTotalRecords()));
+    jobStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
+    jobStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+    jobStats.setWarningRecords(safeToInt(jobWarnings));
+    stats.setJobStats(jobStats);
+
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> vectorByEntity =
+        fetchVectorStatsByEntity(job);
+
+    EntityStats entityStats = new EntityStats();
+    if (job.getEntityStats() != null) {
+      for (Map.Entry<String, SearchIndexJob.EntityTypeStats> entry :
+          job.getEntityStats().entrySet()) {
+        SearchIndexJob.EntityTypeStats es = entry.getValue();
+        StepStats stepStats = new StepStats();
+        stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
+        stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
+        stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+        stepStats.setWarningRecords(safeToInt(es.getWarningRecords()));
+        // Per-entity stage timing — surface ALL four stage timings on the entity-level
+        // StepStats so the UI table can render Reader / Process / Sink / Vector avg latencies
+        // side-by-side. Job-level totals still use the per-stage StepStats.totalTimeMs.
+        stepStats.setReaderTimeMs(es.getReaderTimeMs());
+        stepStats.setProcessTimeMs(es.getProcessTimeMs());
+        stepStats.setSinkTimeMs(es.getSinkTimeMs());
+        stepStats.setVectorTimeMs(es.getVectorTimeMs());
+
+        CollectionDAO.SearchIndexServerStatsDAO.EntityStats vectorEntityStats =
+            vectorByEntity.get(entry.getKey());
+        if (vectorEntityStats != null) {
+          stepStats.setVectorSuccessRecords(safeToInt(vectorEntityStats.vectorSuccess()));
+          stepStats.setVectorFailedRecords(safeToInt(vectorEntityStats.vectorFailed()));
+        }
+
+        entityStats.getAdditionalProperties().put(entry.getKey(), stepStats);
+      }
+    }
+    stats.setEntityStats(entityStats);
+
+    // Server stats can overcount on recovery (crashed server's flushed stats + recovering server's
+    // stats for re-read records). Partition-level processedCount is the ground truth, so cap
+    // server stats to prevent reader/process/sink success exceeding what was actually processed.
+    long partitionTruth = job.getProcessedRecords();
+
+    StepStats readerStats = new StepStats();
+    readerStats.setTotalRecords(safeToInt(job.getTotalRecords()));
+    if (serverStatsAggr != null) {
+      long readerFailed = serverStatsAggr.readerFailed();
+      long readerWarnings = serverStatsAggr.readerWarnings();
+      long readerSuccess =
+          Math.min(
+              serverStatsAggr.readerSuccess(),
+              Math.max(0, partitionTruth - readerFailed - readerWarnings));
+      readerStats.setSuccessRecords(safeToInt(readerSuccess));
+      readerStats.setFailedRecords(safeToInt(readerFailed));
+      readerStats.setWarningRecords(safeToInt(readerWarnings));
+      readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
+    } else {
+      readerStats.setSuccessRecords(safeToInt(Math.max(0, partitionTruth - jobWarnings)));
+      readerStats.setFailedRecords(0);
+      readerStats.setWarningRecords(safeToInt(jobWarnings));
+    }
+    stats.setReaderStats(readerStats);
+
+    StepStats processStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long processSuccess = Math.min(serverStatsAggr.processSuccess(), partitionTruth);
+      long processFailed = serverStatsAggr.processFailed();
+      long sinkSuccess = Math.min(serverStatsAggr.sinkSuccess(), partitionTruth);
+      long sinkFailed = serverStatsAggr.sinkFailed();
+      long sinkWarnings = Math.max(0, processSuccess + processFailed - sinkSuccess - sinkFailed);
+      long processWarnings = Math.max(0, jobWarnings - sinkWarnings);
+      long processTotal = processSuccess + processFailed + processWarnings;
+      processStats.setTotalRecords(safeToInt(processTotal));
+      processStats.setSuccessRecords(safeToInt(processSuccess));
+      processStats.setFailedRecords(safeToInt(processFailed));
+      processStats.setWarningRecords(safeToInt(processWarnings));
+      processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
+    } else {
+      processStats.setTotalRecords(safeToInt(partitionTruth));
+      processStats.setSuccessRecords(safeToInt(Math.max(0, partitionTruth - jobWarnings)));
+      processStats.setFailedRecords(0);
+      processStats.setWarningRecords(safeToInt(jobWarnings));
+    }
+    stats.setProcessStats(processStats);
+
+    StepStats sinkStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long sinkSuccess = Math.min(serverStatsAggr.sinkSuccess(), partitionTruth);
+      long sinkFailed = serverStatsAggr.sinkFailed();
+      long processSuccess = Math.min(serverStatsAggr.processSuccess(), partitionTruth);
+      long processFailed = serverStatsAggr.processFailed();
+      long sinkWarnings = Math.max(0, processSuccess + processFailed - sinkSuccess - sinkFailed);
+      long sinkTotal = sinkSuccess + sinkFailed + sinkWarnings;
+      sinkStats.setTotalRecords(safeToInt(sinkTotal));
+      sinkStats.setSuccessRecords(safeToInt(sinkSuccess));
+      sinkStats.setFailedRecords(safeToInt(sinkFailed));
+      sinkStats.setWarningRecords(safeToInt(sinkWarnings));
+      sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
+    } else {
+      sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
+      sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
+      sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+      sinkStats.setWarningRecords(safeToInt(jobWarnings));
+    }
+    stats.setSinkStats(sinkStats);
+
+    // Vector stats - generating and indexing vector embeddings
+    StepStats vectorStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long vectorTotal = serverStatsAggr.vectorSuccess() + serverStatsAggr.vectorFailed();
+      vectorStats.setTotalRecords(safeToInt(vectorTotal));
+      vectorStats.setSuccessRecords(safeToInt(serverStatsAggr.vectorSuccess()));
+      vectorStats.setFailedRecords(safeToInt(serverStatsAggr.vectorFailed()));
+      vectorStats.setTotalTimeMs(serverStatsAggr.vectorTimeMs());
+    } else {
+      vectorStats.setTotalRecords(0);
+      vectorStats.setSuccessRecords(0);
+      vectorStats.setFailedRecords(0);
+    }
+    stats.setVectorStats(vectorStats);
+
+    // Inject column stats from the bulk sink (columns are indexed as a side effect
+    // of table processing and are not tracked via partitions)
+    if (bulkSink != null) {
+      StepStats columnStats = bulkSink.getColumnStats();
+      if (columnStats != null && columnStats.getTotalRecords() > 0) {
+        stats.getEntityStats().getAdditionalProperties().put(Entity.TABLE_COLUMN, columnStats);
+      }
+    }
+
+    return stats;
+  }
+
+  /**
+   * Convert SearchIndexJob to AppRunRecord format for WebSocket compatibility.
+   *
+   * @param job The distributed job
+   * @return AppRunRecord in the format expected by the UI
+   */
+  private AppRunRecord convertToAppRunRecord(
+      SearchIndexJob job,
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats) {
+    Stats stats = convertToStats(job, serverStats);
+
+    // Create AppRunRecord
+    AppRunRecord appRecord = new AppRunRecord();
+    // Use the actual app ID so frontend can match the record for live updates
+    appRecord.setAppId(appId != null ? appId : UUID.randomUUID());
+    appRecord.setStatus(convertStatus(job.getStatus()));
+    appRecord.setRunType(cachedRunType != null ? cachedRunType : "OnDemandJob");
+    appRecord.setScheduleInfo(cachedScheduleInfo);
+    // Use the app's start time so frontend can match the record
+    appRecord.setStartTime(appStartTime != null ? appStartTime : job.getStartedAt());
+    appRecord.setEndTime(job.getCompletedAt());
+    appRecord.setTimestamp(job.getUpdatedAt());
+    OmAppJobListener.fillTerminalTimings(appRecord);
+
+    // Add stats as success context
+    SuccessContext successContext = new SuccessContext();
+    successContext.withAdditionalProperty("stats", stats);
+
+    // Add distributed-specific metadata
+    successContext.withAdditionalProperty("distributedJobId", job.getId().toString());
+    successContext.withAdditionalProperty("progressPercent", job.getProgressPercent());
+    if (job.getEntityStats() != null) {
+      successContext.withAdditionalProperty("entityTypeCount", job.getEntityStats().size());
+    }
+
+    // Add per-server stats to show distributed processing
+    if (job.getServerStats() != null && !job.getServerStats().isEmpty()) {
+      successContext.withAdditionalProperty("serverStats", job.getServerStats());
+      successContext.withAdditionalProperty("serverCount", job.getServerStats().size());
+    }
+
+    if (serverStats != null) {
+      successContext.withAdditionalProperty("aggregatedServerStats", serverStats);
+    }
+
+    appRecord.setSuccessContext(successContext);
+
+    return appRecord;
+  }
+
+  private long warningRecords(SearchIndexJob job) {
+    return Math.max(
+        0, job.getProcessedRecords() - job.getSuccessRecords() - job.getFailedRecords());
+  }
+
+  /**
+   * Convert IndexJobStatus to AppRunRecord.Status.
+   *
+   * @param status The distributed job status
+   * @return Corresponding AppRunRecord status
+   */
+  private AppRunRecord.Status convertStatus(IndexJobStatus status) {
+    return switch (status) {
+      case INITIALIZING, READY -> AppRunRecord.Status.PENDING;
+      case RUNNING, PROMOTING -> AppRunRecord.Status.RUNNING;
+      case COMPLETED -> AppRunRecord.Status.SUCCESS;
+      case COMPLETED_WITH_ERRORS -> AppRunRecord.Status.ACTIVE_ERROR;
+      case FAILED -> AppRunRecord.Status.FAILED;
+      case STOPPING -> AppRunRecord.Status.STOP_IN_PROGRESS;
+      case STOPPED -> AppRunRecord.Status.STOPPED;
+    };
+  }
+
+  /**
+   * Broadcast stats via WebSocket.
+   *
+   * @param appRecord The app run record to broadcast
+   */
+  private void broadcastStats(AppRunRecord appRecord) {
+    WebSocketManager wsManager = WebSocketManager.getInstance();
+    if (wsManager != null) {
+      String messageJson = JsonUtils.pojoToJson(appRecord);
+      wsManager.broadCastMessageToAll(SEARCH_INDEX_JOB_BROADCAST_CHANNEL, messageJson);
+      Stats broadcastedStats =
+          (Stats) appRecord.getSuccessContext().getAdditionalProperties().get("stats");
+      LOG.debug(
+          "Broadcast job stats - job: {}, progress: {}%, status: {}, success: {}, failed: {}",
+          jobId,
+          appRecord.getSuccessContext().getAdditionalProperties().get("progressPercent"),
+          appRecord.getStatus(),
+          broadcastedStats != null ? broadcastedStats.getJobStats().getSuccessRecords() : 0,
+          broadcastedStats != null ? broadcastedStats.getJobStats().getFailedRecords() : 0);
+    } else {
+      LOG.warn("WebSocket manager not available, skipping distributed job broadcast");
+    }
+  }
+
+  /**
+   * Force an immediate stats broadcast.
+   */
+  public void forceUpdate() {
+    if (running.get() && scheduler != null && !scheduler.isShutdown()) {
+      // Schedule immediate execution if scheduler is running
+      scheduler.execute(this::aggregateAndBroadcast);
+    } else {
+      // Call directly if scheduler is not available
+      aggregateAndBroadcast();
+    }
+  }
+
+  /**
+   * Get the current aggregated stats without broadcasting.
+   *
+   * @return The current job with aggregated stats
+   */
+  public SearchIndexJob getCurrentStats() {
+    return coordinator.getJobWithAggregatedStats(jobId);
+  }
+
+  public AppRunRecord buildFinalAppRunRecord() {
+    SearchIndexJob job = coordinator.getJobWithAggregatedStats(jobId);
+    if (job == null) {
+      return null;
+    }
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats =
+        fetchServerStats(job);
+    return convertToAppRunRecord(job, serverStats);
+  }
+}

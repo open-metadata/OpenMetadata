@@ -1,0 +1,29 @@
+# Maven
+target/classes
+target/test-classes
+target/maven-*
+target/surefire-reports
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Source files (only need the JAR)
+src/
+pom.xml
+Makefile

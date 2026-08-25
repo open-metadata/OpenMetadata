@@ -1,0 +1,624 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
+import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
+import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import {
+  ModifiedGlossary,
+  useGlossaryStore,
+} from '../../../components/Glossary/useGlossary.store';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { observerOptions } from '../../../constants/Mydata.constants';
+import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../enums/Axios.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import {
+  EntityAction,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { Paging } from '../../../generated/type/paging';
+import { withPageLayout } from '../../../hoc/withPageLayout';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { useElementInView } from '../../../hooks/useElementInView';
+import { useFqn } from '../../../hooks/useFqn';
+import {
+  getGlossariesByName,
+  getGlossariesList,
+  patchGlossaries,
+  patchGlossaryTerm,
+  updateGlossaryTermVotes,
+  updateGlossaryVotes,
+} from '../../../rest/glossaryAPI';
+import {
+  glossaryTermQueryFn,
+  glossaryTermQueryKey,
+  GLOSSARY_TERM_DEFAULT_FIELDS,
+} from '../../../rest/queries/glossaryTermQuery';
+import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
+
+const GLOSSARY_LIST_FIELDS = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.REVIEWERS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.TERM_COUNT,
+];
+
+const GlossaryPage = () => {
+  const { permissions } = usePermissionProvider();
+  const { fqn: glossaryFqn } = useFqn();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
+  const { action } = useRequiredParams<{ action: EntityAction }>();
+  const [initialised, setInitialised] = useState(false);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMoreGlossaryLoading, setIsMoreGlossaryLoading] =
+    useState<boolean>(false);
+  const [elementRef, isInView] = useElementInView({
+    ...observerOptions,
+    root: document.querySelector('#panel-container'),
+    rootMargin: '0px 0px 2px 0px',
+  });
+  const { paging, pageSize, handlePagingChange } = usePaging();
+
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+
+  const {
+    glossaries,
+    setGlossaries,
+    activeGlossary,
+    setActiveGlossary,
+    updateActiveGlossary,
+    updateGlossary: updateGlossaryInList,
+  } = useGlossaryStore();
+
+  const isImportAction = useMemo(
+    () => action === EntityAction.IMPORT,
+    [action]
+  );
+
+  const isGlossaryActive = useMemo(() => {
+    if (glossaryFqn) {
+      return Fqn.split(glossaryFqn).length === 1;
+    }
+
+    return true;
+  }, [glossaryFqn]);
+
+  const {
+    createGlossaryPermission,
+    viewBasicGlossaryPermission,
+    viewAllGlossaryPermission,
+  } = useMemo(() => {
+    const resourceType = isGlossaryActive
+      ? ResourceEntity.GLOSSARY
+      : ResourceEntity.GLOSSARY_TERM;
+
+    return {
+      createGlossaryPermission: checkPermission(
+        Operation.Create,
+        resourceType,
+        permissions
+      ),
+      viewBasicGlossaryPermission: checkPermission(
+        Operation.ViewBasic,
+        resourceType,
+        permissions
+      ),
+      viewAllGlossaryPermission: checkPermission(
+        Operation.ViewAll,
+        resourceType,
+        permissions
+      ),
+    };
+  }, [permissions, isGlossaryActive]);
+
+  const handleAddGlossaryClick = useCallback(() => {
+    navigate(ROUTES.ADD_GLOSSARY);
+  }, [navigate]);
+
+  const fetchGlossaryList = useCallback(async () => {
+    try {
+      let allGlossaries: Glossary[] = [];
+      let nextPage = paging.after;
+      let isGlossaryFound = false;
+      let settledPaging: Paging | undefined;
+      setIsLoading(true);
+
+      do {
+        const { data, paging: glossaryPaging } = await getGlossariesList({
+          fields: GLOSSARY_LIST_FIELDS,
+          limit: PAGE_SIZE_LARGE,
+          ...(nextPage && { after: nextPage }),
+        });
+
+        allGlossaries = [...allGlossaries, ...data];
+
+        if (glossaryFqn) {
+          isGlossaryFound = allGlossaries.some(
+            (item) => item.fullyQualifiedName === glossaryFqn
+          );
+        } else {
+          isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+        }
+
+        nextPage = glossaryPaging?.after;
+        settledPaging = glossaryPaging;
+      } while (nextPage && !isGlossaryFound);
+
+      setGlossaries(allGlossaries);
+
+      if (settledPaging) {
+        handlePagingChange(settledPaging);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+      setInitialised(true);
+    }
+  }, [paging.after, glossaryFqn]);
+
+  const fetchNextGlossaryItems = async (after?: string) => {
+    try {
+      let allGlossaries: Glossary[] = glossaries;
+
+      setIsMoreGlossaryLoading(true);
+
+      const { data, paging: glossaryPaging } = await getGlossariesList({
+        fields: GLOSSARY_LIST_FIELDS,
+        limit: PAGE_SIZE_LARGE,
+        after: after,
+      });
+
+      allGlossaries = [...allGlossaries, ...data];
+      handlePagingChange(glossaryPaging);
+
+      setGlossaries(allGlossaries);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsMoreGlossaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!initialised) {
+      fetchGlossaryList();
+    }
+  }, [initialised]);
+
+  useEffect(() => {
+    if (paging?.after && isInView && !isMoreGlossaryLoading) {
+      fetchNextGlossaryItems(paging.after);
+    }
+  }, [paging, isInView, isMoreGlossaryLoading, pageSize]);
+
+  const glossaryTermCacheKey = useMemo(
+    () => glossaryTermQueryKey(glossaryFqn, GLOSSARY_TERM_DEFAULT_FIELDS),
+    [glossaryFqn]
+  );
+
+  const isTermView = !isGlossaryActive && Boolean(glossaryFqn);
+
+  const {
+    data: glossaryTermDetails,
+    isFetching: glossaryTermFetching,
+    error: glossaryTermError,
+  } = useQuery({
+    queryKey: glossaryTermCacheKey,
+    queryFn: glossaryTermQueryFn(glossaryFqn, GLOSSARY_TERM_DEFAULT_FIELDS),
+    enabled: isTermView,
+  });
+
+  const setGlossaryTermDetails = useCallback(
+    (
+      updater:
+        | GlossaryTerm
+        | undefined
+        | ((prev: GlossaryTerm | undefined) => GlossaryTerm | undefined)
+    ) => {
+      queryClient.setQueryData<GlossaryTerm | undefined>(
+        glossaryTermCacheKey,
+        updater
+      );
+    },
+    [queryClient, glossaryTermCacheKey]
+  );
+
+  const refetchActiveGlossaryTerm = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: glossaryTermCacheKey }),
+    [queryClient, glossaryTermCacheKey]
+  );
+
+  useEffect(() => {
+    const status = (glossaryTermError as AxiosError | undefined)?.response
+      ?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [glossaryTermError, navigate]);
+
+  // Sync the fetched term into the Zustand store consumed by {@code GlossaryV1}. The
+  // store is also written to by the glossary-list code path below, so the two writers
+  // share a single sink rather than the component branching on isGlossaryActive twice.
+  useEffect(() => {
+    if (isTermView && glossaryTermDetails) {
+      setActiveGlossary(glossaryTermDetails as ModifiedGlossary);
+    }
+  }, [isTermView, glossaryTermDetails, setActiveGlossary]);
+
+  useEffect(() => {
+    if (glossaries.length && isGlossaryActive) {
+      setActiveGlossary(
+        glossaries.find(
+          (glossary) => glossary.fullyQualifiedName === glossaryFqn
+        ) || glossaries[0]
+      );
+
+      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+        navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+          replace: true,
+        });
+      }
+    }
+  }, [isGlossaryActive, glossaryFqn, glossaries]);
+
+  const isRightPanelLoading = useMemo(() => {
+    if (!glossaries.length) {
+      return true;
+    }
+    if (isTermView) {
+      return glossaryTermFetching;
+    }
+
+    return false;
+  }, [glossaries.length, isTermView, glossaryTermFetching]);
+
+  const isTermNotFound = useMemo(
+    () =>
+      isTermView &&
+      (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
+    [isTermView, glossaryTermError]
+  );
+
+  const updateGlossary = useCallback(
+    async (updatedData: Glossary) => {
+      const jsonPatch = compare(activeGlossary as Glossary, updatedData);
+
+      try {
+        const response = await patchGlossaries(activeGlossary?.id, jsonPatch);
+
+        updateActiveGlossary({ ...updatedData, ...response });
+
+        if (activeGlossary?.name !== updatedData.name) {
+          navigate(getGlossaryPath(response.fullyQualifiedName));
+          fetchGlossaryList();
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [activeGlossary, updateActiveGlossary, navigate, fetchGlossaryList]
+  );
+
+  const updateVote = useCallback(
+    async (data: VotingDataProps) => {
+      try {
+        const isGlossaryEntity =
+          Fqn.split(activeGlossary?.fullyQualifiedName ?? '').length <= 1;
+
+        if (isGlossaryEntity) {
+          const {
+            entity: { votes },
+          } = await updateGlossaryVotes(activeGlossary?.id ?? '', data);
+          updateActiveGlossary({ votes });
+        } else {
+          const {
+            entity: { votes },
+          } = await updateGlossaryTermVotes(activeGlossary?.id ?? '', data);
+          updateActiveGlossary({ votes });
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [updateActiveGlossary, activeGlossary]
+  );
+
+  const handleGlossaryDelete = useCallback(
+    async (id: string) => {
+      try {
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName: activeGlossary?.name,
+          entityId: id,
+          entityType: EntityType.GLOSSARY,
+          deleteType: DeleteType.HARD_DELETE,
+          prepareType: true,
+          isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
+        });
+
+        // check updated glossary list after deletion
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        setGlossaries(updatedGlossaries);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        navigate(glossaryPath);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.delete-entity-error', {
+            entity: t('label.glossary'),
+          })
+        );
+      }
+    },
+    [glossaries, activeGlossary, fetchGlossaryList]
+  );
+
+  const handleGlossaryTermUpdate = useCallback(
+    async (updatedData: GlossaryTerm) => {
+      const jsonPatch = compare(activeGlossary as GlossaryTerm, updatedData);
+      if (isEmpty(jsonPatch)) {
+        return;
+      }
+
+      const shouldRefreshTerms = jsonPatch.some((patch) =>
+        patch.path.startsWith('/owners')
+      );
+
+      try {
+        const response = await patchGlossaryTerm(activeGlossary?.id, jsonPatch);
+        if (response) {
+          setActiveGlossary(response as ModifiedGlossary);
+          setGlossaryTermDetails(response);
+          if (activeGlossary?.name !== updatedData.name) {
+            navigate(getGlossaryPath(response.fullyQualifiedName));
+            fetchGlossaryList();
+          }
+          if (shouldRefreshTerms) {
+            refetchActiveGlossaryTerm();
+          }
+        } else {
+          throw t('server.entity-updating-error', {
+            entity: t('label.glossary-term'),
+          });
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [activeGlossary, setGlossaryTermDetails, refetchActiveGlossaryTerm]
+  );
+
+  const handleGlossaryTermDelete = useCallback(
+    async (id: string) => {
+      try {
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName: activeGlossary?.name,
+          entityId: id,
+          entityType: EntityType.GLOSSARY_TERM,
+          deleteType: DeleteType.HARD_DELETE,
+          prepareType: true,
+          isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
+        });
+
+        let fqn;
+        if (glossaryFqn) {
+          const fqnArr = Fqn.split(glossaryFqn);
+          fqnArr.pop();
+          fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
+        }
+        navigate(getGlossaryPath(fqn));
+
+        const rootFqn = glossaryFqn ? Fqn.split(glossaryFqn)[0] : undefined;
+        if (rootFqn) {
+          updateGlossaryInList(
+            await getGlossariesByName(rootFqn, {
+              fields: GLOSSARY_LIST_FIELDS,
+            })
+          );
+        }
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.delete-entity-error', {
+            entity: t('label.glossary-term'),
+          })
+        );
+      }
+    },
+    [glossaryFqn, activeGlossary, fetchGlossaryList, updateGlossaryInList]
+  );
+
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
+    return (
+      <div className="d-flex justify-center items-center">
+        <ErrorPlaceHolder
+          className="mt-0-important border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.glossary'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      </div>
+    );
+  }
+
+  if (glossaries.length === 0 && !isLoading) {
+    return (
+      <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
+        <EmptyPlaceholder
+          description={t('message.glossary-empty-description')}
+          features={[
+            {
+              key: 'create-glossary',
+              icon: <BookOpen01 className="tw:text-fg-brand-primary" />,
+              title: t('label.create-a-glossary'),
+              description: t('message.create-a-glossary-description'),
+            },
+            {
+              key: 'add-terms',
+              icon: <File02 className="tw:text-fg-warning-primary" />,
+              title: t('label.add-terms'),
+              description: t('message.add-terms-description'),
+            },
+            {
+              key: 'link-to-data',
+              icon: <Data className="tw:text-fg-success-primary" />,
+              title: t('label.link-them-to-data'),
+              description: t('message.link-them-to-data-description'),
+            },
+          ]}
+          footer={
+            createGlossaryPermission ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-glossary"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryClick}>
+                {t('label.add-entity', { entity: t('label.glossary') })}
+              </CoreButton>
+            ) : undefined
+          }
+          title={t('message.build-your-business-dictionary')}
+          variant="features"
+        />
+      </div>
+    );
+  }
+
+  let glossaryElement;
+  if (isRightPanelLoading) {
+    glossaryElement = <Loader />;
+  } else if (isTermNotFound) {
+    glossaryElement = (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
+      </ErrorPlaceHolder>
+    );
+  } else {
+    glossaryElement = (
+      <GlossaryV1
+        isGlossaryActive={isGlossaryActive}
+        isSummaryPanelOpen={Boolean(previewAsset)}
+        isVersionsView={false}
+        refreshActiveGlossaryTerm={refetchActiveGlossaryTerm}
+        refreshGlossaryList={fetchGlossaryList}
+        selectedData={activeGlossary as Glossary}
+        updateGlossary={updateGlossary}
+        updateVote={updateVote}
+        onAssetClick={handleAssetClick}
+        onGlossaryDelete={handleGlossaryDelete}
+        onGlossaryTermDelete={handleGlossaryTermDelete}
+        onGlossaryTermUpdate={handleGlossaryTermUpdate}
+      />
+    );
+  }
+
+  const resizableLayout = isGlossaryActive ? (
+    <ResizableLeftPanels
+      showLearningIcon
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
+        minWidth: 280,
+        flex: 0.13,
+        title: t('label.glossary'),
+        children: (
+          <>
+            <GlossaryLeftPanel glossaries={glossaries} />
+            <div
+              className="w-full"
+              data-testid="glossary-left-panel-scroller"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}
+            />
+            {isMoreGlossaryLoading && <Loader />}
+          </>
+        ),
+      }}
+      hideFirstPanel={isImportAction}
+      learningPageId={LEARNING_PAGE_IDS.GLOSSARY}
+      learningTitle={t('label.glossary')}
+      pageTitle={getEntityName(activeGlossary)}
+      secondPanel={{
+        children: glossaryElement,
+        className: 'content-resizable-panel-container',
+        minWidth: 800,
+        flex: 0.87,
+      }}
+    />
+  ) : (
+    glossaryElement
+  );
+
+  return <div>{resizableLayout}</div>;
+};
+
+export default withPageLayout(GlossaryPage);

@@ -1,0 +1,18 @@
+{
+  "name": "Video_SnowflakeIntegration",
+  "displayName": "Connecting Snowflake to Collate",
+  "description": "Learn how to connect your Snowflake database to Collate's AI-powered platform. This video covers reverse metadata capability and usage analytics including query execution times and costs.",
+  "resourceType": "Video",
+  "categories": ["Discovery", "Administration"],
+  "difficulty": "Intermediate",
+  "source": {
+    "url": "https://www.youtube.com/watch?v=EfycmnM_hPs",
+    "provider": "YouTube"
+  },
+  "estimatedDuration": 600,
+  "contexts": [
+    {"pageId": "table"},
+    {"pageId": "explore"}
+  ],
+  "status": "Active"
+}

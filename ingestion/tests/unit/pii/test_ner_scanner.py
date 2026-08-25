@@ -1,0 +1,186 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Test Column Name Scanner
+"""
+
+from collections import defaultdict
+from typing import Any
+
+import pytest
+
+from metadata.pii.scanners.ner_scanner import NERScanner, StringAnalysis
+
+
+@pytest.fixture
+def scanner() -> NERScanner:
+    """Return the scanner"""
+    return NERScanner()
+
+
+def test_scanner_none(scanner):
+    assert scanner.scan(list(range(100))) is None
+    assert (
+        scanner.scan(
+            " ".split(  # noqa: SIM905
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam consequat quam sagittis convallis cursus."
+            )
+        )
+    ) is None
+
+
+def test_scanner_sensitive(scanner):
+    assert (
+        scanner.scan(
+            [
+                "geraldc@gmail.com",
+                "saratimithi@godesign.com",
+                "heroldsean@google.com",
+            ]
+        ).tag_fqn
+        == "PII.Sensitive"
+    )
+    assert scanner.scan(["im ok", "saratimithi@godesign.com", "not sensitive"]).tag_fqn == "PII.Sensitive"
+
+
+def test_scanner_nonsensitive(scanner):
+    assert (
+        scanner.scan(
+            [
+                "Washington",
+                "Alaska",
+                "Netherfield Lea Street",
+            ]
+        ).tag_fqn
+        == "PII.NonSensitive"
+    )
+
+
+def test_get_highest_score_label(scanner):
+    """Validate that even with score clashes, we only get one result back"""
+    assert scanner.get_highest_score_label(
+        {
+            "PII.Sensitive": StringAnalysis(score=0.9, appearances=1),
+            "PII.NonSensitive": StringAnalysis(score=0.8, appearances=1),
+        }
+    ) == ("PII.Sensitive", 0.9)
+    assert scanner.get_highest_score_label(
+        {
+            "PII.Sensitive": StringAnalysis(score=1.0, appearances=1),
+            "PII.NonSensitive": StringAnalysis(score=1.0, appearances=1),
+        }
+    ) == ("PII.Sensitive", 1.0)
+
+    # Equal weighted totals (0.3 * 5 == 0.5 * 3) must resolve to the higher confidence,
+    # not to whichever entity was recorded first: a weak pattern matching every row
+    # reaches the same total as a strong one matching a subset.
+    assert scanner.get_highest_score_label(
+        {
+            "US_DRIVER_LICENSE": StringAnalysis(score=0.3, appearances=5),
+            "US_SSN": StringAnalysis(score=0.5, appearances=3),
+        }
+    ) == ("US_SSN", 0.5)
+
+
+def test_masked_ssn_column_is_not_a_driving_licence(scanner):
+    """A column of SSNs that mostly fail Presidio's validator still reads as US_SSN.
+
+    The SSN-shaped driving-licence pattern matches every row unconditionally, so at an
+    equal score it outweighed the SSN match whenever fewer than 60% of the values
+    validated -- masked, placeholder or synthetic SSNs.
+    """
+    entities_score = defaultdict(lambda: StringAnalysis(score=0, appearances=0))
+    for row in ("000-12-3456", "666-45-6789", "111-00-2222", "333-44-0000", "543-21-0987"):
+        scanner.process_data(row=row, entities_score=entities_score)
+
+    assert scanner.get_highest_score_label(entities_score)[0] == "US_SSN"
+
+
+@pytest.mark.parametrize(
+    "data,is_json",
+    [
+        ("potato", (False, None)),
+        ("1", (False, None)),
+        ('{"key": "value"}', (True, {"key": "value"})),
+        (
+            '{"key": "value", "key2": "value2"}',
+            (True, {"key": "value", "key2": "value2"}),
+        ),
+        ('["potato"]', (True, ["potato"])),
+    ],
+)
+def test_is_json_data(scanner, data: Any, is_json: bool):
+    """Assert we are flagging JSON data correctly"""
+    assert scanner.is_json_data(data) == is_json
+
+
+def test_scanner_with_json(scanner):
+    """Test the scanner with JSON data"""
+
+    assert (
+        scanner.scan(
+            [
+                '{"email": "johndoe@example.com", "address": {"street": "123 Main St"}}',
+                '{"email": "potato", "age": 30, "preferences": {"newsletter": true, "notifications": "email"}}',
+            ]
+        ).tag_fqn
+        == "PII.Sensitive"
+    )
+
+    assert (
+        scanner.scan(
+            [
+                '{"email": "foo", "address": {"street": "bar"}}',
+                '{"email": "potato", "age": 30, "preferences": {"newsletter": true, "notifications": "email"}}',
+            ]
+        )
+        is None
+    )
+
+
+def test_scanner_with_lists(scanner):
+    """Test the scanner with list data"""
+
+    assert scanner.scan(["foo", "bar", "biz"]) is None
+
+    assert scanner.scan(["foo", "bar", "johndoe@example.com"]).tag_fqn == "PII.Sensitive"
+
+    assert (
+        scanner.scan(
+            [
+                '{"emails": ["johndoe@example.com", "lima@example.com"]}',
+                '{"emails": ["foo", "bar", "biz"]}',
+            ]
+        ).tag_fqn
+        == "PII.Sensitive"
+    )
+
+
+def test_scan_entities(scanner):
+    """
+    We can properly validate certain entities.
+
+    > NOTE: These lists are randomly generated and not valid IDs for any actual use
+    """
+    pan_numbers = ["AFZPK7190K", "BLQSM2938L", "CWRTJ5821M", "DZXNV9045A", "EHYKG6752P"]
+    assert scanner.scan(pan_numbers).tag_fqn == "PII.Sensitive"
+
+    ssn_numbers = [
+        "123-45-6789",
+        "987-65-4321",
+        "543-21-0987",
+        "678-90-1234",
+        "876-54-3210",
+    ]
+    assert scanner.scan(ssn_numbers).tag_fqn == "PII.Sensitive"
+
+    nif_numbers = ["12345678Z", "87654321X", "23456789D", "98765432M", "34567890V"]
+    assert scanner.scan(nif_numbers).tag_fqn == "PII.Sensitive"

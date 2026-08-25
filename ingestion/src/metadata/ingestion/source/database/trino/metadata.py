@@ -1,0 +1,407 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Trino source implementation.
+"""
+
+import re  # noqa: I001
+import traceback
+from copy import deepcopy
+from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+
+from sqlalchemy import exc, sql, util
+from sqlalchemy.engine.base import Connection
+from sqlalchemy.sql import sqltypes
+from trino.sqlalchemy import datatype, error
+from trino.sqlalchemy.datatype import JSON
+from trino.sqlalchemy.dialect import TrinoDialect
+
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
+from metadata.ingestion.source.database.trino.queries import (
+    TRINO_GET_CATALOG_CONNECTOR,
+    TRINO_TABLE_COMMENTS,
+    TRINO_VIEW_DEFINITION,
+    TRINO_VIEW_DEFINITION_FALLBACK,
+)
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import get_all_table_comments
+
+logger = ingestion_logger()
+ROW_DATA_TYPE = "row"
+ARRAY_DATA_TYPE = "array"
+UNNAMED_FIELD_PREFIX = "field"
+
+# Trino renders a named ROW field as `"name" type`, always quoting the name and
+# escaping an embedded quote as `""`. A leading quote is therefore what tells a
+# named field apart from an unnamed one whose type happens to contain spaces.
+_QUOTED_FIELD_NAME = re.compile(r'^"((?:[^"]|"")*)"\s+(?P<type>.+)$', re.DOTALL)
+
+# The only Trino types rendered with spaces. Without this, an unnamed field such
+# as `timestamp(3) with time zone` would split into two tokens and be misread as
+# a field named `timestamp(3)`.
+_TYPE_CONTINUATION = re.compile(
+    r"^(?:with(?:out)?\s+time\s+zone|day\s+to\s+second|year\s+to\s+month|precision)$",
+    re.IGNORECASE,
+)
+
+
+def _starts_with_type(type_str: str, type_name: str) -> bool:
+    return type_str.lower().startswith(type_name)
+
+
+def split_row_field(field_str: str) -> Tuple[Optional[str], str]:  # noqa: UP006, UP045
+    """
+    Split a single Trino ROW field into its (name, type) pair.
+
+    Trino allows the field name to be omitted entirely -- `row(bigint, varchar(1))`,
+    which is what any CTAS over a `ROW(...)` constructor produces -- so the name is
+    None for an unnamed field, mirroring how the driver's own ROW type models it.
+    Naming is left to `resolve_field_names`, which needs the whole ROW to guarantee
+    uniqueness.
+
+    Named fields arrive quoted (`row("a" bigint)`); the quotes are stripped so the
+    OpenMetadata child column is `a` rather than `"a"`, preserving the original case.
+    """
+    field_str = field_str.strip()
+
+    quoted = _QUOTED_FIELD_NAME.match(field_str)
+    if quoted:
+        return quoted.group(1).replace('""', '"'), quoted.group("type").strip()
+
+    parts = list(datatype.aware_split(field_str, delimiter=" ", maxsplit=1))
+    if len(parts) == 1 or _TYPE_CONTINUATION.match(parts[1].strip()):
+        return None, field_str
+    return parts[0], parts[1].strip()
+
+
+def resolve_field_names(fields: List[Tuple[Optional[str], str]]) -> List[Tuple[str, str]]:  # noqa: UP006, UP045
+    """
+    Give every field of one ROW a unique name.
+
+    Unnamed fields are named positionally to match Trino's 1-based field access, so
+    `s[1]` reads as `field1`. Because a ROW may mix unnamed fields with one named
+    literally `fieldN` -- `row(bigint, "field1" varchar)` is valid Trino -- a
+    positional name is suffixed until it is unique. Two children sharing a name
+    would make the nested column FQN ambiguous.
+    """
+    taken = {name for name, _ in fields if name is not None}
+    resolved = []
+    for position, (name, type_str) in enumerate(fields, start=1):
+        if name is None:
+            name = f"{UNNAMED_FIELD_PREFIX}{position}"  # noqa: PLW2901
+            suffix = 1
+            while name in taken:
+                name = f"{UNNAMED_FIELD_PREFIX}{position}_{suffix}"  # noqa: PLW2901
+                suffix += 1
+            taken.add(name)
+        resolved.append((name, type_str))
+    return resolved
+
+
+def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
+    match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", type_str)
+    if not match:
+        util.warn(f"Could not parse type name '{type_str}'")
+        return sqltypes.NULLTYPE
+    type_name = match.group("type")
+    type_opts = match.group("options")
+    return type_name, type_opts
+
+
+def parse_array_data_type(type_str: str) -> str:
+    """
+    This mehtod is used to convert the complex array datatype to the format that is supported by OpenMetadata
+    For Example:
+    If we have a row type as array(row(col1 bigint, col2 string))
+    this method will return type as -> array<struct<col1:bigint,col2:string>>
+    """
+    type_name, type_opts = get_type_name_and_opts(type_str)
+    final = type_name.lower() + "<"
+    if type_opts:
+        if _starts_with_type(type_opts, ROW_DATA_TYPE):
+            final += parse_row_data_type(type_opts)
+        elif _starts_with_type(type_opts, ARRAY_DATA_TYPE):
+            final += parse_array_data_type(type_opts)
+        else:
+            final += type_opts
+    return final + ">"
+
+
+def parse_row_data_type(type_str: str) -> str:
+    """
+    This mehtod is used to convert the complex row datatype to the format that is supported by OpenMetadata
+    For Example:
+    If we have a row type as row(col1 bigint, col2 bigint, col3 row(col4 string, col5 bigint))
+    this method will return type as -> struct<col1:bigint,col2:bigint,col3:struct<col4:string,col5:bigint>>
+    """
+    type_name, type_opts = get_type_name_and_opts(type_str)
+    final = type_name.lower().replace(ROW_DATA_TYPE, "struct") + "<"
+    if type_opts:
+        fields = [split_row_field(field) for field in datatype.aware_split(type_opts) or []]
+        for attr_name, attr_type_str in resolve_field_names(fields):
+            if _starts_with_type(attr_type_str, ROW_DATA_TYPE):
+                final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
+            elif _starts_with_type(attr_type_str, ARRAY_DATA_TYPE):
+                final += attr_name + ":" + parse_array_data_type(attr_type_str) + ","
+            else:
+                final += attr_name + ":" + attr_type_str + ","
+    return final[:-1] + ">"
+
+
+def _parse_sqltype(type_str: str, table_name: str, column_name: str):
+    """
+    Resolve the SQLAlchemy type for a Trino column, tolerating types the driver
+    cannot parse.
+
+    ``trino.sqlalchemy.datatype.parse_sqltype`` raises on ROW types with unnamed
+    fields (it unpacks every field as `name type`), which would otherwise abort
+    reflection for the whole table and publish it with no columns at all. The
+    OpenMetadata data type is derived from ``system_data_type`` for complex
+    columns, so falling back to NULLTYPE here keeps the column and its children.
+    """
+    try:
+        return datatype.parse_sqltype(type_str)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Could not resolve a SQLAlchemy type for column [{table_name}.{column_name}] of type [{type_str}]: {err}"
+        )
+        return sqltypes.NULLTYPE
+
+
+def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:  # noqa: RUF013, UP006
+    # pylint: disable=protected-access
+    schema = schema or self._get_default_schema_name(connection)
+    preparer = connection.dialect.identifier_preparer
+    query = f"SHOW COLUMNS FROM {preparer.quote(schema)}.{preparer.quote(table_name)}"
+
+    res = connection.execute(sql.text(query))
+    columns = []
+    for record in res:
+        col_type = _parse_sqltype(record.Type, table_name=table_name, column_name=record.Column)
+        column = {
+            "name": record.Column,
+            "type": col_type,
+            "nullable": True,
+            # SHOW COLUMNS reports an unset comment as '' rather than NULL, and it reports an
+            # explicit COMMENT '' the same way, so the two are indistinguishable here. Normalize
+            # to None so we don't ingest a blank description that then blocks later updates.
+            "comment": record.Comment or None,
+            "system_data_type": record.Type,
+        }
+        # Keep the original case: Trino renders type names in lower case already,
+        # but preserves the case of quoted ROW field names, which become the
+        # OpenMetadata child column names.
+        type_str = record.Type.strip()
+        type_name, type_opts = get_type_name_and_opts(type_str)
+        if type_opts and type_name.lower() == ROW_DATA_TYPE:
+            column["system_data_type"] = parse_row_data_type(type_str)
+            column["is_complex"] = True
+        elif type_opts and type_name.lower() == ARRAY_DATA_TYPE:
+            column["system_data_type"] = parse_array_data_type(type_str)
+            column["is_complex"] = True
+        columns.append(column)
+    return columns
+
+
+def get_table_comment(  # pylint: disable=unused-argument
+    self,
+    connection: Connection,
+    table_name: str,
+    schema: str = None,  # noqa: RUF013
+    **kw,
+) -> Dict[str, Any]:  # noqa: UP006
+    """
+    Override get table comment method to batch process comments
+    """
+    catalog_name = self._get_default_catalog_name(  # pylint: disable=protected-access
+        connection
+    )
+    if catalog_name is None:
+        raise exc.NoSuchTableError("catalog is required in connection")
+    schema_name = (
+        self._get_default_schema_name(connection)  # pylint: disable=protected-access
+        or schema
+    )
+    if schema_name is None:
+        raise exc.NoSuchTableError("schema is required")
+    self.processed_schema = self.processed_schema if hasattr(self, "processed_schema") else set()
+    try:
+        if (
+            not hasattr(self, "all_table_comments")
+            or self.current_db != connection.engine.url.database
+            or schema not in self.processed_schema
+        ):
+            self.processed_schema.add(schema)
+            self.get_all_table_comments(
+                connection,
+                TRINO_TABLE_COMMENTS.format(catalog_name=catalog_name, schema_name=schema),
+            )
+        return {"text": self.all_table_comments.get((table_name, schema)) or None}
+    except error.TrinoQueryError as exe:
+        if exe.error_name in (error.PERMISSION_DENIED,):
+            return {"text": None}
+        raise
+
+
+def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> Optional[str]:  # noqa: RUF013, UP045
+    """
+    Get the view definition for Trino views.
+
+    First attempts to fetch the definition from information_schema.views, which
+    only requires read permissions. If that returns no result, falls back to
+    SHOW CREATE VIEW which returns the full DDL but requires owner permissions.
+
+    When the definition comes from information_schema (which omits the CREATE VIEW
+    prefix), we prepend it so the lineage parser can process it correctly.
+    """
+    catalog_name = self._get_default_catalog_name(  # pylint: disable=protected-access
+        connection
+    )
+    schema = schema or self._get_default_schema_name(connection)  # pylint: disable=protected-access
+    if schema is None:
+        raise exc.NoSuchTableError("schema is required")
+
+    if catalog_name:
+        full_view_name = f'"{catalog_name}"."{schema}"."{view_name}"'
+    else:
+        full_view_name = f'"{schema}"."{view_name}"'
+
+    try:
+        # Fetch from information_schema.views (requires only read permissions)
+        query = TRINO_VIEW_DEFINITION
+        res = connection.execute(sql.text(query), {"schema": schema, "view": view_name})
+        view_definition = res.scalar()
+
+        if not view_definition:
+            try:
+                # Fallback to SHOW CREATE VIEW (requires owner permissions)
+                query = TRINO_VIEW_DEFINITION_FALLBACK.format(view_name=full_view_name)
+                res = connection.execute(sql.text(query))
+                view_definition = res.scalar()
+            except Exception as fallback_err:
+                logger.warning(
+                    f"SHOW CREATE VIEW failed for [{full_view_name}] (may require owner permissions): {fallback_err}"
+                )
+
+        if not view_definition:
+            logger.warning(f"Could not get view definition for view [{full_view_name}]")
+            return None
+
+        # Ensure CREATE VIEW prefix exists for lineage parser compatibility.
+        create_view_pattern = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?VIEW", re.IGNORECASE)
+        if not create_view_pattern.search(view_definition):
+            view_definition = f"CREATE VIEW {full_view_name} AS {view_definition}"
+
+        return view_definition  # noqa: TRY300
+    except Exception as err:
+        logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")
+
+
+TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access
+TrinoDialect.get_all_table_comments = get_all_table_comments
+TrinoDialect.get_table_comment = get_table_comment
+TrinoDialect.get_view_definition = get_view_definition
+
+
+class TrinoSource(CommonDbSourceService):
+    """
+    Trino does not support querying by table type: Getting views is not supported.
+    """
+
+    ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = "JSON"
+
+    @classmethod
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+        config = WorkflowSource.model_validate(config_dict)
+        connection: TrinoConnection = config.serviceConnection.root.config
+        if not isinstance(connection, TrinoConnection):
+            raise InvalidSourceException(f"Expected TrinoConnection, but got {connection}")
+        return cls(config, metadata)
+
+    def set_inspector(self, database_name: str) -> None:
+        """
+        When sources override `get_database_names`, they will need
+        to setup multiple inspectors. They can use this function.
+        :param database_name: new database to set
+        """
+        logger.info(f"Ingesting from catalog: {database_name}")
+
+        new_service_connection = deepcopy(self.service_connection)
+        new_service_connection.catalog = database_name
+        self.engine = get_connection(new_service_connection)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
+
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+        table_type = TableType.Regular
+        try:
+            catalog_name = self.context.get().database
+            result = self.connection.execute(
+                sql.text(TRINO_GET_CATALOG_CONNECTOR),
+                {"catalog_name": catalog_name},
+            )
+            row = result.first()
+            if row and row[0] == "iceberg":
+                table_type = TableType.Iceberg
+        except Exception:
+            logger.debug(traceback.format_exc())
+
+        return [
+            TableNameAndType(name=name, type_=table_type) for name in self.inspector.get_table_names(schema_name) or []
+        ]
+
+    def get_database_names(self) -> Iterable[str]:
+        configured_catalog = self.service_connection.catalog
+        if configured_catalog:
+            self.set_inspector(database_name=configured_catalog)
+            yield configured_catalog
+        else:
+            results = self.connection.execute(sql.text("SHOW CATALOGS"))
+            for res in results:
+                if res:
+                    new_catalog = res[0]
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=new_catalog,
+                    )
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        (database_fqn if self.source_config.useFqnForFiltering else new_catalog),
+                    ):
+                        self.status.filter(database_fqn, "Database Filtered Out")
+                        continue
+
+                    try:
+                        self.set_inspector(database_name=new_catalog)
+                        yield new_catalog
+                    except Exception as err:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(f"Error trying to connect to database {new_catalog}: {err}")

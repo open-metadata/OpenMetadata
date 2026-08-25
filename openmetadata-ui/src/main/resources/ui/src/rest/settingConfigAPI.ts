@@ -1,0 +1,166 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { AxiosResponse } from 'axios';
+import axiosClient from '.';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
+import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
+import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
+import { SearchSettings } from '../generated/configuration/searchSettings';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { Settings, SettingType } from '../generated/settings/settings';
+
+export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
+export { RelationCardinality };
+
+export interface GlossaryTermRelationType {
+  name: string;
+  displayName: string;
+  description?: string;
+  inverseRelation?: string;
+  rdfPredicate?: string;
+  cardinality?: RelationCardinality;
+  sourceMax?: number | null;
+  targetMax?: number | null;
+  isSymmetric?: boolean;
+  isTransitive?: boolean;
+  isCrossGlossaryAllowed?: boolean;
+  category: RelationCategory;
+  isSystemDefined?: boolean;
+  color?: string;
+}
+
+export interface GlossaryTermRelationSettings {
+  relationTypes: GlossaryTermRelationType[];
+}
+
+export const getSettingsConfigFromConfigType = async (
+  configType: SettingType
+): Promise<AxiosResponse<Settings>> => {
+  const response = await axiosClient.get<Settings>(
+    `/system/settings/${configType}`
+  );
+
+  return response;
+};
+
+export const updateSettingsConfig = async (payload: Settings) => {
+  const response = await axiosClient.put<Settings>(`/system/settings`, payload);
+
+  return response;
+};
+
+export const getCustomUiThemePreference = async () => {
+  const response = await axiosClient.get<UIThemePreference>(
+    `system/config/customUiThemePreference`
+  );
+
+  return response.data;
+};
+
+export const getLoginConfig = async () => {
+  const response = await axiosClient.get<LoginConfiguration>(
+    `system/config/loginConfig`
+  );
+
+  return response.data;
+};
+
+/**
+ * Tenant-wide "first impression" app-mode default. DB-backed via the
+ * generic settings store (yaml-seeded on first boot only); readable by any
+ * authenticated user since the boot-time app-mode fallback chain needs it,
+ * not just admins.
+ */
+export const getAppConfiguration = async (): Promise<AppConfiguration> => {
+  const response = await axiosClient.get<Settings>(
+    `/system/settings/${SettingType.AppConfiguration}`
+  );
+
+  return (response.data.config_value as AppConfiguration) ?? {};
+};
+
+/**
+ * Admin-only. Writes through the generic `/system/settings` PUT, matching
+ * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
+ * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ */
+export const patchAppConfiguration = async (
+  patch: Partial<AppConfiguration>
+): Promise<AppConfiguration> => {
+  const response = await axiosClient.put<Settings>(`/system/settings`, {
+    config_type: SettingType.AppConfiguration,
+    config_value: patch,
+  });
+
+  return (response.data.config_value as AppConfiguration) ?? {};
+};
+
+export const testEmailConnection = async (data: { email: string }) => {
+  const response = await axiosClient.put<string>(
+    '/system/email/test',
+    data,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response;
+};
+
+export const getSettingsByType = async (
+  settingType: SettingType
+): Promise<SearchSettings | LineageSettings> => {
+  const response = await axiosClient.get<Settings>(
+    `/system/settings/${settingType}`
+  );
+
+  return response.data.config_value as SearchSettings | LineageSettings;
+};
+
+export const restoreSettingsConfig = async (settingType: SettingType) => {
+  const response = await axiosClient.put<Settings>(
+    `/system/settings/reset/${settingType}`
+  );
+
+  return response;
+};
+
+export const getSystemConfig = async () => {
+  const response = await axiosClient.get<{
+    basePath: string;
+    rdfEnabled: boolean;
+  }>(`system/config/rdf`);
+
+  return response.data;
+};
+
+export const getGlossaryTermRelationSettings =
+  async (): Promise<GlossaryTermRelationSettings> => {
+    const response = await axiosClient.get<Settings>(
+      `/system/settings/glossaryTermRelationSettings`
+    );
+
+    return response.data.config_value as GlossaryTermRelationSettings;
+  };
+
+export const updateGlossaryTermRelationSettings = async (
+  settings: GlossaryTermRelationSettings
+): Promise<Settings> => {
+  const response = await axiosClient.put<Settings>(`/system/settings`, {
+    config_type: 'glossaryTermRelationSettings',
+    config_value: settings,
+  });
+
+  return response.data;
+};

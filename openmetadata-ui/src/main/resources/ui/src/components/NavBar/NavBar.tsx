@@ -1,0 +1,686 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Alert,
+  Badge,
+  Button,
+  Dropdown,
+  InputRef,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { Header } from 'antd/lib/layout/layout';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { CookieStorage } from 'cookie-storage';
+import { startCase, upperCase } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
+import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
+import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
+import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
+import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
+import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  LAST_VERSION_FETCH_TIME_KEY,
+  NOTIFICATION_READ_TIMER,
+  ONE_HOUR_MS,
+  ROUTES,
+  SOCKET_EVENTS,
+} from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
+import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/type';
+import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../hooks/useDomainStore';
+import { getVersion } from '../../rest/miscAPI';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
+import {
+  hasNotificationPermission,
+  shouldRequestPermission,
+} from '../../utils/BrowserNotificationUtils';
+import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
+import { getDomainDisplayName } from '../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  getEntityFQN,
+  getEntityType,
+  prepareFeedLink,
+} from '../../utils/FeedUtilsPure';
+import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import i18n from '../../utils/i18next/LocalUtil';
+import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
+import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
+import { getHelpDropdownItems } from '../../utils/NavbarUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
+import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
+import './nav-bar.less';
+import popupAlertsCardsClassBase from './PopupAlertClassBase';
+const DomainSelectableList = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../common/DomainSelectableList/DomainSelectableList.component')
+  )
+);
+
+const cookieStorage = new CookieStorage();
+
+const NavBar = () => {
+  const { isTourOpen: isTourRoute } = useTourProvider();
+  const { onUpdateCSVExportJob } = useEntityExportModalProvider();
+  const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
+  // handleDeleteEntityWebsocketResponse is recreated every render (it closes
+  // over asyncDeleteJob) but the socket listener is registered once. Read it
+  // through a ref so the handler always uses the latest state instead of a
+  // stale closure — without re-registering the socket listener each render.
+  const handleDeleteEntityResponseRef = useRef(
+    handleDeleteEntityWebsocketResponse
+  );
+  handleDeleteEntityResponseRef.current = handleDeleteEntityWebsocketResponse;
+  const Logo = brandClassBase.getMonogram().src;
+  const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
+    useState(false);
+  const location = useCustomLocation();
+  const navigate = useNavigate();
+  const {
+    activeDomain,
+    activeDomainEntityRef,
+    updateActiveDomain,
+    userDomains,
+    isDomainRestricted,
+  } = useDomainStore();
+  const { t } = useTranslation();
+  const searchRef = useRef<InputRef>(null);
+  const [hasTaskNotification, setHasTaskNotification] =
+    useState<boolean>(false);
+  const [hasMentionNotification, setHasMentionNotification] =
+    useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('Task');
+  const { appVersion: version, setAppVersion } = useApplicationStore();
+  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
+  const {
+    preferences: { isSidebarCollapsed },
+    setPreference,
+  } = useCurrentUserPreferences();
+
+  // Check if current route is home page
+  const isHomePage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname === ROUTES.MY_DATA;
+  }, [location.pathname]);
+
+  const isTourPage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname.includes(ROUTES.TOUR);
+  }, [location.pathname]);
+
+  const isDataMarketplacePage = useMemo(() => {
+    return location.pathname === ROUTES.DATA_MARKETPLACE;
+  }, [location.pathname]);
+
+  const fetchOMVersion = async () => {
+    try {
+      const res = await getVersion();
+
+      const now = Date.now();
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
+      });
+
+      // Remove -SNAPSHOT from the version
+      setAppVersion(res.version.replace('-SNAPSHOT', ''));
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.version'),
+        })
+      );
+    }
+  };
+
+  const renderAlertCards = useMemo(() => {
+    const cardList = popupAlertsCardsClassBase.alertsCards();
+
+    return cardList.map(({ key, component }) => {
+      const Component = component;
+
+      return <Component key={key} />;
+    });
+  }, []);
+
+  const { socket } = useWebSocketConnector();
+
+  const handleTaskNotificationRead = () => {
+    setHasTaskNotification(false);
+  };
+
+  const handleMentionsNotificationRead = () => {
+    setHasMentionNotification(false);
+  };
+
+  const handleBellClick = useCallback(
+    (visible: boolean) => {
+      if (visible) {
+        switch (activeTab) {
+          case 'Task':
+            hasTaskNotification &&
+              setTimeout(() => {
+                handleTaskNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
+
+            break;
+
+          case 'Conversation':
+            hasMentionNotification &&
+              setTimeout(() => {
+                handleMentionsNotificationRead();
+              }, NOTIFICATION_READ_TIMER);
+
+            break;
+        }
+      }
+    },
+    [hasTaskNotification]
+  );
+
+  const handleActiveTab = (key: string) => {
+    setActiveTab(key);
+  };
+
+  const showBrowserNotification = (
+    about: string,
+    createdBy: string,
+    type: string,
+    backgroundJobData?: BackgroundJob
+  ) => {
+    if (!hasNotificationPermission()) {
+      return;
+    }
+
+    const entityType = getEntityType(about);
+    const entityFQN = getEntityFQN(about) ?? '';
+    let body;
+    let path: string;
+
+    switch (type) {
+      case 'Task':
+        body = t('message.user-assign-new-task', {
+          user: createdBy,
+        });
+
+        path = entityUtilClassBase.getEntityLink(
+          entityType as EntityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        );
+
+        break;
+      case 'Conversation':
+        body = t('message.user-mentioned-in-comment', {
+          user: createdBy,
+        });
+        path = prepareFeedLink(entityType as string, entityFQN as string);
+
+        break;
+
+      case 'BackgroundJob': {
+        if (!backgroundJobData) {
+          break;
+        }
+
+        const { jobArgs, status, jobType } = backgroundJobData;
+
+        if (jobType === JobType.CustomPropertyEnumCleanup) {
+          const enumCleanupArgs = jobArgs;
+          if (!enumCleanupArgs.entityType) {
+            showErrorToast(
+              {
+                isAxiosError: true,
+                message: 'Invalid job arguments: entityType is required',
+              } as AxiosError,
+              t('server.unexpected-error')
+            );
+
+            break;
+          }
+          body = t('message.custom-property-update', {
+            propertyName: jobArgs.propertyName,
+            entityName: jobArgs.entityType,
+            status: startCase(status.toLowerCase()),
+          });
+
+          path = getSettingPath(
+            GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+            getCustomPropertyEntityPathname(enumCleanupArgs.entityType)
+          );
+        }
+
+        break;
+      }
+    }
+    const notification = new Notification(
+      t('label.notification-from-brand-name'),
+      {
+        body: body,
+        icon: Logo,
+      }
+    );
+    notification.onclick = () => {
+      const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
+      // Applying logic to open a new window onclick of browser notification from chrome
+      // As it does not open the concerned tab by default.
+      if (isChrome > -1) {
+        globalThis.open(path);
+      } else {
+        navigate(path);
+      }
+    };
+  };
+
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
+    if (isCommandKeyPress(event) && event.key === Keys.K) {
+      searchRef.current?.focus();
+      event.preventDefault();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (shouldRequestPermission()) {
+      Notification.requestPermission();
+    }
+
+    const handleDocumentVisibilityChange = async () => {
+      if (
+        applicationRoutesClass.isProtectedRoute(location.pathname) &&
+        isTourRoute
+      ) {
+        return;
+      }
+
+      // Check if we need to fetch based on cache timing
+      // This is to block the API call for 1 hour
+      const lastFetchTime = cookieStorage.getItem(LAST_VERSION_FETCH_TIME_KEY);
+      const now = Date.now();
+
+      if (lastFetchTime) {
+        const timeSinceLastFetch = now - Number.parseInt(lastFetchTime);
+        if (timeSinceLastFetch < ONE_HOUR_MS) {
+          // Less than 1 hour since last fetch, skip API call
+          return;
+        }
+      }
+
+      const newVersion = await getVersion();
+      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
+
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
+      });
+
+      // Compare version only if version is set previously to have fair comparison
+      if (version && version !== cleanedVersion) {
+        setShowVersionMissMatchAlert(true);
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, [isTourRoute, version]);
+
+  useEffect(() => {
+    const handleTaskNotification = (newActivity: string) => {
+      if (newActivity) {
+        const activity = JSON.parse(newActivity);
+        setHasTaskNotification(true);
+        showBrowserNotification(
+          activity.about,
+          activity.createdBy,
+          activity.type
+        );
+      }
+    };
+
+    const handleMentionNotification = (newActivity: string) => {
+      if (newActivity) {
+        const activity = JSON.parse(newActivity);
+        setHasMentionNotification(true);
+        showBrowserNotification(
+          activity.about,
+          activity.createdBy,
+          activity.type
+        );
+      }
+    };
+
+    const handleCSVExportNotification = (exportResponse: string) => {
+      if (exportResponse) {
+        const exportResponseData = JSON.parse(
+          exportResponse
+        ) as CSVExportWebsocketResponse;
+
+        onUpdateCSVExportJob(exportResponseData);
+      }
+    };
+
+    const handleBackgroundJobNotification = (jobResponse: string) => {
+      if (jobResponse) {
+        const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
+        showBrowserNotification(
+          '',
+          jobResponseData.createdBy,
+          'BackgroundJob',
+          jobResponseData
+        );
+      }
+    };
+
+    const handleDeleteEntityNotification = (deleteResponse: string) => {
+      if (deleteResponse) {
+        const deleteResponseData = JSON.parse(
+          deleteResponse
+        ) as AsyncDeleteWebsocketResponse;
+        handleDeleteEntityResponseRef.current(deleteResponseData);
+      }
+    };
+
+    if (socket) {
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, handleTaskNotification);
+      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, handleMentionNotification);
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, handleCSVExportNotification);
+      socket.on(
+        SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL,
+        handleBackgroundJobNotification
+      );
+      socket.on(
+        SOCKET_EVENTS.DELETE_ENTITY_CHANNEL,
+        handleDeleteEntityNotification
+      );
+    }
+
+    return () => {
+      if (socket) {
+        socket.off(SOCKET_EVENTS.TASK_CHANNEL, handleTaskNotification);
+        socket.off(SOCKET_EVENTS.MENTION_CHANNEL, handleMentionNotification);
+        socket.off(
+          SOCKET_EVENTS.CSV_EXPORT_CHANNEL,
+          handleCSVExportNotification
+        );
+        socket.off(
+          SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL,
+          handleBackgroundJobNotification
+        );
+        socket.off(
+          SOCKET_EVENTS.DELETE_ENTITY_CHANNEL,
+          handleDeleteEntityNotification
+        );
+      }
+    };
+  }, [socket, onUpdateCSVExportJob]);
+
+  useEffect(() => {
+    fetchOMVersion();
+  }, []);
+
+  useEffect(() => {
+    const targetNode = document.body;
+    targetNode.addEventListener('keydown', handleKeyPress);
+
+    return () => targetNode.removeEventListener('keydown', handleKeyPress);
+  }, [handleKeyPress]);
+
+  const handleDomainChange = useCallback(
+    async (domain: EntityReference | EntityReference[]) => {
+      updateActiveDomain(domain as EntityReference);
+      setIsDomainDropdownOpen(false);
+      navigate(0);
+    },
+    []
+  );
+
+  const domainDisplayName = useMemo(
+    () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
+    [activeDomainEntityRef, activeDomain, t]
+  );
+
+  const showAllDomains = !isDomainRestricted;
+  const isSingleDomainUser = isDomainRestricted && userDomains.length === 1;
+
+  const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
+    await localUtilClassBase.loadLocales(key);
+    await i18n.changeLanguage(key);
+    navigate(0);
+  }, []);
+
+  const currentLanguage = i18n.language
+    ? upperCase(i18n.language.split('-')[0])
+    : '';
+
+  return (
+    <>
+      <Header
+        style={
+          isDataMarketplacePage
+            ? {
+                background: 'transparent',
+                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+                position: 'relative' as const,
+                zIndex: 10,
+              }
+            : undefined
+        }>
+        <div className="navbar-container">
+          <div className="flex-center gap-2">
+            <Tooltip
+              placement="right"
+              title={
+                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
+              }>
+              <Button
+                className="w-6 h-6 p-0 flex-center"
+                data-testid="sidebar-toggle"
+                icon={
+                  isSidebarCollapsed ? (
+                    <SidebarCollapsedIcon height={20} width={20} />
+                  ) : (
+                    <SidebarExpandedIcon height={20} width={20} />
+                  )
+                }
+                size="middle"
+                type="text"
+                onClick={() =>
+                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
+                }
+              />
+            </Tooltip>
+            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
+              <>
+                <GlobalSearchBar />
+                <DomainSelectableList
+                  hasPermission
+                  disabled={isSingleDomainUser}
+                  popoverProps={{
+                    open: isDomainDropdownOpen,
+                    onOpenChange: (open) => {
+                      setIsDomainDropdownOpen(open);
+                    },
+                  }}
+                  restrictedDomains={
+                    isDomainRestricted ? userDomains : undefined
+                  }
+                  selectedDomain={activeDomainEntityRef}
+                  showAllDomains={showAllDomains}
+                  wrapInButton={false}
+                  onCancel={() => setIsDomainDropdownOpen(false)}
+                  onUpdate={handleDomainChange}>
+                  <Tooltip
+                    title={
+                      isSingleDomainUser
+                        ? t('message.domain-access-restricted')
+                        : undefined
+                    }>
+                    <Button
+                      className={classNames(
+                        'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
+                        {
+                          'domain-active':
+                            activeDomain !== DEFAULT_DOMAIN_VALUE,
+                        }
+                      )}
+                      data-testid="domain-dropdown"
+                      onClick={() =>
+                        setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                      }>
+                      <DomainIcon
+                        className="d-flex"
+                        height={20}
+                        name="domain"
+                        width={20}
+                      />
+                      <Typography.Text ellipsis className="domain-text">
+                        {domainDisplayName}
+                      </Typography.Text>
+                      {!isSingleDomainUser && <DropDownIcon width={12} />}
+                    </Button>
+                  </Tooltip>
+                </DomainSelectableList>
+              </>
+            )}
+          </div>
+
+          <div className="flex-center gap-5 nav-bar-side-items">
+            <Dropdown
+              className="cursor-pointer"
+              menu={{
+                items: languageSelectOptions,
+                onClick: handleLanguageChange,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button
+                className="flex-center gap-2 p-x-xs font-medium"
+                data-testid="language-selector-button"
+                type="text">
+                {currentLanguage}
+                <DropDownIcon width={12} />
+              </Button>
+            </Dropdown>
+            <Dropdown
+              destroyPopupOnHide
+              className="cursor-pointer"
+              dropdownRender={() => (
+                <NotificationBox
+                  activeTab={activeTab}
+                  hasMentionNotification={hasMentionNotification}
+                  hasTaskNotification={hasTaskNotification}
+                  onMarkMentionsNotificationRead={
+                    handleMentionsNotificationRead
+                  }
+                  onMarkTaskNotificationRead={handleTaskNotificationRead}
+                  onTabChange={handleActiveTab}
+                />
+              )}
+              overlayStyle={{
+                width: '425px',
+                minHeight: '375px',
+              }}
+              placement="bottomRight"
+              trigger={['click']}
+              onOpenChange={handleBellClick}>
+              <Button
+                className="flex-center"
+                icon={
+                  <Badge
+                    dot={hasTaskNotification || hasMentionNotification}
+                    offset={[-3, 3]}>
+                    <IconBell data-testid="task-notifications" width={20} />
+                  </Badge>
+                }
+                title={t('label.notification-plural')}
+                type="text"
+              />
+            </Dropdown>
+            <Dropdown
+              menu={{
+                items: getHelpDropdownItems(version),
+              }}
+              overlayStyle={{ width: 175 }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button
+                className="flex-center"
+                data-testid="help-icon"
+                icon={<Help width={20} />}
+                title={t('label.need-help')}
+                type="text"
+              />
+            </Dropdown>
+            <UserProfileIcon />
+          </div>
+        </div>
+      </Header>
+      {showVersionMissMatchAlert && (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                navigate(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      )}
+      {renderAlertCards}
+    </>
+  );
+};
+
+export default NavBar;

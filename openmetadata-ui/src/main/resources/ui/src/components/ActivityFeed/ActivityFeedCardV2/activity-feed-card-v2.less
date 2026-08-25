@@ -1,0 +1,62 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../styles/variables.less';
+
+.feed-card-v2-container {
+  display: flex;
+  width: 100%;
+  gap: var(--om-space-8);
+
+  .feed-card-v2-sidebar {
+    display: flex;
+    padding: var(--om-space-4) 0;
+    flex-direction: column;
+    align-items: center;
+    border-radius: var(--om-radius-sm) 0 0 var(--om-radius-sm);
+  }
+
+  .feed-card-v2 {
+    position: relative;
+    display: flex;
+    gap: var(--om-space-8);
+  }
+  .feed-card-v2-post-sidebar {
+    justify-content: flex-start;
+  }
+  &.active {
+    border-left: 4px solid @info-color;
+  }
+
+  .feed-reply-card-v2 {
+    margin: 0;
+    padding: var(--om-space-8) 0;
+  }
+
+  .feed-replies {
+    width: 100%;
+    border-radius: var(--om-radius-sm);
+    .feed-card-v2-sidebar {
+      padding: var(--om-space-12) 0;
+    }
+  }
+  .feed-replies:hover {
+    color: inherit;
+    background-color: @grey-1;
+  }
+
+  .drawer-feed-card-v2 {
+    margin: 0;
+    padding-bottom: 0;
+  }
+}

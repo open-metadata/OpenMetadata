@@ -1,0 +1,58 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@button-bg-color-hover: var(--om-legacy-color-ecedee);
+@button-bg-color: var(--om-legacy-color-e8e8e9);
+@format-group-separator-color: var(--om-color-gray-neutral-200);
+@menu-bg-color: var(--om-legacy-color-f7f9fc);
+
+.bar-menu-wrapper {
+  border-top-left-radius: var(--om-radius-sm);
+  border-top-right-radius: var(--om-radius-sm);
+  background-color: @menu-bg-color;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  padding: var(--om-space-8);
+  border-bottom: 1px solid @format-group-separator-color;
+  gap: var(--om-space-16);
+
+  .bar-menu-wrapper--format-group {
+    display: flex;
+    flex-direction: row;
+    gap: var(--om-space-8);
+
+    .bar-menu-wrapper--format-group--button {
+      background-color: transparent;
+      border: none;
+      border-radius: var(--om-radius-md);
+      cursor: pointer;
+
+      &:hover {
+        background-color: @button-bg-color-hover;
+      }
+
+      &.active {
+        background-color: @button-bg-color;
+      }
+      .bar-menu-wrapper--format--button--icon {
+        width: 28px;
+        height: 28px;
+      }
+    }
+  }
+
+  .bar-menu-wrapper--format-group--separator {
+    border-left: 1px solid @format-group-separator-color;
+  }
+}

@@ -1,0 +1,64 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.section-with-edit {
+  padding-left: var(--om-space-14);
+  padding-right: var(--om-space-14);
+  border-bottom: 0.6px solid @grey-15;
+  padding-bottom: var(--om-space-16);
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--om-space-12);
+
+    .section-title {
+      font-size: var(--om-font-size-13);
+      line-height: 20px;
+      font-weight: var(--om-font-weight-semibold);
+      color: @grey-900;
+      margin: 0;
+    }
+
+    .section-edit-button {
+      border: none;
+      background: transparent;
+      color: var(--om-legacy-color-595959);
+      padding: var(--om-space-4);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--om-radius-sm);
+      transition: all var(--om-duration-200) ease;
+
+      &:hover {
+        background: var(--om-color-gray-100);
+        color: var(--om-legacy-color-1890ff);
+      }
+
+      .anticon {
+        font-size: var(--om-font-size-xs);
+      }
+    }
+  }
+
+  .section-content {
+    color: var(--om-legacy-color-595959);
+    line-height: 1.5;
+  }
+}

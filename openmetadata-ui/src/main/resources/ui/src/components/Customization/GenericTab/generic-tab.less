@@ -1,0 +1,87 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) 'antd/dist/antd.variable.less';
+@import (reference) '../../../styles/variables.less';
+
+.grid-container {
+  position: relative;
+
+  .react-grid-item {
+    background: transparent;
+    transition: all var(--om-duration-200) ease;
+    transition-property: left, top;
+
+    .ant-card.ant-card-bordered {
+      &.empty-widget-placeholder {
+        .ant-card-body {
+          max-height: initial;
+        }
+      }
+    }
+  }
+
+  &.custom-tab {
+    background: var(--tw-color-bg-primary);
+    border-radius: @border-rad-sm;
+    padding: @padding-sm;
+  }
+
+  > #KnowledgePanel\.LeftPanel {
+    background: white;
+    border-radius: @border-rad-sm;
+    border: 1px solid @grey-15;
+    box-shadow: 0px 0px 0px 4px @grey-100;
+    box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-051);
+
+    > .dynamic-height-widget > .left-panel-content {
+      // Keep padding in the observed content so its height is fully reserved.
+      padding: @padding-md;
+    }
+  }
+
+  // `flat` variant: drop the left-panel frame card so the sole widget stands on
+  // its own (used by Domain & Data Product docs, which only hold the Description).
+  // Also drop the frame's inner padding so the widget lines up flush with the
+  // tabs (left) and the right panel (top) instead of being inset by the frame gap.
+  &.flat-left-panel > #KnowledgePanel\.LeftPanel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    > .dynamic-height-widget > .left-panel-content {
+      padding: 0;
+    }
+  }
+}
+
+.ant-tabs.ant-tabs-top.tabs-new {
+  .grid-container > #KnowledgePanel\.LeftPanel {
+    // Let it's content take the height
+    height: initial !important;
+  }
+
+  .grid-container > #KnowledgePanel\.DomainType {
+    height: initial !important;
+  }
+}
+
+// Dynamic height widget styles
+.dynamic-height-widget {
+  height: auto !important;
+  min-height: 54px; // Minimum height to prevent collapse
+  overflow: visible;
+}
+
+.height-auto {
+  height: auto !important;
+}

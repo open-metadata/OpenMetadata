@@ -1,0 +1,184 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, test } from '@playwright/test';
+import { TableClass } from '../../support/entity/TableClass';
+import {
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
+} from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
+
+// use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
+/**
+ * Test Case — Version Page Coverage
+ * @description Validates version bumps and diff rendering for display name, description, and parameter edits
+ * on the Test Case version page.
+ *
+ * Preconditions
+ * - Admin session via storage state.
+ * - A table and a linked test case exist (created in `beforeAll`).
+ *
+ * Coverage
+ * - Version increment: Each edit bumps the version (0.1 → 0.2 → 0.3 → 0.4).
+ * - Diff view: Confirms `diff-added`/`diff-removed` markers display in the version page.
+ *
+ * API Interactions
+ * - PATCH `/api/v1/dataQuality/testCases/*` for all edits.
+ *
+ * Key Selectors
+ * - Header name: `entity-header-name`; Version button: `version-button`.
+ * - Description: `asset-description-container > markdown-parser`.
+ * - Parameters: `minValue`, `maxValue` diff chips.
+ */
+test.describe('TestCase Version Page', () => {
+  const table1 = new TableClass();
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await table1.create(apiContext);
+    await table1.createTestCase(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await table1.delete(apiContext);
+
+    await afterAction();
+  });
+
+  /**
+   * View and verify Test Case version changes
+   * @description Opens the Test Case details, performs sequential edits, and verifies version bumps with diffs.
+   */
+  test('should show the test case version page', async ({ page }) => {
+    const testCase = table1.testCasesResponseData[0];
+
+    await redirectToHomePage(page);
+    await page.goto(
+      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
+    );
+    await waitForAllLoadersToDisappear(page);
+    await verifyTestCaseLastRunBanner(page, 'not-run-yet');
+
+    /**
+     * Step: Display name change
+     * @description Renames the Test Case and validates version bump to 0.2 with diff on version page.
+     */
+    await test.step('Display name change', async () => {
+      await expect(page.getByTestId('entity-header-name')).toHaveText(
+        testCase.name
+      );
+
+      await expect(page.getByTestId('version-button')).toBeVisible();
+      await expect(page.getByTestId('version-button')).toHaveText('0.1');
+
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('rename-button').click();
+
+      await page.locator('#displayName').waitFor();
+      await page.fill('#displayName', 'test-case-version-changed');
+      const updateNameRes = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/*'
+      );
+      await page.getByTestId('save-button').click();
+      await updateNameRes;
+
+      await expect(page.getByTestId('version-button')).toHaveText('0.2');
+
+      await page.getByTestId('version-button').click();
+
+      await expect(
+        page.getByTestId('entity-header-display-name').getByTestId('diff-added')
+      ).toHaveText('test-case-version-changed');
+
+      await page.getByTestId('version-button').click();
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    /**
+     * Step: Description change
+     * @description Updates the description and validates version bump to 0.3 with diff markers.
+     */
+    await test.step('Description change', async () => {
+      await page.getByTestId('edit-description').click();
+      await page.getByTestId('editor').waitFor();
+
+      await page.fill(descriptionBox, 'test case description changed');
+      const updateDescriptionRes = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/*'
+      );
+      await page.getByTestId('save').click();
+      await updateDescriptionRes;
+
+      await expect(page.getByTestId('version-button')).toHaveText('0.3');
+
+      await page.getByTestId('version-button').click();
+
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .getByTestId('markdown-parser')
+          .getByTestId('diff-added')
+      ).toContainText('test case description changed');
+
+      await page.getByTestId('version-button').click();
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    /**
+     * Step: Parameter change
+     * @description Updates min/max parameter values and validates version bump to 0.4 with diffs for both fields.
+     */
+    await test.step('Parameter change', async () => {
+      await page.getByTestId('edit-parameter-icon').click();
+      await page.getByTestId('test-case-form-v1').waitFor();
+
+      await page.locator('#testCaseFormV1_params_minValue').clear();
+      await page.locator('#testCaseFormV1_params_minValue').fill('20');
+      await page.locator('#testCaseFormV1_params_maxValue').clear();
+      await page.locator('#testCaseFormV1_params_maxValue').fill('40');
+
+      const updateParameterRes = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/*'
+      );
+      await page.getByTestId('create-btn').click();
+      await updateParameterRes;
+
+      await expect(page.getByTestId('version-button')).toHaveText('0.4');
+
+      await page.getByTestId('version-button').click();
+
+      await expect(
+        page.getByTestId('minValue').getByTestId('diff-removed')
+      ).toHaveText('12');
+      await expect(
+        page.getByTestId('minValue').getByTestId('diff-added')
+      ).toHaveText('20');
+
+      await expect(
+        page.getByTestId('maxValue').getByTestId('diff-removed')
+      ).toHaveText('34');
+      await expect(
+        page.getByTestId('maxValue').getByTestId('diff-added')
+      ).toHaveText('40');
+    });
+  });
+});

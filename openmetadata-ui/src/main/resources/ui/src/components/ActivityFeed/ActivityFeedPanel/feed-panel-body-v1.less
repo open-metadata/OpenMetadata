@@ -1,0 +1,145 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.activity-feed-card-container.ant-btn {
+  height: auto;
+  text-align: left;
+  padding: 0;
+  border: none;
+  transition: var(--om-duration-300) ease-in-out;
+
+  &:hover {
+    color: inherit;
+    background-color: @grey-1;
+  }
+}
+.activity-feed-card-new {
+  border-radius: var(--om-radius-xl);
+  background: @grey-9;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  width: inherit;
+
+  &.ant-card {
+    background: @grey-9;
+    border-radius: var(--om-radius-xl);
+    margin-bottom: var(--om-space-20);
+    border: 0.5px solid @grey-15;
+  }
+
+  .ant-card-body {
+    width: inherit;
+    padding: var(--om-space-20);
+
+    .ant-space-item {
+      width: inherit;
+    }
+  }
+  .header-link {
+    word-wrap: break-word;
+    white-space: normal;
+    font-weight: var(--om-font-weight-semibold);
+  }
+
+  .divider {
+    border-right: 1px solid @blue-23;
+    height: 100%;
+    content: '';
+  }
+}
+.activity-feed-card-new-right-panel {
+  &.ant-card {
+    border: 1px solid var(--tw-color-bg-primary);
+    .ant-card-body {
+      background-color: var(--tw-color-bg-primary);
+      border: 1px solid var(--tw-color-bg-primary);
+    }
+  }
+}
+.task-feed-card-v1-new {
+  .header-link {
+    word-wrap: break-word;
+    color: @primary-heading-color;
+    font-weight: var(--om-font-weight-semibold);
+    display: inline;
+  }
+}
+.feeds-widget-container {
+  .ant-tabs.ant-tabs-top.h-full
+    .ant-tabs-content.ant-tabs-content-top
+    .ant-tabs-tabpane {
+    display: flex;
+    flex-direction: column;
+  }
+}
+.feed-card-header-v2-timestamp.ant-typography {
+  color: @grey-500;
+}
+.seperator.ant-typography {
+  vertical-align: middle;
+  font-size: var(--om-font-size-lg);
+  font-weight: var(--om-font-weight-extrabold);
+  color: @grey-500;
+  padding-bottom: var(--om-space-2);
+}
+
+.feed-widget-padding {
+  padding: var(--om-space-20) var(--om-space-20) 0 var(--om-space-20);
+}
+.activity-feed-tab-padding {
+  padding: var(--om-space-20) var(--om-space-20) var(--om-space-20) var(--om-space-20);
+}
+
+.activity-feed-comments-container {
+  border-radius: var(--om-radius-xl);
+  padding: var(--om-space-16);
+  margin: var(--om-space-20) 0 0 0;
+  background: @grey-9;
+  border: 0.5px solid @grey-15;
+  input.ant-input,
+  textarea.ant-input {
+    border-radius: var(--om-radius-20);
+    background-color: @grey-16;
+    border: 1px solid @grey-15;
+  }
+}
+
+.activity-feed-reply-button {
+  border-radius: var(--om-radius-3xl);
+  border: 1px solid var(--om-legacy-color-d4d4d8);
+  color: var(--om-legacy-color-52525b);
+  font-size: var(--om-font-size-xs);
+}
+.comments-input-field {
+  background-color: @grey-16;
+  border-radius: var(--om-radius-20);
+  border: 1px solid @grey-15;
+  height: 36px;
+  font-size: var(--om-font-size-xs);
+  line-height: 14.52px;
+  &::placeholder {
+    color: @grey-400;
+    font-size: var(--om-font-size-xs);
+    font-style: normal;
+    font-weight: var(--om-font-weight-regular);
+    line-height: normal;
+  }
+  input.ant-input,
+  textarea.ant-input {
+    border-radius: var(--om-radius-20);
+    background-color: @grey-16;
+  }
+}

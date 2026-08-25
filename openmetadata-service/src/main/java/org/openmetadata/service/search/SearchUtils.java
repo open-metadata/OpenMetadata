@@ -1,0 +1,829 @@
+package org.openmetadata.service.search;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
+import static org.openmetadata.service.search.SearchClient.UPSTREAM_ENTITY_RELATIONSHIP_FIELD;
+import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
+import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStoreException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.net.ssl.SSLContext;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.http.HttpHost;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.SSLUtil;
+
+@Slf4j
+public final class SearchUtils {
+  public static final String GRAPH_AGGREGATION = "matchesPerKey";
+  public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";
+  public static final String PIPELINE_AS_EDGE_KEY = "upstreamLineage.pipeline.fqnHash.keyword";
+  public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
+      "upstreamEntityRelationship.entity.fqnHash.keyword";
+
+  private static final String FUZZINESS_DISABLED = "0";
+  private static final String FUZZINESS_ENABLED = "1";
+  private static final String EXACT_AGG_SUFFIX = "__exact";
+  private static final String PREFIX_AGG_SUFFIX = "__prefix";
+  private static final String CONTAINS_AGG_SUFFIX = "__contains";
+  private static final String STERMS_PREFIX = "sterms#";
+
+  private SearchUtils() {}
+
+  /**
+   * Stable search routing key so all of a user's queries hit the same shard copy. Without it,
+   * paginated and repeated searches bounce across replicas/shards on a multi-node cluster,
+   * returning reordered or different results for the same query.
+   */
+  public static String searchPreferenceFor(SubjectContext subjectContext) {
+    String preference = null;
+    if (subjectContext != null && subjectContext.user() != null) {
+      preference = subjectContext.user().getName();
+    }
+    return preference;
+  }
+
+  /**
+   * Append an OpenSearch {@code preference} routing key to a raw {@code _search} endpoint so all of
+   * a user's queries hit the same shard copy. Used by the vector/raw search paths that build the
+   * endpoint URL directly (the request-builder paths set preference on the builder instead).
+   */
+  public static String appendPreferenceParam(String endpoint, String preference) {
+    String result = endpoint;
+    if (!nullOrEmpty(preference)) {
+      String separator = endpoint.contains("?") ? "&" : "?";
+      result =
+          endpoint
+              + separator
+              + "preference="
+              + URLEncoder.encode(preference, StandardCharsets.UTF_8);
+    }
+    return result;
+  }
+
+  /** Aggregation name for the exact-match sub-agg (user-typed term only). */
+  public static String exactAggKey(String fieldName) {
+    return fieldName + EXACT_AGG_SUFFIX;
+  }
+
+  /** Aggregation name for the starts-with sub-agg. */
+  public static String prefixAggKey(String fieldName) {
+    return fieldName + PREFIX_AGG_SUFFIX;
+  }
+
+  /** Aggregation name for the full wildcard (contains) sub-agg. */
+  public static String containsAggKey(String fieldName) {
+    return fieldName + CONTAINS_AGG_SUFFIX;
+  }
+
+  /**
+   * Returns {@code true} when the include value represents an actual user search term rather than
+   * the bare "match-all" pattern ({@code .*}) or an empty string. Only when this is true should
+   * the three-sub-aggregation best-match strategy be used.
+   */
+  public static boolean isBestMatchSearchPattern(String includeValue) {
+    return includeValue != null && !includeValue.isEmpty() && !includeValue.equals(".*");
+  }
+
+  /**
+   * Strips the {@code .*} prefix and suffix that the frontend adds when building the include regex
+   * (e.g., {@code .*name.*} → {@code name}).
+   */
+  public static String extractRawSearchValue(String includeValue) {
+    String raw = includeValue.startsWith(".*") ? includeValue.substring(2) : includeValue;
+    raw = raw.endsWith(".*") ? raw.substring(0, raw.length() - 2) : raw;
+    return raw;
+  }
+
+  /**
+   * Merges three ranked aggregation buckets — exact, prefix, contains — from a response produced
+   * by {@link #exactAggKey}, {@link #prefixAggKey}, {@link #containsAggKey} sub-aggregations into
+   * a single {@code sterms#fieldName} bucket list ordered exact → prefix → contains, deduped, and
+   * trimmed to {@code limit}. On failure degrades to renaming the {@code __contains} sub-agg under
+   * the canonical {@code sterms#fieldName} key so the UI always receives the key it expects.
+   */
+  public static String mergeBestMatchAggregations(
+      String responseJson, String fieldName, int limit, ObjectMapper mapper) {
+    try {
+      return doMergeBestMatch(responseJson, fieldName, limit, mapper);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to merge best-match aggregations, falling back to contains agg: {}",
+          e.getMessage());
+      return fallbackToContainsAgg(responseJson, fieldName, mapper);
+    }
+  }
+
+  private static String fallbackToContainsAgg(
+      String responseJson, String fieldName, ObjectMapper mapper) {
+    try {
+      ObjectNode root = (ObjectNode) mapper.readTree(responseJson);
+      ObjectNode aggregations = (ObjectNode) root.get("aggregations");
+      String result = responseJson;
+      if (aggregations != null) {
+        result = renameContainsAggToField(root, aggregations, fieldName, mapper);
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.warn("Best-match fallback also failed: {}", e.getMessage());
+      return responseJson;
+    }
+  }
+
+  private static String renameContainsAggToField(
+      ObjectNode root, ObjectNode aggregations, String fieldName, ObjectMapper mapper)
+      throws Exception {
+    String containsKey = STERMS_PREFIX + containsAggKey(fieldName);
+    JsonNode containsAgg = aggregations.get(containsKey);
+    String result = responseJson(root, mapper);
+    if (containsAgg != null) {
+      aggregations.remove(STERMS_PREFIX + exactAggKey(fieldName));
+      aggregations.remove(STERMS_PREFIX + prefixAggKey(fieldName));
+      aggregations.remove(containsKey);
+      aggregations.set(STERMS_PREFIX + fieldName, containsAgg);
+      result = responseJson(root, mapper);
+    }
+    return result;
+  }
+
+  private static String responseJson(ObjectNode root, ObjectMapper mapper) throws Exception {
+    return mapper.writeValueAsString(root);
+  }
+
+  private static String doMergeBestMatch(
+      String responseJson, String fieldName, int limit, ObjectMapper mapper) throws Exception {
+    ObjectNode root = (ObjectNode) mapper.readTree(responseJson);
+    ObjectNode aggregations = (ObjectNode) root.get("aggregations");
+    String result = responseJson;
+    if (aggregations != null) {
+      result = rebuildWithMergedBuckets(root, aggregations, fieldName, limit, mapper);
+    }
+    return result;
+  }
+
+  private static String rebuildWithMergedBuckets(
+      ObjectNode root, ObjectNode aggregations, String fieldName, int limit, ObjectMapper mapper)
+      throws Exception {
+    List<JsonNode> merged = buildMergedBuckets(aggregations, fieldName, limit);
+
+    aggregations.remove(STERMS_PREFIX + exactAggKey(fieldName));
+    aggregations.remove(STERMS_PREFIX + prefixAggKey(fieldName));
+    aggregations.remove(STERMS_PREFIX + containsAggKey(fieldName));
+
+    ObjectNode mergedAgg = mapper.createObjectNode();
+    mergedAgg.put("doc_count_error_upper_bound", 0);
+    mergedAgg.put("sum_other_doc_count", 0);
+    ArrayNode bucketsArray = mapper.createArrayNode();
+    merged.forEach(bucketsArray::add);
+    mergedAgg.set("buckets", bucketsArray);
+    aggregations.set(STERMS_PREFIX + fieldName, mergedAgg);
+
+    return mapper.writeValueAsString(root);
+  }
+
+  private static List<JsonNode> buildMergedBuckets(
+      ObjectNode aggregations, String fieldName, int limit) {
+    List<JsonNode> exact = getBuckets(aggregations, STERMS_PREFIX + exactAggKey(fieldName));
+    List<JsonNode> prefix = getBuckets(aggregations, STERMS_PREFIX + prefixAggKey(fieldName));
+    List<JsonNode> contains = getBuckets(aggregations, STERMS_PREFIX + containsAggKey(fieldName));
+
+    Set<String> seen = new HashSet<>();
+    List<JsonNode> merged = new ArrayList<>();
+    addUnique(exact, seen, merged);
+    addUnique(prefix, seen, merged);
+    addUnique(contains, seen, merged);
+
+    return merged.size() > limit ? merged.subList(0, limit) : merged;
+  }
+
+  private static List<JsonNode> getBuckets(ObjectNode aggregations, String aggKey) {
+    JsonNode agg = aggregations.get(aggKey);
+    List<JsonNode> buckets = new ArrayList<>();
+    if (agg != null && agg.has("buckets")) {
+      agg.get("buckets").forEach(buckets::add);
+    }
+    return buckets;
+  }
+
+  private static void addUnique(
+      List<JsonNode> source, Set<String> seen, List<JsonNode> destination) {
+    for (JsonNode bucket : source) {
+      String key = bucket.path("key").asText("");
+      if (seen.add(key)) {
+        destination.add(bucket);
+      }
+    }
+  }
+
+  public static RelationshipRef getRelationshipRef(Map<String, Object> entityMap) {
+    // This assumes these keys exists in the map, use it with caution
+    return new RelationshipRef()
+        .withId(UUID.fromString(entityMap.get("id").toString()))
+        .withType(entityMap.get("entityType").toString())
+        .withFullyQualifiedName(entityMap.get("fullyQualifiedName").toString())
+        .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
+  }
+
+  public static List<EsLineageData> getUpstreamLineageListIfExist(Map<String, Object> esDoc) {
+    if (esDoc.containsKey(UPSTREAM_LINEAGE_FIELD)) {
+      return JsonUtils.readOrConvertValues(esDoc.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
+    }
+    return Collections.emptyList();
+  }
+
+  /**
+   * Time-windowed overload that filters edges by observed time window.
+   * An edge is included if its [createdAt, updatedAt] interval overlaps the
+   * requested [startTime, endTime] window. Legacy edges with no timestamps bypass the filter — see
+   * {@link #edgeMatchesWindow}.
+   *
+   * @param esDoc     Source map from an ES hit
+   * @param startTime Inclusive lower bound of the window in epoch millis, or null for -∞
+   * @param endTime   Inclusive upper bound of the window in epoch millis, or null for +∞
+   * @return Edges in the window (or all edges if both bounds are null)
+   */
+  public static List<EsLineageData> getUpstreamLineageListIfExist(
+      Map<String, Object> esDoc, Long startTime, Long endTime) {
+    return getUpstreamLineageListIfExist(esDoc).stream()
+        .filter(edge -> edgeMatchesWindow(edge, startTime, endTime))
+        .collect(Collectors.toList());
+  }
+
+  private static boolean edgeMatchesWindow(EsLineageData edge, Long startTime, Long endTime) {
+    boolean matches;
+    if (edge == null) {
+      matches = false;
+    } else if (startTime == null && endTime == null) {
+      matches = true;
+    } else if (edge.getCreatedAt() == null && edge.getUpdatedAt() == null) {
+      matches = true;
+    } else {
+      Long createdAt = edge.getCreatedAt();
+      Long updatedAt = edge.getUpdatedAt();
+      Long effectiveCreatedAt = createdAt == null ? updatedAt : createdAt;
+      Long effectiveUpdatedAt = updatedAt == null ? createdAt : updatedAt;
+      boolean startOk = endTime == null || effectiveCreatedAt <= endTime;
+      boolean endOk = startTime == null || effectiveUpdatedAt >= startTime;
+      matches = startOk && endOk;
+    }
+    return matches;
+  }
+
+  public static EsLineageData copyEsLineageData(EsLineageData data) {
+    return new EsLineageData()
+        .withDocId(data.getDocId())
+        .withFromEntity(data.getFromEntity())
+        .withToEntity(data.getToEntity())
+        .withPipeline(data.getPipeline())
+        .withSqlQuery(data.getSqlQuery())
+        .withColumns(data.getColumns())
+        .withDescription(data.getDescription())
+        .withSource(data.getSource())
+        .withPipelineEntityType(data.getPipelineEntityType());
+  }
+
+  public static Set<String> getLineageDirection(
+      LineageDirection direction, boolean isConnectedVia) {
+    Set<String> fields =
+        new HashSet<>(
+            Set.of(
+                direction == LineageDirection.UPSTREAM
+                    ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+                    : DOWNSTREAM_NODE_KEY));
+
+    if (isConnectedVia) {
+      fields.add(PIPELINE_AS_EDGE_KEY);
+    }
+
+    return fields;
+  }
+
+  public static String getLineageDirectionAggregationField(LineageDirection direction) {
+    return direction == LineageDirection.UPSTREAM
+        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+        : DOWNSTREAM_NODE_KEY;
+  }
+
+  public static Map<String, Set<String>> buildDirectionToFqnSet(
+      Set<String> directionKeys, Set<String> fqnSet) {
+    return directionKeys.stream().collect(Collectors.toMap(Function.identity(), k -> fqnSet));
+  }
+
+  public static JsonArray getAggregationBuckets(JsonObject aggregationJson) {
+    return aggregationJson.getJsonArray("buckets");
+  }
+
+  public static JsonObject getAggregationObject(JsonObject aggregationJson, String key) {
+    return aggregationJson.getJsonObject(key);
+  }
+
+  public static String getAggregationKeyValue(JsonObject aggregationJson) {
+    return aggregationJson.getString("key");
+  }
+
+  public static boolean shouldApplyRbacConditions(
+      SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
+    return Boolean.TRUE.equals(
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getGlobalSettings()
+                .getEnableAccessControl())
+        && subjectContext != null
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && rbacConditionEvaluator != null;
+  }
+
+  public static SSLContext createElasticSearchSSLContext(
+      ElasticSearchConfiguration elasticSearchConfiguration) throws KeyStoreException {
+    return elasticSearchConfiguration.getScheme().equals("https")
+        ? SSLUtil.createSSLContext(
+            elasticSearchConfiguration.getTruststorePath(),
+            elasticSearchConfiguration.getTruststorePassword(),
+            "ElasticSearch")
+        : null;
+  }
+
+  /**
+   * Builds an array of HttpHost objects from the ElasticSearch configuration. Supports single host
+   * or comma-separated list of hosts with optional ports.
+   *
+   * @param esConfig the ElasticSearch configuration
+   * @param searchType the type of search engine (for logging purposes, e.g., "OpenSearch" or
+   *     "Elasticsearch")
+   * @return array of HttpHost objects
+   * @throws IllegalArgumentException if host configuration is missing or invalid
+   */
+  public static HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig, String searchType) {
+    List<HttpHost> hosts = new ArrayList<>();
+    String scheme = esConfig.getScheme();
+    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
+
+    if (StringUtils.isNotEmpty(esConfig.getHost())) {
+      String hostConfig = esConfig.getHost();
+      if (hostConfig.contains(",")) {
+        for (String hostEntry : hostConfig.split(",")) {
+          hostEntry = hostEntry.trim();
+          HttpHost httpHost = parseHostEntry(hostEntry, defaultPort, scheme, searchType);
+          hosts.add(httpHost);
+        }
+        LOG.info("Configured {} with {} hosts", searchType, hosts.size());
+      } else {
+        HttpHost httpHost = parseHostEntry(hostConfig, defaultPort, scheme, searchType);
+        hosts.add(httpHost);
+        LOG.info(
+            "Configured {} with single host: {}:{}",
+            searchType,
+            httpHost.getHostName(),
+            httpHost.getPort());
+      }
+    } else {
+      throw new IllegalArgumentException(
+          String.format("'host' must be provided in %s configuration", searchType));
+    }
+
+    return hosts.toArray(new HttpHost[0]);
+  }
+
+  /**
+   * Builds an array of HC5 HttpHost objects from the ElasticSearch configuration. Supports single
+   * host or comma-separated list of hosts with optional ports. This method is for use with Apache
+   * HttpClient 5.x (HC5) transports required by Elasticsearch 9.x and OpenSearch 3.x.
+   *
+   * @param esConfig the ElasticSearch configuration
+   * @param searchType the type of search engine (for logging purposes, e.g., "OpenSearch" or
+   *     "Elasticsearch")
+   * @return array of HC5 HttpHost objects
+   * @throws IllegalArgumentException if host configuration is missing or invalid
+   */
+  public static org.apache.hc.core5.http.HttpHost[] buildHttpHostsForHc5(
+      ElasticSearchConfiguration esConfig, String searchType) {
+    List<org.apache.hc.core5.http.HttpHost> hosts = new ArrayList<>();
+    String scheme = esConfig.getScheme();
+    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
+
+    if (StringUtils.isNotEmpty(esConfig.getHost())) {
+      String hostConfig = esConfig.getHost();
+      if (hostConfig.contains(",")) {
+        for (String hostEntry : hostConfig.split(",")) {
+          hostEntry = hostEntry.trim();
+          org.apache.hc.core5.http.HttpHost httpHost =
+              parseHostEntryForHc5(hostEntry, defaultPort, scheme, searchType);
+          hosts.add(httpHost);
+        }
+        LOG.info("Configured {} with {} hosts (HC5)", searchType, hosts.size());
+      } else {
+        org.apache.hc.core5.http.HttpHost httpHost =
+            parseHostEntryForHc5(hostConfig, defaultPort, scheme, searchType);
+        hosts.add(httpHost);
+        LOG.info(
+            "Configured {} with single host (HC5): {}:{}",
+            searchType,
+            httpHost.getHostName(),
+            httpHost.getPort());
+      }
+    } else {
+      throw new IllegalArgumentException(
+          String.format("'host' must be provided in %s configuration", searchType));
+    }
+
+    return hosts.toArray(new org.apache.hc.core5.http.HttpHost[0]);
+  }
+
+  public static BasicCredentialsProvider buildScopedCredentialsProvider(
+      ElasticSearchConfiguration esConfig, org.apache.hc.core5.http.HttpHost[] httpHosts) {
+    if (StringUtils.isEmpty(esConfig.getUsername())
+        || StringUtils.isEmpty(esConfig.getPassword())) {
+      return null;
+    }
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    for (org.apache.hc.core5.http.HttpHost host : httpHosts) {
+      credentialsProvider.setCredentials(
+          new AuthScope(host.getHostName(), host.getPort()),
+          new UsernamePasswordCredentials(
+              esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+    }
+    return credentialsProvider;
+  }
+
+  private static org.apache.hc.core5.http.HttpHost parseHostEntryForHc5(
+      String hostEntry, int defaultPort, String scheme, String searchType) {
+    String[] parts = hostEntry.split(":");
+    String host = parts[0].trim();
+    int port = defaultPort;
+
+    if (parts.length > 1) {
+      String portStr = parts[1].trim();
+      try {
+        port = Integer.parseInt(portStr);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid port '%s' for host '%s' in %s configuration. Port must be a valid integer.",
+                portStr, host, searchType));
+      }
+    }
+
+    return new org.apache.hc.core5.http.HttpHost(scheme, host, port);
+  }
+
+  private static HttpHost parseHostEntry(
+      String hostEntry, int defaultPort, String scheme, String searchType) {
+    String[] parts = hostEntry.split(":");
+    String host = parts[0].trim();
+    int port = defaultPort;
+
+    if (parts.length > 1) {
+      String portStr = parts[1].trim();
+      try {
+        port = Integer.parseInt(portStr);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid port '%s' for host '%s' in %s configuration. Port must be a valid integer.",
+                portStr, host, searchType));
+      }
+    }
+
+    return new HttpHost(host, port, scheme);
+  }
+
+  public static boolean isConnectedVia(String entityType) {
+    return Entity.PIPELINE.equals(entityType) || Entity.STORED_PROCEDURE.equals(entityType);
+  }
+
+  public static <T> List<T> paginateList(List<T> list, int from, int size) {
+    if (nullOrEmpty(list)) {
+      return Collections.emptyList();
+    }
+
+    int totalLength = list.size();
+
+    if (from >= totalLength) {
+      return Collections.emptyList();
+    }
+
+    // Calculate the end index
+    int to = Math.min(from + size, totalLength);
+
+    // Return the sublist
+    return list.subList(from, to);
+  }
+
+  public static Set<String> getRequiredLineageFields(String fields) {
+    if ("*".equals(fields)) {
+      return Collections.emptySet();
+    }
+    Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
+    SOURCE_FIELDS_TO_EXCLUDE.forEach(requiredFields::remove);
+    // Without these fields lineage can't be built
+    requiredFields.addAll(
+        Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));
+    return requiredFields;
+  }
+
+  public static Set<String> getRequiredEntityRelationshipFields(String fields) {
+    if ("*".equals(fields)) {
+      return Collections.emptySet();
+    }
+    Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
+    SOURCE_FIELDS_TO_EXCLUDE.forEach(requiredFields::remove);
+    requiredFields.addAll(
+        Set.of("fullyQualifiedName", "fqnHash", "id", "entityType", "upstreamEntityRelationship"));
+    return requiredFields;
+  }
+
+  /** One {@code ?search_after=v} per sort value — no in-band delimiter. */
+  public static List<Object> searchAfter(List<String> values) {
+    List<Object> result = null;
+    if (!nullOrEmpty(values)) {
+      List<String> filtered =
+          values.stream().filter(v -> !nullOrEmpty(v)).collect(Collectors.toList());
+      if (!filtered.isEmpty()) {
+        result = new ArrayList<>(filtered);
+      }
+    }
+    return result;
+  }
+
+  public static List<String> sourceFields(String sourceFields) {
+    if (!nullOrEmpty(sourceFields)) {
+      return Arrays.stream(sourceFields.split(","))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.toList());
+    }
+    return Collections.emptyList();
+  }
+
+  public static Set<String> getEntityRelationshipDirection(EntityRelationshipDirection direction) {
+    return new HashSet<>(
+        Set.of(
+            direction == EntityRelationshipDirection.UPSTREAM
+                ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+                : DOWNSTREAM_ENTITY_RELATIONSHIP_KEY));
+  }
+
+  public static List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
+      getUpstreamEntityRelationshipListIfExist(Map<String, Object> esDoc) {
+    if (esDoc.containsKey(UPSTREAM_ENTITY_RELATIONSHIP_FIELD)) {
+      return JsonUtils.readOrConvertValues(
+          esDoc.get(UPSTREAM_ENTITY_RELATIONSHIP_FIELD),
+          org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData.class);
+    }
+    return Collections.emptyList();
+  }
+
+  public static List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
+      paginateUpstreamEntityRelationships(
+          List<org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>
+              upstreamEntities,
+          int from,
+          int size) {
+    if (nullOrEmpty(upstreamEntities)) {
+      return Collections.emptyList();
+    }
+    int totalLength = upstreamEntities.size();
+    if (from >= totalLength) {
+      return Collections.emptyList();
+    }
+    int to = Math.min(from + size, totalLength);
+    return upstreamEntities.subList(from, to);
+  }
+
+  public static org.openmetadata.schema.api.entityRelationship.RelationshipRef
+      getEntityRelationshipRef(Map<String, Object> entityMap) {
+    return new org.openmetadata.schema.api.entityRelationship.RelationshipRef()
+        .withId(UUID.fromString(entityMap.get("id").toString()))
+        .withType(entityMap.get("entityType").toString())
+        .withFullyQualifiedName(entityMap.get("fullyQualifiedName").toString())
+        .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Index classification helpers (merged from former SearchUtil)
+  // ---------------------------------------------------------------------------
+
+  public static boolean isDataAssetIndex(String indexName) {
+    return switch (indexName) {
+      case "topic_search_index",
+          Entity.TOPIC,
+          "dashboard_search_index",
+          Entity.DASHBOARD,
+          "pipeline_search_index",
+          Entity.PIPELINE,
+          "mlmodel_search_index",
+          Entity.MLMODEL,
+          "table_search_index",
+          Entity.TABLE,
+          "database_schema_search_index",
+          Entity.DATABASE_SCHEMA,
+          "database_search_index",
+          Entity.DATABASE,
+          "container_search_index",
+          Entity.CONTAINER,
+          "query_search_index",
+          Entity.QUERY,
+          "stored_procedure_search_index",
+          Entity.STORED_PROCEDURE,
+          "dashboard_data_model_search_index",
+          Entity.DASHBOARD_DATA_MODEL,
+          "data_product_search_index",
+          Entity.DATA_PRODUCT,
+          "domain_search_index",
+          Entity.DOMAIN,
+          "glossary_term_search_index",
+          Entity.GLOSSARY_TERM,
+          "glossary_search_index",
+          Entity.GLOSSARY,
+          "tag_search_index",
+          Entity.TAG,
+          "search_entity_search_index",
+          Entity.SEARCH_INDEX,
+          "api_collection_search_index",
+          Entity.API_COLLECTION,
+          "api_endpoint_search_index",
+          Entity.API_ENDPOINT,
+          "directory_search_index",
+          Entity.DIRECTORY,
+          "worksheet_search_index",
+          Entity.WORKSHEET,
+          "spreadsheet_search_index",
+          Entity.SPREADSHEET,
+          "file_search_index",
+          Entity.FILE,
+          "context_file_search_index",
+          Entity.CONTEXT_FILE,
+          "metric_search_index",
+          Entity.METRIC -> true;
+      default -> false;
+    };
+  }
+
+  public static boolean isTimeSeriesIndex(String indexName) {
+    return switch (indexName) {
+      case "test_case_result_search_index",
+          "testCaseResult",
+          "test_case_resolution_status_search_index",
+          "testCaseResolutionStatus",
+          "raw_cost_analysis_report_data_index",
+          "rawCostAnalysisReportData",
+          "aggregated_cost_analysis_report_data_index",
+          "aggregatedCostAnalysisReportData" -> true;
+      default -> false;
+    };
+  }
+
+  public static boolean isDataQualityIndex(String indexName) {
+    return switch (indexName) {
+      case "test_case_search_index", "testCase", "test_suite_search_index", "testSuite" -> true;
+      default -> false;
+    };
+  }
+
+  public static boolean isColumnIndex(String indexName) {
+    return switch (indexName) {
+      case "column_search_index", Entity.TABLE_COLUMN -> true;
+      default -> false;
+    };
+  }
+
+  public static boolean isServiceIndex(String indexName) {
+    return switch (indexName) {
+      case "api_service_search_index",
+          "apiService",
+          "mlmodel_service_search_index",
+          "mlModelService",
+          "database_service_search_index",
+          "databaseService",
+          "messaging_service_index",
+          "messagingService",
+          "dashboard_service_index",
+          "dashboardService",
+          "pipeline_service_index",
+          "pipelineService",
+          "storage_service_index",
+          "storageService",
+          "search_service_index",
+          "searchService",
+          "security_service_index",
+          "securityService",
+          "metadata_service_index",
+          "metadataService",
+          "drive_service_index",
+          "driveService" -> true;
+      default -> false;
+    };
+  }
+
+  public static String mapEntityTypesToIndexNames(String indexName) {
+    return switch (indexName) {
+      case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
+      case "dashboard_search_index", Entity.DASHBOARD -> Entity.DASHBOARD;
+      case "pipeline_search_index", Entity.PIPELINE -> Entity.PIPELINE;
+      case "mlmodel_search_index", Entity.MLMODEL -> Entity.MLMODEL;
+      case "table_search_index", Entity.TABLE -> Entity.TABLE;
+      case "database_search_index", Entity.DATABASE -> Entity.DATABASE;
+      case "database_schema_search_index", Entity.DATABASE_SCHEMA -> Entity.DATABASE_SCHEMA;
+      case "container_search_index", Entity.CONTAINER -> Entity.CONTAINER;
+      case "query_search_index", Entity.QUERY -> Entity.QUERY;
+      case "stored_procedure_search_index", Entity.STORED_PROCEDURE -> Entity.STORED_PROCEDURE;
+      case "dashboard_data_model_search_index", Entity.DASHBOARD_DATA_MODEL -> Entity
+          .DASHBOARD_DATA_MODEL;
+      case "api_endpoint_search_index", Entity.API_ENDPOINT -> Entity.API_ENDPOINT;
+      case "api_collection_search_index", Entity.API_COLLECTION -> Entity.API_COLLECTION;
+      case "metric_search_index", Entity.METRIC -> Entity.METRIC;
+      case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
+      case "tag_search_index", Entity.TAG -> Entity.TAG;
+      case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
+      case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
+      case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
+      case "team_search_index", Entity.TEAM -> Entity.TEAM;
+      case "user_search_index", Entity.USER -> Entity.USER;
+      case "directory_search_index", Entity.DIRECTORY -> Entity.DIRECTORY;
+      case "file_search_index", Entity.FILE -> Entity.FILE;
+      case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
+      case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
+      case "context_file_search_index", Entity.CONTEXT_FILE -> Entity.CONTEXT_FILE;
+      case "column_search_index", Entity.TABLE_COLUMN -> Entity.TABLE_COLUMN;
+      case "dataAsset" -> "dataAsset";
+      default -> "dataAsset";
+    };
+  }
+
+  /**
+   * Count alphanumeric sub-tokens in the query. Mirrors how the {@code om_ngram} analyzer splits
+   * input on non-alphanumeric characters ({@code token_chars: [letter, digit]}), so it reflects
+   * the actual number of terms the ngram path will process for a fuzzy multi_match — which is
+   * the driver of clause count, not whitespace word count.
+   */
+  private static int analyzedSubTokenCount(String query) {
+    if (query == null || query.isBlank()) {
+      return 0;
+    }
+    String[] parts = query.trim().split("[^\\p{Alnum}]+");
+    int count = 0;
+    for (String p : parts) {
+      if (!p.isEmpty()) count++;
+    }
+    return count;
+  }
+
+  /**
+   * Get fuzziness for a fuzzy multi_match over analyzed fields (including {@code *.ngram}).
+   * Disable fuzziness once the query analyzes into more than 2 sub-tokens — at that point the
+   * ngram path generates enough analyzed ngram terms that fuzzy rewriting blows past Lucene's
+   * bool-clause cap ({@code indices.query.bool.max_clause_count}, 1024 default).
+   */
+  public static String getFuzziness(String query) {
+    if (query == null || query.isBlank()) {
+      return FUZZINESS_ENABLED;
+    }
+    return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
+  }
+
+  /**
+   * Get max_expansions for a fuzzy multi_match. Drop to 1 once the query analyzes into more
+   * than 2 sub-tokens so the fuzzy rewrite stays bounded.
+   */
+  public static int getMaxExpansions(String query) {
+    if (query == null || query.isBlank()) {
+      return 10;
+    }
+    return analyzedSubTokenCount(query) > 2 ? 1 : 10;
+  }
+}

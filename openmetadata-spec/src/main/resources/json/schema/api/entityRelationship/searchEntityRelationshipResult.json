@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/api/entityRelationship/searchEntityRelationshipResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchEntityRelationshipResult",
+  "description": "Search Entity Relationship Response for the Entity Relationship Request",
+  "javaType": "org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult",
+  "type": "object",
+  "definitions": {
+    "directionPaging": {
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/layerPaging"
+          }
+        },
+        "downstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/layerPaging"
+          }
+        }
+      }
+    },
+    "layerPaging": {
+      "description": "Type used for cursor based pagination information in GET list responses.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.LayerPaging",
+      "properties": {
+        "entityDownstreamCount": {
+          "description": "Count of entities downstream current layer entity.",
+          "type": "integer"
+        },
+        "entityUpstreamCount": {
+          "description": "Count of entities upstream current layer entity.",
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "nodes" : {
+      "description": "Nodes in the entity relationship response.",
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.type.entityRelationship.NodeInformation>"
+    },
+    "upstreamEdges": {
+      "description": "Upstream Edges for the entity.",
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>"
+    },
+    "downstreamEdges": {
+      "description": "Downstream Edges for the node.",
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData>"
+    }
+  },
+  "additionalProperties": false
+} 

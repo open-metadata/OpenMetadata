@@ -1,0 +1,12 @@
+{
+  "serviceConnection": {
+    "config": {
+      "type": "MySQL",
+      "username": "openmetadata_user",
+      "authType":{
+        "password": "openmetadata_password"
+        },
+      "hostPort": "localhost:3306"
+    }
+  }
+}

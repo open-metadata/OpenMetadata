@@ -1,0 +1,420 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { getAllAlerts } from '../../rest/alertsAPI';
+import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
+import NotificationListPage from './NotificationListPage';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Popover: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  PopoverTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
+const MOCK_DATA = [
+  {
+    id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
+    name: 'alert-test',
+    fullyQualifiedName: 'alert-test',
+    href: 'http://localhost:8585/api/v1/events/subscriptions/971a21b3-eeaf-4765-bda7-4e2cdb9788de',
+    version: 0.1,
+    updatedAt: 1682366749021,
+    updatedBy: 'admin',
+    filteringRules: {
+      resources: ['all'],
+      rules: [
+        {
+          name: 'matchIngestionPipelineState',
+          effect: 'include',
+          condition: "matchIngestionPipelineState('partialSuccess')",
+        },
+      ],
+    },
+    subscriptionType: 'Email',
+    subscriptionConfig: {
+      receivers: ['test@gmail.com'],
+    },
+    enabled: true,
+    batchSize: 10,
+    timeout: 10,
+    readTimeout: 12,
+    deleted: false,
+    provider: 'user',
+  },
+];
+const mockNavigate = jest.fn();
+const mockLocationPathname = '/mock-path';
+
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(
+      ({ children, ...props }: { children: React.ReactNode }) => (
+        <p {...props}>{children}</p>
+      )
+    ),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
+}));
+
+jest.mock('../../rest/alertsAPI', () => ({
+  getAllAlerts: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: MOCK_DATA,
+      paging: { total: 1 },
+    })
+  ),
+  getAlertsFromName: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      name: 'ActivityFeedAlert',
+      params: 'all',
+    })
+  ),
+}));
+
+jest.mock('../../utils/GlobalSettingsUtils', () => ({
+  getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
+    {
+      name: 'setting',
+      url: ROUTES.SETTINGS,
+    },
+  ]),
+}));
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
+  }
+);
+
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockImplementation(({ open, onDelete }) =>
+    open ? (
+      <div>
+        <p>DeleteModal</p>
+        <button data-testid="confirm-delete" onClick={onDelete}>
+          confirm
+        </button>
+      </div>
+    ) : null
+  );
+});
+
+jest.mock('../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
+  hardDeleteEntity: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    getResourceLimit: jest.fn().mockResolvedValue({}),
+  }),
+}));
+
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    getResourcePermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
+
+describe('Notification Alerts Page Tests', () => {
+  it('Title should be rendered', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('label.notification-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('SubTitle should be rendered', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText(/message.alerts-description/)
+    ).toBeInTheDocument();
+  });
+
+  it('Add alert button should be rendered', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(await screen.findByText(/label.add-entity/)).toBeInTheDocument();
+  });
+
+  it('Table should render alerts data', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const alertNameElement = await screen.findByTestId('alert-name');
+
+    expect(alertNameElement).toBeInTheDocument();
+  });
+
+  it('Table should render descriptionTableObject', async () => {
+    (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: 1 },
+      })
+    );
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(descriptionTableObject).toHaveBeenCalledWith();
+  });
+
+  it('should call LimitWrapper with resource as eventsubscription', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'eventsubscription' }),
+      {}
+    );
+  });
+
+  it('should render edit and delete buttons for alerts with permissions', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const editButton = await screen.findByTestId('alert-edit-alert-test');
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    expect(editButton).toBeInTheDocument();
+    expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('should open delete modal on delete button click', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    await act(async () => {
+      userEvent.click(deleteButton);
+    });
+
+    const deleteModal = await screen.findByText('DeleteModal');
+
+    expect(deleteModal).toBeInTheDocument();
+  });
+
+  it('should hard delete the alert and refetch the list on confirm', async () => {
+    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(true);
+
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    (getAllAlerts as jest.Mock).mockClear();
+
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    await act(async () => {
+      userEvent.click(deleteButton);
+    });
+
+    await screen.findByTestId('confirm-delete');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-delete'));
+    });
+
+    expect(hardDeleteEntity).toHaveBeenCalledWith(
+      'alert-test',
+      '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
+      'subscription'
+    );
+
+    await waitFor(() => expect(getAllAlerts).toHaveBeenCalled());
+
+    expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
+  });
+
+  it('should not refetch and should close the modal when hard delete fails', async () => {
+    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(false);
+
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    (getAllAlerts as jest.Mock).mockClear();
+
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    await act(async () => {
+      userEvent.click(deleteButton);
+    });
+
+    await screen.findByTestId('confirm-delete');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-delete'));
+    });
+
+    expect(hardDeleteEntity).toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument()
+    );
+
+    expect(getAllAlerts).not.toHaveBeenCalled();
+  });
+
+  it('should navigate to add notification page on add button click', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const addButton = await screen.findByText(/label.add-entity/);
+    fireEvent.click(addButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      ROUTES.SETTINGS + '/notifications/add-notification'
+    );
+  });
+
+  it('should not render edit and delete buttons for alerts without permissions', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        EditAll: false,
+        EditDescription: false,
+        EditDisplayName: false,
+        EditCustomFields: false,
+      })),
+      getResourcePermission: jest.fn().mockImplementation(() => ({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        EditAll: false,
+        EditDescription: false,
+        EditDisplayName: false,
+        EditCustomFields: false,
+      })),
+    }));
+
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const addButton = screen.queryByText(/label.add-entity/);
+    const editButton = screen.queryByTestId('alert-edit-alert-test');
+    const deleteButton = screen.queryByTestId('alert-delete-alert-test');
+
+    expect(addButton).not.toBeInTheDocument();
+    expect(editButton).not.toBeInTheDocument();
+    expect(deleteButton).not.toBeInTheDocument();
+  });
+});

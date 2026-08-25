@@ -1,0 +1,206 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Card } from 'antd';
+import { AxiosError } from 'axios';
+import { toString } from 'lodash';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
+import { CreateUserFormData } from '../../components/Settings/Users/CreateUser/CreateUser.interface';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { createBot, getBotByName } from '../../rest/botsAPI';
+import { createUser, createUserWithPut } from '../../rest/userAPI';
+import {
+  getBotsPagePath,
+  getSettingPath,
+  getUsersPagePath,
+} from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import { getUserCreationErrorMessage } from '../../utils/UsersPureUtils';
+const CreateUserPage = () => {
+  const {
+    state,
+  }: {
+    state?: { isAdminPage: boolean };
+  } = useLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const isAdminPage = Boolean(state?.isAdminPage);
+  const { setInlineAlertDetails } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const { bot } = useRequiredParams<{ bot: string }>();
+
+  const goToUserListPage = () => {
+    if (bot) {
+      navigate(getSettingPath(GlobalSettingOptions.BOTS));
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleCancel = () => {
+    goToUserListPage();
+  };
+
+  const checkBotInUse = async (name: string) => {
+    try {
+      const response = await getBotByName(name);
+
+      return Boolean(response);
+    } catch (_error) {
+      return false;
+    }
+  };
+
+  /**
+   * Submit handler for new user form.
+   * @param userData Data for creating new user
+   */
+  const handleAddUserSave = async (userData: CreateUserFormData) => {
+    setIsLoading(true);
+    const { allowImpersonation, ...userPayload } = userData;
+    if (bot) {
+      const isBotExists = await checkBotInUse(userPayload.name);
+      if (isBotExists) {
+        showErrorToast(
+          t('server.email-already-exist', {
+            entity: t('label.bot-lowercase'),
+            name: userPayload.name,
+          })
+        );
+      } else {
+        try {
+          // Create a user with isBot:true
+          const userResponse = await createUserWithPut({
+            ...userPayload,
+            botName: userPayload.name,
+          });
+
+          // Create a bot entity with botUser data
+          await createBot({
+            botUser: toString(userResponse.fullyQualifiedName),
+            name: userResponse.name,
+            displayName: userResponse.displayName,
+            description: userResponse.description,
+            allowImpersonation,
+          });
+
+          // Update current count when Create / Delete operation performed
+          await getResourceLimit('bot', true, true);
+          showSuccessToast(
+            t('server.create-entity-success', { entity: t('label.bot') })
+          );
+          goToUserListPage();
+        } catch (error) {
+          setInlineAlertDetails({
+            type: 'error',
+            heading: t('label.error'),
+            description: getUserCreationErrorMessage({
+              error: error as AxiosError,
+              entity: t('label.bot'),
+              entityLowercase: t('label.bot-lowercase'),
+              entityName: userData.name,
+            }),
+            onClose: () => setInlineAlertDetails(undefined),
+          });
+        }
+      }
+    } else {
+      try {
+        await createUser(userPayload);
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('user', true, true);
+        goToUserListPage();
+      } catch (error) {
+        setInlineAlertDetails({
+          type: 'error',
+          heading: t('label.error'),
+          description: getUserCreationErrorMessage({
+            error: error as AxiosError,
+            entity: t('label.user'),
+            entityLowercase: t('label.user-lowercase'),
+            entityName: userData.name,
+          }),
+          onClose: () => setInlineAlertDetails(undefined),
+        });
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const BREADCRUMB_DETAILS = useMemo(() => {
+    if (bot) {
+      return {
+        name: t('label.bot'),
+        namePlural: t('label.bot-plural'),
+        url: getBotsPagePath(),
+      };
+    } else if (isAdminPage) {
+      return {
+        namePlural: t('label.admin-plural'),
+        name: t('label.admin'),
+        url: getUsersPagePath(true),
+      };
+    } else {
+      return {
+        name: t('label.user'),
+        namePlural: t('label.user-plural'),
+        url: getUsersPagePath(),
+      };
+    }
+  }, [bot, isAdminPage]);
+
+  const slashedBreadcrumbList = useMemo(
+    () => [
+      {
+        name: BREADCRUMB_DETAILS.namePlural,
+        url: BREADCRUMB_DETAILS.url,
+      },
+      {
+        name: `${t('label.create')} ${BREADCRUMB_DETAILS.name}`,
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [BREADCRUMB_DETAILS]
+  );
+
+  return (
+    <PageLayoutV1
+      center
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
+      <Card className="m-x-auto w-800">
+        <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
+        <div className="m-t-md">
+          <CreateUserComponent
+            forceBot={Boolean(bot)}
+            isLoading={isLoading}
+            onCancel={handleCancel}
+            onSave={handleAddUserSave}
+          />
+        </div>
+      </Card>
+    </PageLayoutV1>
+  );
+};
+
+export default CreateUserPage;

@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeTestCaseAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveTestCaseAction",
+  "description": "Remove Test Cases Action Type",
+  "type": "object",
+  "definitions": {
+    "removeTestCaseActionType": {
+      "description": "Remove Test Case Action Type",
+      "type": "string",
+      "enum": ["RemoveTestCaseAction"],
+      "default": "RemoveTestCaseAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/removeTestCaseActionType",
+      "default": "RemoveTestCaseAction"
+    },
+    "testCaseDefinitions": {
+      "description": "Test Cases to remove",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "applyToChildren": {
+      "title": "Apply to Children",
+      "description": "Remove tests to the selected table columns",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
+    },
+    "removeAll": {
+      "title": "Remove All",
+      "description": "Remove all test cases",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

@@ -1,0 +1,80 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# On-demand MySQL Playwright E2E run. Dispatch this from `main` and pass the
+# release branch you want to test via `branch:`; the reusable will check that
+# branch out for every test-path job (build, fixture, shard). MySQL is not
+# a PR gate — postgres covers PRs — so this file is the only way to exercise
+# the mysql code path.
+#
+# Any change to shard planning, caching, gate rules, or the summary check
+# should be made in the reusable so postgres and mysql stay aligned.
+
+name: MySQL Playwright E2E (release branch)
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Release branch to check out and test against (e.g. `release-1.9`, `main`).
+        required: true
+        type: string
+        default: main
+      full_suite:
+        description: Run the complete duration-balanced suite
+        required: true
+        type: boolean
+        default: true
+      protocol:
+        description: Application protocol used by Playwright
+        required: true
+        type: choice
+        options:
+          - http
+          - h2
+        default: http
+      coarse_bundle:
+        description: Build the CI-only coarse Vite bundle
+        required: true
+        type: boolean
+        default: true
+      send_slack_notification:
+        description: Post the run summary to the E2E Slack channel
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  playwright:
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: mysql
+      profile: mysql-nightly
+      workflow_filename: playwright-mysql-nightly.yml
+      # The branch input drives every test-path checkout inside the reusable
+      # (build/fixture/shard); the summary and baseline-refresh jobs
+      # deliberately stay on main / github.sha for security.
+      ref: ${{ inputs.branch }}
+      full_suite: ${{ inputs.full_suite }}
+      protocol: ${{ inputs.protocol }}
+      coarse_bundle: ${{ inputs.coarse_bundle }}
+      send_slack_notification: ${{ inputs.send_slack_notification }}
+      slack_run_title: "MySQL Playwright E2E on ${{ inputs.branch }}"

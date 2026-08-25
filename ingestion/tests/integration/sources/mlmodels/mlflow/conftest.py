@@ -1,0 +1,175 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Environment fixtures to be able to test the MLFlow Ingestion Pipeline.
+
+The following steps are taken:
+1. Build the MLFlow image with needed dependencies
+2. Get a testcontainer Container for
+    - MlFlow Image
+    - MySQL
+    - MinIO
+    * For each container, an open port is found to be able to reach it from the host.
+3. A Docker Network is created so that they can reach each other easily without the need to use the host.
+4. The containers are started
+5. Any specific configuration is done
+6. Needed configurations are yielded back to the test.
+"""
+
+import io
+import time
+import uuid
+from dataclasses import dataclass
+from typing import Optional
+
+import pymysql
+import pytest
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.docker_client import DockerClient
+
+from ....containers import (  # noqa: TID252
+    MinioContainerConfigs,
+    MySqlContainerConfigs,
+    get_docker_network,
+    get_minio_container,
+    get_mysql_container,
+)
+
+
+@dataclass
+class MlflowContainerConfigs:
+    """MLFlow Configurations"""
+
+    backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
+    artifact_bucket: str = "mlops.local.com"
+    port: int = 6000
+    exposed_port: Optional[int] = None  # noqa: UP045
+
+    def with_exposed_port(self, container):
+        self.exposed_port = container.get_exposed_port(self.port)
+
+
+class MlflowTestConfiguration:
+    """Responsible to hold all the configurations used by the test"""
+
+    def __init__(self):
+        self.mysql_configs = MySqlContainerConfigs(
+            username="mlflow",
+            password="password",
+            dbname="experiments",
+        )
+        self.minio_configs = MinioContainerConfigs()
+        self.mlflow_configs = MlflowContainerConfigs()
+
+
+# ------------------------------------------------------------
+# Fixture to setup the environment
+# ------------------------------------------------------------
+@pytest.fixture(scope="package")
+def mlflow_environment():
+    unique_id = str(uuid.uuid4())[:8]
+
+    config = MlflowTestConfiguration()
+    mysql_container_name = f"mlflow-db-{unique_id}"
+    config.mysql_configs.container_name = mysql_container_name
+    config.minio_configs.container_name = f"mlflow-artifact-{unique_id}"
+    config.mlflow_configs.backend_uri = f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
+
+    docker_network = get_docker_network(name=f"docker_mlflow_test_nw_{unique_id}")
+
+    minio_container = get_minio_container(config.minio_configs)
+    mysql_container = get_mysql_container(config.mysql_configs)
+    # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (mysql:8
+    # default) this needs SUPER unless log_bin_trust_function_creators=1.
+    mysql_container.with_command("mysqld --log-bin-trust-function-creators=1")
+    mlflow_container = build_and_get_mlflow_container(config.mlflow_configs, config.minio_configs, unique_id)
+
+    with docker_network:
+        minio_container.with_network(docker_network)
+        mysql_container.with_network(docker_network)
+        mlflow_container.with_network(docker_network)
+        with mysql_container, minio_container, mlflow_container:
+            # minio setup
+            minio_client = minio_container.get_client()
+            minio_client.make_bucket(config.mlflow_configs.artifact_bucket)
+
+            config.mysql_configs.with_exposed_port(mysql_container)
+            config.minio_configs.with_exposed_port(minio_container)
+            config.mlflow_configs.with_exposed_port(mlflow_container)
+
+            # Wait for MySQL to be ready
+            port = config.mysql_configs.exposed_port or 3306
+            for _ in range(30):
+                try:
+                    conn = pymysql.connect(
+                        host="localhost",
+                        port=int(port),
+                        user="mlflow",
+                        password="password",
+                    )
+                    conn.close()
+                    break
+                except Exception:
+                    time.sleep(2)
+            else:
+                raise RuntimeError("MySQL did not become ready in time.")
+
+            # Wait for MLflow server to be ready
+            import requests
+
+            mlflow_port = config.mlflow_configs.exposed_port
+            for _ in range(30):
+                try:
+                    response = requests.get(f"http://localhost:{mlflow_port}/health")
+                    if response.status_code == 200:
+                        break
+                except Exception:
+                    time.sleep(2)
+            else:
+                raise RuntimeError("MLflow server did not become ready in time.")
+
+            yield config
+
+
+def build_and_get_mlflow_container(
+    mlflow_config: MlflowContainerConfigs,
+    minio_config: MinioContainerConfigs,
+    unique_id: str,
+):
+    docker_client = DockerClient()
+
+    dockerfile = io.BytesIO(
+        b"""
+        FROM python:3.10-slim-buster
+        RUN python -m pip install --upgrade pip
+        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql
+        """
+    )
+
+    image_tag = f"mlflow_image:{unique_id}"
+    docker_client.client.images.build(fileobj=dockerfile, tag=image_tag)
+
+    container = DockerContainer(image_tag)
+    container.with_exposed_ports(mlflow_config.port)
+    container.with_env("AWS_ACCESS_KEY_ID", minio_config.access_key)
+    container.with_env("AWS_SECRET_ACCESS_KEY", minio_config.secret_key)
+    container.with_env(
+        "MLFLOW_S3_ENDPOINT_URL",
+        f"http://{minio_config.container_name}:{minio_config.port}",
+    )
+    container.with_env("MLFLOW_BOTO_CLIENT_ADDRESSING_STYLE", "path")
+    container.with_command(
+        f"mlflow server --backend-store-uri {mlflow_config.backend_uri}"
+        f" --default-artifact-root s3://{mlflow_config.artifact_bucket}"
+        f" --host 0.0.0.0 --port {mlflow_config.port}"
+    )
+
+    return container

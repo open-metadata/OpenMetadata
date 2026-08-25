@@ -1,0 +1,140 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceProfilerPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceProfilerPipeline",
+  "description": "DatabaseService Profiler Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "profilerConfigType": {
+      "description": "Profiler Source Config Pipeline type",
+      "type": "string",
+      "enum": ["Profiler"],
+      "default": "Profiler"
+    },
+    "processingEngine": {
+      "title": "Processing Engine",
+      "description": "Processing Engine Configuration. If not provided, the Native Engine will be used by default.",
+      "oneOf": [
+        {
+          "$ref": "../metadataIngestion/engine/nativeEngineConfig.json"
+        },
+        {
+          "$ref": "../metadataIngestion/engine/sparkEngineConfig.json"
+        }
+      ],
+      "default": {
+        "type": "Native"
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/profilerConfigType",
+      "default": "Profiler"
+    },
+    "processingEngine": {
+      "$ref": "#/definitions/processingEngine"
+    },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Classification Filter Pattern"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Schema Filter Pattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Table Filter Pattern"
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Database Filter Pattern"
+    },
+    "includeViews": {
+      "description": "Optional configuration to turn off fetching metadata for views.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include Views"
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
+    },
+    "computeTableMetrics": {
+      "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Table Metrics"
+    },
+    "computeColumnMetrics": {
+      "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Column Metrics"
+    },
+    "useStatistics": {
+      "description": "Use system tables to extract table metrics. Metrics that cannot be gathered from system tables will use the default methods. Using system tables can be faster but requires gathering statistics before running (for example using the ANALYZE procedure). More information can be found in the documentation: https://docs.openmetadata.org/latest/profler",
+      "type": "boolean",
+      "default": false,
+      "title": "Use System Table Statistics"
+    },
+    "profileSampleConfig": {
+      "$ref": "../type/samplingConfig.json#/definitions/profileSampleConfig"
+    },
+    "randomizedSample": {
+      "description": "Whether to randomize the sample data or not.",
+      "type": "boolean",
+      "default": false
+    },
+    "threadCount": {
+      "description": "Number of threads to use during metric computations",
+      "type": ["integer", "null"],
+      "default": null,
+      "title": "Thread Count"
+    },
+    "timeoutSeconds": {
+      "description": "Profiler Timeout in Seconds",
+      "type": "integer",
+      "default": 43200,
+      "title": "Timeout (in sec.)"
+    },
+    "metrics": {
+      "description": "List of metrics to compute. If empty, then all metrics will be computed",
+      "type": "array",
+      "items": {
+        "$ref": "../configuration/profilerConfiguration.json#/definitions/metricType"
+      },
+      "default": [
+          "mean",
+          "valuesCount",
+          "columnCount",
+          "distinctCount",
+          "distinctProportion",
+          "max",
+          "min",
+          "nullCount",
+          "rowCount",
+          "stddev",
+          "sum",
+          "uniqueCount",
+          "uniqueProportion",
+          "columnNames",
+          "nullProportion",
+          "median",
+          "firstQuartile",
+          "thirdQuartile",
+          "interQuartileRange",
+          "nonParametricSkew"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

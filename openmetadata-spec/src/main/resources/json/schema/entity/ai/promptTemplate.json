@@ -1,0 +1,235 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/promptTemplate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PromptTemplate",
+  "$comment": "@om-entity-type",
+  "description": "Prompt Template entity representing a reusable prompt template for AI agents. Templates can include variables, system prompts, and examples for consistent AI behavior.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.PromptTemplate",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "templateVariable": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.TemplateVariable",
+      "description": "Variable definition in the prompt template",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Variable name (e.g., 'user_query', 'context')"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what this variable represents"
+        },
+        "dataType": {
+          "type": "string",
+          "enum": ["String", "Number", "Boolean", "Array", "Object"],
+          "description": "Expected data type for this variable"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this variable is required"
+        },
+        "defaultValue": {
+          "type": "string",
+          "description": "Default value if not provided"
+        },
+        "validationPattern": {
+          "type": "string",
+          "description": "Regex pattern for validation"
+        }
+      },
+      "required": ["name"]
+    },
+    "promptExample": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.PromptExample",
+      "description": "Example of how to use this prompt template",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Example name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of this example"
+        },
+        "variables": {
+          "type": "object",
+          "description": "Example variable values",
+          "additionalProperties": {"type": "string"}
+        },
+        "expectedOutput": {
+          "type": "string",
+          "description": "Expected output for this example"
+        }
+      }
+    },
+    "promptMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.PromptMetrics",
+      "description": "Usage and performance metrics for the prompt template",
+      "additionalProperties": false,
+      "properties": {
+        "usageCount": {
+          "type": "integer",
+          "description": "Number of times this template has been used"
+        },
+        "averageTokens": {
+          "type": "number",
+          "description": "Average tokens used when rendering this template"
+        },
+        "averageLatencyMs": {
+          "type": "number",
+          "description": "Average latency in milliseconds"
+        },
+        "successRate": {
+          "type": "number",
+          "description": "Success rate (0-1) of executions using this template"
+        },
+        "lastUsedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the Prompt Template",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this Prompt Template",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the Prompt Template",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the Prompt Template",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Prompt Template and its purpose",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "templateContent": {
+      "description": "The actual prompt template content with variables in {{variable}} format",
+      "type": "string"
+    },
+    "systemPrompt": {
+      "description": "System prompt to set the AI's behavior and context",
+      "type": "string"
+    },
+    "variables": {
+      "description": "Variables used in this template",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/templateVariable"
+      }
+    },
+    "examples": {
+      "description": "Examples demonstrating how to use this template",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/promptExample"
+      }
+    },
+    "templateType": {
+      "description": "Type of prompt template",
+      "type": "string",
+      "enum": ["ChatCompletion", "TextGeneration", "CodeGeneration", "Embedding", "Classification", "Extraction", "Custom"]
+    },
+    "templateVersion": {
+      "description": "Template version for tracking changes",
+      "type": "string"
+    },
+    "parentTemplate": {
+      "description": "Reference to parent template if this is a version/fork",
+      "$ref": "../../type/entityReference.json"
+    },
+    "usedByAgents": {
+      "description": "AI Agents using this template",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "metrics": {
+      "$ref": "#/definitions/promptMetrics"
+    },
+    "tags": {
+      "description": "Tags for this Prompt Template",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "owners": {
+      "description": "Owners of this Prompt Template",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this Prompt Template",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domain": {
+      "description": "Domain the Prompt Template belongs to",
+      "$ref": "../../type/entityReference.json"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Domains the Prompt Template belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity",
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "templateContent"],
+  "additionalProperties": false
+}

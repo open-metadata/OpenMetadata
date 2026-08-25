@@ -1,0 +1,18 @@
+{
+  "name": "ScimBotPolicy",
+  "displayName": "SCIM Bot Policy",
+  "fullyQualifiedName": "ScimBotPolicy",
+  "description": "Policy to allow SCIM bot access only to SCIM APIs and block all others.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "Allow-Scim-Endpoints",
+      "description": "Allow access to SCIM endpoints",
+      "resources": ["scim"],
+      "operations": ["CreateScim", "EditScim", "ViewScim", "DeleteScim"],
+      "effect": "allow"
+    }
+  ]
+}

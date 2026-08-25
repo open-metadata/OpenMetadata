@@ -1,0 +1,66 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/collibraConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CollibraConnection",
+    "description": "Collibra Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.metadata.CollibraConnection",
+    "definitions": {
+      "collibraType": {
+        "description": "Collibra service type",
+        "type": "string",
+        "enum": ["Collibra"],
+        "default": "Collibra"
+      }
+    },
+    "properties": {
+      "type": {
+        "description": "Service Type",
+        "$ref": "#/definitions/collibraType",
+        "default": "Collibra"
+      },
+      "username": {
+        "description": "Username to connect to the Collibra. This user should have privileges to read all the metadata in Collibra.",
+        "type": "string"
+      },
+      "password": {
+        "description": "Password to connect to the Collibra.",
+        "type": "string",
+        "format": "password"
+      },
+      "hostPort": {
+        "expose": true,
+        "title": "Host and Port",
+        "description": "Host and port of the Collibra service.",
+        "type": "string",
+        "format": "uri"
+      },
+      "glossaryFilterPattern": {
+        "title": "Glossary Filter Pattern",
+        "description": "Regex to only include/exclude glossaries that match the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "domainFilterPattern": {
+        "title": "Domain Filter Pattern",
+        "description": "Regex to only include/exclude domains that match the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "enableEnrichment": {
+        "title": "Enable Asset Enrichment",
+        "description": "Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions, tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata entities and apply metadata without creating new assets.",
+        "type": "boolean",
+        "default": false
+      },
+      "connectionOptions": {
+        "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+      },
+      "connectionArguments": {
+        "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+      },
+      "supportsMetadataExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "required": ["username", "password", "hostPort"],
+    "additionalProperties": false
+  }

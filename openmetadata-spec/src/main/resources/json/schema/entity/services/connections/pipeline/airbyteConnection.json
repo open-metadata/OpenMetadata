@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/airbyteConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AirbyteConnection",
+  "description": "Airbyte Metadata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.AirbyteConnection",
+  "definitions": {
+    "AirbyteType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Airbyte"
+      ],
+      "default": "Airbyte"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/AirbyteType",
+      "default": "Airbyte"
+    },
+    "hostPort": {
+      "expose": true,
+      "description": "Pipeline Service Management/UI URL.",
+      "type": "string",
+      "format": "uri"
+    },
+    "auth": {
+      "title": "Authentication",
+      "description": "Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials (for Airbyte Cloud)",
+      "oneOf": [
+        {
+          "title": "Basic Authentication",
+          "$ref": "./airbyte/basicAuth.json"
+        },
+        {
+          "title": "OAuth 2.0 Client Credentials Authentication",
+          "$ref": "./airbyte/oauthClientAuth.json"
+        }
+      ]
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "Airbyte API version.",
+      "type": "string",
+      "default": "api/v1"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
+}

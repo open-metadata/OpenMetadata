@@ -1,0 +1,1066 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+OpenMetadata is the high level Python API that serves as a wrapper
+for the metadata-server API. It is based on the generated pydantic
+models from the JSON schemas and provides a typed approach to
+working with OpenMetadata entities.
+"""
+
+import traceback
+import types
+from collections import OrderedDict
+from collections.abc import Generator
+from itertools import chain
+from typing import (  # noqa: UP035
+    Any,
+    Dict,
+    Generator,  # noqa: F811
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
+
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+from metadata.generated.schema.api.createBot import CreateBot
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.bulkOperationResult import (
+    BulkOperationResult,
+    Response,
+)
+from metadata.generated.schema.type.entityHistory import EntityVersionHistory
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.topology import get_entity_hierarchy_depth
+from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
+from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
+from metadata.ingestion.ometa.mixins.container_mixin import OMetaContainerMixin
+from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
+from metadata.ingestion.ometa.mixins.custom_property_mixin import (
+    OMetaCustomPropertyMixin,
+)
+from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContractMixin
+from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
+from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
+from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
+from metadata.ingestion.ometa.mixins.feed_mixin import OMetaFeedMixin
+from metadata.ingestion.ometa.mixins.file_mixin import OMetaFileMixin
+from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
+    OMetaIngestionPipelineMixin,
+)
+from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
+from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
+from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
+from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.profile_mixin import OMetaProfileMixin
+from metadata.ingestion.ometa.mixins.progress_mixin import OMetaProgressMixin
+from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
+from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
+from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
+from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
+from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.tag_glossary_mixin import OMetaTagGlossaryMixin
+from metadata.ingestion.ometa.mixins.task_mixin import OMetaTaskMixin
+from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
+from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
+from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
+from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
+from metadata.ingestion.ometa.models import EntityList
+from metadata.ingestion.ometa.routes import ROUTES
+from metadata.ingestion.ometa.sse_client import SSEClient
+from metadata.ingestion.ometa.utils import (
+    decode_jwt_token,
+    get_entity_type,
+    model_str,
+    quote,
+)
+from metadata.utils.logger import ometa_logger
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from metadata.utils.ssl_registry import get_verify_ssl_fn
+
+logger = ometa_logger()
+
+# The naming convention is T for Entity Types and C for Create Types
+T = TypeVar("T", bound=BaseModel)
+C = TypeVar("C", bound=BaseModel)
+
+
+class MissingEntityTypeException(Exception):  # noqa: N818
+    """
+    We are receiving an Entity Type[T] not covered
+    in our suffix generation list
+    """
+
+
+class InvalidEntityException(Exception):  # noqa: N818
+    """
+    We receive an entity not supported in an operation
+    """
+
+
+class EmptyPayloadException(Exception):  # noqa: N818
+    """
+    Raise when receiving no data, even if no exception
+    during the API call is received
+    """
+
+
+class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
+    """
+    Custom environment settings source that handles case-insensitive field names.
+    This allows both exact camelCase (e.g., OPENMETADATA__connection__hostPort)
+    and all uppercase (e.g., OPENMETADATA__CONNECTION_HOSTPORT) to work.
+    """
+
+    @staticmethod
+    def _unwrap_annotation(annotation):
+        """Unwrap Optional and other Union types to get the actual model class."""
+        origin = get_origin(annotation)
+        # PEP 604 unions (`X | None`) report `types.UnionType`, not `typing.Union`. Generated
+        # models emit that form, so matching only `Union` here silently stops unwrapping and
+        # nested env keys never get case-normalized.
+        if origin in (Union, types.UnionType):
+            args = get_args(annotation)
+            for arg in args:
+                if arg is not type(None) and hasattr(arg, "model_fields"):
+                    return arg
+        return annotation
+
+    def _normalize_env_key_recursive(self, key: str, model_fields: dict) -> str:
+        """
+        Normalize environment variable key to match model field names recursively.
+        Handles case-insensitive matching for deeply nested fields.
+        """
+        if not key or not model_fields:
+            return key
+
+        parts = key.split(self.env_nested_delimiter)
+        if not parts:
+            return key
+
+        first_part = parts[0]
+        first_part_lower = first_part.lower()
+
+        for field_name, field_info in model_fields.items():
+            if field_name.lower() == first_part_lower:
+                if len(parts) == 1:
+                    return field_name
+
+                remaining_key = self.env_nested_delimiter.join(parts[1:])
+
+                field_annotation = self._unwrap_annotation(field_info.annotation)
+                if hasattr(field_annotation, "model_fields"):
+                    normalized_rest = self._normalize_env_key_recursive(remaining_key, field_annotation.model_fields)
+                    return f"{field_name}{self.env_nested_delimiter}{normalized_rest}"
+                else:  # noqa: RET505
+                    return f"{field_name}{self.env_nested_delimiter}{remaining_key}"
+
+        return key
+
+    def _build_nested_dict(self, key: str, value: str) -> dict:
+        """Build a nested dictionary from a delimited key."""
+        parts = key.split(self.env_nested_delimiter)
+        if len(parts) == 1:
+            return {parts[0]: value}
+
+        result = {}
+        current = result
+        for part in parts[:-1]:
+            current[part] = {}
+            current = current[part]
+        current[parts[-1]] = value
+        return result
+
+    def _merge_dicts(self, dict1: dict, dict2: dict) -> dict:
+        """Recursively merge two dictionaries."""
+        result = dict1.copy()
+        for key, value in dict2.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def explode_env_vars(self, field_name: str, field, env_vars: dict) -> dict:
+        """
+        Override to handle case-insensitive nested environment variable names.
+        """
+        prefix = f"{self.env_prefix}{field_name}{self.env_nested_delimiter}"
+        prefix_len = len(prefix)
+
+        result = {}
+        for env_name, env_val in env_vars.items():
+            if env_name.upper().startswith(prefix.upper()):
+                suffix = env_name[prefix_len:]
+
+                field_annotation = self._unwrap_annotation(field.annotation)
+                if hasattr(field_annotation, "model_fields"):
+                    normalized_suffix = self._normalize_env_key_recursive(suffix, field_annotation.model_fields)
+                    nested_dict = self._build_nested_dict(normalized_suffix, env_val)
+                    result = self._merge_dicts(result, nested_dict)
+                else:
+                    result[suffix] = env_val
+
+        return result
+
+
+class OpenMetadataSettings(BaseSettings):
+    """OpenMetadataConnection settings wrapper"""
+
+    model_config = SettingsConfigDict(env_prefix="OPENMETADATA__", env_nested_delimiter="__")
+
+    connection: OpenMetadataConnection
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ):
+        return (
+            init_settings,
+            CaseInsensitiveEnvSettingsSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
+
+
+class OpenMetadata(
+    CSVMixin,
+    OMetaPipelineMixin,
+    OMetaMlModelMixin,
+    OMetaTableMixin,
+    OMetaContainerMixin,
+    OMetaFileMixin,
+    OMetaTopicMixin,
+    OMetaVersionMixin,
+    OMetaServiceMixin,
+    ESMixin,
+    OMetaServerMixin,
+    OMetaDashboardMixin,
+    OMetaDataContractMixin,
+    OMetaPatchMixin,
+    OMetaTestsMixin,
+    DataInsightMixin,
+    OMetaIngestionPipelineMixin,
+    OMetaLogsMixin,
+    OMetaUserMixin,
+    OMetaQueryMixin,
+    OMetaRolePolicyMixin,
+    OMetaSearchIndexMixin,
+    OMetaCustomPropertyMixin,
+    OMetaFeedMixin,
+    OMetaAnnouncementMixin,
+    OMetaTaskMixin,
+    OMetaDomainMixin,
+    OMetaProfileMixin,
+    OMetaProgressMixin,
+    OMetaTagGlossaryMixin,
+    Generic[T, C],
+):
+    """
+    Generic interface to the OpenMetadata API
+
+    It is a polymorphism on all our different Entities.
+
+    Specific functionalities to be inherited from Mixins
+    """
+
+    client: REST
+    sse_client: SSEClient
+    _auth_provider: OpenMetadataAuthenticationProvider
+    config: OpenMetadataConnection
+
+    class_root = ".".join(["metadata", "generated", "schema"])
+    entity_path = "entity"
+    api_path = "api"
+    data_path = "data"
+
+    def __init__(
+        self,
+        config: OpenMetadataConnection,
+        raw_data: bool = False,
+        additional_client_config_arguments: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+    ):
+        self.config = config
+
+        # Load the secrets' manager client
+        self.secrets_manager_client = SecretsManagerFactory(
+            config.secretsManagerProvider,
+            config.secretsManagerLoader,
+        ).get_secrets_manager()
+
+        self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
+        self.log_user_name_from_jwt_token()
+
+        get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
+
+        extra_headers: Optional[dict[str, str]] = None  # noqa: UP045
+        if self.config.extraHeaders:
+            extra_headers = self.config.extraHeaders.root
+
+        client_config = ClientConfig(
+            base_url=self.config.hostPort,
+            api_version=self.config.apiVersion,
+            auth_header="Authorization",
+            extra_headers=extra_headers,
+            auth_token=self._auth_provider.get_access_token,
+            verify=get_verify_ssl(self.config.sslConfig),
+            # The OpenMetadata API never answers HTML, so a page here means the
+            # request reached the UI or a proxy instead of the API.
+            raise_on_html=True,
+            **(additional_client_config_arguments or {}),
+        )
+
+        self.client = REST(client_config)
+        self.sse_client = SSEClient(client_config)
+        self._use_raw_data = raw_data
+        if self.config.enableVersionValidation:
+            self.validate_versions()
+
+    def log_user_name_from_jwt_token(self) -> None:
+        """
+        Log user name from JWT token.
+        """
+        # Log user name from JWT token if authProvider is openmetadata
+        if self.config.authProvider and self.config.authProvider.value == "openmetadata":
+            try:
+                # Get the JWT token from the auth provider
+                jwt_token, _ = self._auth_provider.get_access_token()
+                if jwt_token:
+                    # Decode the JWT token to extract user information
+                    payload = decode_jwt_token(jwt_token)
+                    if payload:
+                        if payload.get("sub"):
+                            logger.debug(f"Authenticated user: {payload.get('sub')}")
+                        else:
+                            logger.debug("Could not extract user name from JWT token")
+            except Exception as e:
+                logger.debug(f"Error processing JWT token: {e}")
+
+    @classmethod
+    def from_env(cls) -> "OpenMetadata":
+        settings = OpenMetadataSettings()
+        return cls(settings.connection)
+
+    @staticmethod
+    def get_suffix(entity: Type[T]) -> str:  # noqa: UP006
+        """
+        Given an entity Type from the generated sources,
+        return the endpoint to run requests.
+        """
+
+        route = ROUTES.get(entity.__name__)
+        if route is None:
+            raise MissingEntityTypeException(f"Missing {entity} type when generating suffixes")
+
+        return route
+
+    def get_module_path(self, entity: Type[T]) -> Optional[str]:  # noqa: UP006, UP045
+        """
+        Based on the entity, return the module path
+        it is found inside generated
+        """
+        if issubclass(entity, CreateIngestionPipelineRequest):
+            return "services.ingestionPipelines"
+        if issubclass(entity, CreateBot):
+            # Bots schemas don't live inside any subdirectory
+            return None
+        if "events.api" in entity.__module__:
+            # EventSubscription entities are in events module, not entity.api
+            return "events"
+        return entity.__module__.split(".")[-2]
+
+    def get_create_entity_type(self, entity: Type[T]) -> Type[C]:  # noqa: UP006
+        """
+        imports and returns the Create Type from an Entity Type T.
+        We are following the expected path structure to import
+        on-the-fly the necessary class and pass it to the consumer
+        """
+        file_name = f"create{entity.__name__}"
+
+        class_path = ".".join([self.class_root, self.api_path, self.get_module_path(entity), file_name])
+
+        class_name = f"Create{entity.__name__}Request"
+        create_class = getattr(__import__(class_path, globals(), locals(), [class_name]), class_name)
+        return create_class  # noqa: RET504
+
+    @staticmethod
+    def update_file_name(create: Type[C], file_name: str) -> str:  # noqa: UP006
+        """
+        Update the filename for services and schemas
+        """
+        explicit_file_name_map = {
+            "CreateTableProfileRequest": "table",
+            "CreateTestCaseResult": "basic",
+        }
+        if create.__name__ in explicit_file_name_map:
+            return explicit_file_name_map[create.__name__]
+
+        if "service" in create.__name__.lower():
+            return file_name.replace("service", "Service")
+
+        if "schema" in create.__name__.lower():
+            return file_name.replace("schema", "Schema")
+
+        return file_name
+
+    def get_entity_from_create(self, create: Type[C]) -> Type[T]:  # noqa: UP006
+        """
+        Inversely, import the Entity type based on the create Entity class
+        """
+
+        class_name = create.__name__.replace("Create", "").replace("Request", "")
+        file_name = (
+            class_name.lower()
+            .replace("glossaryterm", "glossaryTerm")
+            .replace("dashboarddatamodel", "dashboardDataModel")
+            .replace("apiendpoint", "apiEndpoint")
+            .replace("apicollection", "apiCollection")
+            .replace("testsuite", "testSuite")
+            .replace("testdefinition", "testDefinition")
+            .replace("testcase", "testCase")
+            .replace("searchindex", "searchIndex")
+            .replace("storedprocedure", "storedProcedure")
+            .replace("ingestionpipeline", "ingestionPipeline")
+            .replace("dataproduct", "dataProduct")
+            .replace("datacontract", "dataContract")
+            .replace("chatconversation", "chatConversation")
+            .replace("eventsubscription", "eventSubscription")
+            .replace("mcpserver", "mcpServer")
+            .replace("llmmodel", "llmModel")
+            .replace("aiapplication", "aiApplication")
+        )
+        class_path = ".".join(
+            filter(
+                None,
+                [
+                    self.class_root,
+                    (
+                        self.entity_path
+                        if not file_name.startswith("test") and not file_name.startswith("eventSubscription")
+                        else None
+                    ),
+                    self.get_module_path(create),
+                    self.update_file_name(create, file_name),
+                ],
+            )
+        )
+        entity_class = getattr(__import__(class_path, globals(), locals(), [class_name]), class_name)
+        return entity_class  # noqa: RET504
+
+    def _create(self, data: C, method: str) -> T:
+        """
+        Internal logic to run POST vs. PUT
+        """
+        entity = data.__class__
+        is_create = "create" in data.__class__.__name__.lower()
+
+        # Prepare the return Entity Type
+        if is_create:
+            entity_class = self.get_entity_from_create(entity)
+        else:
+            raise InvalidEntityException(f"PUT operations need a CreateEntity, not {entity}")
+
+        fn = getattr(self.client, method)
+        resp = fn(
+            # this might be a regular pydantic model so we build the context manually
+            self.get_suffix(entity),
+            data=data.model_dump_json(context={"mask_secrets": False}, by_alias=True),
+        )
+        if not resp:
+            raise EmptyPayloadException(
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
+            )
+        return entity_class(**resp)
+
+    def create_or_update(self, data: C) -> T:
+        """
+        Run a PUT request via create request C.
+
+        Note: This method uses PUT operations with server-side business rules that may prevent
+        certain field overwrites across various entity types for data integrity reasons. If you
+        need to override existing metadata fields, consider using patch methods instead:
+
+        - For descriptions: Use patch_description(force=True)
+        - For general metadata: Use patch(override_metadata=True)
+
+        Args:
+            data: Create request object
+
+        Returns:
+            Updated or created entity
+        """
+        return self._create(data=data, method="put")
+
+    def create(self, data: C) -> T:
+        """Run a POST requesting via create request C"""
+        return self._create(data=data, method="post")
+
+    def get_by_name(
+        self,
+        entity: Type[T],  # noqa: UP006
+        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        nullable: bool = True,
+        include: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Return entity by name or None
+        """
+
+        return self._get(
+            entity=entity,
+            path=f"name/{quote(fqn)}",
+            fields=fields,
+            nullable=nullable,
+            include=include,
+        )
+
+    def get_by_id(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        nullable: bool = True,
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Return entity by ID or None
+        """
+        return self._get(
+            entity=entity,
+            path=model_str(entity_id),
+            fields=fields,
+            nullable=nullable,
+        )
+
+    def get_context(
+        self,
+        entity: Type[T],  # noqa: UP006
+        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        query: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
+        """
+        Return the AI Context (Context Profile) for an entity as an OKF-style
+        markdown document: its attached business knowledge (glossary terms,
+        Context Center articles, applied metrics), type-specific structural
+        context, and depth-1 lineage, assembled server-side for LLM use.
+
+        :param entity: entity type, e.g. Table
+        :param fqn: fully qualified name of the entity
+        :param query: optional question; truncated knowledge items are excerpted
+            to the passage most relevant to it instead of the positional lead
+        :return: the markdown document, or None if the entity is not found
+        """
+        path = f"{self.get_suffix(entity)}/name/{quote(fqn)}/context"
+        if query:
+            path += f"?query={quote(query)}"
+        resp = self.client.get(path)
+        text = getattr(resp, "text", resp)
+        return text if isinstance(text, str) else None
+
+    def _get(
+        self,
+        entity: Type[T],  # noqa: UP006
+        path: str,
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        nullable: bool = True,
+        include: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        Generic GET operation for an entity
+        :param entity: Entity Class
+        :param path: URL suffix by FQN or ID
+        :param fields: List of fields to return
+        """
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
+        include = f"&include={include}" if include else ""
+        try:
+            resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}{include}")
+            if not resp:
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
+                )
+            return entity(**resp)
+        except APIError as err:
+            # We can expect some GET calls to return us a None and manage it in following steps.
+            # No need to pollute the logs in these cases.
+            if err.code == 404 and nullable:
+                return None
+
+            # Any other API errors will be passed to the client
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "GET %s for %s. Error %s - %s",
+                entity.__name__,
+                path,
+                err.status_code,
+                err,
+            )
+            raise err  # noqa: TRY201
+
+    def get_entity_reference(self, entity: Type[T], fqn: str) -> Optional[EntityReference]:  # noqa: UP006, UP045
+        """
+        Helper method to obtain an EntityReference from
+        a FQN and the Entity class.
+        :param entity: Entity Class
+        :param fqn: Entity instance FQN
+        :return: EntityReference or None
+        """
+        instance = self.get_by_name(entity, fqn)
+        if instance:
+            return EntityReference(
+                id=instance.id,
+                type=get_entity_type(entity),
+                fullyQualifiedName=model_str(instance.fullyQualifiedName),
+                description=instance.description,
+                href=instance.href,
+            )
+        logger.debug("Cannot find the Entity %s", fqn)
+        return None
+
+    # pylint: disable=too-many-locals, too-many-arguments
+    def list_entities(
+        self,
+        entity: Type[T],  # noqa: UP006
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        after: Optional[str] = None,  # noqa: UP045
+        before: Optional[str] = None,  # noqa: UP045
+        limit: int = 100,
+        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+        skip_on_failure: bool = False,
+        include: Optional[str] = None,  # noqa: UP045
+    ) -> EntityList[T]:
+        """
+        Helps us paginate over the collection
+        """
+
+        suffix = self.get_suffix(entity)
+        url_limit = f"?limit={limit}"
+        url_after = f"&after={after}" if after else ""
+        url_before = f"&before={before}" if before else ""
+        url_fields = f"&fields={','.join(fields)}" if fields else ""
+        url_include = f"&include={include}" if include else ""
+        resp = self.client.get(
+            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}{url_include}",
+            data=params,
+        )
+
+        if self._use_raw_data:
+            return resp
+
+        if skip_on_failure:
+            entities = []
+            for elmt in resp["data"]:
+                try:
+                    entities.append(entity(**elmt))
+                except Exception as exc:
+                    logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
+                    logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
+                    continue
+        else:
+            entities = [entity(**elmt) for elmt in resp["data"]]
+
+        total = resp["paging"]["total"]
+        after = resp["paging"]["after"] if "after" in resp["paging"] else None  # noqa: SIM401
+        before = resp["paging"]["before"] if "before" in resp["paging"] else None  # noqa: SIM401
+        return EntityList(entities=entities, total=total, after=after, before=before)
+
+    def list_all_entities(
+        self,
+        entity: Type[T],  # noqa: UP006
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        limit: int = 100,
+        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+        skip_on_failure: bool = False,
+        include: Optional[str] = None,  # noqa: UP045
+    ) -> Iterable[T]:
+        """
+        Utility method that paginates over all EntityLists
+        to return a generator to fetch entities
+        :param entity: Entity Type, such as Table
+        :param fields: Extra fields to return
+        :param limit: Number of entities in each pagination
+        :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :return: Generator that will be yielding all Entities
+        """
+
+        # First batch of Entities
+        entity_list = self.list_entities(
+            entity=entity,
+            fields=fields,
+            limit=limit,
+            params=params,
+            skip_on_failure=skip_on_failure,
+            include=include,
+        )
+        yield from entity_list.entities
+
+        after = entity_list.after
+        while after:
+            entity_list = self.list_entities(
+                entity=entity,
+                fields=fields,
+                limit=limit,
+                params=params,
+                after=after,
+                skip_on_failure=skip_on_failure,
+                include=include,
+            )
+            yield from entity_list.entities
+            after = entity_list.after
+
+    def list_versions(self, entity_id: Union[str, basic.Uuid], entity: Type[T]) -> EntityVersionHistory:  # noqa: UP006, UP007
+        """
+        Version history of an entity
+        """
+
+        suffix = self.get_suffix(entity)
+        path = f"/{model_str(entity_id)}/versions"
+        resp = self.client.get(f"{suffix}{path}")
+
+        if self._use_raw_data:
+            return resp
+        return EntityVersionHistory(**resp)
+
+    def list_services(self, entity: Type[T]) -> List[EntityList[T]]:  # noqa: UP006
+        """
+        Service listing does not implement paging
+        """
+
+        resp = self.client.get(self.get_suffix(entity))
+        if self._use_raw_data:
+            return resp
+
+        return [entity(**p) for p in resp["data"]]
+
+    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
+        """
+        Stream an SSE response
+        """
+        yield from self.sse_client.stream(method, path, data)
+
+    def delete(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> None:
+        """
+        API call to delete an entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            None
+        """
+        url = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
+        self.client.delete(url)
+
+    def delete_stale_entities(
+        self,
+        entity: Type[T],  # noqa: UP006
+        scope_params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+        live_fqns: Iterable[str],
+        recursive: bool = True,
+    ) -> Optional[BulkOperationResult]:  # noqa: UP045
+        """
+        Ask the server to soft-delete entities of `entity` within a scope that were not reported
+        by the connector in the current run.
+
+        `scope_params` is a single-key dict such as {"database": fqn}, {"databaseSchema": fqn} or
+        {"service": fqn}: the key is the scope entity type and the value is the scope FQN. The
+        connector sends `live_fqns` (the FQNs it produced this run); the server soft-deletes the
+        in-scope entities that are not in that set.
+
+        Returns the BulkOperationResult, or None when the server does not expose the endpoint
+        (older server) so the caller can fall back to the legacy paginate-and-diff path.
+        """
+        if not scope_params:
+            raise ValueError("delete_stale_entities requires a scope, e.g. {'database': fqn}")
+
+        scope_entity_type, scope_fqn = next(iter(scope_params.items()))
+        request = {
+            "scopeFqn": scope_fqn,
+            "scopeEntityType": scope_entity_type,
+            "seenFqns": list(live_fqns),
+            "recursive": recursive,
+        }
+        url = f"{self.get_suffix(entity)}/deleteStale"
+        try:
+            resp = self.client.delete(url, json=request)
+        except APIError as err:
+            # A server without the endpoint routes DELETE /<collection>/deleteStale to
+            # `deleteById`, whose UUID path param rejects "deleteStale" with a 404.
+            if err.status_code == 404:
+                logger.debug(
+                    "deleteStale endpoint unavailable for %s; falling back to legacy delete",
+                    entity.__name__,
+                )
+                return None
+            raise
+        return BulkOperationResult.model_validate(resp) if resp else None
+
+    def delete_async(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> Optional[dict]:  # noqa: UP045
+        """Server-side async delete.
+
+        Issues ``DELETE /<entity>/async/{id}?recursive=...&hardDelete=...`` (the dedicated
+        async-delete endpoint defined by ``EntityResource.deleteByIdAsync``) and returns
+        the 202 payload ``{"jobId": ..., "message": ...}``. The actual cascade runs on the
+        server's executor so ingestion can avoid blocking on large hierarchies. Caller is
+        responsible for tracking the returned ``jobId`` if it needs completion confirmation.
+        """
+        url = f"{self.get_suffix(entity)}/async/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
+        response = self.client.delete(url)
+        return response if isinstance(response, dict) else None
+
+    def restore(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+    ) -> Optional[T]:  # noqa: UP045
+        """
+        API call to restore a soft-deleted entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            Restored entity or None
+        """
+        try:
+            url = f"{self.get_suffix(entity)}/restore"
+            data = {"id": model_str(entity_id)}
+            resp = self.client.put(url, json=data)
+            if not resp:
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to restore {entity.__name__} with ID {entity_id}"
+                )
+            return entity(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Failed to restore %s with ID %s. Error %s - %s",
+                entity.__name__,
+                entity_id,
+                err.status_code,
+                err,
+            )
+            return None
+
+    def restore_async(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+    ) -> Optional[dict]:  # noqa: UP045
+        """Server-side async restore.
+
+        Issues ``PUT /<entity>/restore?async=true`` and returns the 202 payload
+        ``{"jobId": ..., "message": ...}``. Use this when restoring entities with large
+        subtrees so ingestion doesn't block on the cascade (issue #4003). Caller is
+        responsible for tracking the returned ``jobId`` if it needs completion confirmation.
+        """
+        url = f"{self.get_suffix(entity)}/restore?async=true"
+        data = {"id": model_str(entity_id)}
+        response = self.client.put(url, json=data)
+        return response if isinstance(response, dict) else None
+
+    def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:  # noqa: UP006, UP007
+        """
+        Compute an entity usage percentile
+        """
+        entity_name = get_entity_type(entity)
+        resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
+        logger.debug("published compute percentile %s", resp)
+
+    def _group_entities_by_type(self, entities: List[Type[T]]) -> Dict[Type[T], List[Type[T]]]:  # noqa: UP006
+        """Group entities by type so we can process them in the correct order when
+        creating the entities from bulk API.
+
+        Entities are sorted by their hierarchy depth to ensure parent entities
+        are created before their children (e.g., DatabaseService before Database,
+        Database before DatabaseSchema, etc.).
+
+        Args:
+            entities (List[Type[T]]): List of entities to group by type
+
+        Returns:
+            Dict[Type[T], List[Type[T]]]: Dictionary of entities grouped by type,
+            ordered by hierarchy depth
+        """
+
+        grouped: Dict[Type[T], List[Type[T]]] = {}  # noqa: UP006
+
+        for entity in entities:
+            entity_class = type(entity)
+
+            if entity_class not in grouped:
+                grouped[entity_class] = []
+
+            grouped[entity_class].append(entity)
+
+        sorted_grouped = OrderedDict(
+            sorted(
+                grouped.items(),
+                key=lambda item: get_entity_hierarchy_depth(self.get_entity_from_create(item[0])),
+            )
+        )
+
+        return sorted_grouped  # noqa: RET504
+
+    def _execute_bulk_operation(
+        self,
+        entities: List[Type[T]],  # noqa: UP006
+        use_async: bool = False,
+        override_metadata: bool = False,
+    ) -> BulkOperationResult:
+        """Execute a bulk operation for a list of entities.
+
+        Args:
+            entities (List[Type[T]]): List of entities to execute the bulk operation for
+            use_async (bool, optional): Use backend async processing (default: False)
+            override_metadata (bool, optional): Allow the bulk update to overwrite
+                user-curated metadata (description, displayName, owners) that a bot
+                PUT would otherwise preserve (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        type_ = type(entities[0])
+        data: list[str] = [entity.model_dump(mode="json", exclude_unset=True, exclude_none=True) for entity in entities]
+        url = f"{self.get_suffix(type_)}/bulk"
+        url += f"?async={str(use_async).lower()}&overrideMetadata={str(override_metadata).lower()}"
+        try:
+            resp = self.client.put(url, json=data)
+        except Exception as exc:
+            logger.debug("Failed to execute bulk operation for %s: %s", type_, exc)
+            logger.debug(traceback.format_exc())
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=len(entities),
+                successRequest=[],
+                failedRequest=[
+                    Response(
+                        request=None,
+                        message=str(exc),
+                        status=500,
+                    )
+                ],
+            )
+        return BulkOperationResult(**resp)
+
+    def bulk_create_or_update(
+        self,
+        entities: List[Type[T]],  # noqa: UP006
+        use_async: bool = False,
+        override_metadata: bool = False,
+    ) -> BulkOperationResult:
+        """Bulk create or update (PUT) multiple entities in a single API call.
+
+        Args:
+            entities (List[Type[T]]): List of entities to create or update
+            async (bool, optional): Use backend async processing (default: False)
+            override_metadata (bool, optional): Allow the bulk update to overwrite
+                user-curated metadata (description, displayName, owners) that a bot
+                PUT would otherwise preserve (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        bulk_ops_results: list[BulkOperationResult] = []
+        if not entities:
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=0,
+                successRequest=[],
+                failedRequest=[],
+            )
+
+        type_idx = OrderedDict.fromkeys(map(type, entities))
+        if len(type_idx) > 1:
+            grouped = self._group_entities_by_type(entities)
+            for _, entities in grouped.items():  # noqa: PERF102, PLR1704
+                try:
+                    bulk_ops_results.append(self._execute_bulk_operation(entities, use_async, override_metadata))
+                except Exception as exc:
+                    logger.debug("Failed to execute bulk operation: %s", exc)
+                    logger.debug(traceback.format_exc())
+        else:
+            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async, override_metadata))
+
+        failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
+        return BulkOperationResult(
+            status=basic.Status.success if not failed_rows else basic.Status.failure,
+            numberOfRowsProcessed=sum(result.numberOfRowsProcessed.root for result in bulk_ops_results),
+            numberOfRowsFailed=sum(result.numberOfRowsFailed.root for result in bulk_ops_results),
+            successRequest=list(
+                chain.from_iterable(
+                    result.successRequest for result in bulk_ops_results if result.successRequest is not None
+                )
+            ),
+            failedRequest=list(
+                chain.from_iterable(
+                    result.failedRequest for result in bulk_ops_results if result.failedRequest is not None
+                )
+            ),
+        )
+
+    def health_check(self) -> bool:
+        """
+        Run version api call. Raises with an actionable message if the API is not reachable.
+        """
+        return bool(self.get_server_version())
+
+    def close(self):
+        """
+        Closing connection
+
+        Returns
+            None
+        """
+        self.client.close()

@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/dataContractResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataContractResult",
+  "description": "Schema to capture data contract execution results over time.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.DataContractResult",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique Data Contract validation execution identifier of this data contract result instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "dataContractFQN": {
+      "description": "Fully qualified name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "timestamp": {
+      "description": "Timestamp when the data contract was executed.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "contractExecutionStatus": {
+      "description": "Overall status of the contract execution.",
+      "$ref": "../../type/contractExecutionStatus.json"
+    },
+    "result": {
+      "description": "Detailed result of the data contract execution.",
+      "type": "string"
+    },
+    "schemaValidation": {
+      "description": "Schema validation details.",
+      "$ref": "schemaValidation.json",
+      "default": null
+    },
+    "semanticsValidation": {
+      "description": "Semantics validation details.",
+      "$ref": "semanticsValidation.json",
+      "default": null
+    },
+    "qualityValidation": {
+      "description": "Quality expectations validation details.",
+      "$ref": "qualityValidation.json",
+      "default": null
+    },
+    "slaValidation": {
+      "description": "SLA validation details.",
+      "$ref": "slaValidation.json",
+      "default": null
+    },
+    "incidentId": {
+      "description": "Incident ID if the contract execution failed and an incident was created.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "executionTime": {
+      "description": "Time taken to execute the contract validation in milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["dataContractFQN", "timestamp", "contractExecutionStatus"],
+  "additionalProperties": false
+}

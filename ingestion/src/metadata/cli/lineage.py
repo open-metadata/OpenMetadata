@@ -1,0 +1,84 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Lineage utility for the metadata CLI
+"""
+
+import sys
+import traceback
+from pathlib import Path
+from typing import Optional
+
+from pydantic import BaseModel
+
+from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import UTF_8
+from metadata.utils.logger import cli_logger, redacted_config
+from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
+
+logger = cli_logger()
+
+
+class LineageWorkflow(BaseModel):
+    filePath: Optional[str] = None  # noqa: N815, UP045
+    query: Optional[str] = None  # noqa: UP045
+    checkPatch: Optional[bool] = True  # noqa: N815, UP045
+    serviceName: str  # noqa: N815
+    workflowConfig: WorkflowConfig  # noqa: N815
+    parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins  # noqa: N815, UP045
+    parserType: Optional[QueryParserType] = QueryParserType.Auto  # noqa: N815, UP045
+
+
+def run_lineage(config_path: Path) -> None:
+    """
+    Run the ingestion workflow from a config path
+    to a JSON or YAML file
+    :param config_path: Path to load JSON config
+    """
+
+    config_dict = None
+    try:
+        config_dict = load_config_file(config_path)
+        logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
+        workflow = LineageWorkflow.model_validate(config_dict)
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.lineage)
+        sys.exit(1)
+
+    if workflow.filePath:
+        with open(workflow.filePath, encoding=UTF_8) as sql_file:  # noqa: PTH123
+            sql = sql_file.read()
+    else:
+        sql = workflow.query
+
+    metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
+    service: DatabaseService = metadata.get_by_name(entity=DatabaseService, fqn=workflow.serviceName)
+    if service:
+        metadata.add_lineage_by_query(
+            database_service=service,
+            timeout=workflow.parseTimeout,
+            sql=sql,
+            check_patch=workflow.checkPatch,
+        )
+    else:
+        logger.error(f"Service not found with name {workflow.serviceName}")

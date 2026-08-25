@@ -1,0 +1,193 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { FieldProp } from '@openmetadata/ui-core-components';
+import { lazy, ReactNode } from 'react';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
+import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
+import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
+import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
+import { TestDefinition } from '../../../generated/tests/testDefinition';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
+import { TestCasePageTabs } from '../IncidentManager.interface';
+const DimensionalityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab'
+      )
+  )
+);
+const SqlQueryTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component'
+      )
+  )
+);
+const TestCaseIncidentTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component'
+      )
+  )
+);
+const TestCaseResultTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component'
+      )
+  )
+);
+
+export interface TestCaseTabProps {
+  /** Tags/Glossary rail visibility — consumed only by the results tab. */
+  showSidePanel?: boolean;
+  /**
+   * Chrome the params edit opens in: 'drawer' (OSS incident/detail page) or
+   * 'modal' (AskCollate AI renderer). Consumed only by the results tab.
+   */
+  editVariant?: 'drawer' | 'modal';
+}
+
+export interface TestCaseTabType {
+  LabelComponent: typeof TabsLabel;
+  labelProps: TabsLabelProps;
+  Tab: (props: TestCaseTabProps) => ReactNode;
+  key: TestCasePageTabs;
+  isBeta?: boolean;
+}
+
+class TestCaseClassBase {
+  showSqlQueryTab: boolean;
+
+  constructor() {
+    this.showSqlQueryTab = false;
+  }
+
+  public getTab(
+    openTaskCount: number,
+    isVersionPage: boolean,
+    showDimensionalityTab = false
+  ): TestCaseTabType[] {
+    const [firstTab, ...rest] = [
+      {
+        LabelComponent: TabsLabel,
+        labelProps: {
+          id: 'test-case-result',
+          name: i18n.t('label.test-case-result'),
+        },
+        Tab: TestCaseResultTab,
+        key: TestCasePageTabs.TEST_CASE_RESULTS,
+      },
+      ...(showDimensionalityTab
+        ? [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'dimensionality',
+                name: i18n.t('label.dimensionality'),
+              },
+              Tab: DimensionalityTab,
+              key: TestCasePageTabs.DIMENSIONALITY,
+              isBeta: true,
+            },
+          ]
+        : []),
+      ...(isVersionPage
+        ? []
+        : [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'incident',
+                name: i18n.t('label.incident'),
+                count: openTaskCount,
+              },
+              Tab: TestCaseIncidentTab,
+              key: TestCasePageTabs.ISSUES,
+            },
+          ]),
+    ];
+
+    return [
+      firstTab,
+      ...(this.showSqlQueryTab
+        ? [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'sql-query',
+                name: i18n.t('label.sql-uppercase-query'),
+              },
+              Tab: SqlQueryTab,
+              key: TestCasePageTabs.SQL_QUERY,
+            },
+          ]
+        : []),
+      ...rest,
+    ];
+  }
+
+  setShowSqlQueryTab(showSqlQueryTab: boolean) {
+    this.showSqlQueryTab = showSqlQueryTab;
+  }
+
+  public getFields(): string[] {
+    return [
+      TabSpecificField.TESTSUITE,
+      TabSpecificField.TEST_SUITES,
+      TabSpecificField.TEST_CASE_RESULT,
+      TabSpecificField.TEST_DEFINITION,
+      TabSpecificField.OWNERS,
+      TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
+      TabSpecificField.TAGS,
+      TabSpecificField.DATA_PRODUCTS,
+      TabSpecificField.DOMAINS,
+      'inspectionQuery',
+    ];
+  }
+
+  public createFormAdditionalFields(
+    _supportsDynamicAssertion: boolean
+  ): FieldProp[] {
+    return [];
+  }
+
+  public initialFormValues(): Record<string, unknown> {
+    return {};
+  }
+
+  public getCreateTestCaseObject(
+    value: TestCaseFormType,
+    selectedDefinition?: TestDefinition
+  ): Partial<CreateTestCase> {
+    return {
+      parameterValues: createTestCaseParameters(
+        value.params,
+        selectedDefinition
+      ),
+    };
+  }
+}
+
+const testCaseClassBase = new TestCaseClassBase();
+
+export default testCaseClassBase;
+export { TestCaseClassBase };

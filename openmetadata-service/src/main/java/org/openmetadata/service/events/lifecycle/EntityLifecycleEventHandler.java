@@ -1,0 +1,161 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.events.lifecycle;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+
+/**
+ * Interface for handling entity lifecycle events.
+ * Implementations can perform custom actions when entities are created, updated, or deleted.
+ * This allows for extensible behavior without modifying core repository logic.
+ */
+public interface EntityLifecycleEventHandler {
+
+  /**
+   * Returns whether this handler needs the event. The dispatcher evaluates this before creating an
+   * asynchronous entity snapshot.
+   */
+  default boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+    return true;
+  }
+
+  /**
+   * Called after an entity is successfully created.
+   */
+  default void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+    // Default empty implementation
+  }
+
+  /**
+   * Called after an entity is successfully updated.
+   */
+  default void onEntityUpdated(
+      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+    // Default empty implementation
+  }
+
+  default void onEntityUpdated(
+      EntityInterface entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext,
+      EntityUpdateContext updateContext) {
+    onEntityUpdated(entity, changeDescription, subjectContext);
+  }
+
+  /**
+   * Called after multiple entities are updated. Default implementation delegates to
+   * the single-entity onEntityUpdated for backward compatibility.
+   */
+  default void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    for (EntityInterface entity : entities) {
+      onEntityUpdated(
+          entity,
+          entity.getChangeDescription() != null ? entity.getChangeDescription() : changeDescription,
+          subjectContext);
+    }
+  }
+
+  default void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext,
+      EntityUpdateContext updateContext) {
+    onEntitiesUpdated(entities, changeDescription, subjectContext);
+  }
+
+  /**
+   * Called after an entity is successfully updated.
+   */
+  default void onEntityUpdated(EntityReference entityRef, SubjectContext subjectContext) {
+    // Default empty implementation
+  }
+
+  /**
+   * Called after multiple entities are successfully created in bulk.
+   * Default implementation delegates to individual onEntityCreated calls.
+   */
+  default void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+    for (EntityInterface entity : entities) {
+      onEntityCreated(entity, subjectContext);
+    }
+  }
+
+  /**
+   * Called after an entity is successfully deleted.
+   */
+  default void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+    // Default empty implementation
+  }
+
+  /**
+   * Called after an entity is soft deleted or restored.
+   */
+  default void onEntitySoftDeletedOrRestored(
+      EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+    // Default empty implementation
+  }
+
+  /**
+   * Returns the name/identifier for this handler.
+   * Used for logging and configuration purposes.
+   *
+   * @return Handler name
+   */
+  String getHandlerName();
+
+  /**
+   * Returns the priority of this handler.
+   * Handlers with lower priority values are executed first.
+   * Default priority is 100.
+   *
+   * @return Handler priority
+   */
+  default int getPriority() {
+    return 100;
+  }
+
+  /**
+   * Indicates whether this handler should be executed asynchronously.
+   * Async handlers don't block the main entity operation.
+   * Default is true to avoid impacting performance.
+   *
+   * @return true if handler should be executed asynchronously
+   */
+  default boolean isAsync() {
+    return true;
+  }
+
+  /**
+   * Returns the entity types this handler is interested in.
+   * If empty, handler will be called for all entity types.
+   *
+   * @return Set of entity types to handle, or empty for all types
+   */
+  default Set<String> getSupportedEntityTypes() {
+    return Collections.emptySet();
+  }
+}

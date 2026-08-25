@@ -1,0 +1,188 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Query Parser Source module. Parent class for Lineage & Usage workflows
+"""
+
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Iterator, Optional  # noqa: UP035
+
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.steps import Source
+from metadata.ingestion.lineage.masker import masked_query_cache
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
+from metadata.ingestion.source.connections import test_connection_common
+from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import get_ssl_connection
+
+logger = ingestion_logger()
+
+
+class QueryParserSource(Source, ABC):
+    """
+    Core class to be inherited for sources that
+    parse query logs, be it for usage or lineage.
+
+    It leaves the implementation of the `_iter`
+    from the Source to its children, while providing
+    some utilities to be overwritten when necessary
+    """
+
+    progress_mode = ProgressMode.MANUAL
+
+    _result_limit_warned = False
+
+    @property
+    def progress_tracking(self) -> ProgressTracking:
+        """Composed per-source progress state; these query sources are MANUAL,
+        so they drive ``progress_tracking.manual`` directly."""
+        return attach_progress_tracking(self)
+
+    sql_stmt: str
+    dialect: str
+    filters: str
+    database_field: str
+    schema_field: str
+
+    @retry_with_docker_host()
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+        get_engine: bool = True,
+    ):
+        super().__init__()
+        self.config = config
+        self.metadata = metadata
+        self.service_name = self.config.serviceName
+        self.service_connection = self.config.serviceConnection.root.config
+        connection_type = self.service_connection.type.value
+        self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+        self.source_config = self.config.sourceConfig.config
+        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)  # pyright: ignore[reportAttributeAccessIssue]
+        self.graph = None
+        self.procedure_graph_map = None
+
+        self.engine = None
+        if get_engine:
+            self.engine = get_ssl_connection(self.service_connection)
+            self.test_connection()
+
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
+    def prepare(self):
+        """By default, there's nothing to prepare"""
+
+    @abstractmethod
+    def get_table_query(self) -> Iterator[TableQuery]:
+        """Overwrite to load table queries from log files"""
+
+    @staticmethod
+    def get_database_name(data: dict) -> str:
+        return data.get("database_name")
+
+    @staticmethod
+    def get_schema_name(data: dict) -> str:
+        return data.get("schema_name")
+
+    def warn_if_query_log_truncated(self, row_count: int, subject: str) -> None:
+        """Warn at most once per run that a query log batch filled resultLimit.
+
+        Args:
+            row_count: rows read from the batch just processed
+            subject: what the truncation degrades, e.g. "lineage" or "usage"
+        """
+        result_limit = getattr(self.source_config, "resultLimit", None)
+        if not isinstance(result_limit, int) or row_count < result_limit:
+            return
+        # Batches run per day per engine, so an unguarded warning fires hundreds of times
+        if self._result_limit_warned:
+            return
+        self._result_limit_warned = True
+        logger.warning(
+            f"Reached the configured resultLimit of {result_limit} query log entries; "
+            f"the query log may have been truncated and {subject} may be incomplete. "
+            f"Consider increasing resultLimit."
+        )
+
+    @staticmethod
+    def get_aborted_status(data: dict) -> bool:
+        return data.get("aborted", False)
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
+        )
+
+    def check_life_cycle_query(
+        self,
+        query_type: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
+        query_text: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
+    ) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        return False
+
+    def get_filters(self) -> str:
+        if self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
+            return f"{self.filters} AND ({self.source_config.filterCondition})"  # pyright: ignore[reportAttributeAccessIssue]
+        return self.filters
+
+    def get_query_parser_type(self) -> QueryParserType:
+        """
+        Get the query parser type from source config.
+
+        Returns QueryParserType.Auto if queryParserConfig is not set.
+        """
+        if (
+            hasattr(self.source_config, "queryParserConfig")
+            and self.source_config.queryParserConfig  # pyright: ignore[reportAttributeAccessIssue]
+            and self.source_config.queryParserConfig.type  # pyright: ignore[reportAttributeAccessIssue]
+        ):
+            return self.source_config.queryParserConfig.type  # pyright: ignore[reportAttributeAccessIssue]
+        return QueryParserType.Auto
+
+    def get_engine(self):
+        yield self.engine
+
+    def close(self):
+        # Clear the cache
+        masked_query_cache.clear()
+
+    def test_connection(self) -> None:
+        test_connection_common(self.metadata, self.engine, self.service_connection)

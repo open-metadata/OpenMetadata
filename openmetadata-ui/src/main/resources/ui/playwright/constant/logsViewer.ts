@@ -1,0 +1,36 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+/** Delay between retries for `expect().toPass()` while waiting on pipeline status. */
+export const LOGS_VIEWER_PIPELINE_STATUS_RETRY_INTERVAL_MS = 30_000;
+
+export const LOGS_VIEWER_PIPELINE_STATUS_MAX_WAIT_MS = 5 * 60_000;
+
+/**
+ * Budget for a freshly triggered run to report its first `running` status row.
+ * Deliberately short: the live-logs test has to stay inside `test.slow()`, so a
+ * scheduler that has not started the DAG by now is a failure to report, not
+ * something to keep waiting on.
+ */
+export const LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS = 60_000;
+
+/** Delay between two reads while waiting for that first `running` row. */
+export const LOGS_VIEWER_RUNNING_STATUS_INTERVAL_MS = 2_000;
+
+/** Pipeline states that mean the run is over and can no longer be tailed. */
+export const TERMINAL_PIPELINE_STATES = [
+  'success',
+  'failed',
+  'partialSuccess',
+  'stopped',
+];

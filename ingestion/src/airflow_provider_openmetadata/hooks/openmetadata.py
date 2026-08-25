@@ -1,0 +1,123 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+This hook allows storing the connection to
+an OpenMetadata server and use it for your
+operators.
+"""
+
+from typing import Any, Dict  # noqa: UP035
+
+from airflow.hooks.base import BaseHook
+from airflow.models import Connection
+
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    AuthProvider,
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
+from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
+    ValidateSslClientConfig,
+)
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+
+def get_connection_password(conn: Connection) -> str:
+    """
+    Get password from Airflow Connection in a version-compatible way.
+
+    In Airflow 2.x: Use conn.get_password()
+    In Airflow 3.x: Use conn.password directly
+    """
+    if hasattr(conn, "get_password"):
+        return conn.get_password()
+    return conn.password
+
+
+def get_connection_extra(conn: Connection) -> dict:
+    """
+    Get extra config from Airflow Connection in a version-compatible way.
+
+    In Airflow 2.x: Use conn.extra_dejson if conn.get_extra() else {}
+    In Airflow 3.x: Use conn.extra_dejson directly (get_extra() method removed)
+    """
+    if hasattr(conn, "get_extra"):
+        return conn.extra_dejson if conn.get_extra() else {}
+    return conn.extra_dejson or {}
+
+
+class OpenMetadataHook(BaseHook):
+    """
+    Airflow hook to store and use an `OpenMetadataConnection`
+    """
+
+    conn_name_attr: str = "openmetadata_conn_id"
+    default_conn_name = "openmetadata_default"
+    conn_type = "openmetadata"
+    hook_name = "OpenMetadata"
+
+    def __init__(self, openmetadata_conn_id: str = default_conn_name) -> None:
+        super().__init__()
+        self.openmetadata_conn_id = openmetadata_conn_id
+        # Add defaults
+        self.default_schema = "http"
+        self.default_port = 8585
+        self.default_verify_ssl = VerifySSL.no_ssl
+        self.default_ssl_config = None
+
+    def get_conn(self) -> OpenMetadataConnection:
+        conn: Connection = self.get_connection(self.openmetadata_conn_id)
+        jwt_token = get_connection_password(conn)
+        if not jwt_token:
+            raise ValueError("JWT Token should be informed.")
+
+        if not conn.host:
+            raise ValueError("Host should be informed.")
+
+        port = conn.port if conn.port else self.default_port
+        schema = conn.schema if conn.schema else self.default_schema
+
+        extra = get_connection_extra(conn)
+        verify_ssl = extra.get("verifySSL") or self.default_verify_ssl
+        ssl_config = (
+            ValidateSslClientConfig(caCertificate=extra["sslConfig"])
+            if extra.get("sslConfig")
+            else self.default_ssl_config
+        )
+
+        om_conn = OpenMetadataConnection(
+            hostPort=f"{schema}://{conn.host}:{port}/api",
+            authProvider=AuthProvider.openmetadata,
+            securityConfig=OpenMetadataJWTClientConfig(jwtToken=jwt_token),
+            verifySSL=verify_ssl,
+            sslConfig=ssl_config,
+        )
+
+        return om_conn  # noqa: RET504
+
+    def test_connection(self):
+        """Test that we can instantiate the ometa client with the given connection"""
+        try:
+            OpenMetadata(self.get_conn())
+            return True, "Connection successful"  # noqa: TRY300
+        except Exception as err:
+            return False, str(err)
+
+    @staticmethod
+    def get_ui_field_behaviour() -> Dict[str, Any]:  # noqa: UP006
+        """Returns custom field behaviour"""
+        return {
+            "hidden_fields": ["login"],
+            "relabeling": {"password": "JWT Token"},
+        }

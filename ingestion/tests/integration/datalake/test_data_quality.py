@@ -1,0 +1,111 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+test data quality
+"""
+
+import pytest
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+    PipelineState,
+)
+from metadata.generated.schema.tests.basic import TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCase
+
+BUCKET_NAME = "my-bucket"
+
+
+class TestDataQuality:
+    @pytest.mark.parametrize(
+        "test_case_name,expected_status",
+        [
+            ("first_name_includes_john", TestCaseStatus.Success),
+            ("first_name_is_john", TestCaseStatus.Failed),
+        ],
+    )
+    def test_data_quality(
+        self,
+        run_test_suite_workflow,
+        metadata,
+        datalake_service_name,
+        test_case_name,
+        expected_status,
+        ingestion_fqn,
+    ):
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.first_name.{test_case_name}",
+            fields=["*"],
+            nullable=False,
+        )
+        assert test_case.testCaseResult.testCaseStatus == expected_status
+
+        # Check the ingestion pipeline is properly created
+        ingestion_pipeline: IngestionPipeline = metadata.get_by_name(
+            entity=IngestionPipeline, fqn=ingestion_fqn, fields=["pipelineStatuses"]
+        )
+        assert ingestion_pipeline
+        assert ingestion_pipeline.pipelineStatuses
+        assert ingestion_pipeline.pipelineStatuses[0].pipelineState == PipelineState.success
+
+    @pytest.mark.parametrize(
+        "test_case_name,failed_rows",
+        [
+            ("first_name_includes_john", None),
+            ("first_name_is_john", 2),
+        ],
+    )
+    def test_data_quality_with_sample(
+        self,
+        run_sampled_test_suite_workflow,
+        metadata,
+        datalake_service_name,
+        test_case_name,
+        failed_rows,
+    ):
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.first_name.{test_case_name}",
+            fields=["*"],
+            nullable=False,
+        )
+        if failed_rows:
+            assert test_case.testCaseResult.failedRows == failed_rows
+
+    @pytest.mark.parametrize(
+        "test_case_name,expected_status,failed_rows",
+        [
+            ("first_name_includes_john", TestCaseStatus.Success, None),
+            ("first_name_is_john", TestCaseStatus.Failed, 1),
+        ],
+    )
+    def test_data_quality_with_partition(
+        self,
+        run_partitioned_test_suite_workflow,
+        metadata,
+        datalake_service_name,
+        test_case_name,
+        expected_status,
+        failed_rows,
+    ):
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.first_name.{test_case_name}",
+            fields=["*"],
+            nullable=False,
+        )
+        assert test_case.testCaseResult.testCaseStatus == expected_status
+        if failed_rows:
+            assert test_case.testCaseResult.failedRows == failed_rows

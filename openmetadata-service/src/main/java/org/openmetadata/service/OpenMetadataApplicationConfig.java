@@ -1,0 +1,280 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.dropwizard.core.Configuration;
+import io.dropwizard.core.server.DefaultServerFactory;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
+import org.openmetadata.DefaultOperationalConfigProvider;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
+import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
+import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.fernet.FernetConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.OpsConfig;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.configuration.AdminOpsConfiguration;
+import org.openmetadata.schema.configuration.AiPlatformConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.configuration.SentryConfiguration;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
+import org.openmetadata.service.config.BulkOperationConfiguration;
+import org.openmetadata.service.config.CacheConfiguration;
+import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.config.QoSConfiguration;
+import org.openmetadata.service.config.StartupConfiguration;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
+import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
+
+@Getter
+@Setter
+public class OpenMetadataApplicationConfig extends Configuration {
+
+  @Getter @JsonProperty private String basePath;
+
+  @Getter
+  @JsonProperty("assets")
+  private Map<String, String> assets;
+
+  @JsonProperty("database")
+  @NotNull
+  @Valid
+  private HikariCPDataSourceFactory dataSourceFactory;
+
+  @JsonProperty("swagger")
+  private SwaggerBundleConfiguration swaggerBundleConfig;
+
+  @JsonProperty("authorizerConfiguration")
+  private AuthorizerConfiguration authorizerConfiguration;
+
+  @JsonProperty("authenticationConfiguration")
+  private AuthenticationConfiguration authenticationConfiguration;
+
+  @JsonProperty("jwtTokenConfiguration")
+  private JWTTokenConfiguration jwtTokenConfiguration;
+
+  @JsonProperty("elasticsearch")
+  private ElasticSearchConfiguration elasticSearchConfiguration;
+
+  @JsonProperty("llmConfiguration")
+  private LLMConfiguration llmConfiguration;
+
+  @JsonProperty("eventHandlerConfiguration")
+  private EventHandlerConfiguration eventHandlerConfiguration;
+
+  @JsonProperty("pipelineServiceClientConfiguration")
+  private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
+
+  @JsonProperty("operationalConfig")
+  private OpsConfig opsConfig;
+
+  private DefaultOperationalConfigProvider operationalApplicationConfigProvider;
+
+  private static final String CERTIFICATE_PATH = "certificatePath";
+
+  public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
+    if (pipelineServiceClientConfiguration != null) {
+      Map<String, String> temporarySSLConfig =
+          JsonUtils.readOrConvertValue(
+              pipelineServiceClientConfiguration.getSslConfig(), Map.class);
+      if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
+        temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
+        temporarySSLConfig.remove(CERTIFICATE_PATH);
+      }
+      pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
+    }
+    return pipelineServiceClientConfiguration;
+  }
+
+  public DefaultOperationalConfigProvider getOperationalApplicationConfigProvider() {
+    if (operationalApplicationConfigProvider == null) {
+      operationalApplicationConfigProvider = new DefaultOperationalConfigProvider(getOpsConfig());
+    }
+    return operationalApplicationConfigProvider;
+  }
+
+  public OpsConfig getOpsConfig() {
+    if (opsConfig == null) {
+      opsConfig = new OpsConfig().withEnable(false);
+    }
+    return opsConfig;
+  }
+
+  @JsonProperty("migrationConfiguration")
+  @NotNull
+  private MigrationConfiguration migrationConfiguration;
+
+  @JsonProperty("fernetConfiguration")
+  private FernetConfiguration fernetConfiguration;
+
+  @JsonProperty("secretsManagerConfiguration")
+  private SecretsManagerConfiguration secretsManagerConfiguration;
+
+  @JsonProperty("eventMonitoringConfiguration")
+  private EventMonitorConfiguration eventMonitorConfiguration;
+
+  @JsonProperty("clusterName")
+  private String clusterName;
+
+  @Valid
+  @NotNull
+  @JsonProperty("web")
+  private OMWebConfiguration webConfiguration = new OMWebConfiguration();
+
+  @JsonProperty("dataQualityConfiguration")
+  private DataQualityConfiguration dataQualityConfiguration;
+
+  @JsonProperty("limits")
+  private LimitsConfiguration limitsConfiguration;
+
+  @JsonProperty("objectStorage")
+  @Valid
+  private ObjectStorageConfiguration objectStorage;
+
+  @JsonProperty("scimConfiguration")
+  private ScimConfiguration scimConfiguration;
+
+  @JsonProperty("aiPlatformConfiguration")
+  private AiPlatformConfiguration aiPlatformConfiguration;
+
+  @JsonProperty("adminOpsConfiguration")
+  private AdminOpsConfiguration adminOpsConfiguration;
+
+  public AdminOpsConfiguration getAdminOpsConfiguration() {
+    if (adminOpsConfiguration == null) {
+      adminOpsConfiguration = new AdminOpsConfiguration();
+      adminOpsConfiguration.setEnabled(false);
+    }
+    return adminOpsConfiguration;
+  }
+
+  @JsonProperty("sentry")
+  private SentryConfiguration sentryConfiguration;
+
+  public SentryConfiguration getSentryConfiguration() {
+    if (sentryConfiguration == null) {
+      sentryConfiguration = new SentryConfiguration();
+    }
+    return sentryConfiguration;
+  }
+
+  @JsonProperty("mcpConfiguration")
+  private org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfiguration;
+
+  @JsonProperty("rdf")
+  private RdfConfiguration rdfConfiguration = new RdfConfiguration();
+
+  @JsonProperty("appConfiguration")
+  @Valid
+  private AppConfiguration appConfiguration = new AppConfiguration();
+
+  @JsonProperty("cache")
+  private org.openmetadata.service.cache.CacheConfig cacheConfig;
+
+  public org.openmetadata.service.cache.CacheConfig getCacheConfig() {
+    if (cacheConfig == null) {
+      cacheConfig = new org.openmetadata.service.cache.CacheConfig();
+    }
+    return cacheConfig;
+  }
+
+  @JsonProperty("bulkOperation")
+  @Valid
+  private BulkOperationConfiguration bulkOperationConfiguration;
+
+  @JsonProperty("startupConfiguration")
+  @Valid
+  private StartupConfiguration startupConfiguration = new StartupConfiguration();
+
+  public StartupConfiguration getStartupConfiguration() {
+    if (startupConfiguration == null) {
+      startupConfiguration = new StartupConfiguration();
+    }
+    return startupConfiguration;
+  }
+
+  public BulkOperationConfiguration getBulkOperationConfiguration() {
+    if (bulkOperationConfiguration == null) {
+      bulkOperationConfiguration = new BulkOperationConfiguration();
+    }
+    return bulkOperationConfiguration;
+  }
+
+  @JsonProperty("asyncOperations")
+  @Valid
+  private AsyncOperationsConfiguration asyncOperationsConfiguration;
+
+  public AsyncOperationsConfiguration getAsyncOperationsConfiguration() {
+    if (asyncOperationsConfiguration == null) {
+      asyncOperationsConfiguration = new AsyncOperationsConfiguration();
+    }
+    return asyncOperationsConfiguration;
+  }
+
+  @JsonProperty("qos")
+  private QoSConfiguration qosConfiguration;
+
+  @JsonProperty("cacheMemory")
+  @Valid
+  private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
+  public QoSConfiguration getQosConfiguration() {
+    if (qosConfiguration == null) {
+      qosConfiguration = new QoSConfiguration();
+    }
+    return qosConfiguration;
+  }
+
+  public CacheConfiguration getCacheMemoryConfiguration() {
+    if (cacheMemoryConfiguration == null) {
+      cacheMemoryConfiguration = new CacheConfiguration();
+    }
+    return cacheMemoryConfiguration;
+  }
+
+  public String getApiRootPath() {
+    if (!(getServerFactory() instanceof DefaultServerFactory serverFactory)) {
+      return "";
+    }
+    return serverFactory.getJerseyRootPath().map(path -> path.replaceFirst("\\*$", "")).orElse("");
+  }
+
+  @Override
+  public String toString() {
+    return "catalogConfig{"
+        + ", dataSourceFactory="
+        + dataSourceFactory
+        + ", swaggerBundleConfig="
+        + swaggerBundleConfig
+        + ", authorizerConfiguration="
+        + authorizerConfiguration
+        + '}';
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "ApplicationBotPolicy",
+  "displayName": "Application Bot Policy",
+  "fullyQualifiedName": "ApplicationBotPolicy",
+  "description": "Policy for application Bots to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "ApplicationBotRule-Allow",
+      "description" : "Allow application bots to perform operations on data entities including triggering agents",
+      "resources" : ["All"],
+      "operations": ["Create", "EditAll", "ViewAll", "Delete", "Trigger", "CreateTask"],
+      "effect": "allow"
+    },
+    {
+      "name": "DisplayName-Deny",
+      "description" : "Deny bots to update display name",
+      "resources" : ["All"],
+      "operations": ["EditDisplayName"],
+      "effect": "deny"
+    }
+  ]
+}

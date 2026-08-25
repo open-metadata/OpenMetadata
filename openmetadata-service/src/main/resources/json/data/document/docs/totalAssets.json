@@ -1,0 +1,10 @@
+{
+  "name": "TotalAssets",
+  "displayName": "Total Assets",
+  "description": "Shows the total number of data assets that can be accessed, gives a quick view of what's available in the system.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.TotalAssets",
+  "data": {
+    "gridSizes": ["medium", "large"]
+  }
+}

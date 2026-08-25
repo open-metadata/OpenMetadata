@@ -1,0 +1,483 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: PostgreSQL PR RDF E2E Tests
+on:
+  merge_group:
+  workflow_dispatch:
+  # Same-repo PRs run under pull_request — unprivileged. Merges come
+  # from merge_group above, full dispatch runs from workflow_dispatch.
+  pull_request:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - ".github/actions/setup-openmetadata-test-environment/action.yml"
+      - ".github/workflows/playwright-knowledge-graph-postgresql-e2e.yml"
+      - "docker/run_local_docker.sh"
+      - "docker/run_local_docker_common.sh"
+      - "docker/run_local_docker_rdf.sh"
+      - "docker/validate_compose.py"
+      - "docker/development/docker-compose-fuseki.yml"
+      - "docker/development/docker-compose-postgres-fuseki.yml"
+      - "docs/rdf-local-development.md"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/rdf/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx"
+  # Fork PRs need cloud-connector secrets that pull_request events cannot
+  # access on forks. pull_request_target runs in the base repo's context
+  # so those secrets resolve, but requires a maintainer to apply the
+  # "safe to test" label first (enforced by the gate job below). Same-repo
+  # PRs already ran under pull_request above; the gate short-circuits on
+  # them via the head-repo check. Same paths filter as pull_request so
+  # the trigger stays scoped to RDF/ontology work.
+  pull_request_target:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - ".github/actions/setup-openmetadata-test-environment/action.yml"
+      - ".github/workflows/playwright-knowledge-graph-postgresql-e2e.yml"
+      - "docker/run_local_docker.sh"
+      - "docker/run_local_docker_common.sh"
+      - "docker/run_local_docker_rdf.sh"
+      - "docker/validate_compose.py"
+      - "docker/development/docker-compose-fuseki.yml"
+      - "docker/development/docker-compose-postgres-fuseki.yml"
+      - "docs/rdf-local-development.md"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/rdf/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx"
+
+permissions:
+  contents: read
+
+concurrency:
+  # Include event_name in the group so pull_request and pull_request_target
+  # runs on the same PR don't cancel each other — one gates false and skips,
+  # the other does the real work; sharing a group would let the "skip" event
+  # cancel an in-flight real run.
+  group: playwright-rdf-pr-postgresql-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+
+jobs:
+  # Fork-vs-same-repo PR arbitration. Same pattern as
+  # playwright-postgresql-e2e.yml (established by #30485):
+  #   merge_group / workflow_dispatch → always run
+  #   drafts                          → never run
+  #   labeled event with label != "safe to test" → skip
+  #   same-repo PR + pull_request     → run
+  #   fork PR + pull_request_target + "safe to test" (reconciled) → run
+  #   everything else                 → skip
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      contents: read
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      # Team Label atomically removes stale fork approval on synchronize and
+      # re-adds it only for allowlisted authors. Wait for that reconciliation
+      # instead of relying on another labeled event: GITHUB_TOKEN label writes
+      # intentionally do not trigger a new workflow run.
+      - name: Wait for fork label reconciliation
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Read reconciled fork labels
+        id: fork-labels
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          labels=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}" \
+            --jq '[.labels[].name] | @json')
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
+
+      - name: Compute gate decision
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+          LABELS_JSON: ${{ steps.fork-labels.outputs.labels || toJSON(github.event.pull_request.labels.*.name) }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          decide() { echo "should_run=$1" >> "$GITHUB_OUTPUT"; exit 0; }
+          case "$EVENT" in
+            merge_group|workflow_dispatch) decide true ;;
+          esac
+          if [[ "$IS_DRAFT" == "true" ]]; then decide false; fi
+          if [[ "$ACTION" == "labeled" && "$LABEL" != "safe to test" ]]; then decide false; fi
+          if [[ "$HEAD_REPO" == "$BASE_REPO" ]]; then
+            if [[ "$EVENT" == "pull_request" ]]; then decide true; else decide false; fi
+          fi
+          # Fork PR — pull_request_target must fire and the reconciled labels
+          # for the current head SHA must include "safe to test".
+          if [[ "$EVENT" == "pull_request_target" ]] && \
+             echo "$LABELS_JSON" | jq -e '. | index("safe to test")' >/dev/null; then
+            decide true
+          fi
+          decide false
+
+  build:
+    needs: gate
+    runs-on: ubuntu-latest
+    if: ${{ needs.gate.outputs.should_run == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # pull_request_target runs in the base repo's context, so
+          # github.sha is the base tip. Explicitly check out the fork's
+          # PR head SHA under that event so we test the PR's code, not
+          # the base. actions/checkout@v7 refuses this by default under
+          # pull_request_target — allow-unsafe-pr-checkout: true opts in;
+          # build/test steps below run inside docker containers so the
+          # fork code cannot exfiltrate GITHUB_TOKEN or secrets.
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install antlr cli
+        run: sudo make install_antlr_cli
+
+      - name: Restore openmetadata-ui dist cache
+        # Skip cache on fork-PR-via-pull_request_target: that combination
+        # runs base-branch privileged with untrusted checked-out code, so a
+        # cache save would poison the default-branch cache scope (CodeQL
+        # `actions/actions/cache-poisoning`). The same guard lives inside
+        # the composite action as defence in depth, but CodeQL is a static
+        # analyser and needs to see it here at the workflow level.
+        if: >-
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
+
+      - name: Build with Maven
+        run: mvn -DskipTests clean package
+
+      - name: Upload OpenMetadata distribution
+        uses: actions/upload-artifact@v6
+        with:
+          name: openmetadata-distribution
+          overwrite: true
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          retention-days: 1
+
+  playwright-rdf-postgresql:
+    # Internal display name only. The required-check status
+    # `Playwright RDF (Knowledge Graph + Ontology)` is published by the
+    # `playwright-rdf-summary` job below (which uses a dynamic name
+    # expression), so a redundant sibling event's synthetic-green cannot
+    # satisfy branch protection before the real pipeline finishes.
+    name: RDF Playwright execution
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    # The previous fork short-circuit (`!github.event.pull_request.head.repo.fork`)
+    # is now handled by the gate — fork PRs only reach this point when
+    # pull_request_target fires AND the reconciled labels include
+    # "safe to test", so it is safe to run the pipeline with secrets.
+    if: ${{ !cancelled() && needs.gate.outputs.should_run == 'true' && needs.build.result == 'success' }}
+    environment: test
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Same head.sha vs base.sha routing as the build job above.
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
+
+      - name: Prepare temporary distribution directory
+        run: mkdir -p "${{ runner.temp }}/openmetadata-distribution"
+
+      - name: Download OpenMetadata distribution
+        uses: actions/download-artifact@v7
+        with:
+          name: openmetadata-distribution
+          path: ${{ runner.temp }}/openmetadata-distribution
+
+      - name: Copy OpenMetadata distribution into workspace
+        run: |
+          mkdir -p openmetadata-dist/target
+          cp -a "${{ runner.temp }}/openmetadata-distribution/." openmetadata-dist/target/
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -s true"
+          startup-script: "./docker/run_local_docker_rdf.sh"
+          ingestion_dependency: "all"
+          install-test-dependencies: "false"
+
+      - name: Wait for Fuseki to be healthy
+        run: |
+          echo "Verifying Fuseki is healthy before running tests..."
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:3030/\$/ping" > /dev/null 2>&1; then
+              echo "Fuseki is healthy"
+              exit 0
+            fi
+            echo "Waiting for Fuseki ($i/30)..."
+            sleep 10
+          done
+          echo "Fuseki failed health check. Container logs:"
+          docker logs openmetadata-fuseki --tail 100
+          exit 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright@1.57.0 install chromium --with-deps
+
+      - name: Run RDF Playwright tests
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: >-
+          npx playwright test
+          --project="Knowledge Graph"
+          --project="Ontology RDF"
+        env:
+          PLAYWRIGHT_IS_OSS: true
+          PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+          PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
+          PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+          PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
+          PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
+          PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
+          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
+          PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
+          PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+          PLAYWRIGHT_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
+          PLAYWRIGHT_REDSHIFT_HOST: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+          PLAYWRIGHT_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+          PLAYWRIGHT_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+          PLAYWRIGHT_REDSHIFT_DATABASE: ${{ secrets.TEST_REDSHIFT_DATABASE }}
+          PLAYWRIGHT_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
+          PLAYWRIGHT_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
+          PLAYWRIGHT_METABASE_DB_SERVICE_NAME: ${{ secrets.TEST_METABASE_DB_SERVICE_NAME }}
+          PLAYWRIGHT_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
+          PLAYWRIGHT_SUPERSET_USERNAME: ${{ secrets.TEST_SUPERSET_USERNAME }}
+          PLAYWRIGHT_SUPERSET_PASSWORD: ${{ secrets.TEST_SUPERSET_PASSWORD }}
+          PLAYWRIGHT_SUPERSET_HOST_PORT: ${{ secrets.TEST_SUPERSET_HOST_PORT }}
+          PLAYWRIGHT_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.TEST_KAFKA_BOOTSTRAP_SERVERS }}
+          PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL: ${{ secrets.TEST_KAFKA_SCHEMA_REGISTRY_URL }}
+          PLAYWRIGHT_GLUE_ACCESS_KEY: ${{ secrets.TEST_GLUE_ACCESS_KEY }}
+          PLAYWRIGHT_GLUE_SECRET_KEY: ${{ secrets.TEST_GLUE_SECRET_KEY }}
+          PLAYWRIGHT_GLUE_AWS_REGION: ${{ secrets.TEST_GLUE_AWS_REGION }}
+          PLAYWRIGHT_GLUE_ENDPOINT: ${{ secrets.TEST_GLUE_ENDPOINT }}
+          PLAYWRIGHT_GLUE_STORAGE_SERVICE: ${{ secrets.TEST_GLUE_STORAGE_SERVICE }}
+          PLAYWRIGHT_MYSQL_USERNAME: ${{ secrets.TEST_MYSQL_USERNAME }}
+          PLAYWRIGHT_MYSQL_PASSWORD: ${{ secrets.TEST_MYSQL_PASSWORD }}
+          PLAYWRIGHT_MYSQL_HOST_PORT: ${{ secrets.TEST_MYSQL_HOST_PORT }}
+          PLAYWRIGHT_MYSQL_DATABASE_SCHEMA: ${{ secrets.TEST_MYSQL_DATABASE_SCHEMA }}
+          PLAYWRIGHT_POSTGRES_USERNAME: ${{ secrets.TEST_POSTGRES_USERNAME }}
+          PLAYWRIGHT_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
+          PLAYWRIGHT_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
+          PLAYWRIGHT_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
+          PLAYWRIGHT_AIRFLOW_HOST_PORT: ${{ secrets.TEST_AIRFLOW_HOST_PORT }}
+          PLAYWRIGHT_ML_MODEL_TRACKING_URI: ${{ secrets.TEST_ML_MODEL_TRACKING_URI }}
+          PLAYWRIGHT_ML_MODEL_REGISTRY_URI: ${{ secrets.TEST_ML_MODEL_REGISTRY_URI }}
+          PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
+          PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
+          PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Playwright diagnostics
+        uses: actions/upload-artifact@v6
+        if: failure() || cancelled()
+        continue-on-error: true
+        with:
+          name: playwright-rdf-report
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+            openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Clean Up
+        if: always()
+        continue-on-error: true
+        run: |
+          docker compose -f docker/development/docker-compose-postgres.yml -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
+          docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
+          sudo rm -rf "${PWD}/docker/development/docker-volume"
+
+  # Publishes the required branch-protection check name
+  # `Playwright RDF (Knowledge Graph + Ontology)` ONLY when this run is
+  # authorised by the gate. Every other case (redundant sibling event
+  # for a same-repo PR, fork PR without safe-to-test, draft, spurious
+  # non-safe-to-test labeled event) publishes a differently-named check
+  # so branch protection can distinguish "authoritative for this PR
+  # shape" from "synthetic green / skipped". Without this, GitHub's
+  # protection UI picks the most-recently-completed run of the required
+  # name — and the pull_request_target sibling of a same-repo PR would
+  # finish in ~15s with a green skip while the real pull_request run is
+  # still compiling, making the PR appear mergeable before tests run.
+  #
+  # Decision tree (mirrors the gate + playwright-postgresql-e2e.yml
+  # pattern from #30476):
+  #   gate succeeds with should_run=true              → 'Playwright RDF (Knowledge Graph + Ontology)'
+  #   gate fails (crash / cancelled)                   → 'Playwright RDF (Knowledge Graph + Ontology)' + hard fail
+  #   labeled event with non-'safe to test' label     → '... (label ignored)'
+  #   gate succeeds with should_run=false              → '... (skipped)'
+  playwright-rdf-summary:
+    name: >-
+      ${{
+        (
+          needs.gate.result != 'success'
+          || needs.gate.outputs.should_run == 'true'
+        )
+        && 'Playwright RDF (Knowledge Graph + Ontology)'
+        || (
+          github.event.action == 'labeled'
+          && github.event.label.name != 'safe to test'
+          && 'Playwright RDF (Knowledge Graph + Ontology) (label ignored)'
+          || 'Playwright RDF (Knowledge Graph + Ontology) (skipped)'
+        )
+      }}
+    if: ${{ always() && !cancelled() }}
+    needs: [gate, build, playwright-rdf-postgresql]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # If gate itself didn't produce a valid decision (crash, cancelled,
+      # unknown), FAIL loudly rather than silently reporting green.
+      # Without this guard, `should_run != 'true'` on an unset output
+      # would fall into the label-ignored/skipped branch above and mask
+      # the gate failure.
+      - name: Guard against missing gate decision
+        if: ${{ needs.gate.result != 'success' }}
+        run: |
+          echo "::error::gate did not succeed (result=${{ needs.gate.result }}, should_run=${{ needs.gate.outputs.should_run }}). Refusing synthetic green."
+          exit 1
+
+      # Short-circuit when gate decided should_run=false. The underlying
+      # jobs are skipped in that case (redundant pull_request_target for
+      # a same-repo PR, or fork PR without safe-to-test), so there's
+      # nothing to summarise. The dynamic job name above already routes
+      # this run to a non-required check name; this step just keeps the
+      # job outcome at ✅.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.gate.outputs.should_run == 'false' }}
+        run: |
+          echo "Gate decided should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative required check comes from the sibling event's run."
+
+      # Propagate real upstream failures under the required check name
+      # so the PR fails visibly rather than falling through to green.
+      - name: Fail on upstream failure
+        if: |
+          needs.gate.outputs.should_run == 'true' && (
+            needs.build.result != 'success' ||
+            needs.playwright-rdf-postgresql.result != 'success'
+          )
+        run: |
+          echo "::error::Upstream job failure — build=${{ needs.build.result }}, execution=${{ needs.playwright-rdf-postgresql.result }}."
+          exit 1

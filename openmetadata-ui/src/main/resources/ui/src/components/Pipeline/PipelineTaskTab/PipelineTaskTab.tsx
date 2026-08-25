@@ -1,0 +1,460 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import Icon from '@ant-design/icons';
+import { Card, Segmented, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
+import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_PIPELINE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  Pipeline,
+  PipelineStatus,
+  Task,
+} from '../../../generated/entity/data/pipeline';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import {
+  columnFilterIcon,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../Database/TableDescription/TableDescription.component';
+import TableTags from '../../Database/TableTags/TableTags.component';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+// TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
+// with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
+// into the entry chunk because PipelineTaskTab is reachable from
+// PipelineDetailsUtils + GenericWidgetUtils (both eager). Lazy-loading here
+// breaks that chain — Vite drops reactflow + the lineage helpers out of the
+// entry preload list; the DAG view chunk loads when the user actually opens
+// the Tasks tab. Suspense fallback is `null` because the surrounding Card
+// already has its own title/skeleton; a spinner here would flash once.
+const TasksDAGView = lazy(() => import('../TasksDAGView/TasksDAGView'));
+
+export const PipelineTaskTab = () => {
+  const {
+    data: pipelineDetails,
+    permissions,
+    onUpdate,
+    openColumnDetailPanel,
+    selectedColumn,
+    setDisplayedColumns,
+  } = useGenericContext<Pipeline>();
+  const {
+    entityFqn: pipelineFQN,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({ type: EntityType.PIPELINE });
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
+  const [selectedExecution] = useState<PipelineStatus | undefined>(
+    pipelineDetails.pipelineStatus
+  );
+  const [editTask, setEditTask] = useState<{
+    task: Task;
+    index: number;
+  }>();
+  const { deleted } = pipelineDetails ?? {};
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const {
+    currentPage,
+    pageSize,
+    showPagination,
+    paging,
+    handlePagingChange,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging();
+
+  useFqnDeepLink({
+    data: pipelineDetails.tasks ?? [],
+    columnPart,
+    fqn,
+    setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Task | null,
+  });
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(pipelineDetails.tasks ?? []);
+  }, [pipelineDetails.tasks, setDisplayedColumns]);
+
+  const {
+    editDescriptionPermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+  } = useMemo(
+    () => ({
+      editDescriptionPermission:
+        permissions?.EditAll || permissions?.EditDescription,
+      editTagsPermission: permissions?.EditAll || permissions?.EditTags,
+      editGlossaryTermsPermission:
+        permissions?.EditAll || permissions?.EditGlossaryTerms,
+      viewCustomPropertiesPermission:
+        permissions?.ViewAll || permissions?.ViewCustomFields,
+    }),
+    [permissions]
+  );
+
+  const allTasksInternal = useMemo(
+    () =>
+      pipelineDetails.tasks
+        ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
+        : [],
+    [pipelineDetails.tasks]
+  );
+
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(allTasksInternal);
+
+  useEffect(() => {
+    handlePagingChange({ total: filteredData.length });
+    const maxPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
+    if (currentPage > maxPage) {
+      handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
+    }
+  }, [filteredData.length, pageSize]);
+
+  const tasksInternal = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
+
+  const handleTasksPageChange = useCallback(
+    ({ currentPage: page }: PagingHandlerParams) => {
+      handlePageChange(page, { cursorType: null, cursorValue: undefined });
+    },
+    [handlePageChange]
+  );
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(allTasksInternal);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [allTasksInternal]);
+
+  const tasksDAGView = useMemo(
+    () =>
+      !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
+        <Card className="task-dag-view-card" title={t('label.dag-view')}>
+          <div className="h-100">
+            <Suspense fallback={null}>
+              <TasksDAGView
+                selectedExec={selectedExecution}
+                tasks={pipelineDetails.tasks}
+              />
+            </Suspense>
+          </div>
+        </Card>
+      ) : (
+        <Card className="text-center" data-testid="no-tasks-data">
+          <span>{t('server.no-task-available')}</span>
+        </Card>
+      ),
+    [pipelineDetails, selectedExecution]
+  );
+
+  const closeEditTaskModal = (): void => {
+    setEditTask(undefined);
+  };
+
+  const handleTaskClick = (task: Task, event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    const isExpandIcon = target.closest('.table-expand-icon') !== null;
+    const isButton = target.closest('button') !== null;
+
+    if (!isExpandIcon && !isButton) {
+      openColumnDetailPanel(task);
+    }
+  };
+
+  const onTaskUpdate = async (taskDescription: string) => {
+    if (editTask) {
+      const updatedTasks = [...(pipelineDetails.tasks ?? [])];
+
+      const updatedTask = {
+        ...editTask.task,
+        description: taskDescription,
+      };
+      updatedTasks[editTask.index] = updatedTask;
+
+      const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+      await onUpdate(updatedPipeline);
+      setEditTask(undefined);
+    } else {
+      setEditTask(undefined);
+    }
+  };
+
+  const handleTableTagSelection = async (
+    selectedTags: EntityTags[],
+    editColumnTag: Task
+  ) => {
+    const prevTags = editColumnTag.tags?.filter((tag) =>
+      selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
+    );
+
+    const newTags = createTagObject(
+      selectedTags.filter(
+        (selectedTag) =>
+          !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.tagFQN)
+      )
+    );
+
+    const updatedTask = {
+      ...editColumnTag,
+      tags: [...(prevTags as TagLabel[]), ...newTags],
+    } as Task;
+
+    const updatedTasks: Task[] = [...(pipelineDetails.tasks ?? [])].map(
+      (task) => (task.name === editColumnTag.name ? updatedTask : task)
+    );
+
+    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+    await onUpdate(updatedPipeline);
+  };
+
+  const taskColumns: ColumnsType<Task> = useMemo(
+    () => [
+      {
+        key: TABLE_COLUMNS_KEYS.NAME,
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        title: t('label.name'),
+        width: 220,
+        fixed: 'left',
+        className: 'cursor-pointer',
+        sorter: getColumnSorter<Task, 'name'>('name'),
+        onCell: (record: Task) => ({
+          onClick: (event) =>
+            isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
+        render: (_, record) =>
+          isEmpty(record.sourceUrl) ? (
+            <span className="text-link-color">{getEntityName(record)}</span>
+          ) : (
+            <Link
+              className="flex items-center gap-2"
+              target="_blank"
+              to={record.sourceUrl ?? ''}>
+              <div className="d-flex items-center">
+                <span className="break-all">{getEntityName(record)}</span>
+
+                <Icon
+                  className="m-l-xs flex-none"
+                  component={ExternalLinkIcon}
+                  style={DATA_ASSET_ICON_DIMENSION}
+                />
+              </div>
+            </Link>
+          ),
+      },
+      {
+        key: TABLE_COLUMNS_KEYS.TASK_TYPE,
+        dataIndex: TABLE_COLUMNS_KEYS.TASK_TYPE,
+        width: 180,
+        title: t('label.type'),
+        render: (text) => (
+          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+        ),
+      },
+      {
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 350,
+        title: t('label.description'),
+        render: (_, record, index) => (
+          <TableDescription
+            columnData={{
+              fqn: record.fullyQualifiedName ?? '',
+              field: record.description,
+            }}
+            entityFqn={pipelineFQN}
+            entityType={EntityType.PIPELINE}
+            hasEditPermission={editDescriptionPermission}
+            index={index}
+            isReadOnly={deleted}
+            onClick={() =>
+              setEditTask({
+                task: record,
+                index: (currentPage - 1) * pageSize + index,
+              })
+            }
+          />
+        ),
+      },
+      ...ownerTableObject<Task>(),
+      {
+        title: t('label.tag-plural'),
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        width: 300,
+        filterIcon: columnFilterIcon,
+        render: (tags, record, index) => (
+          <TableTags<Task>
+            entityFqn={pipelineFQN}
+            entityType={EntityType.PIPELINE}
+            handleTagSelection={handleTableTagSelection}
+            hasTagEditAccess={editTagsPermission}
+            index={index}
+            isReadOnly={deleted}
+            record={record}
+            tags={tags}
+            type={TagSource.Classification}
+          />
+        ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        width: 300,
+        filterIcon: columnFilterIcon,
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
+        render: (tags, record, index) => (
+          <TableTags<Task>
+            entityFqn={pipelineFQN}
+            entityType={EntityType.PIPELINE}
+            handleTagSelection={handleTableTagSelection}
+            hasTagEditAccess={editGlossaryTermsPermission}
+            index={index}
+            isReadOnly={deleted}
+            record={record}
+            tags={tags}
+            type={TagSource.Glossary}
+          />
+        ),
+      },
+    ],
+    [
+      deleted,
+      editTask,
+      editTagsPermission,
+      editGlossaryTermsPermission,
+      handleTableTagSelection,
+      editDescriptionPermission,
+      currentPage,
+      pageSize,
+      tagFilterState,
+    ]
+  );
+
+  return (
+    <div>
+      <Segmented
+        className="segment-toggle m-b-md"
+        data-testid="pipeline-task-switch"
+        options={Object.values(PIPELINE_TASK_TABS)}
+        value={activeTab}
+        onChange={(value) => setActiveTab(value as PIPELINE_TASK_TABS)}
+      />
+
+      {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+        <Table
+          className="align-table-filter-left"
+          columns={taskColumns}
+          customPaginationProps={{
+            currentPage,
+            showPagination,
+            isNumberBased: true,
+            pageSize,
+            paging,
+            pagingHandler: handleTasksPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
+          data-testid="task-table"
+          dataSource={tasksInternal}
+          defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: 1200 }}
+          size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
+        />
+      ) : (
+        tasksDAGView
+      )}
+
+      {editTask && (
+        <EntityAttachmentProvider
+          entityFqn={editTask.task.fullyQualifiedName}
+          entityType={EntityType.PIPELINE}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.task'),
+            })}: "${getEntityName(editTask.task)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.task-lowercase'),
+            })}
+            value={editTask.task.description ?? ''}
+            visible={Boolean(editTask)}
+            onCancel={closeEditTaskModal}
+            onSave={onTaskUpdate}
+          />
+        </EntityAttachmentProvider>
+      )}
+    </div>
+  );
+};

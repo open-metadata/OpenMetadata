@@ -1,0 +1,123 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { UploadCloud01 } from '@untitledui/icons';
+import { Space, Typography, UploadProps } from 'antd';
+import type { RcFile } from 'antd/lib/upload';
+import Dragger from 'antd/lib/upload/Dragger';
+import { AxiosError } from 'axios';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
+import { FC, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
+import './upload-file.less';
+import { UploadFileProps } from './UploadFile.interface';
+
+const UploadFile: FC<UploadFileProps> = ({
+  acceptedFileDescription,
+  disabled,
+  fileType,
+  variant = 'default',
+  beforeUpload,
+  onCSVUploaded,
+}) => {
+  const [uploading, setUploading] = useState(false);
+  const { t } = useTranslation();
+
+  const handleUpload: UploadProps['customRequest'] = useCallback(
+    (options: UploadRequestOption) => {
+      setUploading(true);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploading(false);
+        onCSVUploaded(e, options.file as RcFile);
+      };
+      reader.onerror = () => {
+        setUploading(false);
+        showErrorToast(new Error(t('server.unexpected-error')) as AxiosError);
+      };
+      try {
+        reader.readAsText(options.file as Blob);
+      } catch (error) {
+        setUploading(false);
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [onCSVUploaded, t]
+  );
+
+  if (uploading) {
+    return <Loader />;
+  }
+
+  const isCompact = variant === 'compact';
+
+  return (
+    <Dragger
+      accept={fileType}
+      beforeUpload={beforeUpload}
+      className={`file-dragger-wrapper${
+        isCompact ? ' file-dragger-wrapper-compact' : ''
+      }`}
+      customRequest={handleUpload}
+      data-testid="upload-file-widget"
+      disabled={disabled}
+      multiple={false}
+      showUploadList={false}>
+      {isCompact ? (
+        <div className="file-dragger-compact-content">
+          <span className="file-dragger-compact-icon">
+            <UploadCloud01 size={22} />
+          </span>
+          <Typography.Text className="file-dragger-compact-title">
+            <Transi18next
+              i18nKey="message.drop-csv-or-browse"
+              renderElement={<span className="browse-text" />}
+              values={{
+                text: t('label.click-to-browse'),
+              }}
+            />
+          </Typography.Text>
+          <Typography.Text className="file-dragger-compact-description">
+            {acceptedFileDescription ??
+              t('message.accepts-file-up-to-size', {
+                fileType,
+                size: '10 MB',
+              })}
+          </Typography.Text>
+        </div>
+      ) : (
+        <Space
+          align="center"
+          className="w-full justify-center"
+          direction="vertical"
+          size={42}>
+          <ImportIcon height={86} width={86} />
+          <Typography.Text>
+            <Transi18next
+              i18nKey="message.drag-and-drop-or-browse-csv-files-here"
+              renderElement={<span className="browse-text" />}
+              values={{
+                text: t('label.browse'),
+              }}
+            />
+          </Typography.Text>
+        </Space>
+      )}
+    </Dragger>
+  );
+};
+
+export default UploadFile;

@@ -1,0 +1,112 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import classNames from 'classnames';
+import React, { useCallback, useMemo } from 'react';
+import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import {
+  GRID_ROW_HEIGHT,
+  GRID_VERTICAL_MARGIN,
+} from '../../../constants/CustomizeWidgets.constants';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { PageType } from '../../../generated/system/ui/page';
+import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { useGenericContext } from '../GenericProvider/GenericContext';
+import { DynamicHeightWidget } from './DynamicHeightWidget';
+import './generic-tab.less';
+
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayoutProps & { children?: React.ReactNode }
+>;
+
+export type GenericTabVariant = 'default' | 'flat';
+
+interface GenericTabProps {
+  type: PageType;
+  // 'flat' drops the left-panel frame card so the sole widget (e.g. the
+  // Description on Domain/Data Product) stands on its own. Defaults to 'default'.
+  variant?: GenericTabVariant;
+}
+
+export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
+  const { layout, updateWidgetHeight } = useGenericContext();
+
+  const handleHeightChange = useCallback(
+    (widgetId: string, newHeight: number) => {
+      // Update the layout through the onUpdate function
+      updateWidgetHeight(widgetId, newHeight);
+    },
+    [updateWidgetHeight]
+  );
+
+  const widgets = useMemo(() => {
+    return layout?.map((widget: WidgetConfig) => {
+      return (
+        <div
+          data-grid={widget}
+          data-testid={widget.i}
+          id={widget.i}
+          key={widget.i}>
+          <DynamicHeightWidget
+            key={widget.i}
+            widget={widget}
+            onHeightChange={handleHeightChange}>
+            {getWidgetsFromKey(type, widget)}
+          </DynamicHeightWidget>
+        </div>
+      );
+    });
+  }, [layout, type]);
+
+  // For default tabs we have rigid layout where we are not applying any bg to container
+  // So we need to check if left panel is present to apply bg to container
+  const leftSideWidgetPresent = useMemo(() => {
+    return layout?.some((widget) =>
+      widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [layout]);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection();
+
+  // ReactGridLayout for non-edit mode with optimized layout behavior
+  // - preventCollision={false}: Enables proper widget positioning
+  // - useCSSTransforms: Uses CSS transforms for better performance
+  return (
+    <ReactGridLayout
+      autoSize
+      useCSSTransforms
+      verticalCompact
+      className={classNames('grid-container bg-grey', {
+        'custom-tab': !leftSideWidgetPresent,
+        'height-auto': type === PageType.Glossary,
+        'flat-left-panel': variant === 'flat',
+      })}
+      cols={8}
+      // react-grid-layout rounds each item's `left` and `width` independently, so
+      // although the two exact values sum to the container width, each rounding
+      // can add just under half a pixel and the last column can land 1px past the
+      // container -- taking the widget card's right border with it. A 1px
+      // horizontal containerPadding pulls the exact right edge in to
+      // `width - 1`, which the rounding can never exceed.
+      containerPadding={[1, 0]}
+      isDraggable={false}
+      isResizable={false}
+      margin={[GRID_VERTICAL_MARGIN, GRID_VERTICAL_MARGIN]}
+      preventCollision={false}
+      rowHeight={GRID_ROW_HEIGHT}>
+      {widgets}
+    </ReactGridLayout>
+  );
+};

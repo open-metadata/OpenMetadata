@@ -1,0 +1,150 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Helper functions to handle OpenMetadata Entities' properties
+"""
+
+import base64
+import json
+import re
+import string
+from typing import Any, Dict, Optional, Type, TypeVar, Union  # noqa: UP035
+
+from pydantic import BaseModel
+from requests.utils import quote as url_quote  # pyright: ignore[reportPrivateImportUsage]
+
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def format_name(name: str) -> str:
+    """
+    Given a name, replace all special characters by `_`
+    :param name: name to format
+    :return: formatted string
+    """
+    subs = re.escape(string.punctuation + " ")
+    return re.sub(r"[" + subs + "]", "_", name)
+
+
+def get_entity_type(
+    entity: Union[Type[T], str],  # noqa: UP006, UP007
+) -> str:
+    """
+    Given an Entity T, return its type.
+    E.g., Table returns table, Dashboard returns dashboard...
+
+    Also allow to be the identity if we just receive a string
+    """
+    if isinstance(entity, str):
+        return entity
+
+    # Use the ENTITY_REFERENCE_TYPE_MAP to get the correct camelCase entity type
+    # that matches the ENTITY_REFERENCE_CLASS_MAP keys
+    class_name = entity.__name__
+    if class_name in ENTITY_REFERENCE_TYPE_MAP:
+        return ENTITY_REFERENCE_TYPE_MAP[class_name]
+
+    # Fallback to lowercase for backward compatibility with classes
+    # that might not be in the map yet
+    return class_name.lower()
+
+
+def model_str(arg: Any) -> str:
+    """
+    Default model stringifying method.
+
+    Some elements such as FQN, EntityName, UUID
+    have the actual value under the pydantic base root
+    """
+    if hasattr(arg, "root"):
+        return str(arg.root)
+
+    return str(arg)
+
+
+MAX_USER_AGENT_LENGTH = 256
+
+
+def sanitize_user_agent(
+    value: Optional[str],  # noqa: UP045
+    max_length: int = MAX_USER_AGENT_LENGTH,
+) -> Optional[str]:  # noqa: UP045
+    """
+    Produce a header-safe User-Agent string.
+
+    HTTP forbids CR/LF in header values (header injection) and underlying HTTP
+    libraries (``requests``, ``httpx``) raise ``InvalidHeader`` for control
+    characters. Because the workflow interpolates the user-supplied
+    ``serviceName`` into the agent, callers MUST sanitize before assigning to a
+    header. Returns ``None`` when nothing usable remains so the caller can fall
+    back to the default agent rather than sending a malformed one.
+    """
+    if value is None:
+        return None
+    sanitized = "".join(ch for ch in value if 0x20 <= ord(ch) <= 0x7E).strip()
+    if not sanitized:
+        return None
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length].rstrip()
+    return sanitized or None
+
+
+def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:  # noqa: UP007
+    """
+    Quote the FQN so that it's safe to pass to the API.
+    E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
+    """
+    return url_quote(model_str(fqn), safe="")
+
+
+def build_entity_reference(entity: T) -> EntityReference:
+    """Get the EntityReference from the Entity itself"""
+    return EntityReference(
+        id=entity.id,
+        type=get_entity_type(type(entity)),
+        name=model_str(entity.name),
+        fullyQualifiedName=model_str(entity.fullyQualifiedName),
+        description=entity.description,
+        href=entity.href,
+    )
+
+
+def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+    """
+    Decode JWT token to extract payload without verification.
+    JWT tokens have three parts: header.payload.signature
+    We only decode the payload part to get user information.
+    """
+    from metadata.utils.logger import ometa_logger
+
+    logger = ometa_logger()
+    try:
+        # Split the JWT token into its three parts
+        parts = jwt_token.split(".")
+        if len(parts) != 3:
+            logger.debug("Invalid JWT token format: expected 3 parts")
+            return None
+
+        # Decode the payload (second part)
+        payload = parts[1]
+        # Add padding if needed for base64 decoding
+        payload += "=" * (4 - len(payload) % 4) if len(payload) % 4 else ""
+
+        # Decode base64 and parse JSON
+        decoded_payload = base64.urlsafe_b64decode(payload)
+        return json.loads(decoded_payload.decode("utf-8"))
+    except Exception as e:
+        logger.debug(f"Failed to decode JWT token: {e}")
+        return None

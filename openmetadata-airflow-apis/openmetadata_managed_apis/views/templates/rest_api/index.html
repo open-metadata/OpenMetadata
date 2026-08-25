@@ -1,0 +1,165 @@
+{% extends "airflow/main.html" %}
+
+{% block title %}Airflow - REST API Plugin{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+
+{% endblock %}
+
+{% block body %}
+ {% if  rbac_authentication_enabled %}
+ {% block navbar %}
+        <header class="top" role="header">
+        {% include 'appbuilder/navbar.html' %}
+        </header>
+ {% endblock %}
+ {%endif%}
+<!--Simple Styling is done, so its all listed here:-->
+<style type="text/css">
+    th, td { padding: 4px; }
+    .customInput { width: 74px; display: inline-block; text-align: right; }
+    #dag_tables {
+      font-family: Arial, Helvetica, sans-serif;
+      border-collapse: collapse;
+    }
+
+    #dag_tables td, #dag_tables th {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+
+    #dag_tables tr:nth-child(even){background-color: #f2f2f2;}
+
+    #dag_tables tr:hover {background-color: #ddd;}
+
+    #dag_tables th {
+      padding-top: 12px;
+      padding-bottom: 12px;
+      text-align: left;
+      background-color: #1B9397;
+      color: white;
+    }
+</style>
+
+<!--Simple Java Script is used and listed here: -->
+<script type="application/javascript">
+
+    // after the fields have been disabled, wait for a few seconds and re-enable them for the next execution
+    function enableEmptyFieldsByDelay(form) {
+        setTimeout(function() {
+            for(var i = 0; i < form.length; i++) {
+                form[i].disabled = false;
+            }
+        }, 2000); //2 seconds
+    }
+
+    // upon submission of the form, disable the empty fields so that they aren't passed as GET arguments
+    function disableEmptyFields(form) {
+        for(var i = 0; i < form.length; i++) {
+            if(form[i].value == "") {
+                form[i].disabled = true;
+            }
+        }
+        // after the fields have been disabled, pause for a few seconds and then enable them
+        enableEmptyFieldsByDelay(form);
+        return true;
+    }
+</script>
+
+<h1 style="margin-left: 10%;">Airflow REST API </h1>
+
+<!--List of relevant documentation-->
+<h2 style="margin-left: 10%;">Documentation</h2>
+<ul style="margin-left: 10%;font-size: 16px">
+    <li><a target="_blank" href="https://airflow.apache.org/cli.html">Official Airflow CLI Documentation</a></li>
+    <li><a target="_blank" href="https://docs.open-metadata.org/deployment/airflow#airflow-apis">REST API Plugin Documentation</a></li>
+</ul>
+
+<!--List of relevant versions-->
+<h2 style="margin-left: 10%;">Versions</h2>
+<ul style="margin-left: 10%;font-size:16px">
+    <li>Airflow Version: {{airflow_version}}</li>
+    <li>Rest API Plugin Version: {{rest_api_plugin_version}}</li>
+</ul>
+
+<!--Shows a list of all the available APIs and provides a mechanism to quickly jump to the APIs-->
+<h2 style="margin-left: 10%;">API Directory</h2>
+<p style="margin-left: 10%;font-size: 16px">Click on one of the links bellow to jump to the API form</p>
+<ul style="margin-left: 10%;font-size: 16px">
+{% for api_metadata in apis_metadata %}
+    <li><a href="#{{api_metadata.name}}">{{api_metadata.name}}</a></li>
+{% endfor %}
+</ul>
+
+<!--Listing the metadata and information of all the APIs-->
+<h2 style="margin-left: 10%;">APIs</h2>
+{% for api_metadata in apis_metadata %}
+<div style="margin-left: 10%;font-size:16px">
+    <h3 style="font-size:30px;line-height:40px"><a name="{{api_metadata.name}}">{{api_metadata.name}}</a></h3>
+    <h4>Description:</h4>
+    <ul>
+        <li style="font-size:18px">{{api_metadata.description}}. Supports both http {{api_metadata.http_method}} methods.</li>
+    </ul>
+
+    <h4>Endpoint:</h4>
+    <ul>
+        <li style="font-size:18px">{{airflow_webserver_base_url}}{{rest_api_endpoint}}{{api_metadata.name}}
+        {% if api_metadata.http_method != 'POST' %}{% for argument in api_metadata.arguments %}{% if argument.name != 'set' %}&{{argument.name}}
+        {% if argument.form_input_type != 'checkbox' %}=value{% endif %}{% endif %}{% if argument.form_input_type =='custom_input'%}&cmd={{argument.name}}
+        {% for argument_data in argument.fields%}&{{argument_data.keys()[0]}}=value{%endfor%}{% endif %}{% endfor %}{% endif %}</li>
+    </ul>
+
+    <h4>Arguments:</h4>
+    <div>
+        <form method="{{api_metadata.http_method}}"
+              target="_blank"
+              action="{{rest_api_endpoint}}{% if api_metadata.http_method == 'POST' %}?api={{api_metadata.name}}{% endif %}"
+              enctype="{{ api_metadata.form_enctype if api_metadata.form_enctype else 'application/x-www-form-urlencoded' }}"
+              onsubmit="return disableEmptyFields(this)"
+        >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <table id="dag_tables">
+                <input type="hidden" name="api" value="{{api_metadata.name}}" />
+
+                {% if api_metadata.arguments|length > 0 or api_metadata.post_arguments|length > 0 %}
+
+                    <tr>
+                        <th>Argument Name</th>
+                        <th>Required</th>
+                        <th>Description</th>
+                    </tr>
+
+                    {% for argument in api_metadata.arguments %}
+                    <tr>
+                        <td>{% if argument.form_input_type == "custom_input"%} <input type="checkbox" name="cmd" value="{{argument.name}}" />{%endif%} {{argument.name}}:</td>
+                        <td>{{argument.required}}</td>
+                        <td>{{argument.description}}</td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for argument in api_metadata.post_arguments %}
+                    <tr>
+                        <td>{{argument.name}}</td>
+                        <td>{{argument.required}}</td>
+                        <td>{{argument.description}}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <b>No Arguments</b>
+                {% endif %}
+            </table>
+        </form>
+    </div>
+</div>
+<br/>
+{% endfor %}
+
+<br/>
+
+{% endblock %}
+
+{% block tail %}
+{{ super() }}
+
+{% endblock %}

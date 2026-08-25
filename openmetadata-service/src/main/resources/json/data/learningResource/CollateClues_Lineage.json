@@ -1,0 +1,15 @@
+{
+  "name": "CollateClues_Lineage",
+  "displayName": "Collate Clues: Lineage",
+  "description": "Understand data lineage visualization and how to trace data flow across your organization.",
+  "resourceType": "Video",
+  "categories": ["DataGovernance", "Discovery"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=21mk-I1H5Xo",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "lineage"}
+  ],
+  "status": "Active"
+}

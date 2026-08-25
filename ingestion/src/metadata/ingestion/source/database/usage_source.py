@@ -1,0 +1,178 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Usage Source Module
+"""
+
+import csv
+import os
+import traceback
+from abc import ABC
+from datetime import datetime, timedelta, timezone
+from typing import Iterable  # noqa: UP035
+
+from sqlalchemy import text
+
+from metadata.generated.schema.type.basic import DateTime
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.masker import mask_query
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+
+class UsageSource(QueryParserSource, ABC):
+    """
+    Base class for all usage ingestion.
+
+    Parse a query log to extract a `TableQuery` object
+    """
+
+    def yield_table_queries_from_logs(self) -> Iterable[TableQuery]:
+        """
+        Method to handle the usage from query logs
+        """
+        try:
+            query_log_path = self.config.sourceConfig.config.queryLogFilePath  # pyright: ignore[reportAttributeAccessIssue]
+            if os.path.isfile(query_log_path):  # noqa: PTH113
+                file_paths = [query_log_path]
+            elif os.path.isdir(query_log_path):  # noqa: PTH112
+                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]  # noqa: PTH118, PTH208
+            else:
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")  # noqa: TRY301
+            for file_path in file_paths:
+                query_list = []
+                with open(file_path, "r", encoding="utf-8") as fin:  # noqa: PTH123
+                    for record in csv.DictReader(fin):
+                        query_dict = dict(record)
+
+                        analysis_date = (
+                            datetime.now(timezone.utc)
+                            if not query_dict.get("start_time")
+                            else datetime.strptime(query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f")
+                        )
+                        query_list.append(
+                            TableQuery(
+                                dialect=self.dialect.value,
+                                query=query_dict["query_text"],
+                                userName=query_dict.get("user_name", ""),
+                                startTime=query_dict.get("start_time", ""),
+                                endTime=query_dict.get("end_time", ""),
+                                duration=query_dict.get("duration"),
+                                cost=query_dict.get("cost"),
+                                analysisDate=DateTime(analysis_date),
+                                aborted=self.get_aborted_status(query_dict),
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        )
+                yield TableQueries(queries=query_list)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to read queries form log file due to: {err}")
+
+    def get_table_query(self) -> Iterable[TableQuery]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data
+        """
+        if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
+            yield from self.yield_table_queries_from_logs()
+        else:
+            yield from self.yield_table_queries()
+
+    def format_query(self, query: str) -> str:
+        return query.replace("\\n", "\n")
+
+    def yield_table_queries(self) -> Iterable[TableQuery]:
+        """
+        Given an Engine, iterate over the day range and
+        query the results
+        """
+        daydiff = self.end - self.start
+        for days in range(daydiff.days):
+            logger.info(
+                f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "
+                f"{(self.start + timedelta(days=days + 1)).date()}"
+            )
+            query = None
+            try:
+                for engine in self.get_engine():
+                    query = self.get_sql_statement(
+                        start_time=self.start + timedelta(days=days),
+                        end_time=self.start + timedelta(days=days + 1),
+                    )
+                    logger.debug(f"Executing usage query: {query}")
+                    with engine.connect() as conn:
+                        rows = conn.execute(text(query))
+                        queries = []
+                        row_count = 0
+                        for row in rows:
+                            row_count += 1
+                            row = row._asdict()  # noqa: PLW2901
+                            try:
+                                row.update({k.lower(): v for k, v in row.items()})
+                                logger.debug(f"Processing row: {row}")
+                                query_type = row.get("query_type")
+                                query_text = self.format_query(row["query_text"])
+                                queries.append(
+                                    TableQuery(
+                                        query=query_text,
+                                        query_type=query_type,
+                                        exclude_usage=self.check_life_cycle_query(
+                                            query_type=query_type, query_text=query_text
+                                        ),
+                                        dialect=self.dialect.value,
+                                        userName=row["user_name"],
+                                        startTime=str(row["start_time"]),
+                                        endTime=str(row["end_time"]),
+                                        analysisDate=DateTime(row["start_time"]),
+                                        aborted=self.get_aborted_status(row),
+                                        databaseName=self.get_database_name(row),
+                                        duration=row.get("duration"),
+                                        serviceName=self.config.serviceName,
+                                        databaseSchema=self.get_schema_name(row),
+                                        cost=row.get("cost"),
+                                    )
+                                )
+                            except Exception as exc:
+                                logger.debug(traceback.format_exc())
+                                logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
+                    logger.info(f"Processed {row_count} query log entries for usage")
+                    self.warn_if_query_log_truncated(row_count, "usage")
+                    yield TableQueries(queries=queries)
+            except Exception as exc:
+                if query:
+                    logger.debug(
+                        (  # noqa: UP034
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
+                            "\n##########################"
+                        )
+                    )
+                logger.debug(traceback.format_exc())
+                logger.error(f"Source usage processing error: {exc}")
+
+    def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
+        days = max(1, (self.end - self.start).days)
+        result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        if result_limit is not None:
+            self.progress_tracking.manual.seed_scope_total("Queries", "run", result_limit * days)
+        processed = 0
+        for table_queries in self.get_table_query():
+            if table_queries:
+                count = len(table_queries.queries)  # pyright: ignore[reportAttributeAccessIssue]
+                self.progress_tracking.manual.track("Queries", count)
+                processed += count
+                yield Either(right=table_queries)
+        self.progress_tracking.manual.reconcile_scope_total("Queries", "run", processed)

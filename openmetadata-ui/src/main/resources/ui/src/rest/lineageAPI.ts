@@ -1,0 +1,282 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import {
+  EdgeDetails,
+  EntityLineageResponse,
+  LineageData,
+} from '../components/Lineage/Lineage.interface';
+import {
+  LineageNodeData,
+  LineagePagingInfo,
+} from '../components/LineageTable/LineageTable.interface';
+import { EntityType } from '../enums/entity.enum';
+import { AddLineage } from '../generated/api/lineage/addLineage';
+import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
+import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
+import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
+import APIClient from './index';
+
+export const updateLineageEdge = async (edge: AddLineage) => {
+  const response = await APIClient.put<AddLineage>(`/lineage`, edge);
+
+  return response.data;
+};
+
+export const exportLineageAsync = async (
+  fqn: string,
+  entityType?: string,
+  config?: LineageConfig,
+  queryFilter?: string,
+  startTime?: number,
+  endTime?: number
+) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<CSVExportResponse>(
+    `/lineage/exportAsync`,
+    {
+      params: {
+        fqn,
+        type: entityType,
+        upstreamDepth,
+        downstreamDepth,
+        query_filter: queryFilter,
+        includeDeleted: false,
+        startTime,
+        endTime,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getLineageDataByFQN = async ({
+  fqn,
+  entityType,
+  config,
+  queryFilter,
+  columnFilter,
+  from,
+  direction,
+  startTime,
+  endTime,
+}: {
+  fqn: string;
+  entityType: string;
+  config?: LineageConfig;
+  queryFilter?: string;
+  columnFilter?: string;
+  from?: number;
+  direction?: LineageDirection;
+  startTime?: number;
+  endTime?: number;
+}) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const API_PATH = direction
+    ? `lineage/getLineage/${direction}`
+    : 'lineage/getLineage';
+  const response = await APIClient.get<LineageData>(API_PATH, {
+    params: {
+      fqn,
+      type: entityType,
+      // upstreamDepth depth in BE is n+1 rather than exactly n, so we need to subtract 1 to get the correct depth
+      // and we don't want to pass the negative value
+      upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      column_filter: columnFilter,
+      includeDeleted: false,
+      size: config?.nodesPerLayer,
+      from,
+      startTime,
+      endTime,
+    },
+  });
+
+  return response.data;
+};
+
+export const getPlatformLineage = async ({
+  config,
+  queryFilter,
+  view,
+}: {
+  config?: LineageConfig;
+  queryFilter?: string;
+  view: string;
+}) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const API_PATH = `lineage/getPlatformLineage`;
+
+  const response = await APIClient.get<LineageData>(API_PATH, {
+    params: {
+      view,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: config?.nodesPerLayer,
+    },
+  });
+
+  return response.data;
+};
+
+export const getDataQualityLineage = async (
+  fqn: string,
+  config?: Partial<LineageConfig>,
+  queryFilter?: string,
+  startTime?: number,
+  endTime?: number
+) => {
+  const { upstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<EntityLineageResponse>(
+    `lineage/getDataQualityLineage`,
+    {
+      params: {
+        fqn,
+        upstreamDepth,
+        includeDeleted: false,
+        query_filter: queryFilter,
+        startTime,
+        endTime,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getLineageByEntityCount = async (params: {
+  fqn: string;
+  type?: EntityType;
+  entityType?: EntityType;
+  direction: LineageDirection;
+  nodeDepth: number;
+  maxDepth?: number;
+  upstreamDepth?: number;
+  downstreamDepth?: number;
+  from: number;
+  size: number;
+  query_filter?: string;
+  column_filter?: string;
+  include_pagination_info?: boolean;
+  startTime?: number;
+  endTime?: number;
+}) => {
+  const response = await APIClient.get<{
+    nodes: Record<string, LineageNodeData>;
+    upstreamEdges: Record<string, EdgeDetails>;
+    downstreamEdges: Record<string, EdgeDetails>;
+    paginationInfo?: {
+      downstreamDepthInfo: { depth: number; entityCount: number }[];
+      upstreamDepthInfo: { depth: number; entityCount: number }[];
+      maxDownstreamDepth: number;
+      maxUpstreamDepth: number;
+      totalDownstreamEntities: number;
+      totalUpstreamEntities: number;
+    };
+  }>(`lineage/getLineageByEntityCount`, {
+    params: {
+      ...params,
+      entityType: params.entityType ?? params.type,
+      maxDepth: params.maxDepth ?? params.nodeDepth,
+      type: undefined,
+    },
+  });
+
+  return response.data;
+};
+
+export const exportLineageByEntityCountAsync = async (params: {
+  fqn: string;
+  type?: EntityType;
+  entityType?: EntityType;
+  direction: LineageDirection;
+  nodeDepth: number;
+  maxDepth?: number;
+  from?: number;
+  size?: number;
+  query_filter?: string;
+  startTime?: number;
+  endTime?: number;
+}) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `lineage/exportByEntityCountAsync`,
+    {
+      params: {
+        ...params,
+        entityType: params.entityType ?? params.type,
+        maxDepth: params.maxDepth ?? params.nodeDepth,
+        type: undefined,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/**
+ * Batch-hydrate a set of lineage nodes (entityType + id pairs) into full entity objects in a
+ * single round-trip. Server replies with {@link HydrateLineageResponse} — an
+ * `entitiesByType` map keyed by entityType plus a `droppedCount` of entries the caller could
+ * not see.
+ *
+ * Use this in place of N parallel `GET /:type/:id` calls when rendering a graph that needs
+ * fully-hydrated node detail (tags, owners, domains, etc.). Entities the caller cannot read
+ * are silently dropped from `entitiesByType` and counted in `droppedCount` so the UI can
+ * surface "N items hidden by permissions" if it wants.
+ *
+ * Treat each map value as `unknown[]` because the server returns heterogeneous full entity
+ * objects (Table, Dashboard, Container, Pipeline, …) keyed by `entityType` and OpenMetadata
+ * does not have a discriminated-union JSON schema for `EntityInterface`. Callers should narrow
+ * per-type at the call-site — e.g. `entitiesByType.table as Table[]` — once they know which key
+ * they're consuming.
+ */
+export const hydrateLineageEntities = async (
+  params: HydrateLineageRequest
+): Promise<HydrateLineageResponse> => {
+  const response = await APIClient.post<HydrateLineageResponse>(
+    `/lineage/hydrate`,
+    params
+  );
+
+  return response.data;
+};
+
+export const getLineagePagingData = async (params: {
+  fqn: string;
+  upstreamDepth?: number;
+  downstreamDepth?: number;
+  type?: EntityType;
+  entityType?: EntityType;
+  query_filter?: string;
+  startTime?: number;
+  endTime?: number;
+}) => {
+  const response = await APIClient.get<LineagePagingInfo>(
+    `lineage/getPaginationInfo`,
+    {
+      params: {
+        ...params,
+        entityType: params.entityType ?? params.type,
+        type: undefined,
+      },
+    }
+  );
+
+  return response.data;
+};

@@ -1,0 +1,417 @@
+package org.openmetadata.service.util;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
+import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUniqueId;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
+
+@Slf4j
+public class LineageUtil {
+
+  /**
+   * When a deferral scope is open on the calling thread, the lineage-ES leaves ({@link
+   * #addLineageToSearch} / {@link #deleteLineageFromSearch}) capture their {@code updateLineage} /
+   * {@code updateChildren} round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so no Elasticsearch call runs while a pooled connection
+   * is held — only the DB lineage-edge writes stay in the transaction — then drains the captured
+   * closures after commit. {@code null} means "no scope active" and the leaf executes inline.
+   */
+  private static final ThreadLocal<List<DeferredLineageEsWrite>> DEFERRED_LINEAGE_ES =
+      new ThreadLocal<>();
+
+  /**
+   * A captured lineage-ES write plus the entity whose search document carries the edge. The {@code
+   * toEntity} is retained so a post-commit drain that fails the {@code updateLineage}/{@code
+   * updateChildren} round trip can enqueue that entity to the durable search-index retry outbox
+   * (the same entity-keyed recovery the direct entity-index path uses) instead of silently losing
+   * the edge — the DB lineage rows were already committed inside the transaction.
+   */
+  public record DeferredLineageEsWrite(Runnable esWrite, EntityReference toEntity) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
+  private LineageUtil() {}
+
+  /**
+   * Open a lineage-ES deferral scope on the current thread. While open, the lineage-ES leaves
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call
+   * — the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that
+   * calls {@link #drainLineageDeferred()} after commit and {@link #clearLineageDeferred()} on
+   * failure.
+   */
+  public static boolean beginLineageDeferral() {
+    boolean opened = DEFERRED_LINEAGE_ES.get() == null;
+    if (opened) {
+      DEFERRED_LINEAGE_ES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackToCheckpoint(int)} its own contributions on a deadlock replay without disturbing
+   * closures the outer owner captured.
+   */
+  public static int checkpoint() {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackToCheckpoint(int checkpoint) {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginLineageDeferral} and close the scope. */
+  public static List<DeferredLineageEsWrite> drainLineageDeferred() {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    DEFERRED_LINEAGE_ES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearLineageDeferred() {
+    DEFERRED_LINEAGE_ES.remove();
+  }
+
+  private static void deferOrRun(Runnable esWrite, EntityReference toEntity) {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    if (deferred != null) {
+      deferred.add(new DeferredLineageEsWrite(esWrite, toEntity));
+    } else {
+      esWrite.run();
+    }
+  }
+
+  public static void addDomainLineage(
+      UUID entityId, String entityType, EntityReference updatedDomain) {
+    if (!nullOrEmpty(updatedDomain)) {
+      List<CollectionDAO.EntityRelationshipObject> downstreamDomains =
+          Entity.getCollectionDAO().relationshipDAO().findDownstreamDomains(entityId, entityType);
+      List<CollectionDAO.EntityRelationshipObject> upstreamDomains =
+          Entity.getCollectionDAO().relationshipDAO().findUpstreamDomains(entityId, entityType);
+      for (CollectionDAO.EntityRelationshipObject downstreamDomain : downstreamDomains) {
+        insertDomainLineage(
+            updatedDomain,
+            Entity.getEntityReferenceById(
+                downstreamDomain.getFromEntity(),
+                UUID.fromString(downstreamDomain.getFromId()),
+                Include.ALL));
+      }
+      for (CollectionDAO.EntityRelationshipObject upstreamDomain : upstreamDomains) {
+        insertDomainLineage(
+            Entity.getEntityReferenceById(
+                upstreamDomain.getFromEntity(),
+                UUID.fromString(upstreamDomain.getFromId()),
+                Include.ALL),
+            updatedDomain);
+      }
+    }
+  }
+
+  public static void removeDomainLineage(
+      UUID entityId, String entityType, EntityReference updatedDomain) {
+    if (!nullOrEmpty(updatedDomain)) {
+      List<CollectionDAO.EntityRelationshipObject> downstreamDomains =
+          Entity.getCollectionDAO().relationshipDAO().findDownstreamDomains(entityId, entityType);
+      List<CollectionDAO.EntityRelationshipObject> upstreamDomains =
+          Entity.getCollectionDAO().relationshipDAO().findUpstreamDomains(entityId, entityType);
+      for (CollectionDAO.EntityRelationshipObject downstreamDomain : downstreamDomains) {
+        updateLineage(
+            updatedDomain,
+            Entity.getEntityReferenceById(
+                downstreamDomain.getFromEntity(),
+                UUID.fromString(downstreamDomain.getFromId()),
+                Include.ALL));
+      }
+      for (CollectionDAO.EntityRelationshipObject upstreamDomain : upstreamDomains) {
+        updateLineage(
+            Entity.getEntityReferenceById(
+                upstreamDomain.getFromEntity(),
+                UUID.fromString(upstreamDomain.getFromId()),
+                Include.ALL),
+            updatedDomain);
+      }
+    }
+  }
+
+  private static void updateLineage(EntityReference fromRef, EntityReference toRef) {
+    if (fromRef == null || toRef == null) return;
+
+    CollectionDAO.EntityRelationshipObject relation =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .getRecord(fromRef.getId(), toRef.getId(), Relationship.UPSTREAM.ordinal());
+
+    if (relation == null) return;
+
+    LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
+    if (lineageDetails.getAssetEdges() - 1 < 1) {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .delete(
+              fromRef.getId(),
+              fromRef.getType(),
+              toRef.getId(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal());
+      deleteLineageFromSearch(fromRef, toRef, lineageDetails);
+    } else {
+      lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              fromRef.getId(),
+              toRef.getId(),
+              fromRef.getType(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(lineageDetails));
+      addLineageToSearch(fromRef, toRef, lineageDetails);
+    }
+  }
+
+  private static void deleteLineageFromSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    deferOrRun(() -> doDeleteLineageFromSearch(fromEntity, toEntity), toEntity);
+  }
+
+  private static void doDeleteLineageFromSearch(
+      EntityReference fromEntity, EntityReference toEntity) {
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
+    Entity.getSearchRepository()
+        .getSearchClient()
+        .updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
+            new ImmutablePair<>(
+                REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+  }
+
+  private static void insertDomainLineage(EntityReference fromDomain, EntityReference toDomain) {
+    int count =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .countDomainChildAssets(fromDomain.getId(), toDomain.getId());
+    insertLineage(count, fromDomain, toDomain);
+  }
+
+  private static void insertDataProductLineage(
+      EntityReference fromDataProduct, EntityReference toDataProduct) {
+    int count =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .countDataProductsChildAssets(fromDataProduct.getId(), toDataProduct.getId());
+    insertLineage(count, fromDataProduct, toDataProduct);
+  }
+
+  private static void insertLineage(int count, EntityReference fromRef, EntityReference toRef) {
+    if (count > 0) {
+      LineageDetails domainLineageDetails =
+          new LineageDetails()
+              .withCreatedAt(System.currentTimeMillis())
+              .withUpdatedAt(System.currentTimeMillis())
+              .withCreatedBy(ADMIN_USER_NAME)
+              .withUpdatedBy(ADMIN_USER_NAME)
+              .withSource(LineageDetails.Source.CHILD_ASSETS)
+              .withAssetEdges(count);
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              fromRef.getId(),
+              toRef.getId(),
+              fromRef.getType(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(domainLineageDetails));
+      addLineageToSearch(fromRef, toRef, domainLineageDetails);
+    }
+  }
+
+  private static void addLineageToSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    deferOrRun(() -> doAddLineageToSearch(fromEntity, toEntity, lineageDetails), toEntity);
+  }
+
+  private static void doAddLineageToSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    IndexMapping destinationIndexMapping =
+        Entity.getSearchRepository().getIndexMapping(toEntity.getType());
+    // Route to the staged rebuild index when a reindex is in flight so lineage edges written
+    // mid-reindex survive the final alias swap instead of being dropped with the old index.
+    String destinationIndexName =
+        Entity.getSearchRepository().getWriteIndexName(destinationIndexMapping);
+    // For lineage from -> to (not stored) since the doc itself is the toEntity
+    EsLineageData lineageData =
+        buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
+    Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
+    Entity.getSearchRepository()
+        .getSearchClient()
+        .updateLineage(destinationIndexName, to, lineageData);
+  }
+
+  public static void addDataProductsLineage(
+      UUID entityId, String entityType, List<EntityReference> updatedDataProducts) {
+    for (EntityReference ref : listOrEmpty(updatedDataProducts)) {
+      List<CollectionDAO.EntityRelationshipObject> downstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findDownstreamDataProducts(entityId, entityType);
+      List<CollectionDAO.EntityRelationshipObject> upstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findUpstreamDataProducts(entityId, entityType);
+      for (CollectionDAO.EntityRelationshipObject downstreamDataProduct : downstreamDataProducts) {
+        insertDataProductLineage(
+            ref,
+            Entity.getEntityReferenceById(
+                downstreamDataProduct.getFromEntity(),
+                UUID.fromString(downstreamDataProduct.getFromId()),
+                Include.ALL));
+      }
+      for (CollectionDAO.EntityRelationshipObject upstreamDataProduct : upstreamDataProducts) {
+        insertDataProductLineage(
+            Entity.getEntityReferenceById(
+                upstreamDataProduct.getFromEntity(),
+                UUID.fromString(upstreamDataProduct.getFromId()),
+                Include.ALL),
+            ref);
+      }
+    }
+  }
+
+  public static void removeDataProductsLineage(
+      UUID entityId, String entityType, List<EntityReference> updatedDataProducts) {
+    for (EntityReference ref : listOrEmpty(updatedDataProducts)) {
+      List<CollectionDAO.EntityRelationshipObject> downstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findDownstreamDataProducts(entityId, entityType);
+      List<CollectionDAO.EntityRelationshipObject> upstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findUpstreamDataProducts(entityId, entityType);
+      for (CollectionDAO.EntityRelationshipObject downstreamDataProduct : downstreamDataProducts) {
+        updateLineage(
+            ref,
+            Entity.getEntityReferenceById(
+                downstreamDataProduct.getFromEntity(),
+                UUID.fromString(downstreamDataProduct.getFromId()),
+                Include.ALL));
+      }
+      for (CollectionDAO.EntityRelationshipObject upstreamDataProduct : upstreamDataProducts) {
+        updateLineage(
+            Entity.getEntityReferenceById(
+                upstreamDataProduct.getFromEntity(),
+                UUID.fromString(upstreamDataProduct.getFromId()),
+                Include.ALL),
+            ref);
+      }
+    }
+  }
+
+  public static NodeInformation getNodeInformation(
+      Map<String, Object> sourceMap,
+      Integer entityDownstreamCount,
+      Integer entityUpstreamCount,
+      Integer nodeDepth) {
+    // sourceMap.remove("upstreamLineage");
+    return new NodeInformation()
+        .withEntity(sourceMap)
+        .withPaging(
+            new LayerPaging()
+                .withEntityDownstreamCount(entityDownstreamCount)
+                .withEntityUpstreamCount(entityUpstreamCount))
+        .withNodeDepth(nodeDepth);
+  }
+
+  /**
+   * Batch-fetches entity-level tags from the database for multiple entities and replaces the mixed
+   * ES tags with table-level-only tags. Uses a single DB query for all FQNs. Tier tags are excluded
+   * since they have their own column in the Impact Analysis table.
+   *
+   * @param entityDocs list of entity source maps from ES
+   */
+  public static void replaceWithEntityLevelTagsBatch(List<Map<String, Object>> entityDocs) {
+    if (entityDocs == null || entityDocs.isEmpty()) {
+      return;
+    }
+    try {
+      List<String> fqns = new ArrayList<>();
+      for (Map<String, Object> doc : entityDocs) {
+        String fqn = (String) doc.get("fullyQualifiedName");
+        if (fqn != null) {
+          fqns.add(fqn);
+        }
+      }
+      if (fqns.isEmpty()) {
+        return;
+      }
+
+      // Single DB query for all entity FQNs
+      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchResults =
+          Entity.getCollectionDAO().tagUsageDAO().getTagsInternalBatch(fqns);
+
+      // Group by FQN hash and convert to TagLabel, filtering out Tier
+      Map<String, List<TagLabel>> tagsByFqnHash = new HashMap<>();
+      List<TagLabel> allTags = new ArrayList<>();
+      for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash result : batchResults) {
+        TagLabel tag = result.toTagLabel();
+        if (tag.getTagFQN() != null && !tag.getTagFQN().startsWith("Tier.")) {
+          allTags.add(tag);
+          tagsByFqnHash.computeIfAbsent(result.getTargetFQNHash(), k -> new ArrayList<>()).add(tag);
+        }
+      }
+
+      // Batch-enrich all tags with name, displayName, description, style
+      TagLabelUtil.applyTagCommonFieldsBatch(allTags);
+
+      // Replace tags in each entity doc
+      for (Map<String, Object> doc : entityDocs) {
+        String fqn = (String) doc.get("fullyQualifiedName");
+        if (fqn != null) {
+          String fqnHash = FullyQualifiedName.buildHash(fqn);
+          List<TagLabel> entityTags = tagsByFqnHash.getOrDefault(fqnHash, new ArrayList<>());
+          doc.put("tags", entityTags);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch entity-level tags for Impact Analysis, falling back to ES tags", e);
+    }
+  }
+}

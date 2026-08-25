@@ -1,0 +1,128 @@
+package org.openmetadata.service.governance.workflows.elements;
+
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RollbackEntityTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline.CreateAndRunIngestionPipelineTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
+import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
+import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.StartEvent;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserApprovalTask;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+
+public class NodeFactory {
+
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition,
+      WorkflowConfiguration config,
+      String workflowDefinitionName) {
+    return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
+      case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
+      case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
+      case CHECK_ENTITY_ATTRIBUTES_TASK -> new CheckEntityAttributesTask(
+          (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
+      case CHECK_CHANGE_DESCRIPTION_TASK -> new CheckChangeDescriptionTask(
+          (CheckChangeDescriptionTaskDefinition) nodeDefinition, config);
+      case SET_ENTITY_ATTRIBUTE_TASK -> new SetEntityAttributeTask(
+          (SetEntityAttributeTaskDefinition) nodeDefinition, config);
+      case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(
+          (SetEntityCertificationTaskDefinition) nodeDefinition, config);
+      case SET_GLOSSARY_TERM_STATUS_TASK -> new SetGlossaryTermStatusTask(
+          (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config);
+      case USER_APPROVAL_TASK -> new UserApprovalTask(
+          (UserApprovalTaskDefinition) nodeDefinition,
+          config,
+          resolveUserApprovalTaskType(workflowDefinitionName),
+          resolveUserApprovalTaskCategory(workflowDefinitionName));
+      case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
+          (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
+      case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
+      case ROLLBACK_ENTITY_TASK -> new RollbackEntityTask(
+          (RollbackEntityTaskDefinition) nodeDefinition, config);
+      case DATA_COMPLETENESS_TASK -> new DataCompletenessTask(
+          (DataCompletenessTaskDefinition) nodeDefinition, config);
+      case PARALLEL_GATEWAY -> new ParallelGateway(
+          (ParallelGatewayDefinition) nodeDefinition, config);
+      case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);
+      case CREATE_RECOGNIZER_FEEDBACK_APPROVAL_TASK -> new CreateRecognizerFeedbackApprovalTask(
+          (CreateRecognizerFeedbackApprovalTaskDefinition) nodeDefinition, config);
+      case APPLY_RECOGNIZER_FEEDBACK_TASK -> new ApplyRecognizerFeedbackTask(
+          (ApplyRecognizerFeedbackTaskDefinition) nodeDefinition, config);
+      case REJECT_RECOGNIZER_FEEDBACK_TASK -> new RejectRecognizerFeedbackTask(
+          (RejectRecognizerFeedbackTaskDefinition) nodeDefinition, config);
+      case POLICY_AGENT_TASK -> NodeFactoryRegistry.getInstance()
+          .create(NodeSubType.POLICY_AGENT_TASK, nodeDefinition, config, workflowDefinitionName)
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "policyAgentTask is a Collate-only feature — handler not registered"));
+      case CREATE_AND_RUN_AI_AUTOMATION_TASK -> NodeFactoryRegistry.getInstance()
+          .create(
+              NodeSubType.CREATE_AND_RUN_AI_AUTOMATION_TASK,
+              nodeDefinition,
+              config,
+              workflowDefinitionName)
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "createAndRunAIAutomationTask is a Collate-only feature — handler not registered"));
+      default -> throw new IllegalArgumentException(
+          "Unsupported node subtype: " + nodeDefinition.getSubType());
+    };
+  }
+
+  private static TaskEntityType resolveUserApprovalTaskType(String workflowDefinitionName) {
+    TaskEntityType resolvedType =
+        TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
+            workflowDefinitionName);
+    return isKnownWorkflowDefinitionRef(workflowDefinitionName)
+            || resolvedType != TaskEntityType.CustomTask
+        ? resolvedType
+        : TaskEntityType.RequestApproval;
+  }
+
+  private static TaskCategory resolveUserApprovalTaskCategory(String workflowDefinitionName) {
+    TaskEntityType taskType = resolveUserApprovalTaskType(workflowDefinitionName);
+    return taskType == TaskEntityType.RequestApproval
+        ? TaskCategory.Approval
+        : TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(
+            workflowDefinitionName);
+  }
+
+  private static boolean isKnownWorkflowDefinitionRef(String workflowDefinitionName) {
+    return workflowDefinitionName != null
+        && TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRefs()
+            .contains(workflowDefinitionName);
+  }
+}

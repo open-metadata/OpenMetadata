@@ -1,0 +1,1480 @@
+package org.openmetadata.service.search.opensearch;
+
+import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
+import static org.openmetadata.service.search.SearchUtils.buildScopedCredentialsProvider;
+import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
+import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
+import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsIamAuthEnabled;
+
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.security.KeyStoreException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import javax.net.ssl.SSLContext;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.util.TimeValue;
+import org.apache.hc.core5.util.Timeout;
+import org.jetbrains.annotations.NotNull;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.data.PageHierarchy;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchHealthStatus;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchResultListMapper;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.nlq.NLQService;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.SearchUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.SortOptions;
+import os.org.opensearch.client.opensearch._types.SortOrder;
+import os.org.opensearch.client.opensearch._types.aggregations.FiltersBucket;
+import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
+import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.SearchResponse;
+import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import os.org.opensearch.client.opensearch.core.search.Hit;
+import os.org.opensearch.client.opensearch.generic.Body;
+import os.org.opensearch.client.opensearch.generic.Requests;
+import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
+import os.org.opensearch.client.transport.OpenSearchTransport;
+import os.org.opensearch.client.transport.aws.AwsSdk2Transport;
+import os.org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.crt.AwsCrtHttpClient;
+import software.amazon.awssdk.regions.Region;
+
+@Slf4j
+// Not tagged with Repository annotation as it is programmatically initialized
+public class OpenSearchClient implements SearchClient {
+  private static final int REQUEST_COMPRESSION_THRESHOLD_BYTES = 8 * 1024;
+
+  private volatile boolean isClientAvailable;
+  private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private static final String SORT_ORDER_DESC = "desc";
+  private final AtomicLong lastHealthCheckAt = new AtomicLong();
+  private final RBACConditionEvaluator rbacConditionEvaluator;
+
+  // New OpenSearch Java API client
+  @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
+  private volatile boolean isNewClientAvailable;
+  private final OpenSearchTransport transport;
+  private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
+
+  private volatile OSLineageGraphBuilder lineageGraphBuilder;
+  private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
+
+  private final String clusterAlias;
+  private final OpenSearchIndexManager indexManager;
+  private final OpenSearchEntityManager entityManager;
+  private final OpenSearchGenericManager genericManager;
+  private final OpenSearchAggregationManager aggregationManager;
+  private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
+  private final OpenSearchSearchManager searchManager;
+
+  private final NLQService nlqService;
+
+  public OpenSearchClient(ElasticSearchConfiguration config) {
+    this(config, null);
+  }
+
+  public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
+    AwsConfiguration awsConfig = config != null ? config.getAws() : null;
+    boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
+
+    if (useIamAuth) {
+      this.awsHttpClient = AwsCrtHttpClient.builder().build();
+      this.transport = createAwsSdk2Transport(config, awsConfig, this.awsHttpClient);
+    } else {
+      this.awsHttpClient = null;
+      this.transport = createApacheHttpClient5Transport(config);
+    }
+
+    this.newClient = createOpenSearchNewClient(transport);
+    clusterAlias = config != null ? config.getClusterAlias() : "";
+    isClientAvailable = newClient != null;
+    isNewClientAvailable = newClient != null;
+    QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
+    rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(newClient);
+    this.nlqService = nlqService;
+    indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
+    entityManager = new OpenSearchEntityManager(newClient);
+    genericManager = new OpenSearchGenericManager(newClient, transport);
+    aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
+    dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
+    searchManager =
+        new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
+  }
+
+  private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
+      OpenSearchTransport transport) {
+    try {
+      if (transport == null) {
+        LOG.error("Cannot create OpenSearch client with null transport");
+        return null;
+      }
+      os.org.opensearch.client.opensearch.OpenSearchClient newClient =
+          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+
+      LOG.info(
+          "Successfully initialized OpenSearch Java API client with transport: {}",
+          transport.getClass().getSimpleName());
+      return newClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize new Opensearch client", e);
+      return null;
+    }
+  }
+
+  @Override
+  public boolean isClientAvailable() {
+    if (newClient == null) {
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    long last = lastHealthCheckAt.get();
+    if (now - last < HEALTH_CHECK_CACHE_MS) {
+      return isClientAvailable;
+    }
+    if (!lastHealthCheckAt.compareAndSet(last, now)) {
+      return isClientAvailable;
+    }
+    try {
+      boolean alive = newClient.ping().value();
+      isClientAvailable = alive;
+      isNewClientAvailable = alive;
+    } catch (Exception e) {
+      isClientAvailable = false;
+      isNewClientAvailable = false;
+    }
+    return isClientAvailable;
+  }
+
+  @Override
+  public boolean isNewClientAvailable() {
+    return isNewClientAvailable;
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getHighLevelClient() {
+    return (T) newClient;
+  }
+
+  @Override
+  public Object getLowLevelClient() {
+    return transport;
+  }
+
+  @Override
+  public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    var builder = Requests.builder().method(method).endpoint(endpoint);
+    if (jsonBody != null && !jsonBody.isBlank()) {
+      builder.json(jsonBody);
+    }
+    try (os.org.opensearch.client.opensearch.generic.Response response =
+        newClient.generic().execute(builder.build())) {
+      String body = response.getBody().map(Body::bodyAsString).orElse("");
+      return new RawSearchResponse(response.getStatus(), body);
+    }
+  }
+
+  @Override
+  public boolean indexExists(String indexName) {
+    return indexManager.indexExists(indexName);
+  }
+
+  @Override
+  public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
+    indexManager.createIndex(indexMapping, indexMappingContent);
+  }
+
+  @Override
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    indexManager.addIndexAlias(indexMapping, aliasNames);
+  }
+
+  @Override
+  public void createAliases(IndexMapping indexMapping) {
+    indexManager.createAliases(indexMapping);
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    indexManager.createIndex(indexName, indexMappingContent);
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    indexManager.deleteIndex(indexName);
+  }
+
+  @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    return indexManager.getAliases(indexName);
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    indexManager.addAliases(indexName, aliases);
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    indexManager.removeAliases(indexName, aliases);
+  }
+
+  @Override
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases, indicesToRemove);
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    indexManager.updateIndexSettings(indexName, settingsJson);
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    indexManager.forceMerge(indexName, maxNumSegments);
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    return indexManager.getIndicesByAlias(aliasName);
+  }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    return indexManager.getAllIndexStats();
+  }
+
+  @Override
+  public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
+    indexManager.updateIndex(indexMapping, indexMappingContent);
+  }
+
+  @Override
+  public void deleteIndex(IndexMapping indexMapping) {
+    indexManager.deleteIndex(indexMapping);
+  }
+
+  @Override
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchManager.search(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchForExport(
+      SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
+    return searchManager.previewSearch(request, subjectContext, searchSettings);
+  }
+
+  @Override
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
+    return searchManager.searchWithNLQ(request, subjectContext);
+  }
+
+  @Override
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchWithDirectQuery(request, subjectContext);
+  }
+
+  @Override
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    return entityManager.getDocByID(indexName, entityId);
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString)
+      throws IOException {
+    return searchManager.listWithOffset(
+        filter, limit, offset, index, searchSortFilter, q, queryString);
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.listWithOffset(
+        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      String[] fields,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    return searchManager.listWithDeepPagination(
+        index, query, filter, fields, searchSortFilter, size, searchAfter);
+  }
+
+  @Override
+  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+    return searchManager.searchBySourceUrl(sourceUrl);
+  }
+
+  @Override
+  public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    return ensureLineageBuilder().searchLineage(lineageRequest);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException {
+    return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
+    return ensureLineageBuilder()
+        .getLineagePaginationInfo(
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            includeDeleted,
+            entityType,
+            startTime,
+            endTime);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return ensureLineageBuilder().searchLineageByEntityCount(request);
+  }
+
+  @Override
+  public SearchLineageResult searchPlatformLineage(
+      String index, String queryFilter, boolean deleted) throws IOException {
+    return ensureLineageBuilder().getPlatformLineage(index, queryFilter, deleted);
+  }
+
+  private OSLineageGraphBuilder ensureLineageBuilder() {
+    OSLineageGraphBuilder builder = lineageGraphBuilder;
+    if (builder == null && newClient != null) {
+      synchronized (this) {
+        builder = lineageGraphBuilder;
+        if (builder == null) {
+          LOG.info("Initializing OSLineageGraphBuilder with settings now available");
+          builder = new OSLineageGraphBuilder(newClient);
+          lineageGraphBuilder = builder;
+          LOG.info("OSLineageGraphBuilder initialization completed");
+        }
+      }
+    }
+    if (builder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
+    return builder;
+  }
+
+  @Override
+  public void invalidateLineageCache(String fqn) {
+    if (lineageGraphBuilder == null) {
+      return;
+    }
+    lineageGraphBuilder.invalidateLineageCacheForFqn(fqn);
+  }
+
+  @Override
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchManager.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  @Override
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
+  }
+
+  @Override
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchManager.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  @Override
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      throws IOException {
+    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    return aggregationManager.getEntityTypeCounts(request, index);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request) throws IOException {
+    return aggregationManager.aggregate(request);
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata, subjectContext);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filter)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter, subjectContext);
+  }
+
+  @Override
+  public ElasticSearchConfiguration.SearchType getSearchType() {
+    return ElasticSearchConfiguration.SearchType.OPENSEARCH;
+  }
+
+  @Override
+  public void createEntity(String indexName, String docId, String doc) throws IOException {
+    entityManager.createEntity(indexName, docId, doc);
+  }
+
+  @Override
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
+    entityManager.createEntities(indexName, docsAndIds);
+  }
+
+  @Override
+  public void createTimeSeriesEntity(String indexName, String docId, String doc)
+      throws IOException {
+    entityManager.createTimeSeriesEntity(indexName, docId, doc);
+  }
+
+  @Override
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
+      throws IOException {
+    entityManager.deleteByScript(indexName, scriptTxt, params);
+  }
+
+  @Override
+  public void deleteEntity(String indexName, String docId) throws IOException {
+    entityManager.deleteEntity(indexName, docId);
+  }
+
+  @Override
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) throws IOException {
+    entityManager.deleteEntityByFQNPrefix(indexName, fqnPrefix);
+  }
+
+  @Override
+  public void deleteEntityByFields(
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
+    entityManager.deleteEntityByFields(indexNames, fieldAndValue);
+  }
+
+  @Override
+  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+      throws IOException {
+    entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
+  }
+
+  @Override
+  public void softDeleteOrRestoreChildren(
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
+    entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
+  }
+
+  @Override
+  public void updateEntity(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    entityManager.updateEntity(indexName, docId, doc, scriptTxt);
+  }
+
+  @Override
+  public void reindexEntities(List<EntityReference> entities) throws IOException {
+    entityManager.reindexEntities(entities);
+  }
+
+  @Override
+  public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
+    if (isClientAvailable) {
+      getAsyncExecutor()
+          .submit(
+              () -> {
+                try {
+                  int from = 0;
+                  boolean hasMoreResults = true;
+
+                  while (hasMoreResults) {
+                    List<EntityReference> entities =
+                        ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
+                            matchingKey,
+                            ReindexingUtil.escapeDoubleQuotes(sourceRef.getFullyQualifiedName()),
+                            from);
+
+                    reindexEntities(entities);
+
+                    from += entities.size();
+                    hasMoreResults = !entities.isEmpty();
+                  }
+                } catch (Exception ex) {
+                  LOG.error("Reindexing Across Entities Failed", ex);
+                  SearchIndexRetryQueue.enqueue(
+                      sourceRef.getId() != null ? sourceRef.getId().toString() : null,
+                      sourceRef.getFullyQualifiedName(),
+                      sourceRef.getType(),
+                      SearchIndexRetryQueue.failureReason("reindexAcrossIndices", ex));
+                }
+              });
+    }
+  }
+
+  @Override
+  public void updateChildren(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
+  public void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
+    entityManager.updateLineage(indexName, fieldAndValue, lineageData);
+  }
+
+  @Override
+  public void updateEntityRelationship(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Map<String, Object> entityRelationshipData) {
+    entityManager.updateEntityRelationship(indexName, fieldAndValue, entityRelationshipData);
+  }
+
+  @Override
+  public void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds) {
+    entityManager.reindexWithEntityIds(
+        sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
+  }
+
+  @Override
+  public void deleteByRangeQuery(
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException {
+    entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
+  }
+
+  @Override
+  public void deleteByRangeAndTerm(
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
+    entityManager.deleteByRangeAndTerm(index, rangeFieldName, gt, gte, lt, lte, termKey, termValue);
+  }
+
+  /** */
+  @Override
+  public void close() {
+    if (transport != null) {
+      try {
+        transport.close();
+      } catch (IOException e) {
+        LOG.warn("Error closing OpenSearch transport", e);
+      }
+    }
+    if (awsHttpClient != null) {
+      awsHttpClient.close();
+    }
+  }
+
+  @Override
+  public BulkResponse bulkOpenSearch(List<BulkOperation> operations) throws IOException {
+    return newClient.bulk(
+        b ->
+            b.operations(operations)
+                .refresh(os.org.opensearch.client.opensearch._types.Refresh.True));
+  }
+
+  @Override
+  public Response listDataInsightChartResult(
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
+      String dataReportIndex)
+      throws IOException {
+    return dataInsightAggregatorManager.listDataInsightChartResult(
+        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
+  }
+
+  @Override
+  public List<Map<String, String>> fetchDIChartFields() {
+    return dataInsightAggregatorManager.fetchDIChartFields();
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
+  }
+
+  /**
+   * Parses the host string for AwsSdk2Transport. Strips protocol prefix, trailing slash, handles
+   * comma-separated hosts (uses first), and removes port. AwsSdk2Transport expects a bare hostname.
+   */
+  @com.google.common.annotations.VisibleForTesting
+  static String parseHostForAwsSdk2Transport(String host) {
+    if (host == null) {
+      return null;
+    }
+    if (host.startsWith("https://")) {
+      host = host.substring("https://".length());
+    } else if (host.startsWith("http://")) {
+      host = host.substring("http://".length());
+    }
+    if (host.endsWith("/")) {
+      host = host.substring(0, host.length() - 1);
+    }
+    // Handle comma-separated hosts (use first host)
+    if (host.contains(",")) {
+      host = host.split(",")[0].trim();
+    }
+    // Strip port if present (AwsSdk2Transport expects bare hostname)
+    if (host.contains(":")) {
+      host = host.split(":")[0];
+    }
+    return host;
+  }
+
+  private AwsSdk2Transport createAwsSdk2Transport(
+      ElasticSearchConfiguration esConfig, AwsConfiguration awsConfig, SdkHttpClient httpClient) {
+    if (esConfig == null || awsConfig == null || httpClient == null) {
+      LOG.error("Failed to create AwsSdk2Transport: esConfig, awsConfig, or httpClient is null");
+      return null;
+    }
+
+    try {
+      String host = parseHostForAwsSdk2Transport(esConfig.getHost());
+      if (host == null || host.isEmpty()) {
+        LOG.error("Failed to create AwsSdk2Transport: host is null or empty");
+        return null;
+      }
+
+      // Log warning for multi-host config
+      if (esConfig.getHost() != null && esConfig.getHost().contains(",")) {
+        LOG.warn("Multiple hosts configured, using first host for AWS IAM auth: {}", host);
+      }
+
+      Region region = Region.of(awsConfig.getRegion());
+      String serviceName =
+          StringUtils.isNotEmpty(awsConfig.getServiceName()) ? awsConfig.getServiceName() : "es";
+
+      AwsSdk2TransportOptions options =
+          AwsSdk2TransportOptions.builder()
+              .setCredentials(buildCredentialsProvider(awsConfig))
+              .setMapper(new JacksonJsonpMapper())
+              .setRequestCompressionSize(REQUEST_COMPRESSION_THRESHOLD_BYTES)
+              .setResponseCompression(true)
+              .build();
+
+      LOG.info(
+          "Creating AwsSdk2Transport for AWS OpenSearch IAM auth - host: {}, region: {}, service: {}",
+          host,
+          region,
+          serviceName);
+
+      return new AwsSdk2Transport(httpClient, host, serviceName, region, options);
+    } catch (Exception e) {
+      LOG.error("Failed to create AwsSdk2Transport for OpenSearch", e);
+      return null;
+    }
+  }
+
+  private ApacheHttpClient5Transport createApacheHttpClient5Transport(
+      ElasticSearchConfiguration esConfig) {
+    if (esConfig == null) {
+      LOG.error("Failed to create HC5 transport as esConfig is null");
+      return null;
+    }
+
+    try {
+      HttpHost[] httpHosts = buildHttpHostsForHc5(esConfig, "OpenSearch");
+
+      ApacheHttpClient5TransportBuilder builder =
+          ApacheHttpClient5TransportBuilder.builder(httpHosts);
+
+      builder.setMapper(new JacksonJsonpMapper());
+
+      builder.setHttpClientConfigCallback(
+          httpClientBuilder -> {
+            var connectionManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create();
+
+            if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+              connectionManagerBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+            }
+            if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+              connectionManagerBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+            }
+
+            SSLContext sslContext = null;
+            try {
+              sslContext = createElasticSearchSSLContext(esConfig);
+            } catch (KeyStoreException e) {
+              throw new RuntimeException(e);
+            }
+            if (sslContext != null) {
+              connectionManagerBuilder.setTlsStrategy(
+                  ClientTlsStrategyBuilder.create().setSslContext(sslContext).build());
+            }
+
+            httpClientBuilder.setConnectionManager(connectionManagerBuilder.build());
+
+            BasicCredentialsProvider credentialsProvider =
+                buildScopedCredentialsProvider(esConfig, httpHosts);
+            if (credentialsProvider != null) {
+              httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            }
+
+            if (esConfig.getKeepAliveTimeoutSecs() != null
+                && esConfig.getKeepAliveTimeoutSecs() > 0) {
+              httpClientBuilder.setKeepAliveStrategy(
+                  (response, context) -> TimeValue.ofSeconds(esConfig.getKeepAliveTimeoutSecs()));
+            }
+
+            httpClientBuilder.evictExpiredConnections();
+            httpClientBuilder.evictIdleConnections(TimeValue.ofSeconds(30));
+
+            httpClientBuilder.useSystemProperties();
+
+            // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+            // pipeline by default. opensearch-java's ApacheHttpClient5Transport also
+            // decompresses the response body itself, so leaving both enabled makes the second
+            // pass run on already-inflated bytes and throws
+            // "java.util.zip.ZipException: Not in GZIP format" out of LazyDecompressingInputStream.
+            // Disable at the transport layer and let opensearch-java own decompression.
+            httpClientBuilder.disableContentCompression();
+
+            return httpClientBuilder;
+          });
+
+      builder.setRequestConfigCallback(
+          requestConfigBuilder ->
+              requestConfigBuilder
+                  .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
+                  .setConnectionRequestTimeout(
+                      Timeout.ofSeconds(esConfig.getConnectionRequestTimeoutSecs()))
+                  .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
+
+      var defaultFactory =
+          os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Options.DEFAULT
+              .getHttpAsyncResponseConsumerFactory();
+      os.org.opensearch.client.transport.httpclient5.HttpAsyncResponseConsumerFactory safeFactory =
+          () -> new SafeResponseConsumer<>(defaultFactory.createHttpAsyncResponseConsumer());
+      var optsBuilder =
+          os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Options.DEFAULT
+              .toBuilder();
+      optsBuilder.setHttpAsyncResponseConsumerFactory(safeFactory);
+      builder.setOptions(optsBuilder.build());
+
+      builder.setCompressionEnabled(true);
+      builder.setChunkedEnabled(true);
+      return builder.build();
+    } catch (Exception e) {
+      LOG.error("Failed to create HC5 transport for OpenSearch", e);
+      return null;
+    }
+  }
+
+  @Override
+  public SearchHealthStatus getSearchHealthStatus() throws IOException {
+    return genericManager.getSearchHealthStatus();
+  }
+
+  @Override
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
+  }
+
+  @Override
+  public List<String> getDataStreams(String prefix) throws IOException {
+    return genericManager.getDataStreams(prefix);
+  }
+
+  @Override
+  public void deleteDataStream(String dataStreamName) throws IOException {
+    genericManager.deleteDataStream(dataStreamName);
+  }
+
+  @Override
+  public void deleteILMPolicy(String policyName) throws IOException {
+    genericManager.deleteILMPolicy(policyName);
+  }
+
+  @Override
+  public String indexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return genericManager.indexTemplateFingerprint(indexPattern, mappingContent);
+  }
+
+  @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+  }
+
+  @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    return genericManager.getIndexTemplateFingerprints(templateNamePattern);
+  }
+
+  @Override
+  public void deleteIndexTemplate(String templateName) throws IOException {
+    genericManager.deleteIndexTemplate(templateName);
+  }
+
+  @Override
+  public void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    genericManager.deleteComponentTemplate(componentTemplateName);
+  }
+
+  @Override
+  public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    genericManager.dettachIlmPolicyFromIndexes(indexPattern);
+  }
+
+  public ClusterStatsResponse clusterStats() throws IOException {
+    return genericManager.clusterStats();
+  }
+
+  public NodesStatsResponse nodesStats() throws IOException {
+    return genericManager.nodesStats();
+  }
+
+  public GetClusterSettingsResponse clusterSettings() throws IOException {
+    return genericManager.clusterSettings();
+  }
+
+  public double averageCpuPercentFromNodesStats(NodesStatsResponse nodesStats) {
+    return genericManager.averageCpuPercentFromNodesStats(nodesStats);
+  }
+
+  public Map<String, Object> extractJvmMemoryStats(NodesStatsResponse nodesStats) {
+    return genericManager.extractJvmMemoryStats(nodesStats);
+  }
+
+  public String extractMaxContentLengthStr(GetClusterSettingsResponse clusterSettings) {
+    return genericManager.extractMaxContentLengthStr(clusterSettings);
+  }
+
+  @Override
+  public void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateGlossaryTermByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateClassificationTagByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    entityManager.updateDataProductReferences(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+    entityManager.updateColumnsInUpstreamLineage(indexName, originalUpdatedColumnFqnMap);
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+    entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    int upstreamDepth = entityRelationshipRequest.getUpstreamDepth();
+    int downstreamDepth = entityRelationshipRequest.getDownstreamDepth();
+    SearchEntityRelationshipResult result =
+        entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .DOWNSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .DOWNSTREAM)));
+    SearchEntityRelationshipResult upstreamResult =
+        entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .UPSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .UPSTREAM)));
+
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        org.openmetadata.schema.type.entityRelationship.NodeInformation existingNode =
+            upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
+    }
+
+    // since paging from downstream is merged into upstream, we can just put the upstream result
+    result.getNodes().putAll(upstreamResult.getNodes());
+    result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
+    return result;
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    Set<String> directionValue =
+        getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+    entityRelationshipRequest.setDirectionValue(directionValue);
+
+    entityRelationshipRequest =
+        entityRelationshipRequest
+            .withUpstreamDepth(entityRelationshipRequest.getUpstreamDepth() + 1)
+            .withDownstreamDepth(entityRelationshipRequest.getDownstreamDepth() + 1);
+
+    if (entityRelationshipRequest.getDirection()
+        == org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection.DOWNSTREAM) {
+      return entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+          entityRelationshipRequest);
+    } else {
+      directionValue = getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+      entityRelationshipRequest.setDirectionValue(directionValue);
+      return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+          entityRelationshipRequest);
+    }
+  }
+
+  @Override
+  public SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException {
+    return entityManager.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  public void initializeLineageBuilders() {
+    if (newClient != null) {
+      ensureLineageBuilder();
+    } else {
+      LOG.debug("OSLineageGraphBuilder cannot be initialized because newClient is null");
+    }
+  }
+
+  // ===================== Knowledge Center page hierarchy =====================
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchy(
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchyForActivePage(
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+  }
+
+  private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
+    List<SortOptions> sortOptions = new ArrayList<>();
+    if (sortFilter != null
+        && sortFilter.getSortField() != null
+        && !Entity.FIELD_FULLY_QUALIFIED_NAME.equals(sortFilter.getSortField())) {
+      String field = sortFilter.getSortField();
+      SortOrder order =
+          SORT_ORDER_DESC.equalsIgnoreCase(sortFilter.getSortType())
+              ? SortOrder.Desc
+              : SortOrder.Asc;
+      sortOptions.add(SortOptions.of(so -> so.field(f -> f.field(field).order(order))));
+    }
+    // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
+    // from/size pagination cannot miss/duplicate hits when the primary sort field is not unique.
+    // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
+    // indices.id_field_data.enabled=true at the cluster level.
+    sortOptions.add(
+        SortOptions.of(
+            so -> so.field(f -> f.field(Entity.FIELD_FULLY_QUALIFIED_NAME).order(SortOrder.Asc))));
+    return sortOptions;
+  }
+
+  private ResultList<PageHierarchy> getPageHierarchyFromSearch(
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
+      throws IOException {
+    Query boolQuery = buildPageHierarchyBoolQuery(parentFqn, pageType);
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
+
+    os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .sort(sortOptions)
+                    .from(offset)
+                    .size(limit));
+
+    SearchResponse<JsonData> searchResponse = newClient.search(searchRequest, JsonData.class);
+    List<PageHierarchy> pageHierarchies = processPageHierarchyHits(searchResponse);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new ResultList<>(pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
+      throws IOException {
+    Query boolQuery = buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
+
+    os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .sort(sortOptions)
+                    .from(offset)
+                    .size(limit));
+
+    SearchResponse<JsonData> searchResponse = newClient.search(searchRequest, JsonData.class);
+    List<PageHierarchy> pageHierarchies = processPageHierarchyHits(searchResponse);
+    pageHierarchies = buildPageNestedSearchHierarchy(pageHierarchies);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new ResultList<>(pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private Query buildPageHierarchyBoolQuery(String parentFqn, String pageType) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+    if (CommonUtil.nullOrEmpty(parentFqn)) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("fqnDepth").value(FieldValue.of(1)))));
+    } else {
+      int parentDepth = FullyQualifiedName.split(parentFqn).length;
+      boolQueryBuilder.must(
+          Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("fqnDepth").value(FieldValue.of(parentDepth + 1)))));
+    }
+
+    if (!CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("pageType").value(FieldValue.of(pageType)))));
+    }
+
+    return Query.of(q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private Query buildPageHierarchyBoolQueryForActivePage(String activeFqn, String pageType) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+    String rootParentFqn = FullyQualifiedName.split(activeFqn)[0];
+    boolQueryBuilder.should(
+        Query.of(q -> q.term(t -> t.field("fqnDepth").value(FieldValue.of(1)))));
+    boolQueryBuilder.should(
+        Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(rootParentFqn + "."))));
+    boolQueryBuilder.minimumShouldMatch("1");
+
+    if (!CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field("pageType").value(FieldValue.of(pageType)))));
+    }
+
+    return Query.of(q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private List<PageHierarchy> processPageHierarchyHits(SearchResponse<JsonData> searchResponse)
+      throws IOException {
+    List<PageHierarchy> pageHierarchies = new ArrayList<>();
+
+    if (searchResponse != null && searchResponse.hits() != null) {
+      for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+        if (hit.source() != null) {
+          Map<String, Object> sourceMap = OsUtils.jsonDataToMap(hit.source());
+          PageHierarchy page = SearchUtils.getPageHierarchy(sourceMap);
+          pageHierarchies.add(page);
+        }
+      }
+    }
+
+    populateChildrenCounts(pageHierarchies);
+    return pageHierarchies;
+  }
+
+  /**
+   * Populate {@code childrenCount} on each page using a single aggregation round-trip
+   * instead of one search per page (N+1). Uses a filters aggregation keyed by page id,
+   * where each bucket matches descendants via the page's fullyQualifiedName prefix.
+   */
+  private void populateChildrenCounts(List<PageHierarchy> pageHierarchies) throws IOException {
+    if (pageHierarchies.isEmpty()) {
+      return;
+    }
+
+    Map<String, Query> filters = new HashMap<>();
+    for (PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null
+          || page.getFullyQualifiedName() == null
+          || page.getFullyQualifiedName().isEmpty()) {
+        continue;
+      }
+      String fqnPrefix = page.getFullyQualifiedName() + ".";
+      int childDepth = FullyQualifiedName.split(page.getFullyQualifiedName()).length + 1;
+      // Match only direct children: FQN starts with "<parentFqn>." AND fqnDepth is
+      // exactly one deeper than the parent. Descendants deeper than that are excluded.
+      filters.put(
+          page.getId().toString(),
+          Query.of(
+              q ->
+                  q.bool(
+                      b ->
+                          b.must(
+                                  Query.of(
+                                      m ->
+                                          m.prefix(
+                                              p -> p.field("fullyQualifiedName").value(fqnPrefix))))
+                              .must(
+                                  Query.of(
+                                      m ->
+                                          m.term(
+                                              t ->
+                                                  t.field("fqnDepth")
+                                                      .value(FieldValue.of(childDepth))))))));
+      page.setChildrenCount(0);
+    }
+
+    if (filters.isEmpty()) {
+      return;
+    }
+
+    os.org.opensearch.client.opensearch.core.SearchRequest aggregationRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .size(0)
+                    .aggregations(
+                        "children_by_parent",
+                        a -> a.filters(f -> f.filters(fs -> fs.keyed(filters)))));
+
+    SearchResponse<JsonData> aggregationResponse =
+        newClient.search(aggregationRequest, JsonData.class);
+
+    if (aggregationResponse == null
+        || aggregationResponse.aggregations() == null
+        || aggregationResponse.aggregations().get("children_by_parent") == null) {
+      return;
+    }
+
+    Map<String, FiltersBucket> buckets =
+        aggregationResponse.aggregations().get("children_by_parent").filters().buckets().keyed();
+
+    for (PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null) {
+        continue;
+      }
+      FiltersBucket bucket = buckets.get(page.getId().toString());
+      if (bucket != null) {
+        page.setChildrenCount((int) bucket.docCount());
+      }
+    }
+  }
+
+  private List<PageHierarchy> buildPageNestedSearchHierarchy(
+      List<PageHierarchy> pageHierarchyList) {
+    Map<UUID, PageHierarchy> pageHierarchyMap =
+        pageHierarchyList.stream()
+            // Skip hits that lost their id during parsing (SearchUtils returns a
+            // null id for malformed/missing UUID strings) so Collectors.toMap
+            // does not throw on the null key.
+            .filter(p -> p.getId() != null)
+            .collect(
+                Collectors.toMap(
+                    PageHierarchy::getId,
+                    page -> {
+                      page.setChildren(new ArrayList<>());
+                      return page;
+                    },
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new));
+
+    List<PageHierarchy> rootPages = new ArrayList<>();
+
+    for (PageHierarchy page : pageHierarchyMap.values()) {
+      UUID parentId = page.getParent() != null ? page.getParent().getId() : null;
+      PageHierarchy parentPage = parentId != null ? pageHierarchyMap.get(parentId) : null;
+      if (parentPage != null) {
+        parentPage.getChildren().add(page);
+      } else {
+        rootPages.add(page);
+      }
+    }
+
+    return rootPages;
+  }
+}

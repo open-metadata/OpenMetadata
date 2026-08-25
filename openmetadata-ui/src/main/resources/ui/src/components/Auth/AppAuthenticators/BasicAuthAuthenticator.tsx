@@ -1,0 +1,100 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { AuthProvider } from '../../../generated/settings/settings';
+import {
+  AccessTokenResponse,
+  getAccessTokenOnExpiry,
+} from '../../../rest/auth-API';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import {
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/SwTokenStorageUtils';
+import Loader from '../../common/Loader/Loader';
+import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
+
+interface BasicAuthenticatorInterface {
+  children: ReactNode;
+}
+
+const BasicAuthenticator = forwardRef(
+  ({ children }: BasicAuthenticatorInterface, ref) => {
+    const { handleLogout } = useBasicAuth();
+    const { t } = useTranslation();
+    const { authConfig, isApplicationLoading } = useApplicationStore();
+
+    const handleSilentSignIn =
+      useCallback(async (): Promise<AccessTokenResponse> => {
+        if (
+          authConfig?.provider !== AuthProvider.Basic &&
+          authConfig?.provider !== AuthProvider.LDAP
+        ) {
+          return Promise.reject(
+            new Error(t('message.authProvider-is-not-basic'))
+          );
+        }
+
+        const response = await getAccessTokenOnExpiry();
+
+        await setOidcToken(response.accessToken);
+
+        return Promise.resolve(response);
+      }, [authConfig, setOidcToken, setRefreshToken, t]);
+
+    useImperativeHandle(ref, () => ({
+      invokeLogout: handleLogout,
+      renewIdToken: handleSilentSignIn,
+    }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect. The previous AuthProvider-side registration used a
+    // ref-deps `useEffect(..., [authenticatorRef.current?.renewIdToken])`
+    // which never re-ran when the lazy authenticator finished loading
+    // (ref changes don't schedule re-renders), so on cold-load the first
+    // 401 raced ahead of the registration and TokenService.refreshToken()
+    // returned null without ever firing the `/api/v1/auth/refresh` HTTP
+    // call — the interceptor then force-logged the user out.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(handleSilentSignIn);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [handleSilentSignIn]);
+
+    /**
+     * isApplicationLoading is true when the application is loading in AuthProvider
+     * and is false when the application is loaded.
+     * If the application is loading, show the loader.
+     * If the user is authenticated, show the AppContainer.
+     * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+     * */
+    if (isApplicationLoading) {
+      return <Loader fullScreen />;
+    }
+
+    return <Fragment>{children}</Fragment>;
+  }
+);
+
+export default BasicAuthenticator;
