@@ -666,17 +666,38 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
         metrics, relationshipDAO -> assignHierarchyGroup(relationshipDAO, metrics, group));
   }
 
+  MembershipChange assignHierarchyGroupInCurrentTransaction(
+      UUID rootMetricId, EntityReference group) {
+    List<EntityReference> metrics = expandSubtree(rootMetricId);
+    return assignHierarchyGroupWithLock(
+        daoCollection.metricDAO(), daoCollection.relationshipDAO(), metrics, group);
+  }
+
+  static MembershipChange assignHierarchyGroupWithLock(
+      CollectionDAO.MetricDAO metricDAO,
+      CollectionDAO.EntityRelationshipDAO relationshipDAO,
+      List<EntityReference> metrics,
+      EntityReference group) {
+    lockMembershipRows(metricDAO, metrics);
+    return assignHierarchyGroup(relationshipDAO, metrics, group);
+  }
+
   private MembershipChange inLockedMembershipTransaction(
       List<EntityReference> metrics,
       java.util.function.Function<CollectionDAO.EntityRelationshipDAO, MembershipChange> update) {
-    List<String> metricIds =
-        metrics.stream().map(EntityReference::getId).map(UUID::toString).sorted().toList();
     return Entity.getJdbi()
         .inTransaction(
             handle -> {
-              handle.attach(CollectionDAO.MetricDAO.class).lockForGroupAssignment(metricIds);
+              lockMembershipRows(handle.attach(CollectionDAO.MetricDAO.class), metrics);
               return update.apply(handle.attach(CollectionDAO.EntityRelationshipDAO.class));
             });
+  }
+
+  private static void lockMembershipRows(
+      CollectionDAO.MetricDAO metricDAO, List<EntityReference> metrics) {
+    List<String> metricIds =
+        metrics.stream().map(EntityReference::getId).map(UUID::toString).sorted().toList();
+    metricDAO.lockForGroupAssignment(metricIds);
   }
 
   void publishMembershipChange(MembershipChange change) {

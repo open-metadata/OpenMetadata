@@ -174,7 +174,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
             .anyMatch(
                 permission ->
                     MetadataOperation.VIEW_BASIC.equals(permission.getOperation())
-                        && Permission.Access.ALLOW.equals(permission.getAccess()));
+                        && Permission.Access.ALLOW.equals(permission.getAccess())
+                        && permission.getRule() == null);
   }
 
   @GET

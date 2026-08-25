@@ -73,7 +73,7 @@ final class MergedMetricMigrationTestSupport {
       Handle handle, MergedMetricMigrationFixture fixture, ConnectionType connectionType) {
     createResolutionStatusTable(handle, fixture, connectionType);
     handle.execute("CREATE TABLE " + fixture.testCaseTable() + " (id VARCHAR(36) NOT NULL)");
-    createRelationshipTable(handle, fixture);
+    createRelationshipTable(handle, fixture, connectionType);
     createMetricTable(handle, fixture, connectionType);
   }
 
@@ -97,13 +97,17 @@ final class MergedMetricMigrationTestSupport {
             + ")");
   }
 
-  private static void createRelationshipTable(Handle handle, MergedMetricMigrationFixture fixture) {
+  private static void createRelationshipTable(
+      Handle handle, MergedMetricMigrationFixture fixture, ConnectionType connectionType) {
+    String jsonType = connectionType == ConnectionType.MYSQL ? "JSON" : "JSONB";
     handle.execute(
         "CREATE TABLE "
             + fixture.relationshipTable()
             + " (fromId VARCHAR(36) NOT NULL, toId VARCHAR(36) NOT NULL, "
             + "fromEntity VARCHAR(256) NOT NULL, toEntity VARCHAR(256) NOT NULL, "
-            + "relation SMALLINT NOT NULL, relationType VARCHAR(64) NOT NULL DEFAULT '', "
+            + "relation SMALLINT NOT NULL, relationType VARCHAR(64) NOT NULL DEFAULT '', json "
+            + jsonType
+            + ", "
             + "PRIMARY KEY (fromId, toId, relation, relationType))");
   }
 

@@ -49,6 +49,7 @@ import org.openmetadata.schema.api.data.MetricHierarchyContext;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -295,6 +296,17 @@ class MetricResourceTest {
       verify(fixture.repository(), never())
           .listHierarchy(eq(25), eq(50), eq("margin"), any(), any());
     }
+  }
+
+  @Test
+  void hierarchyListFiltersPolicyDerivedAllowsBecauseConditionalRulesMayStillApply() {
+    ResourcePermission policyPermission = viewPermission(Entity.METRIC, Permission.Access.ALLOW);
+    policyPermission.getPermissions().getFirst().withRule(new Rule().withName("catalog-view"));
+
+    assertFalse(MetricResource.hasUnconditionalView(policyPermission));
+    assertTrue(
+        MetricResource.hasUnconditionalView(
+            viewPermission(Entity.METRIC, Permission.Access.ALLOW)));
   }
 
   @Test

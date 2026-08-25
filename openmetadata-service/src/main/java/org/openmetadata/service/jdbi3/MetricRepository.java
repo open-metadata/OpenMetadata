@@ -887,7 +887,8 @@ public class MetricRepository extends EntityRepository<Metric> {
         MetricGroupRepository groupRepository =
             (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
         MetricGroupRepository.MembershipChange change =
-            groupRepository.assignHierarchyGroup(updated.getId(), updated.getMetricGroup());
+            groupRepository.assignHierarchyGroupInCurrentTransaction(
+                updated.getId(), updated.getMetricGroup());
         deferReactOperation(() -> groupRepository.publishMembershipChange(change));
         recordChange(
             FIELD_METRIC_GROUP,

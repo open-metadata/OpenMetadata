@@ -248,6 +248,50 @@ class MetricGroupRepositoryTest {
   }
 
   @Test
+  void currentTransactionAssignmentLocksTheSubtreeInStableOrderBeforeMutation() {
+    CollectionDAO.MetricDAO metricDAO = mock(CollectionDAO.MetricDAO.class);
+    EntityReference root =
+        metric("root")
+            .withId(UUID.fromString("00000000-0000-0000-0000-000000000002"))
+            .getEntityReference();
+    EntityReference child =
+        metric("child")
+            .withId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
+            .getEntityReference();
+    EntityReference targetGroup = group("target").getEntityReference();
+    when(relationshipDAO.findFrom(
+            root.getId(), Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of());
+    when(relationshipDAO.findFrom(
+            child.getId(), Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of());
+
+    MetricGroupRepository.MembershipChange change =
+        MetricGroupRepository.assignHierarchyGroupWithLock(
+            metricDAO, relationshipDAO, List.of(root, child), targetGroup);
+
+    InOrder mutationOrder = inOrder(metricDAO, relationshipDAO);
+    mutationOrder
+        .verify(metricDAO)
+        .lockForGroupAssignment(
+            List.of(
+                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"));
+    mutationOrder
+        .verify(relationshipDAO)
+        .findFrom(root.getId(), Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP);
+    mutationOrder
+        .verify(relationshipDAO)
+        .insert(
+            targetGroup.getId(),
+            root.getId(),
+            Entity.METRIC_GROUP,
+            Entity.METRIC,
+            Relationship.HAS.ordinal());
+    assertEquals(List.of(root, child), change.metrics());
+    assertEquals(Set.of(targetGroup), change.groups());
+  }
+
+  @Test
   void repeatedPreparationAcceptsAnAlreadyExpandedRootSubtree() {
     EntityReference root = metric("root").getEntityReference();
     EntityReference child = metric("child").getEntityReference();

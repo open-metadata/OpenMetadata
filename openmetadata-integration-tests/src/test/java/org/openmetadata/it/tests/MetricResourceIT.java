@@ -863,8 +863,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         metric.getReviewers() == null || metric.getReviewers().isEmpty(),
         "Metric should have no reviewers initially");
 
-    metric.setReviewers(List.of(shared.USER1_REF));
-    Metric updatedMetric = patchEntity(metric.getId().toString(), metric);
+    Metric updatedMetric = patchMetricReviewers(metric.getId(), List.of(shared.USER1_REF));
 
     assertNotNull(updatedMetric.getReviewers(), "Metric should have reviewers after update");
     assertEquals(1, updatedMetric.getReviewers().size(), "Metric should have one reviewer");
@@ -882,8 +881,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         retrievedMetric.getReviewers().get(0).getId(),
         "Retrieved reviewer should match USER1");
 
-    updatedMetric.setReviewers(List.of(shared.USER2_REF));
-    updatedMetric = patchEntity(updatedMetric.getId().toString(), updatedMetric);
+    updatedMetric = patchMetricReviewers(updatedMetric.getId(), List.of(shared.USER2_REF));
 
     assertEquals(1, updatedMetric.getReviewers().size(), "Metric should still have one reviewer");
     assertEquals(
@@ -891,8 +889,8 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         updatedMetric.getReviewers().get(0).getId(),
         "Reviewer should now be USER2");
 
-    updatedMetric.setReviewers(List.of(shared.USER2_REF, shared.USER1_REF));
-    updatedMetric = patchEntity(updatedMetric.getId().toString(), updatedMetric);
+    updatedMetric =
+        patchMetricReviewers(updatedMetric.getId(), List.of(shared.USER2_REF, shared.USER1_REF));
 
     assertEquals(2, updatedMetric.getReviewers().size(), "Metric should have two reviewers");
     assertTrue(
@@ -903,6 +901,18 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         updatedMetric.getReviewers().stream()
             .anyMatch(r -> r.getId().equals(shared.USER2_REF.getId())),
         "Should contain USER2 as reviewer");
+  }
+
+  private Metric patchMetricReviewers(UUID metricId, List<EntityReference> reviewers) {
+    JsonNode patch =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/reviewers")
+                    .set("value", JSON.valueToTree(reviewers)));
+    SdkClients.adminClient().metrics().patch(metricId, patch);
+    return getEntityWithFields(metricId.toString(), "reviewers");
   }
 
   @Test
