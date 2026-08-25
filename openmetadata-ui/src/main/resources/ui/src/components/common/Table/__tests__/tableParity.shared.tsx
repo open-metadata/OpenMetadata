@@ -537,6 +537,20 @@ export const runTableParitySuite = (
     });
   });
 
+  describe(`${suiteName} — sticky header`, () => {
+    // A header stuck by default sat above whatever the page drew over the
+    // table afterwards — the notification-templates drawer opened underneath
+    // its own list header.
+    const stuck = () =>
+      Boolean(document.querySelector('thead')?.className.match(/sticky/));
+
+    it('does not stick the header unless asked', () => {
+      renderTable();
+
+      expect(stuck()).toBe(false);
+    });
+  });
+
   describe(`${suiteName} — container`, () => {
     it('applies containerClassName to the outer container', () => {
       const { container } = renderTable({ containerClassName: 'outer-marker' });

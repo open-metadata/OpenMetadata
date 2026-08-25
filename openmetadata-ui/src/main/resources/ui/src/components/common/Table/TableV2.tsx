@@ -1039,8 +1039,12 @@ const TableV2 = <T extends object>(
         {(() => {
           const tableContent = (
             <UntitledTable
-              stickyHeader
               aria-label="data-table"
+              // AntD sticks the header only when the call site asks for it —
+              // via `sticky`, or `scroll.y`, which gives the body its own
+              // scroll container. Sticking it unconditionally put a
+              // `z-index: 10` header above anything the page later drew over
+              // the table, drawers and modals included.
               className={classNames(rest.className, {
                 'tw:table-fixed': rest.resizableColumns,
               })}
@@ -1071,6 +1075,7 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
+              stickyHeader={Boolean(rest.sticky) || Boolean(scroll?.y)}
               onRowAction={
                 rest.onRowAction
                   ? (key) =>

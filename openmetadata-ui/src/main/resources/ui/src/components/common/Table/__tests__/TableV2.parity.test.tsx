@@ -168,3 +168,35 @@ describe('TableV2 — disabled rows on a later page', () => {
     expect(disabled).toEqual([false, true, false]);
   });
 });
+
+/**
+ * TableV2-only: legacy AntD fixes its header by rendering a separate header
+ * table rather than by sticking it, so there is no shared class to assert.
+ */
+describe('TableV2 — sticky header opt-in', () => {
+  const renderWith = (props: Record<string, unknown>) =>
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+        {...props}
+      />
+    );
+
+  const stuck = () =>
+    Boolean(document.querySelector('thead')?.className.match(/sticky/));
+
+  it('sticks when scroll.y gives the body its own scroller', () => {
+    renderWith({ scroll: { y: 200 } });
+
+    expect(stuck()).toBe(true);
+  });
+
+  it('sticks when the call site asks with `sticky`', () => {
+    renderWith({ sticky: true });
+
+    expect(stuck()).toBe(true);
+  });
+});
