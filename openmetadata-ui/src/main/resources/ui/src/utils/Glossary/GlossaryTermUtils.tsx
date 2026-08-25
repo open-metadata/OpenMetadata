@@ -121,6 +121,7 @@ export const getGlossaryTermDetailPageTabs = (
     refreshActiveGlossaryTerm,
     setAssetModalVisible,
     setPreviewAsset,
+    childrenRefreshTrigger,
   } = props;
 
   // Draft / In Review terms can still reach Approved, so use the actionable
@@ -165,6 +166,7 @@ export const getGlossaryTermDetailPageTabs = (
                     fqn={glossaryTerm.fullyQualifiedName}
                     initialCount={glossaryTerm.childrenCount}
                     isActive={activeTab === EntityTabs.GLOSSARY_TERMS}
+                    refreshTrigger={childrenRefreshTrigger}
                   />
                 </span>
               </div>

@@ -86,6 +86,7 @@ const GlossaryDetails = ({
   isVersionView,
   toggleTabExpanded,
   isTabExpanded,
+  termsRefreshTrigger,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -163,7 +164,7 @@ const GlossaryDetails = ({
     return () => {
       isMounted = false;
     };
-  }, [glossary.fullyQualifiedName]);
+  }, [glossary.fullyQualifiedName, termsRefreshTrigger]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

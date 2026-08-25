@@ -19,6 +19,9 @@ interface GlossaryTermChildrenCountBadgeProps {
   fqn?: string;
   initialCount?: number;
   isActive?: boolean;
+  // Bump this (e.g. a counter) to force a re-fetch after a mutation the badge
+  // wouldn't otherwise notice, such as a term just added via the Add Term modal.
+  refreshTrigger?: number;
 }
 
 // Fetches the direct-children count with the same entityStatus filter the Terms table
@@ -28,6 +31,7 @@ const GlossaryTermChildrenCountBadge = ({
   fqn,
   initialCount,
   isActive,
+  refreshTrigger,
 }: GlossaryTermChildrenCountBadgeProps) => {
   const [childrenCount, setChildrenCount] = useState(initialCount ?? 0);
 
@@ -61,7 +65,7 @@ const GlossaryTermChildrenCountBadge = ({
     return () => {
       isMounted = false;
     };
-  }, [fqn]);
+  }, [fqn, refreshTrigger]);
 
   return <>{getCountBadge(childrenCount, '', isActive)}</>;
 };

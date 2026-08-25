@@ -97,6 +97,15 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
+  // Bumped on a successful term add so the (otherwise fetch-on-mount-only) Terms
+  // tab count badge re-fetches immediately instead of waiting for a page reload.
+  // Kept as two independent counters — only one of the two views is ever mounted
+  // at a time, but each badge should only ever react to its own trigger.
+  const [glossaryTermsRefreshTrigger, setGlossaryTermsRefreshTrigger] =
+    useState(0);
+  const [childrenCountRefreshTrigger, setChildrenCountRefreshTrigger] =
+    useState(0);
+
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -270,9 +279,14 @@ const GlossaryV1 = ({
       // Close modal and set loading to false
       setIsEditModalOpen(false);
       setTermsLoading(false);
-      // Refresh glossary list to update term count
-      if (isGlossaryActive && refreshGlossaryList) {
-        refreshGlossaryList();
+      if (isGlossaryActive) {
+        // Refresh glossary list to update term count
+        if (refreshGlossaryList) {
+          refreshGlossaryList();
+        }
+        setGlossaryTermsRefreshTrigger((prev) => prev + 1);
+      } else {
+        setChildrenCountRefreshTrigger((prev) => prev + 1);
       }
     },
     [isGlossaryActive, tab, selectedData, refreshGlossaryList]
@@ -433,6 +447,7 @@ const GlossaryV1 = ({
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
         permissions={glossaryPermission}
+        termsRefreshTrigger={glossaryTermsRefreshTrigger}
         toggleTabExpanded={toggleTabExpanded}
         updateGlossary={handleGlossaryUpdate}
         updateVote={updateVote}
@@ -441,6 +456,7 @@ const GlossaryV1 = ({
   }, [
     glossaryPermission.ViewAll,
     glossaryPermission.ViewBasic,
+    glossaryTermsRefreshTrigger,
     isTabExpanded,
     isVersionsView,
     onGlossaryDelete,
@@ -470,6 +486,7 @@ const GlossaryV1 = ({
             glossaryContent
           ) : (
             <GlossaryTermsV1
+              childrenRefreshTrigger={childrenCountRefreshTrigger}
               glossaryTerm={selectedData as GlossaryTerm}
               handleGlossaryTermDelete={onGlossaryTermDelete}
               handleGlossaryTermUpdate={onGlossaryTermUpdate}

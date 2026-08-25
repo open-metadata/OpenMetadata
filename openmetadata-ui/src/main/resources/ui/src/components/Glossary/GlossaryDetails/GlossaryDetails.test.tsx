@@ -163,5 +163,45 @@ describe('Test Glossary-details component', () => {
         await within(termsTab).findByTestId('filter-count')
       ).toHaveTextContent('4');
     });
+
+    it('re-fetches when termsRefreshTrigger changes, e.g. after a term is added', async () => {
+      useGlossaryStore.setState({
+        activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
+      } as never);
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 4 },
+      });
+
+      let renderResult: ReturnType<typeof render>;
+      await act(async () => {
+        renderResult = render(
+          <GlossaryDetails {...mockProps} termsRefreshTrigger={0} />
+        );
+      });
+
+      const termsTab = await screen.findByTestId('terms');
+
+      expect(
+        await within(termsTab).findByTestId('filter-count')
+      ).toHaveTextContent('4');
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 5 },
+      });
+
+      await act(async () => {
+        renderResult.rerender(
+          <GlossaryDetails {...mockProps} termsRefreshTrigger={1} />
+        );
+      });
+
+      expect(
+        await within(termsTab).findByTestId('filter-count')
+      ).toHaveTextContent('5');
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
+    });
   });
 });

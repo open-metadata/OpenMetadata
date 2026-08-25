@@ -109,4 +109,73 @@ describe('GlossaryTermChildrenCountBadge', () => {
     expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
     expect(screen.getByTestId('filter-count')).toHaveTextContent('3');
   });
+
+  it('re-fetches when refreshTrigger changes, e.g. after a term is added', async () => {
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 2 },
+    });
+
+    let renderResult: ReturnType<typeof render>;
+    await act(async () => {
+      renderResult = render(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+          refreshTrigger={0}
+        />
+      );
+    });
+
+    expect(await screen.findByTestId('filter-count')).toHaveTextContent('2');
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      renderResult.rerender(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+          refreshTrigger={1}
+        />
+      );
+    });
+
+    expect(await screen.findByTestId('filter-count')).toHaveTextContent('3');
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not re-fetch when re-rendered with the same refreshTrigger', async () => {
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 2 },
+    });
+
+    let renderResult: ReturnType<typeof render>;
+    await act(async () => {
+      renderResult = render(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+          refreshTrigger={0}
+        />
+      );
+    });
+
+    await act(async () => {
+      renderResult.rerender(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+          refreshTrigger={0}
+        />
+      );
+    });
+
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+  });
 });
