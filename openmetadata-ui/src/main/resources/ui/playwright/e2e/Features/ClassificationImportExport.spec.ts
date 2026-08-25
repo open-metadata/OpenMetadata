@@ -14,13 +14,8 @@ import { expect, test } from '@playwright/test';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
-import {
-  createNewPage,
-  redirectToHomePage,
-} from '../../utils/common';
-import {
-  suppressCsvJobsTray,
-} from '../../utils/importUtils';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { suppressCsvJobsTray } from '../../utils/importUtils';
 import { performUserLogin } from '../../utils/user';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
