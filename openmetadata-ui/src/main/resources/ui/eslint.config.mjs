@@ -352,7 +352,11 @@ export default [
       'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
       'react/no-unstable-nested-components': 'warn', // 25 across 23 files
       'react/no-danger': 'warn', // 0 in sample
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
+      // removed / narrowed where safe, documented disables where the value is
+      // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
+      // (that would change throw-on-null to silent undefined). Promoted to error.
+      '@typescript-eslint/no-non-null-assertion': 'error',
 
       // Import architecture and request fan-out. These are warnings while the
       // measured legacy backlog is worked down; they are reporting-only and do
