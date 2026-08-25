@@ -73,17 +73,26 @@ const sharedPlugins = [
   {
     name: 'removeAttrs',
     params: {
-      attrs: ['xmlns', 'width', 'height',
-              'stroke-linecap', 'stroke-linejoin', 'data-name', 'style'],
+      attrs: ['xmlns', 'width', 'height', 'data-name', 'style'],
     },
   },
 ];
+
+/** Regular icons only: svgProps re-injects stroke-linecap/stroke-linejoin
+ *  uniformly at the root for outline-style icons, so per-element values are
+ *  redundant and safe to drop. Custom icons keep their authored
+ *  linecap/linejoin values — svgProps never re-injects them. */
+const removeLinecapLinejoin = {
+  name: 'removeAttrs',
+  params: { attrs: ['stroke-linecap', 'stroke-linejoin'] },
+};
 
 /** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
 const svgoRegularConfig = {
   multipass: true,
   plugins: [
     ...sharedPlugins,
+    removeLinecapLinejoin,
     // Replace hardcoded hex colors so icons are fully themeable via the color prop.
     // fill="none", fill="white", and fill="url(...)" are preserved as-is.
     {
@@ -126,24 +135,37 @@ const svgoCustomConfig = (iconBaseName) => ({
   ],
 });
 
-/** Single SVGR config used for all icons. */
-const svgrConfig = {
-  plugins: ['@svgr/plugin-jsx'],
-  typescript: true,
-  expandProps: 'end',
-  svgo: false,
-  prettier: false,
-  template: componentTemplate,
-  svgProps: {
-    width: '{size}',
-    height: '{size}',
-    stroke: '{color}',
-    fill: 'none',
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    'aria-hidden': 'true',
-  },
-};
+/** SVGR config, parameterized by pipeline.
+ *  Regular icons: outline-style — forced to a single themeable stroke via the
+ *  color prop, with fill/linecap/linejoin normalized.
+ *  Custom icons: full-color/gradient/brand art — only size control is
+ *  injected; stroke/fill/linecap/linejoin are left exactly as authored
+ *  (post-SVGO) so hardcoded brand colors survive. */
+function buildSvgrConfig(isCustom) {
+  return {
+    plugins: ['@svgr/plugin-jsx'],
+    typescript: true,
+    expandProps: 'end',
+    svgo: false,
+    prettier: false,
+    template: componentTemplate,
+    svgProps: isCustom
+      ? {
+          width: '{size}',
+          height: '{size}',
+          'aria-hidden': 'true',
+        }
+      : {
+          width: '{size}',
+          height: '{size}',
+          stroke: '{color}',
+          fill: 'none',
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': 'true',
+        },
+  };
+}
 
 async function processFolder(dir, isCustom, generatedNames) {
   if (!existsSync(dir)) return;
@@ -164,6 +186,7 @@ async function processFolder(dir, isCustom, generatedNames) {
       path: inputPath,
     });
 
+    const svgrConfig = buildSvgrConfig(isCustom);
     const tsx = await transform(optimizedSvg, svgrConfig, { componentName });
 
     writeFileSync(outputPath, tsx, 'utf8');
