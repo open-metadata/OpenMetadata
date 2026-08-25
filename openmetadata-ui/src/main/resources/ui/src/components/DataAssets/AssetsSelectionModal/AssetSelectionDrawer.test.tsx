@@ -50,7 +50,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => (
         <div data-testid={testId}>
           {children}
-          <button data-testid="drawer-close-icon" onClick={onClose} />
+          <button
+            aria-label="drawer-close-icon"
+            data-testid="drawer-close-icon"
+            onClick={onClose}
+          />
         </div>
       ),
       Content: ({ children }: { children: React.ReactNode }) => (

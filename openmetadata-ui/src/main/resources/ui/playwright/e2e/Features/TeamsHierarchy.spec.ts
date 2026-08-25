@@ -19,6 +19,7 @@ import {
   addTeamHierarchy,
   getNewTeamDetails,
   searchTeam,
+  visitTeamsPage,
 } from '../../utils/team';
 
 // use the admin user to login
@@ -45,17 +46,7 @@ test.describe(
 
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
-
-      const getOrganizationResponse = page.waitForResponse(
-        '/api/v1/teams/name/*'
-      );
-      const permissionResponse = page.waitForResponse(
-        '/api/v1/permissions/team/name/*'
-      );
-
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-      await permissionResponse;
-      await getOrganizationResponse;
+      await visitTeamsPage(page);
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
@@ -110,8 +101,6 @@ test.describe(
     });
 
     test('Delete Parent Team', async ({ page }) => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-
       await page.getByRole('link', { name: businessTeamName }).click();
 
       await page.click('[data-testid="manage-button"]');
