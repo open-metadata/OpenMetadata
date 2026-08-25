@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
@@ -46,7 +47,7 @@ public class SearchMetadataTool implements McpTool {
   private static final int MAX_BULK_ITEMS = 60;
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
-  private static final String NEVER_RUN_STATUS = "NeverRun";
+  private static final String NEVER_RUN_KEY = "neverRun";
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -235,6 +236,13 @@ public class SearchMetadataTool implements McpTool {
       LOG.debug("Applied query filter to query: {}", queryFilter);
     }
 
+    // Without a caller-supplied queryFilter there is no query to fold the exclusion into, so build
+    // one that carries nothing but the exclusion. The standard search path ANDs a queryFilter with
+    // the text query (OpenSearchSearchManager.applyQueryFilter), so this reaches the engine and the
+    // page backfills. Post-filtering here instead is what produced an empty page reading as "no
+    // such assets exist" - see dropExcludedTypes, which stays only as a backstop.
+    String exclusionFilter = queryFilter == null ? excludeOnlyFilter(excludedTypes) : null;
+
     LOG.info(
         "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
         queryFilter,
@@ -260,6 +268,7 @@ public class SearchMetadataTool implements McpTool {
           new SearchRequest()
               .withQuery(query)
               .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+              .withQueryFilter(exclusionFilter)
               .withSize(size)
               .withFrom(from)
               .withFetchSource(true)
@@ -555,11 +564,19 @@ public class SearchMetadataTool implements McpTool {
    * genuine — but absence alone is ambiguous, and two callers independently spent extra calls
    * fetching a test suite summary purely to learn that "no status" meant "never ran". Naming the
    * state answers it in the hit itself.
+   *
+   * <p>It is reported as a separate {@code neverRun} flag rather than as a {@code testCaseStatus}
+   * value, because {@code testCaseStatus} is a closed schema enum — {@code Success}, {@code Failed},
+   * {@code Aborted}, {@code Queued} ({@code openmetadata-spec} {@code tests/basic.json}) — with a
+   * generated {@code TestCaseStatus} parser behind it. Writing {@code "NeverRun"} into it, as this
+   * previously did, invents a value that exists nowhere in OpenMetadata and throws in any client
+   * that parses the field into its enum. The absence of a status is left exactly as the index has
+   * it, and the inference is published beside it where it can be ignored.
    */
   private static void markNeverRunTestCase(Map<String, Object> result) {
     boolean isTestCase = TEST_CASE_ENTITY.equals(result.get("entityType"));
     if (isTestCase && result.get("testCaseStatus") == null) {
-      result.put("testCaseStatus", NEVER_RUN_STATUS);
+      result.put(NEVER_RUN_KEY, Boolean.TRUE);
     }
   }
 
@@ -615,13 +632,32 @@ public class SearchMetadataTool implements McpTool {
    * certified assets returned 244 hits whose first 30 were all columns inheriting their parent's
    * badge, costing the caller a whole call to re-issue with a hand-written {@code must_not}.
    */
+  /**
+   * A queryFilter whose only job is to exclude entity types, for the path where the caller supplied
+   * no filter of their own. Null when there is nothing to exclude, so the request is unchanged.
+   */
+  @VisibleForTesting
+  static String excludeOnlyFilter(Set<String> excluded) {
+    String filter = null;
+    if (!excluded.isEmpty()) {
+      ObjectNode wrapper = JsonUtils.getObjectMapper().createObjectNode();
+      wrapper.set("query", excludeTypesFrom(null, excluded));
+      filter = JsonUtils.pojoToJson(wrapper);
+    }
+    return filter;
+  }
+
   private static JsonNode excludeTypesFrom(JsonNode query, Set<String> excluded) {
     JsonNode result = query;
-    if (!excluded.isEmpty() && query != null) {
+    if (!excluded.isEmpty()) {
       ObjectNode bool = JsonUtils.getObjectMapper().createObjectNode();
       ObjectNode inner = bool.putObject("bool");
-      inner.set("must", query);
-      var mustNot = inner.putArray("must_not");
+      // A null query means there is nothing to exclude *from* - the caller supplied no filter - so
+      // the bool carries must_not alone and matches everything else.
+      if (query != null) {
+        inner.set("must", query);
+      }
+      ArrayNode mustNot = inner.putArray("must_not");
       for (String type : excluded) {
         mustNot.addObject().putObject("term").put("entityType", type);
       }

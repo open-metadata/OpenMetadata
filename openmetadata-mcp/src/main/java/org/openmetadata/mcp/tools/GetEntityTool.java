@@ -76,7 +76,12 @@ public class GetEntityTool implements McpTool {
   private static final String INCLUDE_QUALITY = "quality";
   private static final String TEST_SUITE_KEY = "testSuite";
   private static final String CERTIFICATION_KEY = "certification";
-  private static final int NEIGHBOUR_DEPTH = 1;
+
+  /**
+   * Two hops, not one: the second hop is what tells a caller whether a lone neighbour is the whole
+   * story or the start of a chain, and reading it costs one call instead of one per neighbour.
+   */
+  private static final int REACH_DEPTH = 2;
 
   private static final String COLUMN_OFFSET_PARAM = "columnOffset";
   private static final String COLUMN_LIMIT_PARAM = "columnLimit";
@@ -287,24 +292,79 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Immediate upstream and downstream neighbours as FQNs. Depth 1 answers "what feeds this and what
-   * breaks if it changes" — the question that follows an entity read — without turning this into a
-   * graph traversal. {@code get_entity_lineage} remains the tool for depth and edge detail.
+   * Immediate upstream and downstream neighbours as FQNs, plus whether the graph continues past
+   * them. {@code get_entity_lineage} remains the tool for depth and edge detail.
+   *
+   * <p>Reads to {@link #REACH_DEPTH} rather than one hop, and decides "is there more" from where the
+   * edges attach to the root instead of probing each neighbour. The probe it replaces looked each
+   * neighbour up under the <em>root's</em> entity type, so the first neighbour of a different type -
+   * a table feeding a dashboard, the ordinary shape - threw {@code EntityNotFoundException}, {@link
+   * #section} swallowed it, and the whole lineage block degraded to {@code unavailable} while the
+   * correct neighbour lists sat in hand. It also cost one repository call per neighbour; this costs
+   * one for the entity.
    */
   private static Map<String, Object> neighbours(String entityType, String fqn) {
     EntityLineage lineage =
-        Entity.getLineageRepository().getByName(entityType, fqn, NEIGHBOUR_DEPTH, NEIGHBOUR_DEPTH);
-    List<String> upstream = endpointsOf(lineage, true);
-    List<String> downstream = endpointsOf(lineage, false);
+        Entity.getLineageRepository().getByName(entityType, fqn, REACH_DEPTH, REACH_DEPTH);
+    UUID root = rootId(lineage, fqn);
+    Map<UUID, EntityReference> index = indexNodes(lineage);
     Map<String, Object> summary = new LinkedHashMap<>();
-    summary.put("upstream", upstream);
-    summary.put("downstream", downstream);
-    boolean moreUpstream = extendsBeyond(entityType, upstream, true);
-    boolean moreDownstream = extendsBeyond(entityType, downstream, false);
-    summary.put("hasMoreUpstream", moreUpstream);
-    summary.put("hasMoreDownstream", moreDownstream);
-    summary.put("note", reachNote(moreUpstream || moreDownstream));
+    addDirection(summary, root, index, lineage.getUpstreamEdges(), true);
+    addDirection(summary, root, index, lineage.getDownstreamEdges(), false);
+    summary.put("note", reachNote(continuesAnywhere(summary)));
     return summary;
+  }
+
+  /**
+   * Fills one direction: the neighbours whose edge touches the root, and whether any edge in that
+   * direction does not - which is exactly "there is a second hop".
+   */
+  @VisibleForTesting
+  static void addDirection(
+      Map<String, Object> summary,
+      UUID root,
+      Map<UUID, EntityReference> index,
+      List<Edge> edges,
+      boolean upstream) {
+    List<String> immediate = new ArrayList<>();
+    boolean continues = false;
+    for (Edge edge : nullOrEmpty(edges) ? List.<Edge>of() : edges) {
+      UUID near = upstream ? edge.getToEntity() : edge.getFromEntity();
+      UUID far = upstream ? edge.getFromEntity() : edge.getToEntity();
+      if (root.equals(near)) {
+        addEndpoint(immediate, index, far);
+      } else {
+        continues = true;
+      }
+    }
+    summary.put(upstream ? "upstream" : "downstream", immediate);
+    summary.put(upstream ? "hasMoreUpstream" : "hasMoreDownstream", continues);
+  }
+
+  private static boolean continuesAnywhere(Map<String, Object> summary) {
+    return Boolean.TRUE.equals(summary.get("hasMoreUpstream"))
+        || Boolean.TRUE.equals(summary.get("hasMoreDownstream"));
+  }
+
+  /**
+   * The analysed entity's id, which every reach decision is measured against. Failing here is
+   * deliberate: without it the direction flags would be guesses, and {@link #section} turns the
+   * failure into a note on the lineage block rather than a lost entity read.
+   */
+  private static UUID rootId(EntityLineage lineage, String fqn) {
+    EntityReference entity = lineage.getEntity();
+    if (entity == null || entity.getId() == null) {
+      throw new IllegalStateException("Lineage for '" + fqn + "' carries no root entity");
+    }
+    return entity.getId();
+  }
+
+  private static Map<UUID, EntityReference> indexNodes(EntityLineage lineage) {
+    Map<UUID, EntityReference> index = new HashMap<>();
+    if (!nullOrEmpty(lineage.getNodes())) {
+      lineage.getNodes().forEach(node -> index.put(node.getId(), node));
+    }
+    return index;
   }
 
   /**
@@ -321,36 +381,6 @@ public class GetEntityTool implements McpTool {
             + " for the full depth."
         : "Immediate neighbours only - and this is the complete graph; nothing lies beyond these."
             + " A further get_entity_lineage call would add only edge detail.";
-  }
-
-  /** True when any neighbour has a neighbour of its own in the same direction. */
-  private static boolean extendsBeyond(
-      String entityType, List<String> neighbours, boolean upstream) {
-    boolean continues = false;
-    for (String neighbour : neighbours) {
-      EntityLineage hop =
-          Entity.getLineageRepository()
-              .getByName(entityType, neighbour, upstream ? 1 : 0, upstream ? 0 : 1);
-      if (!endpointsOf(hop, upstream).isEmpty()) {
-        continues = true;
-        break;
-      }
-    }
-    return continues;
-  }
-
-  private static List<String> endpointsOf(EntityLineage lineage, boolean upstream) {
-    List<Edge> edges = upstream ? lineage.getUpstreamEdges() : lineage.getDownstreamEdges();
-    Map<UUID, EntityReference> index = new HashMap<>();
-    if (!nullOrEmpty(lineage.getNodes())) {
-      lineage.getNodes().forEach(node -> index.put(node.getId(), node));
-    }
-    List<String> names = new ArrayList<>();
-    if (!nullOrEmpty(edges)) {
-      edges.forEach(
-          edge -> addEndpoint(names, index, upstream ? edge.getFromEntity() : edge.getToEntity()));
-    }
-    return names;
   }
 
   private static void addEndpoint(List<String> names, Map<UUID, EntityReference> index, UUID id) {
@@ -417,8 +447,8 @@ public class GetEntityTool implements McpTool {
    * tests have never executed, every bucket is zero while total is 13 — which reads as "13 tests,
    * no failures, healthy" and is the exact opposite of the truth. Two callers independently named
    * this the worst defect they hit, one calling it "the difference the user\'s question turns on".
-   * The search index already models the state as {@code testCaseStatus: NeverRun}; this closes the
-   * gap so the folded summary cannot say less than the tool it is meant to replace.
+   * search_metadata flags the same state per hit as {@code neverRun: true}; this closes the gap so
+   * the folded summary cannot say less than the tool it is meant to replace.
    */
   private static Object withNeverRun(Object rawSummary) {
     Object result = rawSummary;

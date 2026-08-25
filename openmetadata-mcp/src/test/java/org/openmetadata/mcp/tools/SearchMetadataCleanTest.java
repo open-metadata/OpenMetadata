@@ -41,21 +41,27 @@ class SearchMetadataCleanTest {
   }
 
   @Test
-  void aTestThatNeverRanSaysSoRatherThanOmittingItsStatus() {
+  void aTestThatNeverRanIsFlaggedWithoutInventingAStatus() {
     Map<String, Object> cleaned = hit(Map.of("entityType", "testCase", "name", "row_count_check"));
 
     assertEquals(
-        "NeverRun",
-        cleaned.get("testCaseStatus"),
+        Boolean.TRUE,
+        cleaned.get("neverRun"),
         "absence is ambiguous: callers spent extra calls on a test suite summary purely to learn "
             + "that a missing status meant the test had never executed");
+    assertNull(
+        cleaned.get("testCaseStatus"),
+        "testCaseStatus is a closed schema enum (Success/Failed/Aborted/Queued) with a generated "
+            + "parser behind it - writing 'NeverRun' into it invents a value that exists nowhere "
+            + "in OpenMetadata and throws in any client that parses the field");
   }
 
   @Test
-  void anExecutedTestKeepsItsRealStatus() {
+  void anExecutedTestKeepsItsRealStatusAndIsNotFlagged() {
     Map<String, Object> cleaned = hit(Map.of("entityType", "testCase", "testCaseStatus", "Failed"));
 
     assertEquals("Failed", cleaned.get("testCaseStatus"), "a real result is never overwritten");
+    assertNull(cleaned.get("neverRun"), "a test that ran must not be flagged as never run");
   }
 
   @Test
