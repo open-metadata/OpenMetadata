@@ -108,6 +108,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   static final String FIELD_METRIC_GROUP = "metricGroup";
   private static final int ASSET_SCAN_BATCH_SIZE = 200;
   private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
+  static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
   private static final String HIERARCHY_FIELDS =
       "owners,experts,reviewers,parent,childrenCount,metricGroup,domains,tags";
 
@@ -1437,9 +1438,26 @@ public class MetricRepository extends EntityRepository<Metric> {
    * Direction is derived from lineage rather than stored, so linking an asset never has to say
    * which way the data flows — an asset the metric reads from is upstream, one that reads the
    * metric is downstream, and one with no lineage edge either way is unrelated.
+   *
+   * <p>Observability is deliberately capped before relationship hydration. Callers must use the
+   * paginated assets endpoint when a metric exceeds this detail limit instead of creating an
+   * unbounded request and response.
    */
   public List<MetricAssetDirection> getAssetsWithDirection(UUID metricId) {
-    return scanAssets(metricId, null, null, null, ignored -> true, 0, Integer.MAX_VALUE).data();
+    int linkedAssetCount =
+        daoCollection
+            .relationshipDAO()
+            .countFindTo(metricId, METRIC, List.of(Relationship.APPLIED_TO.ordinal()));
+    if (linkedAssetCount > MAX_OBSERVABILITY_ASSET_DETAILS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric observability supports at most %,d linked assets. Use the paginated "
+                  + "/assets endpoint to inspect larger asset sets.",
+              MAX_OBSERVABILITY_ASSET_DETAILS));
+    }
+    return scanAssets(
+            metricId, null, null, null, ignored -> true, 0, MAX_OBSERVABILITY_ASSET_DETAILS)
+        .data();
   }
 
   public ResultList<MetricAssetDirection> listAssets(

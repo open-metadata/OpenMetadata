@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -226,6 +227,27 @@ class MetricRepositoryTest {
     assertEquals(
         MetricAssetDirection.Direction.UNRELATED,
         MetricRepository.assetDirection(assetId, Set.of(), Set.of()));
+  }
+
+  @Test
+  void observabilityRejectsLinkedAssetSetsAboveTheExplicitDetailLimit() {
+    UUID metricId = UUID.randomUUID();
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      when(fixture
+              .relationshipDAO()
+              .countFindTo(metricId, Entity.METRIC, List.of(Relationship.APPLIED_TO.ordinal())))
+          .thenReturn(MetricRepository.MAX_OBSERVABILITY_ASSET_DETAILS + 1);
+
+      IllegalArgumentException exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> fixture.repository().getAssetsWithDirection(metricId));
+
+      assertTrue(exception.getMessage().contains("paginated /assets endpoint"));
+      verify(fixture.relationshipDAO(), never())
+          .findToWithOffset(
+              metricId, Entity.METRIC, List.of(Relationship.APPLIED_TO.ordinal()), 0, 200);
+    }
   }
 
   @Test

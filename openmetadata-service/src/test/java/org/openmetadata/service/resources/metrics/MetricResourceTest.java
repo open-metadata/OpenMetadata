@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -64,6 +65,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -364,6 +366,34 @@ class MetricResourceTest {
       assertEquals(expected, actual);
       verify(fixture.repository(), times(1)).getAssetsWithDirection(metricId);
       verify(fixture.repository()).getObservability(metricId, linkedAssets, Set.of(table.getId()));
+    }
+  }
+
+  @Test
+  void customUnitsRequireMetricViewBeforeReadingCatalogValues() {
+    SecurityContext securityContext = securityContext("alice");
+    AuthorizationException denied = new AuthorizationException("denied");
+    try (ResourceFixture fixture = resourceFixture()) {
+      doThrow(denied)
+          .when(fixture.authorizer())
+          .authorize(eq(securityContext), any(OperationContext.class), any());
+
+      AuthorizationException thrown =
+          assertThrows(
+              AuthorizationException.class,
+              () -> fixture.resource().getCustomUnitsOfMeasurement(securityContext));
+
+      assertEquals(denied, thrown);
+      ArgumentCaptor<OperationContext> operation = ArgumentCaptor.forClass(OperationContext.class);
+      ArgumentCaptor<ResourceContextInterface> resource =
+          ArgumentCaptor.forClass(ResourceContextInterface.class);
+      verify(fixture.authorizer())
+          .authorize(eq(securityContext), operation.capture(), resource.capture());
+      assertEquals(Entity.METRIC, operation.getValue().getResource());
+      assertEquals(
+          List.of(MetadataOperation.VIEW_BASIC),
+          operation.getValue().getOperations(resource.getValue()));
+      verify(fixture.repository(), never()).getDistinctCustomUnitsOfMeasurement();
     }
   }
 

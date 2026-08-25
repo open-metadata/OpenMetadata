@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -774,6 +775,61 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     long euroCount = customUnitsList.stream().filter("EURO"::equals).count();
     assertEquals(1, euroCount, "EURO should appear only once in the distinct list");
+  }
+
+  @Test
+  void getCustomUnitsRequiresMetricViewPermission(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String suffix = ns.uniqueShortId();
+    Rule denyMetricView =
+        new Rule()
+            .withName("DenyMetricView")
+            .withResources(List.of(Entity.METRIC))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("metricCustomUnitPolicy_" + suffix)
+                    .withRules(List.of(denyMetricView)));
+    try {
+      Role role =
+          admin
+              .roles()
+              .create(
+                  new CreateRole()
+                      .withName("metricCustomUnitRole_" + suffix)
+                      .withPolicies(List.of(policy.getFullyQualifiedName())));
+      try {
+        String email = "metric-custom-unit-" + suffix + "@test.openmetadata.org";
+        User user =
+            admin
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName("metric-custom-unit-" + suffix)
+                        .withEmail(email)
+                        .withRoles(List.of(role.getId())));
+        try {
+          OpenMetadataClient restricted = SdkClients.createClient(email, email, new String[] {});
+
+          assertApiStatus(
+              Response.Status.FORBIDDEN.getStatusCode(),
+              () ->
+                  restricted
+                      .getHttpClient()
+                      .execute(HttpMethod.GET, "/v1/metrics/customUnits", null, List.class));
+        } finally {
+          admin.users().delete(user.getId());
+        }
+      } finally {
+        admin.roles().delete(role.getId());
+      }
+    } finally {
+      admin.policies().delete(policy.getId());
+    }
   }
 
   @Test

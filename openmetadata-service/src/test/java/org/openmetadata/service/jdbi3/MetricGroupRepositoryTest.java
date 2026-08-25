@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
@@ -120,6 +121,7 @@ class MetricGroupRepositoryTest {
     UUID groupId = UUID.randomUUID();
     Metric visible = metric("visible");
     Metric hidden = metric("hidden");
+    when(groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), "%")).thenReturn(2);
     when(groupDAO.listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0))
         .thenReturn(List.of(JsonUtils.pojoToJson(visible), JsonUtils.pojoToJson(hidden)));
 
@@ -129,6 +131,21 @@ class MetricGroupRepositoryTest {
 
     assertEquals(1, count);
     verify(groupDAO, times(1)).listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0);
+  }
+
+  @Test
+  void visibleMetricCountRejectsAnUnboundedPermissionScanBeforeLoadingMembers() {
+    UUID groupId = UUID.randomUUID();
+    when(groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), "%"))
+        .thenReturn(MetricGroupRepository.MAX_PERMISSION_FILTER_SCAN_SIZE + 1);
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.visibleMetricCount(groupId, ignored -> true));
+
+    assertTrue(exception.getMessage().contains("Narrow the query"));
+    verify(groupDAO, never()).listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0);
   }
 
   @Test

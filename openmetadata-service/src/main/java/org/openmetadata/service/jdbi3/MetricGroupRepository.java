@@ -72,6 +72,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   static final String FIELD_METRIC_COUNT = "metricCount";
   private static final int COUNT_BATCH_SIZE = 500;
   private static final int MEMBER_SCAN_BATCH_SIZE = 500;
+  static final int MAX_PERMISSION_FILTER_SCAN_SIZE = MEMBER_SCAN_BATCH_SIZE * 20;
 
   public MetricGroupRepository() {
     super(
@@ -361,6 +362,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
       Predicate<EntityReference> isVisible) {
     CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
     String nameLike = buildNameLike(query);
+    validatePermissionFilteredScanSize(groupDAO, groupId, query, nameLike, rootOnly);
     MemberScan scan =
         scanMemberIds(groupDAO, groupId, limit, offset, query, nameLike, rootOnly, isVisible);
     return buildMetricPage(scan, limit, offset, isVisible);
@@ -419,7 +421,27 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   int visibleMetricCount(UUID groupId, Predicate<EntityReference> isVisible) {
     CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
+    validatePermissionFilteredScanSize(groupDAO, groupId, null, "%", false);
     return scanMemberIds(groupDAO, groupId, 0, 0, null, "%", false, isVisible).total();
+  }
+
+  private void validatePermissionFilteredScanSize(
+      CollectionDAO.MetricGroupDAO groupDAO,
+      UUID groupId,
+      String query,
+      String nameLike,
+      boolean rootOnly) {
+    int candidateCount =
+        rootOnly && hasSearchQuery(query)
+            ? groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), "%")
+            : countUnrestrictedMembers(groupDAO, groupId, nameLike, rootOnly);
+    if (candidateCount > MAX_PERMISSION_FILTER_SCAN_SIZE) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Permission-filtered Metric Group listing supports at most %,d candidate Metrics. "
+                  + "Narrow the query before retrying.",
+              MAX_PERMISSION_FILTER_SCAN_SIZE));
+    }
   }
 
   private MemberScan scanMemberIds(
@@ -462,6 +484,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
       UUID groupId, String query, Predicate<EntityReference> isVisible) {
     CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
     String nameLike = buildNameLike(query);
+    validatePermissionFilteredScanSize(groupDAO, groupId, query, nameLike, false);
     int relationshipOffset = 0;
     List<EntityReference> batch;
     do {

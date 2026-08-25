@@ -1269,6 +1269,9 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                     array = @ArraySchema(schema = @Schema(type = "string"))))
       })
   public Response getCustomUnitsOfMeasurement(@Context SecurityContext securityContext) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     List<String> customUnits = repository.getDistinctCustomUnitsOfMeasurement();
     return Response.ok(customUnits).build();
   }
