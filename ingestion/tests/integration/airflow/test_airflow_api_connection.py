@@ -427,7 +427,8 @@ class TestAirflowApiMockedIntegration:
                                 "triggerer_job": None,
                                 "note": "Data loaded to Snowflake successfully",
                             },
-                        ]
+                        ],
+                        "total_entries": 3,
                     }
                 }
             },
