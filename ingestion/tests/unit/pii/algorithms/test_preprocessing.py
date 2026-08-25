@@ -48,6 +48,28 @@ def test_preprocesses_sequences_correctly(input_values, expected):
     assert preprocess_values(input_values) == expected
 
 
+@pytest.mark.parametrize(
+    "input_values,expected",
+    [
+        # ALL-CAPS names are title-cased so spaCy NER can recognise them
+        (["SERGE"], ["Serge"]),
+        (["THÉODORE"], ["Théodore"]),
+        (["JOHN DOE"], ["John Doe"]),
+        # Mixed-case and lower-case strings are left unchanged
+        (["John"], ["John"]),
+        (["john"], ["john"]),
+        (["John Doe"], ["John Doe"]),
+        # Strings with no cased characters (digits/punctuation) have isupper() False → unchanged
+        (["123"], ["123"]),
+        (["2024-01-15"], ["2024-01-15"]),
+        ([], []),
+    ],
+)
+def test_preprocess_values_normalises_allcaps(input_values, expected):
+    """ALL-CAPS tokens must be title-cased for spaCy NER (fixes #31991)."""
+    assert preprocess_values(input_values) == expected
+
+
 def test_normal_length_string_processed_correctly():
     normal_string = "a" * 1000
     result = convert_to_str(normal_string)
