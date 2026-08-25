@@ -695,6 +695,12 @@ public class SettingsCache {
           fetchedSettings = Entity.getSystemRepository().getSlackStateConfigInternal();
           LOG.info("Loaded Slack state Configuration");
         }
+        case AUTHENTICATION_CONFIGURATION -> {
+          // Use internal method to bypass prepareFetchedSettings masking so the
+          // LdapAuthenticator / OIDC authenticator receive the real credentials.
+          fetchedSettings = Entity.getSystemRepository().getAuthConfigInternal();
+          LOG.info("Loaded Authentication Configuration");
+        }
         case SEARCH_SETTINGS -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());

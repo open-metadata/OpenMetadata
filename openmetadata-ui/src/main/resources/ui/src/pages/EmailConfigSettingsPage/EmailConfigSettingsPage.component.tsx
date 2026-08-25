@@ -183,6 +183,7 @@ function EmailConfigSettingsPage() {
               ) : (
                 <Button
                   className="m-l-md"
+                  data-testid="edit-button"
                   icon={
                     !isUndefined(emailConfigValues) && (
                       <Icon component={IconEdit} size={12} />

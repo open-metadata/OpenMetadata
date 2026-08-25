@@ -247,12 +247,23 @@ public class SystemRepository {
     }
 
     // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
-    // previously null
+    // previously null; also mask secret password fields before returning to callers.
     if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
       AuthenticationConfiguration authConfig =
           (AuthenticationConfiguration) fetchedSettings.getConfigValue();
-      if (authConfig != null && authConfig.getLdapConfiguration() != null) {
-        ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
+      if (authConfig != null) {
+        if (authConfig.getLdapConfiguration() != null) {
+          ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
+          if (!nullOrEmpty(authConfig.getLdapConfiguration().getDnAdminPassword())) {
+            authConfig
+                .getLdapConfiguration()
+                .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
+          }
+        }
+        if (authConfig.getOidcConfiguration() != null
+            && !nullOrEmpty(authConfig.getOidcConfiguration().getSecret())) {
+          authConfig.getOidcConfiguration().setSecret(PasswordEntityMasker.PASSWORD_MASK);
+        }
         fetchedSettings.setConfigValue(authConfig);
       }
     }
@@ -298,6 +309,21 @@ public class SystemRepository {
               .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration());
     }
     return workflowSettings;
+  }
+
+  public Settings getAuthConfigInternal() {
+    try {
+      Settings setting =
+          dao.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (setting == null) {
+        return null;
+      }
+      return setting;
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while trying to fetch Authentication Config Settings {}", ex.getMessage());
+    }
+    return null;
   }
 
   public Settings getEmailConfigInternal() {
@@ -493,10 +519,66 @@ public class SystemRepository {
     }
   }
 
+  private String resolveStoredEmailPassword() {
+    try {
+      Settings stored = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
+      if (stored != null && stored.getConfigValue() != null) {
+        SmtpSettings storedConfig =
+            JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class);
+        return decryptEmailSetting(storedConfig).getPassword();
+      }
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to resolve stored email password for mask restoration: {}", ex.getMessage());
+    }
+    return null;
+  }
+
+  private String resolveStoredLdapPassword() {
+    try {
+      Settings stored =
+          dao.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (stored != null && stored.getConfigValue() != null) {
+        AuthenticationConfiguration storedAuth =
+            JsonUtils.convertValue(stored.getConfigValue(), AuthenticationConfiguration.class);
+        if (storedAuth.getLdapConfiguration() != null) {
+          return storedAuth.getLdapConfiguration().getDnAdminPassword();
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to resolve stored LDAP admin password for mask restoration: {}",
+          ex.getMessage());
+    }
+    return null;
+  }
+
+  private String resolveStoredOidcSecret() {
+    try {
+      Settings stored =
+          dao.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (stored != null && stored.getConfigValue() != null) {
+        AuthenticationConfiguration storedAuth =
+            JsonUtils.convertValue(stored.getConfigValue(), AuthenticationConfiguration.class);
+        if (storedAuth.getOidcConfiguration() != null) {
+          return storedAuth.getOidcConfiguration().getSecret();
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to resolve stored OIDC client secret for mask restoration: {}",
+          ex.getMessage());
+    }
+    return null;
+  }
+
   private String prepareSettingForUpdate(Settings setting) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+      if (PasswordEntityMasker.PASSWORD_MASK.equals(emailConfig.getPassword())) {
+        emailConfig = emailConfig.withPassword(resolveStoredEmailPassword());
+      }
       if (!nullOrEmpty(emailConfig.getPassword())) {
         setting.setConfigValue(encryptEmailSetting(emailConfig));
       }
@@ -529,6 +611,16 @@ public class SystemRepository {
     } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+      LdapConfiguration ldapConfig = authConfig.getLdapConfiguration();
+      if (ldapConfig != null
+          && PasswordEntityMasker.PASSWORD_MASK.equals(ldapConfig.getDnAdminPassword())) {
+        ldapConfig.setDnAdminPassword(resolveStoredLdapPassword());
+      }
+      OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+      if (oidcConfig != null
+          && PasswordEntityMasker.PASSWORD_MASK.equals(oidcConfig.getSecret())) {
+        oidcConfig.setSecret(resolveStoredOidcSecret());
+      }
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
