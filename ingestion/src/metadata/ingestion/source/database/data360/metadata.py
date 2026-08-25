@@ -41,6 +41,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SqlQuery,
 )
+from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -99,6 +100,10 @@ class Data360Source(DatabaseServiceSource):
         self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.database_source_state: set = set()
+        # Schemas whose table discovery failed this run. Deletion reconciliation
+        # must skip these, otherwise a transient API failure (zero tables seen)
+        # would be mistaken for "every table in this schema was removed".
+        self.failed_schema_fqns: set = set()
         self.test_connection()
 
     @classmethod
@@ -233,13 +238,33 @@ class Data360Source(DatabaseServiceSource):
         dataspace_name = self.context.get().database
         schema_name = self.context.get().database_schema
         metadata_type = get_metadata_type(schema_name)
-        metadata_items = get_metadata_by_type(
-            client=self.client,
-            entity_type=metadata_type,
-            dataspace_name=dataspace_name,
-            pagination_limit=self.service_connection.paginationLimit,
-            log_warning=self.log_warning,
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=dataspace_name,
+            schema_name=schema_name,
         )
+        try:
+            metadata_items = get_metadata_by_type(
+                client=self.client,
+                entity_type=metadata_type,
+                dataspace_name=dataspace_name,
+                pagination_limit=self.service_connection.paginationLimit,
+                log_warning=self.log_warning,
+            )
+        except Exception as exc:
+            # Record the failure so `mark_tables_as_deleted` can skip this
+            # schema instead of soft-deleting every table it already ingested.
+            self.failed_schema_fqns.add(schema_fqn)
+            self.status.failed(
+                StackTraceError(
+                    name=f"{schema_name} Tables",
+                    error=f"Unexpected error while fetching tables for {dataspace_name}.{schema_name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
 
         for datacloud_object in metadata_items:
             table_name = datacloud_object.get(ResponseConstant.NAME)
@@ -407,6 +432,36 @@ class Data360Source(DatabaseServiceSource):
     def log_warning(self, msg: str) -> None:
         logger.warning(msg)
         self.status.warning(msg, reason=msg)
+
+    def mark_tables_as_deleted(self) -> Iterable[Either]:
+        """Marks tables as deleted, skipping any schema whose table discovery
+        failed this run (tracked in `failed_schema_fqns`). Without this, a
+        transient Data 360 API failure would look like "no tables in this
+        schema" and cause every previously ingested table there to be
+        soft-deleted.
+        """
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError("No Database found in the context. We cannot run the table deletion.")
+
+        if not self.source_config.markDeletedTables:
+            return
+
+        logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
+        schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
+
+        for schema_fqn in schema_fqn_list:
+            if schema_fqn in self.failed_schema_fqns:
+                logger.warning(
+                    f"Skipping deletion for schema [{schema_fqn}]: table discovery failed this run."
+                )
+                continue
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Table,
+                entity_source_state=self.database_source_state,
+                recursive=self.source_config.markDeletedTables,
+                params={"databaseSchema": schema_fqn},
+            )
 
     def get_stored_procedures(self):
         """Not implemented for Data Cloud."""

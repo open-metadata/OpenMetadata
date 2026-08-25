@@ -211,6 +211,38 @@ class TestData360Source:
             tables = list(source.get_tables_name_and_type() or [])
         assert tables == []
 
+    def test_get_tables_name_and_type_records_failed_schema_instead_of_raising(self):
+        source = _build_source()
+        with patch(
+            "metadata.ingestion.source.database.data360.metadata.get_metadata_by_type",
+            side_effect=RuntimeError("No response from Data 360 API"),
+        ), patch("metadata.utils.fqn.build", return_value="local_data360.customer_360.Data Lake Objects"):
+            tables = list(source.get_tables_name_and_type() or [])
+        assert tables == []
+        assert "local_data360.customer_360.Data Lake Objects" in source.failed_schema_fqns
+        assert len(source.status.failures) == 1
+
+    def test_mark_tables_as_deleted_skips_schemas_with_failed_discovery(self):
+        source = _build_source()
+        source.failed_schema_fqns = {"local_data360.customer_360.Data Lake Objects"}
+        with patch.object(
+            source,
+            "_get_filtered_schema_names",
+            return_value=[
+                "local_data360.customer_360.Data Lake Objects",
+                "local_data360.customer_360.Data Model Objects",
+            ],
+        ), patch(
+            "metadata.ingestion.source.database.data360.metadata.delete_entity_from_source"
+        ) as mock_delete:
+            mock_delete.return_value = []
+            list(source.mark_tables_as_deleted())
+        assert mock_delete.call_count == 1
+        assert (
+            mock_delete.call_args.kwargs["params"]["databaseSchema"]
+            == "local_data360.customer_360.Data Model Objects"
+        )
+
     def test_get_columns(self):
         source = _build_source()
         columns = source.get_columns(MOCK_DLO_TABLE[ResponseConstant.FIELDS])
