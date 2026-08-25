@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -222,21 +221,32 @@ public final class ApprovalGate {
     }
   }
 
-  // A top-level field is holdable when the request provides a concrete new value that differs from
-  // the approved one. Skipping null/absent new values keeps a PUT that merely omits a field
-  // (owners,
-  // tags - merged additively later by the updater) from being mistaken for an intentional change.
+  // A top level field is holdable when the request either sets a concrete new value that differs
+  // from the approved one, or clears a scalar field that had one. The clear case matters because an
+  // explicit removal of a gated field (a PATCH remove) is a real, destructive change that must be
+  // reviewed, yet it arrives with a null or absent new value. Only scalar clears are held: an
+  // omitted collection (owners, tags) is merged additively by the updater rather than removed, so
+  // treating its absence as a change would hold a PUT that merely left it out.
   private static Set<String> changedHoldableFields(
       ObjectNode originalNode, ObjectNode updatedNode) {
     Set<String> changed = new HashSet<>();
-    Iterator<String> fieldNames = updatedNode.fieldNames();
-    while (fieldNames.hasNext()) {
-      String name = fieldNames.next();
+    Set<String> names = new HashSet<>();
+    originalNode.fieldNames().forEachRemaining(names::add);
+    updatedNode.fieldNames().forEachRemaining(names::add);
+    for (String name : names) {
+      if (STRUCTURAL_DENYLIST.contains(name)) {
+        continue;
+      }
+      JsonNode oldValue = originalNode.get(name);
       JsonNode newValue = updatedNode.get(name);
-      if (!STRUCTURAL_DENYLIST.contains(name)
-          && newValue != null
-          && !newValue.isNull()
-          && !Objects.equals(originalNode.get(name), newValue)) {
+      boolean setsNewValue =
+          newValue != null && !newValue.isNull() && !Objects.equals(oldValue, newValue);
+      boolean clearsScalar =
+          (newValue == null || newValue.isNull())
+              && oldValue != null
+              && !oldValue.isNull()
+              && oldValue.isValueNode();
+      if (setsNewValue || clearsScalar) {
         changed.add(name);
       }
     }

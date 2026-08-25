@@ -940,4 +940,93 @@ public class PendingApprovalChangeIT {
     assertNoOpenApprovalTask(glossary.getFullyQualifiedName());
     assertEquals(APPROVED, descriptionOf(glossary.getId()), "non-matching held change is discarded");
   }
+
+  // ---- clearing a gated field is held, not written straight through --------------------------
+
+  @Test
+  void clearingAGatedScalarFieldIsHeld(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns);
+    deployHookWorkflow(
+        ns, INCLUDE_DESCRIPTION, EXCLUDE_STATUS, filterScopedTo(glossary.getFullyQualifiedName()));
+
+    // Explicitly removing the gated description is a destructive change that must be reviewed, not
+    // written through. The entity keeps its approved description while the clear is held.
+    patch(glossary.getId(), "[{\"op\":\"remove\",\"path\":\"/description\"}]");
+    awaitHeldAt(glossary.getId(), APPROVED, "cleared description held at the approved value");
+
+    Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+    resolve(task.getId(), "approve", TaskResolutionType.Approved);
+    Awaitility.await("description cleared once the removal is approved")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> descriptionOf(glossary.getId()) == null);
+  }
+
+  // ---- a hook workflow whose hooks all only hold is rejected at create ------------------------
+
+  @Test
+  void hookWorkflowWithOnlyHoldActionIsRejectedAtCreate(TestNamespace ns) {
+    // Every resolvePendingChange hook uses action=hold: the change is parked on every path with no
+    // commit or discard anywhere, so the edit would stay held forever. The definition must be
+    // rejected at create.
+    InvalidRequestException failure =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().workflowDefinitions().create(holdOnlyHookWorkflow(ns)),
+            "a hook workflow with only hold actions must be rejected");
+    String message = failure.getMessage() == null ? "" : failure.getMessage().toLowerCase();
+    assertTrue(
+        message.contains("hold") && (message.contains("commit") || message.contains("discard")),
+        "expected a hold-only rejection, got: " + failure.getMessage());
+  }
+
+  private CreateWorkflowDefinition holdOnlyHookWorkflow(TestNamespace ns) {
+    String name = "Wf" + ns.shortPrefix("holdonly");
+    String json =
+        """
+        {
+          "name": "%s",
+          "displayName": "Hold Only Workflow",
+          "description": "Every hook only holds the change; nothing commits or discards it.",
+          "config": {"storeStageStatus": true},
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {"entityTypes": ["glossary"], "events": ["Updated"],
+                       "exclude": ["entityStatus"], "include": ["description"], "filter": {}},
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
+            {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
+             "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                        "approvalThreshold": 1, "rejectionThreshold": 1, "stageId": "review",
+                        "stageDisplayName": "Review", "taskStatus": "Open",
+                        "assigneeStrategy": "reviewers-and-assignees",
+                        "transitionMetadata": [
+                          {"id": "approve", "label": "Approve", "targetStageId": "approved",
+                           "targetTaskStatus": "Approved", "resolutionType": "Approved",
+                           "formRef": "approve", "requiresComment": false},
+                          {"id": "reject", "label": "Reject", "targetStageId": "rejected",
+                           "targetTaskStatus": "Rejected", "resolutionType": "Rejected",
+                           "formRef": "reject", "requiresComment": true}]},
+             "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "HoldOnApprove",
+             "config": {"action": "hold"}, "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "HoldOnReject",
+             "config": {"action": "hold"}, "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
+            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
+          ],
+          "edges": [
+            {"from": "Start", "to": "Approve"},
+            {"from": "Approve", "to": "HoldOnApprove", "condition": "approve"},
+            {"from": "Approve", "to": "HoldOnReject", "condition": "reject"},
+            {"from": "HoldOnApprove", "to": "ApprovedEnd"},
+            {"from": "HoldOnReject", "to": "RejectedEnd"}
+          ]
+        }
+        """
+            .formatted(name);
+    return JsonUtils.readValue(json, CreateWorkflowDefinition.class);
+  }
 }

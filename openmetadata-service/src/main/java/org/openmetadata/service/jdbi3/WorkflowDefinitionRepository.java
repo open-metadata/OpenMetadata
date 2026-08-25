@@ -19,6 +19,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeAction;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -215,26 +216,53 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     Set<String> hooks = new HashSet<>();
     Set<String> ends = new HashSet<>();
     String start = null;
+    boolean hasResolvingHook = false;
     for (WorkflowNodeDefinitionInterface node : nodes) {
       String subType = node.getSubType();
       if (NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(subType)) {
         hooks.add(node.getName());
+        if (isCommitOrDiscardHook(node)) {
+          hasResolvingHook = true;
+        }
       } else if (NodeSubType.END_EVENT.value().equals(subType)) {
         ends.add(node.getName());
       } else if (NodeSubType.START_EVENT.value().equals(subType)) {
         start = node.getName();
       }
     }
+    if (!hooks.isEmpty() && !hasResolvingHook) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' holds approval gated changes but every resolvePendingChangeTask node "
+                  + "only holds the change. There is no commit or discard, so the edit would stay "
+                  + "held forever. Add a commit or discard hook.",
+              workflowDefinition.getName()));
+    }
     if (!hooks.isEmpty()
         && start != null
         && reachesEndWithoutHook(workflowDefinition, start, hooks, ends)) {
       throw BadRequestException.of(
           String.format(
-              "Workflow '%s' holds approval-gated changes (it has a resolvePendingChangeTask hook) "
-                  + "but at least one path reaches an end event without a commit/discard. Every "
-                  + "terminal path must resolve the held change, or the edit is held forever.",
+              "Workflow '%s' holds approval gated changes but at least one path reaches an end "
+                  + "event without a commit or discard. Every terminal path must resolve the held "
+                  + "change or the edit would stay held forever.",
               workflowDefinition.getName()));
     }
+  }
+
+  // A resolvePendingChangeTask resolves the hold only when it commits or discards it; an action of
+  // hold merely parks the change, so a workflow whose hooks all hold would keep the edit held with
+  // no way to resolve it. The action lives on the node config; read it from the serialized node.
+  private boolean isCommitOrDiscardHook(WorkflowNodeDefinitionInterface node) {
+    boolean resolving = false;
+    Object config = JsonUtils.getMap(node).get("config");
+    if (config instanceof Map<?, ?> configMap) {
+      Object action = configMap.get("action");
+      resolving =
+          ResolvePendingChangeAction.COMMIT.value().equals(action)
+              || ResolvePendingChangeAction.DISCARD.value().equals(action);
+    }
+    return resolving;
   }
 
   private boolean reachesEndWithoutHook(
