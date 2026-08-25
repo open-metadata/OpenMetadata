@@ -184,14 +184,21 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   //      don't skip on that.
   //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
   //      sibling tab's active mode carries into a newly-opened tab
-  //      (cmd+click). Writing here would satisfy our own session-tuple
-  //      check and strand the new tab in the wrong mode.
+  //      (cmd+click). We still need to seed THIS tab's store from that
+  //      hint (module init deliberately never reads the hint, so the
+  //      store is at `DEFAULT_APP_MODE` here), but we must not run the
+  //      persona/preference chain — the sibling's active choice wins.
   const existingSession = readAppModeSession();
   if (existingSession?.mode && existingSession.source !== 'boot') {
     return;
   }
   const hint = readAppModeHint();
   if (isAppModeHintFresh(hint) && hint?.mode) {
+    // Adopt the sibling tab's mode so this new tab renders the right
+    // shell. `source: 'boot'` keeps the tuple re-resolvable on the next
+    // reload and skips re-writing the hint (no self-leak).
+    writeAppMode(hint.mode, null, { source: 'boot' });
+
     return;
   }
 
