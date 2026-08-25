@@ -728,9 +728,6 @@ public class CreateTask implements TaskListener {
         // Hook (pending-change) workflows keep one live approval per (entity, workflow, requester):
         // a new edit supersedes only the same requester's prior task, so other requesters' tasks
         // survive. Non-hook workflows keep the entity-level supersede (requesterToMatch = null).
-        // Hook (pending-change) workflows keep one live approval per (entity, workflow, requester):
-        // a new edit supersedes only the same requester's prior task, so other requesters' tasks
-        // survive. Non-hook workflows keep the entity-level supersede (requesterToMatch = null).
         String requesterToMatch =
             GovernanceApprovalRegistry.isPendingChangeWorkflow(currentWorkflowDefinitionId)
                 ? updatedBy

@@ -1958,6 +1958,15 @@ public interface CollectionDAO {
     void deleteByUserId(@BindUUID("userId") UUID userId);
   }
 
+  record PendingApprovalChangeRecord(String json, long updatedAt) {}
+
+  class PendingApprovalChangeRecordMapper implements RowMapper<PendingApprovalChangeRecord> {
+    @Override
+    public PendingApprovalChangeRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new PendingApprovalChangeRecord(rs.getString("json"), rs.getLong("updated_at"));
+    }
+  }
+
   interface PendingApprovalChangeDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -1977,6 +1986,41 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("updatedAt") long updatedAt);
 
+    // Insert only when this (entity, requester) has no hold yet: 1 when it inserts, 0 when a hold
+    // already exists. Lets accumulate() take the lock and merge path only when there is a prior
+    // hold,
+    // so a concurrent first edit is not lost to a blind overwriting upsert.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO pending_approval_change (entity_id, updated_by, json, updated_at) "
+                + "VALUES (:entityId, :updatedBy, :json, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE entity_id = entity_id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO pending_approval_change (entity_id, updated_by, json, updated_at) "
+                + "VALUES (:entityId, :updatedBy, (:json :: jsonb), :updatedAt) "
+                + "ON CONFLICT (entity_id, updated_by) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertIfAbsent(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("updatedBy") String updatedBy,
+        @Bind("json") String json,
+        @Bind("updatedAt") long updatedAt);
+
+    // Locks the hold row so a concurrent accumulate for the same (entity, requester) serializes
+    // behind this read-modify-write instead of racing it. Only called after insertIfAbsent reports
+    // the row exists, so FOR UPDATE always has a real row to lock.
+    @SqlQuery(
+        "SELECT json FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy FOR UPDATE")
+    String findForUpdate(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
+
+    @SqlQuery(
+        "SELECT json, updated_at FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy")
+    @RegisterRowMapper(PendingApprovalChangeRecordMapper.class)
+    PendingApprovalChangeRecord findRecord(
+        @BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
+
     @SqlQuery(
         "SELECT json FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy")
     String find(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
@@ -1984,6 +2028,16 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy")
     void delete(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
+
+    // Deletes the hold only if it has not changed since it was read (matched on updated_at), so a
+    // resolution that read an earlier snapshot cannot drop a newer edit that accumulated in
+    // between.
+    @SqlUpdate(
+        "DELETE FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy AND updated_at = :updatedAt")
+    void deleteIfUnchanged(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("updatedBy") String updatedBy,
+        @Bind("updatedAt") long updatedAt);
 
     @SqlUpdate("DELETE FROM pending_approval_change WHERE entity_id = :entityId")
     void deleteAllForEntity(@BindUUID("entityId") UUID entityId);

@@ -242,6 +242,7 @@ import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
@@ -4917,6 +4918,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               // Delete all the extensions of entity
               daoCollection.entityExtensionDAO().deleteAll(id);
+
+              // Drop any approval-gated holds parked against this entity so a delete leaves no
+              // orphaned rows in pending_approval_change (the hold table has no FK to the entity).
+              PendingApprovalChangeStore.deleteAllForEntity(id);
 
               if (shouldCleanupFqnDependents()) {
                 daoCollection

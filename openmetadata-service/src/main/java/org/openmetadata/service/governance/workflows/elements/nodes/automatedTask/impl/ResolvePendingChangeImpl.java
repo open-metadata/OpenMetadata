@@ -100,16 +100,22 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
           action);
       return;
     }
-    ChangeDescription held = PendingApprovalChangeStore.get(entity.getId(), requester);
+    // Snapshot the hold with the version token it was read at. commit and discard delete only this
+    // snapshot, so an edit the requester accumulated after this read survives for its own review.
+    PendingApprovalChangeStore.HeldRecord record =
+        PendingApprovalChangeStore.getRecord(entity.getId(), requester);
+    ChangeDescription held = record == null ? null : record.change();
+    long seenUpdatedAt = record == null ? 0L : record.updatedAt();
     LOG.debug(
         "[ResolvePendingChange] action={} entity={} requester={} hasHold={}",
         action,
         entity.getId(),
         requester,
-        held != null);
+        record != null);
     switch (action) {
-      case COMMIT -> commitHeldChange(entityType, entity, held, requester);
-      case DISCARD -> PendingApprovalChangeStore.delete(entity.getId(), requester);
+      case COMMIT -> commitHeldChange(entityType, entity, held, requester, seenUpdatedAt);
+      case DISCARD -> PendingApprovalChangeStore.deleteIfUnchanged(
+          entity.getId(), requester, seenUpdatedAt);
       case HOLD -> {
         // Leave the change on hold; the workflow is parking it (e.g. after 'In Review').
       }
@@ -117,11 +123,15 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
   }
 
   private void commitHeldChange(
-      String entityType, EntityInterface entity, ChangeDescription held, String requester) {
+      String entityType,
+      EntityInterface entity,
+      ChangeDescription held,
+      String requester,
+      long seenUpdatedAt) {
     if (held != null) {
       applyHeldChange(entityType, entity, held, requester);
     }
-    PendingApprovalChangeStore.delete(entity.getId(), requester);
+    PendingApprovalChangeStore.deleteIfUnchanged(entity.getId(), requester, seenUpdatedAt);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})

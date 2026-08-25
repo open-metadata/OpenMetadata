@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.PendingApprovalChangeDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.PendingApprovalChangeRecord;
 
 /**
  * Per-(entity, requester) store for an approval-gated change held out of the entity until the
@@ -49,21 +50,58 @@ public final class PendingApprovalChangeStore {
     return CommonUtil.nullOrEmpty(json) ? null : JsonUtils.readValue(json, ChangeDescription.class);
   }
 
-  public static boolean exists(UUID entityId, String updatedBy) {
-    return get(entityId, updatedBy) != null;
-  }
+  /**
+   * A requester's held change together with the version token ({@code updatedAt}) it was read at, so
+   * a resolution can delete exactly the state it acted on and leave a newer edit untouched.
+   */
+  public record HeldRecord(ChangeDescription change, long updatedAt) {}
 
-  public static void put(UUID entityId, String updatedBy, ChangeDescription pending) {
-    dao().upsert(entityId, updatedBy, JsonUtils.pojoToJson(pending), System.currentTimeMillis());
-  }
-
+  /**
+   * Merge {@code incoming} onto this requester's existing hold atomically. The first edit is inserted
+   * in one step; only when a prior hold already exists does the merge take the locked read (SELECT
+   * FOR UPDATE) plus write path, so two concurrent edits by the same requester serialize on the row
+   * instead of racing a read-modify-write and losing one proposed change.
+   */
   public static void accumulate(UUID entityId, String updatedBy, ChangeDescription incoming) {
-    ChangeDescription merged = merge(get(entityId, updatedBy), incoming);
-    put(entityId, updatedBy, merged);
+    String incomingJson = JsonUtils.pojoToJson(incoming);
+    long now = System.currentTimeMillis();
+    Entity.getJdbi()
+        .useTransaction(
+            handle -> {
+              PendingApprovalChangeDAO dao = handle.attach(PendingApprovalChangeDAO.class);
+              if (dao.insertIfAbsent(entityId, updatedBy, incomingJson, now) == 0) {
+                String existingJson = dao.findForUpdate(entityId, updatedBy);
+                ChangeDescription existing =
+                    CommonUtil.nullOrEmpty(existingJson)
+                        ? null
+                        : JsonUtils.readValue(existingJson, ChangeDescription.class);
+                dao.upsert(
+                    entityId, updatedBy, JsonUtils.pojoToJson(merge(existing, incoming)), now);
+              }
+            });
+  }
+
+  /** The requester's hold plus the version token it was read at, or null when there is no hold. */
+  public static HeldRecord getRecord(UUID entityId, String updatedBy) {
+    PendingApprovalChangeRecord row = dao().findRecord(entityId, updatedBy);
+    HeldRecord result = null;
+    if (row != null) {
+      result =
+          new HeldRecord(JsonUtils.readValue(row.json(), ChangeDescription.class), row.updatedAt());
+    }
+    return result;
   }
 
   public static void delete(UUID entityId, String updatedBy) {
     dao().delete(entityId, updatedBy);
+  }
+
+  /**
+   * Delete the hold only if it still matches the version token it was read at. A no-op when a newer
+   * edit accumulated after the caller's snapshot, so that newer proposal survives for its own review.
+   */
+  public static void deleteIfUnchanged(UUID entityId, String updatedBy, long seenUpdatedAt) {
+    dao().deleteIfUnchanged(entityId, updatedBy, seenUpdatedAt);
   }
 
   /** Remove every requester's hold for an entity; used when the entity itself is deleted. */
