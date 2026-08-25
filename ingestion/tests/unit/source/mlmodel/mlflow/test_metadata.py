@@ -458,6 +458,27 @@ def test_the_page_token_is_passed_back_to_the_registry():
     assert tokens == [None, "token-1"]
 
 
+def test_an_empty_page_carrying_a_token_is_followed(caplog):
+    """
+    The reporter's registry: page 1 came back as ``{"next_page_token": "..."}`` with no
+    ``registered_models`` at all, which the SDK hands over as an empty page that still has
+    a token. Stopping there reported a 100% successful run over zero models.
+    """
+    source = make_source(latest_versions=[make_version("1")])
+    source.client.search_registered_models.side_effect = [
+        PagedList([], "token-1"),
+        PagedList([], "token-2"),
+        PagedList([named_model("a"), named_model("b")], None),
+    ]
+
+    with caplog.at_level(logging.INFO):
+        results = list(source.get_mlmodels())
+
+    assert [model.name for model, _ in results] == ["a", "b"]
+    assert "Listed 2 registered model(s) from the MLflow registry over 3 page(s)" in caplog.text
+    assert "returned no registered models" not in caplog.text
+
+
 def test_pagination_stops_at_the_page_budget(caplog):
     """A backend that always returns a token must not spin forever."""
     source = make_source(latest_versions=[make_version("1")])
@@ -598,15 +619,21 @@ def test_an_invalid_feature_name_is_reported_as_a_warning():
     source.status.warning.assert_called_once()
 
 
-def make_deletion_source(truncated: bool) -> MlflowSource:
-    source = MlflowSource.__new__(MlflowSource)
-    source.status = MagicMock()
+def wire_deletion(source: MlflowSource) -> MlflowSource:
+    """Attach what `mark_mlmodels_as_deleted` reads on top of a listing source."""
     source.metadata = MagicMock()
     source.context = MagicMock()
     source.context.get.return_value = MagicMock(mlmodel_service="mlflow_svc")
     source.mlmodel_source_state = set()
-    source.source_config = MagicMock(markDeletedMlModels=True)
-    source.listing_truncated = truncated
+    source.source_config.markDeletedMlModels = True
+
+    return source
+
+
+def make_deletion_source(listing_complete: bool = True, listed_model_count: int = 1) -> MlflowSource:
+    source = wire_deletion(make_source())
+    source.listing_complete = listing_complete
+    source.listed_model_count = listed_model_count
 
     return source
 
@@ -616,7 +643,20 @@ def test_a_truncated_listing_never_drives_deletions():
     Every model past the page budget is absent from the source state, so reconciling
     deletions off a partial listing would soft-delete perfectly good entities.
     """
-    source = make_deletion_source(truncated=True)
+    source = make_deletion_source(listing_complete=False)
+
+    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
+        assert list(source.mark_mlmodels_as_deleted()) == []
+
+    delete.assert_not_called()
+
+
+def test_a_listing_that_saw_no_models_never_drives_deletions():
+    """
+    Credentials that cannot list models, or a `registryUri` pointing elsewhere, both look
+    exactly like an empty registry. Reconciling against that empties the service.
+    """
+    source = make_deletion_source(listed_model_count=0)
 
     with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
         assert list(source.mark_mlmodels_as_deleted()) == []
@@ -625,7 +665,7 @@ def test_a_truncated_listing_never_drives_deletions():
 
 
 def test_a_complete_listing_still_reconciles_deletions():
-    source = make_deletion_source(truncated=False)
+    source = make_deletion_source()
 
     with patch(
         "metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source",
@@ -636,20 +676,54 @@ def test_a_complete_listing_still_reconciles_deletions():
     delete.assert_called_once()
 
 
-def test_exhausting_the_page_budget_flags_the_listing_as_truncated():
+def test_exhausting_the_page_budget_leaves_the_listing_incomplete():
     source = make_source(latest_versions=[make_version("1")])
     source.client.search_registered_models.return_value = PagedList([named_model("a")], "always-more")
 
     list(source.get_mlmodels())
 
-    assert source.listing_truncated is True
+    assert source.listing_complete is False
     source.status.warning.assert_called_once()
 
 
-def test_a_complete_listing_leaves_the_flag_clear():
+def test_a_listing_that_reaches_the_end_is_marked_complete():
     source = make_source(latest_versions=[make_version("1")])
     source.client.search_registered_models.return_value = PagedList([named_model("a")], None)
 
     list(source.get_mlmodels())
 
-    assert source.listing_truncated is False
+    assert source.listing_complete is True
+    assert source.listed_model_count == 1
+
+
+def test_abandoning_the_listing_part_way_never_drives_deletions():
+    """
+    Why completion is tracked positively rather than truncation negatively: a caller that
+    walks away mid-listing has seen just as partial a registry as a truncated run, and the
+    page budget was never reached to say so.
+    """
+    source = wire_deletion(make_source(latest_versions=[make_version("1")]))
+    source.client.search_registered_models.side_effect = [
+        PagedList([named_model("a")], "more"),
+        PagedList([named_model("b")], None),
+    ]
+
+    next(source.get_mlmodels())
+    assert source.listing_complete is False
+
+    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
+        assert list(source.mark_mlmodels_as_deleted()) == []
+
+    delete.assert_not_called()
+
+
+def test_a_fresh_listing_clears_a_stale_completion_flag():
+    """A reused source must not inherit the previous run's verdict."""
+    source = make_source(latest_versions=[make_version("1")])
+    source.listing_complete = True
+    source.listed_model_count = 7
+    source.client.search_registered_models.return_value = PagedList([named_model("a")], "always-more")
+
+    list(source.get_mlmodels())
+
+    assert source.listing_complete is False
