@@ -35,6 +35,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
+import org.openmetadata.schema.api.configuration.rdf.CustomOntologyClass;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
@@ -114,6 +116,12 @@ class RdfResourceTest {
   void savedSparqlQueriesRequireAnAuthenticatedUser() {
     assertThrows(
         NotAuthorizedException.class, () -> rdfResource.listSavedSparqlQueries(securityContext));
+  }
+
+  @Test
+  void sparqlQueryTemplatesRequireAnAuthenticatedUser() {
+    assertThrows(
+        NotAuthorizedException.class, () -> rdfResource.listSparqlQueryTemplates(securityContext));
   }
 
   @Test
@@ -216,6 +224,32 @@ class RdfResourceTest {
     assertEquals(materialization, materialized.getEntity());
     assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleted.getStatus());
     verify(service).delete("custom-rule");
+    verify(authorizer, Mockito.times(4)).authorizeAdmin(securityContext);
+  }
+
+  @Test
+  void customOntologyEndpointsPersistAndDeleteExtensions() {
+    String suffix = UUID.randomUUID().toString();
+    String name = "review-" + suffix;
+    CustomOntology extension =
+        new CustomOntology()
+            .withName(name)
+            .withClasses(
+                List.of(
+                    new CustomOntologyClass()
+                        .withUri("https://open-metadata.org/ontology-extension/Review-" + suffix)
+                        .withSubClassOf(List.of("om:Entity"))));
+
+    Response created = rdfResource.upsertCustomOntologyExtension(securityContext, name, extension);
+    Response fetched = rdfResource.getCustomOntologyExtension(securityContext, name);
+    Response deleted = rdfResource.deleteCustomOntologyExtension(securityContext, name);
+    Response missing = rdfResource.getCustomOntologyExtension(securityContext, name);
+
+    assertEquals(Response.Status.CREATED.getStatusCode(), created.getStatus());
+    assertEquals(extension, created.getEntity());
+    assertEquals(extension, fetched.getEntity());
+    assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleted.getStatus());
+    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), missing.getStatus());
     verify(authorizer, Mockito.times(4)).authorizeAdmin(securityContext);
   }
 }

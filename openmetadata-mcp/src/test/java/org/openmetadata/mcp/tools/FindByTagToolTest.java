@@ -108,6 +108,9 @@ class FindByTagToolTest {
     assertTrue(query.contains("om:tagFQN"));
     assertTrue(query.contains("om:fullyQualifiedName"));
     assertTrue(query.contains("\"BusinessTerms.PII\""));
+    assertTrue(
+        query.contains(
+            "FILTER(STRSTARTS(STR(?entityType), \"https://open-metadata.org/ontology/\"))"));
   }
 
   @Test

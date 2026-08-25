@@ -27,6 +27,7 @@ import org.openmetadata.service.rdf.RdfRepository;
 /** Finds entities associated with a tag or glossary-term fully qualified name. */
 public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
 
+  private static final String ONTOLOGY_NAMESPACE = "https://open-metadata.org/ontology/";
   private static final int DEFAULT_LIMIT = 50;
   private static final int MAX_LIMIT = 500;
   private static final TypeReference<SparqlResultSet<EntityBinding>> ENTITY_RESULTS =
@@ -80,11 +81,7 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
   }
 
   static String buildSparql(String tagFqn, String entityType, int limit, int offset) {
-    String typeFilter =
-        McpToolParameters.isBlank(entityType)
-            ? ""
-            : "  FILTER(?entityType = <https://open-metadata.org/ontology/%s>)\n"
-                .formatted(capitalize(entityType));
+    String typeFilter = entityTypeFilter(entityType);
     ParameterizedSparqlString query =
         new ParameterizedSparqlString(
             """
@@ -103,6 +100,12 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
                 .formatted(typeFilter, limit, offset));
     query.setLiteral("requestedTag", tagFqn);
     return query.toString().stripTrailing();
+  }
+
+  private static String entityTypeFilter(String entityType) {
+    return McpToolParameters.isBlank(entityType)
+        ? "  FILTER(STRSTARTS(STR(?entityType), \"%s\"))\n".formatted(ONTOLOGY_NAMESPACE)
+        : "  FILTER(?entityType = <%s%s>)\n".formatted(ONTOLOGY_NAMESPACE, capitalize(entityType));
   }
 
   static List<EntityMatch> parseRows(String selectJson) {

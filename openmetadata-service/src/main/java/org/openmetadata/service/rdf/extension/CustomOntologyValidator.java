@@ -222,8 +222,15 @@ public final class CustomOntologyValidator {
     if (!seenUris.add(uri)) {
       errors.add("duplicate property URI in this extension: " + uri);
     }
+    validatePropertyType(property, errors);
     validatePropertyDomain(property, declaredClassUris, errors);
     validatePropertyRange(property, declaredClassUris, errors);
+  }
+
+  private static void validatePropertyType(CustomOntologyProperty property, List<String> errors) {
+    if (property.getType() == null) {
+      errors.add("property '" + property.getUri() + "' missing 'type'");
+    }
   }
 
   private static void validatePropertyDomain(

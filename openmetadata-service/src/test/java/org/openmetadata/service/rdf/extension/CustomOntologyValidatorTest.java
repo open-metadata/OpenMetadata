@@ -329,6 +329,24 @@ class CustomOntologyValidatorTest {
           CustomOntologyValidator.validate(e).stream()
               .anyMatch(err -> err.contains("missing 'domain'")));
     }
+
+    @Test
+    @DisplayName("Property with no type is rejected")
+    void missingType() {
+      CustomOntologyProperty property =
+          new CustomOntologyProperty()
+              .withUri(EXT_NS + "rel")
+              .withDomain(EXT_NS + "Foo")
+              .withRange("om:Entity");
+      CustomOntology extension =
+          ext("no-type")
+              .withClasses(List.of(cls("Foo", "om:Entity")))
+              .withProperties(List.of(property));
+
+      assertTrue(
+          CustomOntologyValidator.validate(extension).stream()
+              .anyMatch(error -> error.contains("missing 'type'")));
+    }
   }
 
   @Nested

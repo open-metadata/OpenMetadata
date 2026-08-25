@@ -750,6 +750,61 @@ public class RdfResource {
                 .build());
   }
 
+  @PUT
+  @Path("/ontology/extensions/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "upsertCustomOntologyExtension",
+      summary = "Create or replace a custom ontology extension",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Extension replaced"),
+        @ApiResponse(responseCode = "201", description = "Extension created"),
+        @ApiResponse(responseCode = "400", description = "Invalid extension"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response upsertCustomOntologyExtension(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Valid CustomOntology extension) {
+    authorizer.authorizeAdmin(securityContext);
+    requireMatchingCustomOntologyName(name, extension);
+    boolean created = CustomOntologyRegistry.getInstance().upsert(extension).isEmpty();
+    return Response.status(created ? Response.Status.CREATED : Response.Status.OK)
+        .entity(extension)
+        .build();
+  }
+
+  @DELETE
+  @Path("/ontology/extensions/{name}")
+  @Operation(
+      operationId = "deleteCustomOntologyExtension",
+      summary = "Delete a custom ontology extension",
+      responses = {
+        @ApiResponse(responseCode = "204", description = "Extension deleted"),
+        @ApiResponse(responseCode = "404", description = "Extension not found"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response deleteCustomOntologyExtension(
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
+    authorizer.authorizeAdmin(securityContext);
+    if (!CustomOntologyRegistry.getInstance().delete(name)) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(buildErrorResponse("Custom ontology extension not found: " + name))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return Response.noContent().build();
+  }
+
+  private static void requireMatchingCustomOntologyName(String name, CustomOntology extension) {
+    if (extension == null) {
+      throw new BadRequestException("Custom ontology extension is required");
+    }
+    if (!Objects.equals(name, extension.getName())) {
+      throw new BadRequestException("Path name must match the custom ontology extension name");
+    }
+  }
+
   @POST
   @Path("/ontology/extensions/validate")
   @Produces(MediaType.APPLICATION_JSON)
@@ -1057,10 +1112,14 @@ public class RdfResource {
   @Operation(
       operationId = "listSparqlQueryTemplates",
       summary = "List administrator-managed installation query templates",
+      description =
+          "Returns shared query templates to authenticated playground users. Template writes remain administrator-only through system settings.",
       responses = {
-        @ApiResponse(responseCode = "200", description = "Installation query templates")
+        @ApiResponse(responseCode = "200", description = "Installation query templates"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
       })
-  public SparqlQuerySettings listSparqlQueryTemplates() {
+  public SparqlQuerySettings listSparqlQueryTemplates(@Context SecurityContext securityContext) {
+    requireAuthenticatedUserName(securityContext);
     return SettingsCache.getSettingOrDefault(
         SettingsType.SPARQL_QUERY_SETTINGS,
         new SparqlQuerySettings().withQueryTemplates(new ArrayList<>()),
