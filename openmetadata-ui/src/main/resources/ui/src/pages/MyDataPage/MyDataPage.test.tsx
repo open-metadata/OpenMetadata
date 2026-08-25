@@ -301,6 +301,54 @@ describe('MyDataPage component', () => {
     });
   });
 
+  it('MyDataPage should render a customized layout after a null legacy page', async () => {
+    (getDocumentByFQN as jest.Mock).mockResolvedValueOnce({
+      ...mockDocumentData,
+      data: {
+        pages: [null, ...mockDocumentData.data.pages],
+      },
+    });
+
+    renderMyDataPage();
+
+    expect(
+      await screen.findByText('KnowledgePanel.ActivityFeed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['not an array', { invalid: true }],
+  ])(
+    'MyDataPage should use the default layout when the customized layout is %s',
+    async (_description, invalidLayout) => {
+      const landingPage =
+        invalidLayout === undefined
+          ? { pageType: PageType.LandingPage }
+          : { pageType: PageType.LandingPage, layout: invalidLayout };
+
+      (getDocumentByFQN as jest.Mock).mockResolvedValueOnce({
+        ...mockDocumentData,
+        data: { pages: [landingPage] },
+      });
+
+      renderMyDataPage();
+
+      expect(
+        await screen.findByText('KnowledgePanel.DataAssets')
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText('KnowledgePanel.KnowledgeCenter')
+      ).toBeInTheDocument();
+    }
+  );
+
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
     (getActiveAnnouncements as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
