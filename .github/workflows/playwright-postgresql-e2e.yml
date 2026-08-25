@@ -670,8 +670,27 @@ jobs:
               -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID} [skip ci]" \
               -m "$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")" \
               -m "Source: ${RUN_URL}"
-            if git push origin HEAD:main; then
+            push_rc=0
+            push_output=$(git push origin HEAD:main 2>&1) || push_rc=$?
+            echo "$push_output"
+            if [[ "$push_rc" -eq 0 ]]; then
               echo "Baseline refreshed on main (attempt $attempt)."
+              exit 0
+            fi
+            # A ruleset/branch-protection rejection (GH013: "changes must be
+            # made through the merge queue") is a CONFIGURATION gap, not a
+            # pipeline failure: the token identity is not on main's bypass
+            # list yet. Failing the job here turns every full-mode
+            # merge_group run red and ejects innocent PRs (runs 32750389130,
+            # 32750390655) — the exact failure mode this pipeline exists to
+            # prevent. Surface loudly, skip gracefully.
+            if grep -qE "GH013|rule violations|protected branch" <<< "$push_output"; then
+              echo "::warning::Baseline refresh skipped: push to main rejected by repository ruleset (GH013). Grant the workflow token (RELEASE_BOT_TOKEN or Actions) bypass on main's ruleset to enable auto-refresh."
+              {
+                echo "## ⚠️ Timing-baseline auto-refresh blocked by ruleset"
+                echo
+                echo "The direct push to \`main\` was rejected (GH013). The refresh is skipped — downstream planning keeps using the current baseline. Grant the workflow token bypass on the main ruleset to enable it."
+              } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             echo "Push rejected (main moved during refresh); retrying." >&2
