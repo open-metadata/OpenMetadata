@@ -557,9 +557,11 @@ const TableV2 = <T extends object>(
           (_c, idx) => columnIds[idx] === colKey
         ) as ColumnType<T> | undefined;
 
-        return col?.onFilter
+        const onFilter = col?.onFilter;
+
+        return onFilter
           ? selectedKeys.some((key) =>
-              col.onFilter!(key as React.Key | boolean, record)
+              onFilter(key as React.Key | boolean, record)
             )
           : true;
       })
