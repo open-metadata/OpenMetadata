@@ -67,11 +67,14 @@ class HtmlResponseError(Exception):
     pass a ``hint`` with the advice specific to it.
     """
 
-    def __init__(self, url: object, status_code: int, hint: Optional[str] = None) -> None:  # noqa: UP045
+    def __init__(
+        self, url: object, status_code: int, hint: Optional[str] = None
+    ) -> None:  # noqa: UP045
         super().__init__(
             f"Got an HTML page instead of JSON from [{url}] (HTTP {status_code})."
             " The endpoint served a web page, not an API response - check the configured"
-            " host/URL and that no proxy or login page is intercepting the call." + (f" {hint}" if hint else "")
+            " host/URL and that no proxy or login page is intercepting the call."
+            + (f" {hint}" if hint else "")
         )
         self.url = url
         self.status_code = status_code
@@ -116,7 +119,9 @@ def _decode_body(resp: requests.Response, url: object, raise_on_html: bool = Fal
         return resp
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
+        logger.warning(
+            f"Unexpected error while returning response {resp} in json format - {exc}"
+        )
     return None
 
 
@@ -252,7 +257,9 @@ class REST:
         base_url: Optional[URL] = None,  # noqa: UP045
         api_version: Optional[str] = None,  # noqa: UP045
         headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
         retry_wait: Optional[int] = None,  # noqa: UP045
         raw: bool = False,
@@ -278,7 +285,9 @@ class REST:
                 if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
-                    self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120
+                    self.config.expires_in = (
+                        datetime.now(timezone.utc).timestamp() + expiry - 120
+                    )
 
         if self.config.auth_header:
             headers[self.config.auth_header] = (
@@ -330,9 +339,15 @@ class REST:
         else:
             total_retries = self._retry if self._retry and self._retry > 0 else 0
         retry: int = total_retries
-        retry_wait_base: int = retry_wait if retry_wait is not None else (self._retry_wait or 0)
+        retry_wait_base: int = (
+            retry_wait if retry_wait is not None else (self._retry_wait or 0)
+        )
         http_tracker = get_global_tracker()
-        http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
+        http_cm = (
+            http_tracker.request(method, url)
+            if http_tracker is not None
+            else nullcontext()
+        )
         op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
         with http_cm, op_cm:
             while retry >= 0:
@@ -357,7 +372,9 @@ class REST:
                         traceback.format_exc()
             return None
 
-    def _one_request(self, method: str, url: URL, opts: dict, retry: int, raw: bool = False):
+    def _one_request(
+        self, method: str, url: URL, opts: dict, retry: int, raw: bool = False
+    ):
         """
         Perform one request, possibly raising RetryException in the case
         the response is 429. Otherwise, if error text contain "code" string,
@@ -404,11 +421,15 @@ class REST:
             requests.exceptions.RetryError,
             requests.exceptions.ChunkedEncodingError,
         ) as exc:
-            logger.warning("Transport failure calling [%s] with method [%s]: %s", url, method, exc)
+            logger.warning(
+                "Transport failure calling [%s] with method [%s]: %s", url, method, exc
+            )
             raise RestTransportError(method, url, exc) from exc
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
+            logger.warning(
+                f"Unexpected error calling [{url}] with method [{method}]: {exc}"
+            )
             # A raw caller asked for the response; swallowing to None would strand it
             # with an AttributeError. Re-raise so the real cause reaches the caller.
             if raw:
@@ -448,7 +469,15 @@ class REST:
         """
         return cast(
             "requests.Response",
-            self._request("GET", path, data, headers=headers, retry_wait=retry_wait, retries=retries, raw=True),
+            self._request(
+                "GET",
+                path,
+                data,
+                headers=headers,
+                retry_wait=retry_wait,
+                retries=retries,
+                raw=True,
+            ),
         )
 
     def post(
@@ -457,7 +486,9 @@ class REST:
         data: Any = None,
         json: Any = None,
         headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
     ):
         """
@@ -490,7 +521,9 @@ class REST:
         path: str,
         data: Any = None,
         headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
     ) -> bool:
         """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
         if path in self._limits_reached:
