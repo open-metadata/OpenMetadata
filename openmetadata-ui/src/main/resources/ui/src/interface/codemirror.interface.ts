@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 
+import { CSMode } from '../enums/codemirror.enum';
+
+/** The language the editor highlights with. `json` narrows CSMode.JAVASCRIPT. */
+export type Mode = {
+  name: CSMode;
+  json?: boolean;
+};
+
 /**
  * The editor option bag accepted by SchemaEditor/CodeEditor.
  *
@@ -18,9 +26,9 @@
  * they are kept as-is so the ~55 consumers need no change, and are translated
  * to CodeMirror 6 extensions by `getCodeMirrorExtensions`.
  *
- * Keys that have no CodeMirror 6 equivalent (`gutters`, `theme`) are accepted
- * and ignored — gutters are implied by the extensions that render them, and
- * theming is done with `EditorView.theme`.
+ * Keys with no CodeMirror 6 equivalent (`gutters`, `theme`, `scrollbarStyle`)
+ * are accepted and ignored — gutters are implied by the extensions that render
+ * them, and theming and scrollbars are CSS.
  */
 export interface CodeMirrorOptions {
   lineNumbers?: boolean;
@@ -38,4 +46,9 @@ export interface CodeMirrorOptions {
   gutters?: string[];
   /** CodeMirror 5 only, ignored. */
   theme?: string;
+  /**
+   * CodeMirror 5 only, ignored. Hiding the scrollbars is CSS in CodeMirror 6
+   * (`.cm-scroller`).
+   */
+  scrollbarStyle?: string;
 }

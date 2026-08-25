@@ -116,6 +116,7 @@ import {
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import { CODE_EDITOR_SCROLLER } from '../../utils/codeEditor';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -581,11 +582,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify .CodeMirror-scroll is height-constrained and scrollable', async () => {
+        await test.step('Verify the editor viewport is height-constrained and scrollable', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const codeMirrorScroll = container.locator('.CodeMirror-scroll');
+          const codeMirrorScroll = container.locator(CODE_EDITOR_SCROLLER);
           await expect(codeMirrorScroll).toBeVisible();
           const isScrollable = await codeMirrorScroll.evaluate(
             (el) => el.scrollHeight > el.clientHeight

@@ -21,6 +21,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
+import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -182,7 +183,7 @@ test('Query Entity', async ({ page }) => {
   await test.step('Update query and QueryUsedIn', async () => {
     await page.click('[data-testid="query-btn"]');
     await page.click(`[data-menu-id*="edit-query"]`);
-    await page.click('.CodeMirror-line', { clickCount: 3 });
+    await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
     await page.click('[data-testid="edit-query-used-in"]');

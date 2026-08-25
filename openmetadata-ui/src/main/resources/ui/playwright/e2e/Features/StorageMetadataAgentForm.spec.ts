@@ -15,6 +15,7 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { CODE_EDITOR, CODE_EDITOR_LINE, CODE_EDITOR_PLACEHOLDER, fillCodeEditor, getCodeEditorText } from '../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -108,13 +109,7 @@ test.describe(
       });
 
       await test.step('Manifest value can be edited in the widget', async () => {
-        const editor = manifestWidget.locator('.CodeMirror');
-        await editor.click();
-        await page.keyboard.press('ControlOrMeta+A');
-        await page.keyboard.press('Delete');
-        // insertText bypasses keydown so CodeMirror autoCloseBrackets does not
-        // duplicate the JSON braces/quotes we type.
-        await page.keyboard.insertText(updatedManifest);
+        await fillCodeEditor(page, manifestWidget, updatedManifest);
 
         await expect(manifestWidget).toContainText(updatedBucket);
       });
@@ -168,17 +163,15 @@ test.describe(
         expect(widgetBox!.width / containerBox!.width).toBeGreaterThan(0.7);
       });
 
-      const editor = manifestWidget.locator('.CodeMirror');
+      const editor = manifestWidget.locator(CODE_EDITOR);
 
       await test.step('Clearing the editor leaves it empty, not the sample', async () => {
-        await editor.click();
-        await page.keyboard.press('ControlOrMeta+A');
-        await page.keyboard.press('Delete');
+        await fillCodeEditor(page, manifestWidget, '');
 
         // CodeMirror inserts the placeholder element only while the document is
         // empty; its presence proves the value cleared instead of reverting to
         // the sample (the stale-default bug).
-        const placeholder = manifestWidget.locator('.CodeMirror-placeholder');
+        const placeholder = manifestWidget.locator(CODE_EDITOR_PLACEHOLDER);
         await expect(placeholder).toBeAttached();
 
         // It must read as a hint: muted global placeholder colour, and
@@ -208,7 +201,7 @@ test.describe(
 
         // With live auto-format the buffer would re-indent to 4 lines on each
         // keystroke (the cause of the caret jump); disabled, it stays one line.
-        await expect(manifestWidget.locator('.CodeMirror-line')).toHaveCount(1);
+        await expect(manifestWidget.locator(CODE_EDITOR_LINE)).toHaveCount(1);
       });
     });
 
@@ -218,22 +211,15 @@ test.describe(
       test.slow();
       await openMetadataAgentEditForm(page);
 
-      const editor = page.locator('.manifest-json-widget .CodeMirror');
-      await editor.click();
-      await page.keyboard.press('ControlOrMeta+A');
-      await page.keyboard.press('Delete');
+      const manifestWidget = page.locator('.manifest-json-widget');
+      await fillCodeEditor(page, manifestWidget, '');
 
       // Typing `{` auto-inserts `}` with the caret between them; the next char
       // must land inside. Before the fix the caret jumped to the end (`{}x`).
       await page.keyboard.type('{');
       await page.keyboard.type('x');
 
-      const value = await editor.evaluate((el) =>
-        (
-          el as unknown as { CodeMirror: { getValue(): string } }
-        ).CodeMirror.getValue()
-      );
-      expect(value).toBe('{x}');
+      expect(await getCodeEditorText(manifestWidget)).toBe('{x}');
     });
   }
 );

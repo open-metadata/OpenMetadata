@@ -21,6 +21,7 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from './dataQuality';
+import { clickCodeEditor } from './codeEditor';
 
 type CustomMetricDetails = {
   page: Page;
@@ -111,7 +112,7 @@ export const createCustomMetric = async ({
     await page.click(`[title="${metric.column}"]`);
   }
   if (metric.expression) {
-    await page.click('.CodeMirror-scroll');
+    await clickCodeEditor(page);
     await page.keyboard.type(metric.expression);
   }
   const createMetricResponse = page.waitForResponse(

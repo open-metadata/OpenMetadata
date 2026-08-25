@@ -3905,13 +3905,6 @@
   dependencies:
     classnames "*"
 
-"@types/codemirror@^0.0.104":
-  version "0.0.104"
-  resolved "https://registry.yarnpkg.com/@types/codemirror/-/codemirror-0.0.104.tgz#b5d7612211d2dfb476ecee2c77c0846b78e75796"
-  integrity sha512-b417c7DZifNj1IQzOurj+HDBzHEW+C6Y8DaBai3va7p7hR/mh3YLs4wYyDapqjYiIcvJSu/kPd8XUSPaDRftbg==
-  dependencies:
-    "@types/tern" "*"
-
 "@types/d3-array@*", "@types/d3-array@^3.0.3", "@types/d3-array@^3.2.1":
   version "3.2.2"
   resolved "https://registry.yarnpkg.com/@types/d3-array/-/d3-array-3.2.2.tgz#e02151464d02d4a1b44646d0fcdb93faf88fde8c"
@@ -4422,13 +4415,6 @@
   version "0.0.30"
   resolved "https://registry.yarnpkg.com/@types/strip-json-comments/-/strip-json-comments-0.0.30.tgz#9aa30c04db212a9a0649d6ae6fd50accc40748a1"
   integrity sha512-7NQmHra/JILCd1QqpSzl8+mJRc8ZHz3uDm8YV1Ks9IhK0epEiTw8aIErbvH9PI+6XbqhyIQy3462nEsn7UVzjQ==
-
-"@types/tern@*":
-  version "0.23.9"
-  resolved "https://registry.yarnpkg.com/@types/tern/-/tern-0.23.9.tgz#6f6093a4a9af3e6bb8dde528e024924d196b367c"
-  integrity sha512-ypzHFE/wBzh+BlH6rrBgS5I/Z7RD21pGhZ2rltb/+ZrVM1awdZwjx7hE5XfuYgHWk9uvV5HLZN3SloevCAp3Bw==
-  dependencies:
-    "@types/estree" "*"
 
 "@types/testing-library__jest-dom@^5.9.1", "@types/testing-library__jest-dom@^5.9.5":
   version "5.14.9"
@@ -5679,11 +5665,6 @@ code-block-writer@^11.0.0:
   version "11.0.3"
   resolved "https://registry.yarnpkg.com/code-block-writer/-/code-block-writer-11.0.3.tgz#9eec2993edfb79bfae845fbc093758c0a0b73b76"
   integrity sha512-NiujjUFB4SwScJq2bwbYUtXbZhBSlY6vYzm++3Q6oC+U+injTqfPYFK8wS9COOmb2lueqp0ZRB4nK1VYeHgNyw==
-
-codemirror@^5.65.16:
-  version "5.65.21"
-  resolved "https://registry.yarnpkg.com/codemirror/-/codemirror-5.65.21.tgz#cacf320606c5450ad3b3da34bb9c666afec21068"
-  integrity sha512-6teYk0bA0nR3QP0ihGMoxuKzpl5W80FpnHpBJpgy66NK3cZv5b/d/HY8PnRvfSsCG1MTfr92u2WUl+wT0E40mQ==
 
 codemirror@^6.0.0:
   version "6.0.2"
@@ -11466,11 +11447,6 @@ react-aria@3.48.0, react-aria@^3.47.0:
     clsx "^2.0.0"
     react-stately "3.46.0"
     use-sync-external-store "^1.6.0"
-
-react-codemirror2@^7.2.1:
-  version "7.3.0"
-  resolved "https://registry.yarnpkg.com/react-codemirror2/-/react-codemirror2-7.3.0.tgz#c26e9fe655458389c6218496076e4bc7a4c31166"
-  integrity sha512-gCgJPXDX+5iaPolkHAu1YbJ92a2yL7Je4TuyO3QEqOtI/d6mbEk08l0oIm18R4ctuT/Sl87X63xIMBnRQBXYXA==
 
 react-data-grid@7.0.0-beta.47:
   version "7.0.0-beta.47"

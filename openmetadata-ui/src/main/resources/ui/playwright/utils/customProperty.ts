@@ -36,6 +36,7 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
+import { CODE_EDITOR, CODE_EDITOR_CONTENT } from './codeEditor';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -332,7 +333,7 @@ export const validateValueForProperty = async (data: {
       endValue
     );
   } else if (propertyType === 'sqlQuery') {
-    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(container.locator(CODE_EDITOR_CONTENT)).toContainText(value);
   } else if (propertyType === 'table-cp') {
     const values = value.split(',');
 
@@ -1022,7 +1023,7 @@ export const editColumnCustomProperty = async (
     await page.getByTestId('save').click();
   } else if (propertyType === 'sqlQuery') {
     const codeMirror = page.locator(
-      '.custom-properties-section-container .CodeMirror'
+      `.custom-properties-section-container ${CODE_EDITOR}`
     );
     await expect(codeMirror).toBeVisible();
     await codeMirror.click();

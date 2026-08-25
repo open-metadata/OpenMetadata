@@ -24,6 +24,7 @@ import {
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { deleteTestCase, submitTestCaseForm } from '../../../utils/testCases';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -867,7 +868,7 @@ test.describe(
           page.locator('[data-id="tableCustomSQLQuery"]')
         ).toBeVisible();
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
@@ -919,7 +920,7 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', testCase.displayName);
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')

@@ -40,6 +40,7 @@ import {
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
+import { CODE_EDITOR, getCodeEditorText } from '../../../utils/codeEditor';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   name = '';
@@ -255,8 +256,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="dbt"]');
 
       // Verify query is present in the DBT tab
-      await page.locator('.CodeMirror').waitFor();
-      const codeMirrorText = await page.textContent('.CodeMirror');
+      await page.locator(CODE_EDITOR).waitFor();
+      const codeMirrorText = await getCodeEditorText(page);
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
 

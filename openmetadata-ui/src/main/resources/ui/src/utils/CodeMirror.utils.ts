@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { closeBrackets } from '@codemirror/autocomplete';
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
@@ -19,23 +20,27 @@ import { sql } from '@codemirror/lang-sql';
 import { yaml } from '@codemirror/lang-yaml';
 import {
   bracketMatching,
+  defaultHighlightStyle,
   foldGutter,
   indentUnit,
   StreamLanguage,
+  syntaxHighlighting,
 } from '@codemirror/language';
 import { java } from '@codemirror/legacy-modes/mode/clike';
 import { EditorState, Extension } from '@codemirror/state';
 import {
+  drawSelection,
+  dropCursor,
   EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
+  keymap,
   lineNumbers,
   placeholder as placeholderExtension,
 } from '@codemirror/view';
 import { isUndefined } from 'lodash';
-import { Mode } from '../components/Database/SchemaEditor/SchemaEditor.interface';
 import { CSMode } from '../enums/codemirror.enum';
-import { CodeMirrorOptions } from '../interface/codemirror.interface';
+import { CodeMirrorOptions, Mode } from '../interface/codemirror.interface';
 
 /**
  * Translate the `mode` prop (CodeMirror 5 shape) to a CodeMirror 6 language
@@ -77,8 +82,9 @@ type BooleanCodeMirrorOption =
 /**
  * CodeMirror 5 boolean option -> the CodeMirror 6 extensions that replace it.
  *
- * `readOnly` also drops the caret and takes the editor out of the tab order
- * (`editable: false`), matching how CodeMirror 5 rendered a read-only view.
+ * `readOnly` rejects edits but keeps the editor focusable, the way CodeMirror 5
+ * behaved: keyboard users can still move through the text and copy it.
+ * `EditorView.editable.of(false)` would take it out of the tab order.
  */
 const BOOLEAN_OPTION_EXTENSIONS: Array<
   [BooleanCodeMirrorOption, () => Extension[]]
@@ -92,10 +98,7 @@ const BOOLEAN_OPTION_EXTENSIONS: Array<
   ['matchBrackets', () => [bracketMatching()]],
   ['autoCloseBrackets', () => [closeBrackets()]],
   ['foldGutter', () => [foldGutter()]],
-  [
-    'readOnly',
-    () => [EditorState.readOnly.of(true), EditorView.editable.of(false)],
-  ],
+  ['readOnly', () => [EditorState.readOnly.of(true)]],
 ];
 
 /**
@@ -131,3 +134,23 @@ export const getCodeMirrorExtensions = (
 
   return extensions;
 };
+
+/**
+ * The editor behaviour that is not driven by an option: undo history, the
+ * default key bindings, selection and drop cursors, and syntax colouring.
+ *
+ * This replaces `basicSetup`, which cannot be used here — it would force on
+ * line numbers, folding, active-line highlighting, search and autocompletion
+ * regardless of what the call site asked for, and would fight
+ * `getCodeMirrorExtensions`.
+ *
+ * Tab is deliberately left unbound so it keeps moving focus out of the editor;
+ * `indentWithTab` would trap keyboard users inside it.
+ */
+export const getCodeMirrorBaseExtensions = (): Extension[] => [
+  history(),
+  drawSelection(),
+  dropCursor(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
+];

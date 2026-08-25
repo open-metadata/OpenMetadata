@@ -43,6 +43,7 @@ import {
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
+import { CODE_EDITOR_CONTENT } from './codeEditor';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
@@ -839,7 +840,7 @@ const editGlossaryCustomProperty = async (
     await page.getByTestId('inline-save-btn').click();
 
     await expect(
-      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+      page.getByTestId(propertyName).locator(CODE_EDITOR_CONTENT)
     ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 
