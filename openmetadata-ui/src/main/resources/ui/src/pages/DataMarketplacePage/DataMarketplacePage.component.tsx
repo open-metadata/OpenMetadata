@@ -121,9 +121,9 @@ const DataMarketplacePage = ({
       return defaultLayout;
     }
 
-    const pageData = docData.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.DataMarketplace
-    );
+    const pageData = docData.data?.pages
+      ?.filter(Boolean)
+      .find((p: Page) => p?.pageType === PageType.DataMarketplace);
 
     const tabLayout = getLayoutFromCustomizedPage(
       PageType.DataMarketplace,

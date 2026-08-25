@@ -20,6 +20,7 @@ import {
 } from '../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { Document } from '../generated/entity/docStore/document';
+import type { Page } from '../generated/system/ui/page';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 
@@ -453,4 +454,29 @@ export const getUniqueFilteredLayout = (layout: WidgetConfig[]) => {
     ),
     'i'
   );
+};
+
+/**
+ * Computes the updated `pages` array for a persona customization document.
+ * A missing `newPage` means "reset" — the page is removed if present and,
+ * crucially, no empty slot is appended for a page that was never customized.
+ * Appending an absent value here is how a `null` element used to leak into the
+ * persisted array (an undefined slot serializes to `null` on create). Existing
+ * null/undefined slots from legacy data are also dropped.
+ */
+export const getUpdatedPagesForCustomization = (
+  existingPages: Page[] | undefined,
+  pageType: string,
+  newPage?: Page
+): Page[] => {
+  const pages = (existingPages ?? []).filter(Boolean);
+  const isPagePresent = pages.some((page) => page?.pageType === pageType);
+
+  if (!newPage) {
+    return pages.filter((page) => page?.pageType !== pageType);
+  }
+
+  return isPagePresent
+    ? pages.map((page) => (page?.pageType === pageType ? newPage : page))
+    : [...pages, newPage];
 };

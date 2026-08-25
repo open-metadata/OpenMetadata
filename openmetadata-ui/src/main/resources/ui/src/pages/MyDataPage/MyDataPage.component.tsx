@@ -114,9 +114,12 @@ const MyDataPage = () => {
     if (!docData || !selectedPersona) {
       return getDefaultLandingPageLayout();
     }
-    const pageData = docData.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.LandingPage
-    ) ?? { layout: [], pageType: PageType.LandingPage };
+    const pageData = docData.data?.pages
+      ?.filter(Boolean)
+      .find((p: Page) => p?.pageType === PageType.LandingPage) ?? {
+      layout: [],
+      pageType: PageType.LandingPage,
+    };
     const filteredLayout = (pageData.layout as WidgetConfig[])
       .filter(
         (widget: WidgetConfig) =>

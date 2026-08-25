@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import { Page, PageType } from '../generated/system/ui/page';
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
 import {
@@ -21,6 +22,7 @@ import {
   getNewWidgetPlacement,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
+  getUpdatedPagesForCustomization,
   getWidgetWidthLabelFromKey,
 } from './CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from './CustomizableLandingPageUtils';
@@ -348,5 +350,87 @@ describe('CustomizableLandingPageUtils', () => {
       expect(result).toHaveLength(2);
       expect(result[1].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
     });
+  });
+});
+
+describe('getUpdatedPagesForCustomization', () => {
+  const landingPage = { pageType: PageType.LandingPage } as Page;
+  const tablePage = { pageType: PageType.Table } as Page;
+  const glossaryPage = { pageType: PageType.Glossary } as Page;
+
+  it('should not append an empty slot when resetting a page that is not customized', () => {
+    const result = getUpdatedPagesForCustomization(
+      [landingPage, tablePage, glossaryPage],
+      PageType.DataMarketplace,
+      undefined
+    );
+
+    expect(result).toEqual([landingPage, tablePage, glossaryPage]);
+    expect(result).not.toContain(undefined);
+    expect(result).not.toContain(null);
+  });
+
+  it('should remove the page when resetting a customized page', () => {
+    const result = getUpdatedPagesForCustomization(
+      [landingPage, tablePage, glossaryPage],
+      PageType.Table,
+      undefined
+    );
+
+    expect(result).toEqual([landingPage, glossaryPage]);
+  });
+
+  it('should append the new page when customizing a page that is not present', () => {
+    const dataMarketplacePage = {
+      pageType: PageType.DataMarketplace,
+    } as Page;
+
+    const result = getUpdatedPagesForCustomization(
+      [landingPage, tablePage, glossaryPage],
+      PageType.DataMarketplace,
+      dataMarketplacePage
+    );
+
+    expect(result).toEqual([
+      landingPage,
+      tablePage,
+      glossaryPage,
+      dataMarketplacePage,
+    ]);
+  });
+
+  it('should replace the existing page when updating a customized page', () => {
+    const updatedTablePage = {
+      pageType: PageType.Table,
+      tabs: [],
+    } as unknown as Page;
+
+    const result = getUpdatedPagesForCustomization(
+      [landingPage, tablePage, glossaryPage],
+      PageType.Table,
+      updatedTablePage
+    );
+
+    expect(result).toEqual([landingPage, updatedTablePage, glossaryPage]);
+  });
+
+  it('should strip pre-existing null slots from legacy pages data', () => {
+    const result = getUpdatedPagesForCustomization(
+      [landingPage, null as unknown as Page, tablePage],
+      PageType.Glossary,
+      glossaryPage
+    );
+
+    expect(result).toEqual([landingPage, tablePage, glossaryPage]);
+  });
+
+  it('should handle an undefined pages array', () => {
+    const result = getUpdatedPagesForCustomization(
+      undefined,
+      PageType.Table,
+      undefined
+    );
+
+    expect(result).toEqual([]);
   });
 });

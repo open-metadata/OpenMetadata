@@ -47,6 +47,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
+import { getUpdatedPagesForCustomization } from '../../utils/CustomizableLandingPagePureUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -83,7 +84,7 @@ const CustomizablePageContent = () => {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
-  const { document, setDocument, currentPage, getPage, setCurrentPageType } =
+  const { document, setDocument, currentPage, setCurrentPageType } =
     useCustomizeStore();
 
   const backgroundColor = useMemo(
@@ -102,20 +103,12 @@ const CustomizablePageContent = () => {
     try {
       let response: Document;
       const newDoc = cloneDeep(document);
-      const pageData = getPage(pageFqn);
 
-      if (pageData) {
-        newDoc.data.pages = newPage
-          ? newDoc.data?.pages?.map((p: Page) =>
-              p.pageType === pageFqn ? newPage : p
-            )
-          : newDoc.data?.pages.filter((p: Page) => p.pageType !== pageFqn);
-      } else {
-        newDoc.data = {
-          ...newDoc.data,
-          pages: [...(newDoc.data.pages ?? []), newPage],
-        };
-      }
+      newDoc.data.pages = getUpdatedPagesForCustomization(
+        newDoc.data?.pages,
+        pageFqn,
+        newPage
+      );
 
       if (document.id) {
         const jsonPatch = compare(document, newDoc);
