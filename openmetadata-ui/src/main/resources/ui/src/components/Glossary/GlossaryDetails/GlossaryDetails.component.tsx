@@ -18,10 +18,12 @@ import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../../constants/Glossary.contant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
+import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -91,6 +93,9 @@ const GlossaryDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [termCount, setTermCount] = useState<number>(
+    glossary.termCount ?? glossary.childrenCount ?? 0
+  );
   const { onAddGlossaryTerm } = useGlossaryStore();
 
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
@@ -123,6 +128,43 @@ const GlossaryDetails = ({
     }
   }, [glossary.fullyQualifiedName]);
 
+  // Terms tab badge: count direct children filtered to the same entityStatus the
+  // table defaults to, via limit=0 (count-only, no row fetch) — glossary.termCount /
+  // childrenCount count all nested descendants with no status filter, so they can
+  // disagree with what the table actually lists.
+  useEffect(() => {
+    const fqn = glossary.fullyQualifiedName;
+    if (!fqn) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchTermCount = async () => {
+      try {
+        const { paging } = await getFirstLevelGlossaryTermsPaginated(
+          fqn,
+          0,
+          undefined,
+          DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(',')
+        );
+        if (isMounted) {
+          setTermCount(paging.total ?? 0);
+        }
+      } catch {
+        if (isMounted) {
+          setTermCount(0);
+        }
+      }
+    };
+
+    fetchTermCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [glossary.fullyQualifiedName]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
@@ -138,7 +180,7 @@ const GlossaryDetails = ({
       {
         label: (
           <TabsLabel
-            count={glossary.termCount ?? glossary.childrenCount ?? 0}
+            count={termCount}
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
@@ -208,6 +250,7 @@ const GlossaryDetails = ({
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
+    termCount,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
     activeTab,

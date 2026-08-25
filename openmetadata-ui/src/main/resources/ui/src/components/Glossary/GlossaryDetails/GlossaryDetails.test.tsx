@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   mockedGlossaries,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
+import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
+import { useGlossaryStore } from '../useGlossary.store';
 import GlossaryDetails from './GlossaryDetails.component';
 
 jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {
@@ -95,6 +97,13 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
 }));
 
+jest.mock('../../../rest/glossaryAPI', () => ({
+  getFirstLevelGlossaryTermsPaginated: jest.fn(),
+}));
+
+const mockGetFirstLevelGlossaryTermsPaginated =
+  getFirstLevelGlossaryTermsPaginated as jest.Mock;
+
 describe('Test Glossary-details component', () => {
   it('Should render Glossary-details component', async () => {
     await act(async () => {
@@ -107,5 +116,52 @@ describe('Test Glossary-details component', () => {
     expect(headerComponent).toBeInTheDocument();
     expect(glossaryDetails).toBeInTheDocument();
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+  });
+
+  describe('Terms tab count badge', () => {
+    afterEach(() => {
+      useGlossaryStore.setState({ activeGlossary: {} } as never);
+    });
+
+    it('requests a status-filtered, count-only page of direct children for the active glossary', async () => {
+      useGlossaryStore.setState({
+        activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
+      } as never);
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 4 },
+      });
+
+      await act(async () => {
+        render(<GlossaryDetails {...mockProps} />);
+      });
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+        'Mock Glossary',
+        0,
+        undefined,
+        'Approved,Draft,In Review'
+      );
+    });
+
+    it('shows the filtered paging.total on the Terms tab once the fetch resolves', async () => {
+      useGlossaryStore.setState({
+        activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
+      } as never);
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 4 },
+      });
+
+      await act(async () => {
+        render(<GlossaryDetails {...mockProps} />);
+      });
+
+      const termsTab = await screen.findByTestId('terms');
+
+      expect(
+        await within(termsTab).findByTestId('filter-count')
+      ).toHaveTextContent('4');
+    });
   });
 });

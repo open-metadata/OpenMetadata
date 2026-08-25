@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { act, render } from '@testing-library/react';
 import React from 'react';
+import GlossaryTermChildrenCountBadge from '../../components/Glossary/GlossaryTermChildrenCountBadge/GlossaryTermChildrenCountBadge.component';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
@@ -57,6 +59,11 @@ jest.mock(
 jest.mock(
   '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
   () => ({ __esModule: true, default: () => null })
+);
+
+jest.mock(
+  '../../components/Glossary/GlossaryTermChildrenCountBadge/GlossaryTermChildrenCountBadge.component',
+  () => ({ __esModule: true, default: jest.fn().mockReturnValue(null) })
 );
 
 jest.mock('../EntityDisplayPureUtils', () => ({
@@ -129,6 +136,27 @@ describe('getGlossaryTermDetailPageTabs', () => {
       const tabs = getGlossaryTermDetailPageTabs(mockProps);
 
       expect(tabs.find((t) => t.key === EntityTabs.ASSETS)).toBeDefined();
+    });
+
+    it('renders the GLOSSARY_TERMS badge with the term fqn, initial count, and active state', async () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        activeTab: EntityTabs.GLOSSARY_TERMS,
+      });
+      const termsTab = tabs.find((t) => t.key === EntityTabs.GLOSSARY_TERMS);
+
+      await act(async () => {
+        render(termsTab?.label as React.ReactElement);
+      });
+
+      expect(GlossaryTermChildrenCountBadge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fqn: mockGlossaryTerm.fullyQualifiedName,
+          initialCount: mockGlossaryTerm.childrenCount,
+          isActive: true,
+        }),
+        expect.anything()
+      );
     });
 
     it('passes a status message and disables Add on the ASSETS tab when the term is not Approved', () => {

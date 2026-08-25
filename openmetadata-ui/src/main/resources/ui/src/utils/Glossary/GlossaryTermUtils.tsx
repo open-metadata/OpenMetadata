@@ -64,6 +64,15 @@ const GlossaryTermTab = withSuspenseFallback(
   )
 );
 
+const GlossaryTermChildrenCountBadge = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTermChildrenCountBadge/GlossaryTermChildrenCountBadge.component'
+      )
+  )
+);
+
 const OntologyExplorer = withSuspenseFallback(
   lazy(() => import('../../components/OntologyExplorer/OntologyExplorer'))
 );
@@ -152,11 +161,11 @@ export const getGlossaryTermDetailPageTabs = (
                 {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
                   i18n.t('label.glossary-term-plural')}
                 <span className="p-l-xs ">
-                  {getCountBadge(
-                    glossaryTerm.childrenCount || 0,
-                    '',
-                    activeTab === EntityTabs.GLOSSARY_TERMS
-                  )}
+                  <GlossaryTermChildrenCountBadge
+                    fqn={glossaryTerm.fullyQualifiedName}
+                    initialCount={glossaryTerm.childrenCount}
+                    isActive={activeTab === EntityTabs.GLOSSARY_TERMS}
+                  />
                 </span>
               </div>
             ),
