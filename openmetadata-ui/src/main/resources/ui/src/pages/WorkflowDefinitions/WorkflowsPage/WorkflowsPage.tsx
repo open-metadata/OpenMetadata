@@ -22,6 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -307,16 +308,15 @@ const WorkflowsPage = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className="workflow-page"
+      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
       mainContainerClassName="workflow-page-layout"
-      pageContainerStyle={{
-        paddingLeft: 0,
-        paddingRight: 0,
-        ...(isAiMode ? { paddingBottom: 0, height: 'calc(100vh - 16px)' } : {}),
-      }}
       pageTitle={t('label.workflow-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
+      <div
+        className={classNames(
+          'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
+          { 'tw:mx-2': !isAiMode }
+        )}>
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}

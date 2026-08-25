@@ -12,6 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import { Globe01, Plus } from '@untitledui/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -33,6 +34,7 @@ import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
+import { CreatePlaceholder } from '../../common/EmptyPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -239,10 +241,28 @@ const MarketplaceDomainsWidget = ({
         )}
       </div>
       {isEmpty(domains) ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:min-h-16">
-          <Typography as="span" className="tw:text-sm tw:text-text-tertiary">
-            {t('label.no-entity', { entity: t('label.domain-plural') })}
-          </Typography>
+        <div className="tw:relative tw:flex tw:min-h-60 tw:items-center tw:justify-center">
+          <CreatePlaceholder
+            actions={
+              !isEditView && permissions.domain?.Create
+                ? [
+                    {
+                      key: 'add',
+                      label: t('label.new-entity', {
+                        entity: t('label.domain'),
+                      }),
+                      color: 'primary',
+                      iconLeading: Plus,
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            data-testid="marketplace-domains-empty-state"
+            description={t('label.no-domains-yet-description')}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-domains-yet')}
+          />
         </div>
       ) : (
         cardList

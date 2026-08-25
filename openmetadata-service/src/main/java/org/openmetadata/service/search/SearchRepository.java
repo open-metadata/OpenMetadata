@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_SERVICE_STYLE_SCRIPT;
@@ -83,9 +84,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -169,6 +176,7 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -185,6 +193,13 @@ public class SearchRepository {
           .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
           .expireAfterWrite(MAPPED_FIELD_CACHE_TTL)
           .build();
+
+  /**
+   * Upper bound on parent ids packed into a single inherited-domain child-propagation terms query,
+   * kept well under Elasticsearch's default {@code index.max_terms_count} (65536). A normal move
+   * carries far fewer and stays one update-by-query.
+   */
+  private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   /**
    * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
@@ -631,21 +646,14 @@ public class SearchRepository {
     }
   }
 
-  public void createMissingIndexes() {
+  public int createMissingIndexes() {
     LOG.info("Checking for missing search indexes...");
-    int created = 0;
-    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
-      try {
-        if (indexExists(entry.getValue())) {
-          reconcileAliases(entry.getValue());
-        } else {
-          createIndex(entry.getValue());
-          created++;
-          LOG.info("Created missing index for entity type: {}", entry.getKey());
-        }
-      } catch (Exception e) {
-        LOG.warn("Failed to create missing index for {}: {}", entry.getKey(), e.getMessage());
-      }
+    int parallelism = SeedDataGate.getInstance().getSearchInitParallelism();
+    int created;
+    if (parallelism == 1) {
+      created = (int) entityIndexMap.entrySet().stream().filter(this::createMissingIndex).count();
+    } else {
+      created = createMissingIndexesInParallel(parallelism);
     }
     if (created > 0) {
       LOG.info(
@@ -655,6 +663,51 @@ public class SearchRepository {
     } else {
       LOG.info("All {} indexes already exist", entityIndexMap.size());
     }
+    return created;
+  }
+
+  private int createMissingIndexesInParallel(int parallelism) {
+    List<Callable<Boolean>> tasks =
+        entityIndexMap.entrySet().stream()
+            .<Callable<Boolean>>map(entry -> () -> createMissingIndex(entry))
+            .toList();
+    try (ExecutorService executor =
+        Executors.newFixedThreadPool(
+            parallelism, Thread.ofPlatform().name("search-init-", 0).factory())) {
+      int created = 0;
+      for (Future<Boolean> result : executor.invokeAll(tasks)) {
+        try {
+          if (result.get()) {
+            created++;
+          }
+        } catch (ExecutionException exception) {
+          LOG.warn("Search index initialization task failed", exception.getCause());
+        }
+      }
+      return created;
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Search index initialization was interrupted", exception);
+      return 0;
+    }
+  }
+
+  private boolean createMissingIndex(Map.Entry<String, IndexMapping> entry) {
+    try {
+      if (indexExists(entry.getValue())) {
+        reconcileAliases(entry.getValue());
+        return false;
+      }
+      createIndex(entry.getValue());
+      if (indexExists(entry.getValue())) {
+        LOG.info("Created missing index for entity type: {}", entry.getKey());
+        return true;
+      }
+      LOG.warn("Missing index for {} was not created", entry.getKey());
+    } catch (Exception exception) {
+      LOG.warn("Failed to create missing index for {}: {}", entry.getKey(), exception.getMessage());
+    }
+    return false;
   }
 
   /**
@@ -681,38 +734,132 @@ public class SearchRepository {
   }
 
   public void createOrUpdateIndexTemplates() {
+    createOrUpdateIndexTemplates(1, true);
+  }
+
+  public void createOrUpdateIndexTemplates(int createdIndexCount) {
+    createOrUpdateIndexTemplates(createdIndexCount, false);
+  }
+
+  private void createOrUpdateIndexTemplates(int createdIndexCount, boolean force) {
+    IndexTemplateBuildResult buildResult = buildIndexTemplateDefinitions();
+    Map<String, IndexTemplateDefinition> templates = buildResult.templates();
+    String fingerprint =
+        SeedDataGate.fingerprint(
+            templates.entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().mappingContent(),
+                        (left, right) -> left,
+                        TreeMap::new)));
+    if (!force
+        && buildResult.failures() == 0
+        && !SeedDataGate.getInstance()
+            .shouldUpdateSearchTemplates(fingerprint, createdIndexCount)) {
+      if (indexTemplatesMatch(templates)) {
+        LOG.info(
+            "Index template fingerprint markers match; skipping {} template updates",
+            templates.size());
+        SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+        return;
+      }
+      LOG.info("Index template drift detected in the search cluster; rebuilding templates");
+    }
+
     LOG.info("Creating/updating index templates for all entities...");
     int success = 0;
-    int failed = 0;
+    int failed = buildResult.failures();
+    int skipped = entityIndexMap.size() - templates.size() - failed;
+    for (Map.Entry<String, IndexTemplateDefinition> entry : templates.entrySet()) {
+      try {
+        IndexTemplateDefinition template = entry.getValue();
+        searchClient.createOrUpdateIndexTemplate(
+            entry.getKey(), template.indexPattern(), template.mappingContent());
+        success++;
+      } catch (Exception exception) {
+        failed++;
+        LOG.warn("Failed to create index template for {}", entry.getKey(), exception);
+      }
+    }
+    if (failed == 0) {
+      SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+    } else {
+      SeedDataGate.getInstance().recordSearchTemplateFailure();
+    }
+    LOG.info(
+        "Index templates creation completed. Success: {}, Failed: {}, Skipped: {}, Total: {}",
+        success,
+        failed,
+        skipped,
+        entityIndexMap.size());
+  }
+
+  private IndexTemplateBuildResult buildIndexTemplateDefinitions() {
+    Map<String, IndexTemplateDefinition> templates = new LinkedHashMap<>();
+    int failures = 0;
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+      String indexName;
+      String mappingContent;
       try {
         IndexMapping indexMapping = entry.getValue();
-        String indexName = indexMapping.getIndexName(clusterAlias);
-        String templateName = "om_" + indexName;
-        String indexPattern = indexName + "*";
-        String mappingContent = enrichForElasticsearch(readIndexMapping(indexMapping));
-        if (mappingContent != null) {
-          searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
-          success++;
-        } else {
-          failed++;
-          LOG.warn("No mapping content found for entity type: {}", entry.getKey());
-        }
-      } catch (IllegalStateException e) {
+        indexName = indexMapping.getIndexName(clusterAlias);
+        mappingContent = readIndexMapping(indexMapping);
+      } catch (Exception exception) {
+        failures++;
+        LOG.warn("Failed to read index template for {}", entry.getKey(), exception);
+        continue;
+      }
+      if (mappingContent == null) {
+        failures++;
+        LOG.warn("No mapping content found for entity type: {}", entry.getKey());
+        continue;
+      }
+      try {
+        mappingContent = enrichForElasticsearch(mappingContent);
+        templates.put(
+            "om_" + indexName, new IndexTemplateDefinition(indexName + "*", mappingContent));
+      } catch (IllegalStateException exception) {
         // Embedding dimension mismatch (or similar misconfiguration). Surface immediately so
         // startup/reindex fails loudly and operators must reindex — silencing this would let
         // a broken vector setup keep running with mismatched dims.
-        throw e;
-      } catch (Exception e) {
-        failed++;
-        LOG.warn("Failed to create index template for {}", entry.getKey(), e);
+        throw exception;
+      } catch (Exception exception) {
+        failures++;
+        LOG.warn("Failed to enrich index template for {}", entry.getKey(), exception);
       }
     }
-    LOG.info(
-        "Index templates creation completed. Success: {}, Failed: {}, Total: {}",
-        success,
-        failed,
-        entityIndexMap.size());
+    return new IndexTemplateBuildResult(templates, failures);
+  }
+
+  private record IndexTemplateBuildResult(
+      Map<String, IndexTemplateDefinition> templates, int failures) {}
+
+  private record IndexTemplateDefinition(String indexPattern, String mappingContent) {}
+
+  private boolean indexTemplatesMatch(Map<String, IndexTemplateDefinition> templates) {
+    try {
+      Map<String, String> expectedFingerprints =
+          templates.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          searchClient.indexTemplateFingerprint(
+                              entry.getValue().indexPattern(), entry.getValue().mappingContent()),
+                      (left, right) -> left,
+                      TreeMap::new));
+      Map<String, String> liveFingerprints = searchClient.getIndexTemplateFingerprints("om_*");
+      return expectedFingerprints.entrySet().stream()
+          .allMatch(
+              expected ->
+                  Objects.equals(liveFingerprints.get(expected.getKey()), expected.getValue()));
+    } catch (Exception exception) {
+      LOG.warn(
+          "Unable to verify index template fingerprints; templates will be rebuilt: {}",
+          exception.getMessage());
+      return false;
+    }
   }
 
   public void createOrUpdateIndexTemplate(String entityType) throws IOException {
@@ -1884,6 +2031,40 @@ public class SearchRepository {
   }
 
   /**
+   * Re-index a moved asset AND propagate its (re-derived) domains to its inherited descendants in
+   * search. Used by the Domain-page asset add/remove route: on add the re-read domains are the newly
+   * assigned domain; on remove they are whatever the asset now inherits from its own ancestry (or
+   * none). Reuses the same rebuilt-from-DB read {@link #updateEntity(EntityReference)} performs — so
+   * it inherits its deferral (drained post-commit under a flush scope; read-your-writes inline
+   * otherwise) and correctness — then fans the same re-derived domains out to children through the
+   * inherited-guarded {@code ADD_DOMAINS_SCRIPT}, leaving descendants with an explicit domain
+   * untouched.
+   */
+  public void updateEntityAndPropagateInheritedDomainsToChildren(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityAndPropagateInheritedDomainsToChildren(entityReference),
+            "updateEntityAndPropagateInheritedDomainsToChildren",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+    EntityInterface entity =
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+    entity.setChangeDescription(null);
+    updateEntityIndex(entity);
+    propagateInheritedDomainsForType(
+        entityReference.getType(),
+        List.of(entityReference.getId()),
+        listOrEmpty(entity.getDomains()));
+  }
+
+  /**
    * Re-read each referenced entity with the same bounded field set {@link
    * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
    * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
@@ -2523,6 +2704,90 @@ public class SearchRepository {
     return entityType + ".id";
   }
 
+  /**
+   * Pushes a moved asset's new domains onto its inherited descendants in search. The asset-move
+   * routes (data product domain change, Domain page asset move) reindex only the direct asset's own
+   * doc, so descendants that inherit their domain keep the stale value in search even though the
+   * entity page recomputes it on read. This mirrors the child fan-out a normal entity update
+   * performs, reusing {@code ADD_DOMAINS_SCRIPT} which overwrites a child only when its domain is
+   * empty or inherited, leaving descendants that carry an explicit domain untouched.
+   *
+   * <p>The {@code updateByQuery} fan-out is routed through {@link #deferIfFlushScopeActive}, so when
+   * the move runs inside a create/update flush its blocking Elasticsearch round trip is drained after
+   * the DB commit rather than while a pooled DB connection is held, matching the sibling {@code
+   * updateEntity} / {@code updateAssetDomainsByIds} writes.
+   */
+  public void propagateInheritedDomainsToChildren(
+      List<EntityReference> assets, List<EntityReference> newDomains) {
+    if (!nullOrEmpty(assets)) {
+      Map<String, List<UUID>> assetIdsByType =
+          assets.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      EntityReference::getType,
+                      Collectors.mapping(EntityReference::getId, Collectors.toList())));
+      assetIdsByType.forEach(
+          (entityType, assetIds) ->
+              propagateInheritedDomainsForType(entityType, assetIds, newDomains));
+    }
+  }
+
+  private void propagateInheritedDomainsForType(
+      String entityType, List<UUID> assetIds, List<EntityReference> newDomains) {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    List<String> childAliases =
+        indexMapping == null
+            ? List.of()
+            : filterChildAliasesByCapability(
+                indexMapping, capability -> capability == null || !capability.isTimeSeries());
+    if (!nullOrEmpty(childAliases)) {
+      Pair<String, Map<String, Object>> updates = buildInheritedDomainUpdate(newDomains);
+      String parentField = resolveParentFieldName(entityType, updates);
+      List<String> parentIds = assetIds.stream().map(UUID::toString).toList();
+      // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count on an
+      // extreme bulk move; a normal move stays a single update-by-query.
+      for (int start = 0; start < parentIds.size(); start += MAX_PARENT_IDS_PER_TERMS_QUERY) {
+        List<String> chunk =
+            List.copyOf(
+                parentIds.subList(
+                    start, Math.min(start + MAX_PARENT_IDS_PER_TERMS_QUERY, parentIds.size())));
+        updateChildrenForInheritedDomains(childAliases, parentField, chunk, updates, entityType);
+      }
+    }
+  }
+
+  private Pair<String, Map<String, Object>> buildInheritedDomainUpdate(
+      List<EntityReference> newDomains) {
+    List<EntityReference> inheritedDomains =
+        newDomains == null
+            ? new ArrayList<>()
+            : JsonUtils.deepCopyList(newDomains, EntityReference.class);
+    inheritedDomains.forEach(domain -> domain.setInherited(true));
+    return new ImmutablePair<>(ADD_DOMAINS_SCRIPT, Map.of("updatedDomains", inheritedDomains));
+  }
+
+  private void updateChildrenForInheritedDomains(
+      List<String> childAliases,
+      String parentField,
+      List<String> parentIds,
+      Pair<String, Map<String, Object>> updates,
+      String entityType) {
+    deferIfFlushScopeActive(
+        () -> {
+          try {
+            searchClient.updateChildren(childAliases, parentField, parentIds, updates);
+          } catch (IOException e) {
+            String reason =
+                SearchIndexRetryQueue.failureReason("propagateInheritedDomainsToChildren", e);
+            parentIds.forEach(id -> SearchIndexRetryQueue.enqueue(id, null, entityType, reason));
+          }
+        },
+        "propagateInheritedDomainsToChildren",
+        null,
+        null,
+        entityType);
+  }
+
   private void propagateToDomainChildren(
       String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
       throws IOException {
@@ -3083,14 +3348,20 @@ public class SearchRepository {
 
   private String generateRemoveListScript(String fieldName) {
     String cap = capitalizeFirst(fieldName);
+    // Re-add the (inherited) refs only when the child keeps no explicit value of its own.
+    // A domain/owner change is recorded as delete-old + add-new, so this delete branch runs with
+    // params.removed<Field> holding the parent's NEW inherited refs; without the emptiness guard it
+    // would append them onto children that carry an explicit value, matching generateAddListScript.
     return String.format(
         """
         if (ctx._source.%s != null) {
           ctx._source.%s.removeIf(item -> item.inherited == true);
-          ctx._source.%s.addAll(params.removed%s);
+          if (ctx._source.%s.isEmpty()) {
+            ctx._source.%s.addAll(params.removed%s);
+          }
         }
         """,
-        fieldName, fieldName, fieldName, cap);
+        fieldName, fieldName, fieldName, fieldName, cap);
   }
 
   private String generateAddTagLabelListScript() {
@@ -3362,10 +3633,14 @@ public class SearchRepository {
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
       case Entity.DOMAIN -> {
+        // Assets store the domain in the plural "domains" array, so strip the deleted domain from
+        // every referencing asset by matching domains.id. Matching the singular "domain" field left
+        // stale references behind, which a same-named recreated domain then inherited (#28923).
         searchClient.updateChildren(
             GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>(entityType + ".id", docId),
-            new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+            new ImmutablePair<>("domains.id", docId),
+            new ImmutablePair<>(
+                REMOVE_DOMAINS_CHILDREN_SCRIPT, Collections.singletonMap("id", docId)));
         // we are doing below because we want to delete the data products with domain when domain is
         // deleted
         searchClient.deleteEntityByFields(
@@ -4098,6 +4373,17 @@ public class SearchRepository {
       throws IOException {
     return searchClient.aggregate(
         query, entityType, searchAggregation, filter.getCondition(entityType));
+  }
+
+  public JsonObject aggregate(
+      String query,
+      String entityType,
+      SearchAggregation searchAggregation,
+      SearchListFilter filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType), subjectContext);
   }
 
   public DataQualityReport genericAggregation(

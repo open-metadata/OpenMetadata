@@ -265,4 +265,105 @@ public class DomainAssetsColumnExclusionIT {
     assertNotNull(table);
     return table;
   }
+
+  /**
+   * A domain assigned on a database <b>service</b> must be inherited all the way down to a nested
+   * table (service -> database -> schema -> table). Exercised through the batch inheritance path
+   * ({@code setInheritedFields(List, Fields)}) that list endpoints and the search reindex share, so
+   * it guards the regression where the domain reached only the database (one level below the
+   * service) while the single-entity read path still resolved it everywhere.
+   */
+  @Test
+  void serviceLevelDomainInheritedByNestedTable(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    Domain domain = createDomain(client, "svc_inh_domain_" + shortId);
+
+    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+    DatabaseService service =
+        DatabaseServices.builder()
+            .name("svc_inh_svc_" + shortId)
+            .connection(conn)
+            .description("Test service for service-level domain inheritance")
+            .create();
+
+    CreateDatabase dbReq = new CreateDatabase();
+    dbReq.setName("svc_inh_db_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    Database database = client.databases().create(dbReq);
+
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName("svc_inh_schema_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
+
+    CreateTable tableReq = new CreateTable();
+    tableReq.setName(ns.prefix("svc_inh_tbl"));
+    tableReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableReq.setColumns(List.of(new Column().withName("c1").withDataType(ColumnDataType.BIGINT)));
+    Table table = client.tables().create(tableReq);
+    assertNotNull(table);
+
+    // Assign the domain on the SERVICE, then confirm the nested table inherits it via a bulk/list
+    // read (the same batch path the reindex uses to build search docs).
+    addServiceToDomain(domain, service.getId().toString());
+
+    Awaitility.await("nested table inherits the service-level domain via the batch/list path")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .untilAsserted(() -> assertTrue(listedTableHasDomain(schema, table, domain)));
+  }
+
+  private void addServiceToDomain(Domain domain, String serviceId) throws Exception {
+    String url =
+        String.format(
+            "%s/v1/domains/%s/assets/add",
+            SdkClients.getServerUrl(), domain.getFullyQualifiedName());
+    String body =
+        String.format("{\"assets\":[{\"id\":\"%s\",\"type\":\"databaseService\"}]}", serviceId);
+    java.net.http.HttpRequest request =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    java.net.http.HttpResponse<String> response =
+        java.net.http.HttpClient.newHttpClient()
+            .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertTrue(
+        response.statusCode() == 200,
+        "assets/add should return 200, got " + response.statusCode() + ": " + response.body());
+  }
+
+  private boolean listedTableHasDomain(DatabaseSchema schema, Table table, Domain domain)
+      throws Exception {
+    String url =
+        String.format(
+            "%s/v1/tables?databaseSchema=%s&fields=domains&limit=100",
+            SdkClients.getServerUrl(), schema.getFullyQualifiedName());
+    java.net.http.HttpRequest request =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .GET()
+            .build();
+    java.net.http.HttpResponse<String> response =
+        java.net.http.HttpClient.newHttpClient()
+            .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+    JsonNode root = OBJECT_MAPPER.readTree(response.body());
+    for (JsonNode t : root.path("data")) {
+      if (table.getFullyQualifiedName().equals(t.path("fullyQualifiedName").asText())) {
+        for (JsonNode d : t.path("domains")) {
+          if (domain.getFullyQualifiedName().equals(d.path("fullyQualifiedName").asText())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
 }

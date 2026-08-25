@@ -41,9 +41,19 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
 const DataQualityProvider = ({
   children,
   createActions,
+  isActive = true,
 }: {
   children: React.ReactNode;
   createActions?: DataQualityContextInterface['createActions'];
+  /**
+   * Whether this page currently owns the URL. Filters here are derived from the
+   * query string, which is global — so a host that keeps the page mounted while
+   * routing elsewhere (AI mode caches visited routes) must pass `false`, or the
+   * backgrounded page re-derives its filters from whatever route now owns the
+   * query string and refetches with another page's params. Defaults to `true`
+   * for hosts that unmount the page on navigation.
+   */
+  isActive?: boolean;
 }) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
@@ -94,7 +104,10 @@ const DataQualityProvider = ({
     };
   }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
-  const fetchTestSummary = async (params?: DataQualityPageParams) => {
+  const fetchTestSummary = async (
+    params?: DataQualityPageParams,
+    shouldIgnore = () => false
+  ) => {
     const filters = {
       ...pick(params, [
         'tags',
@@ -136,28 +149,51 @@ const DataQualityProvider = ({
         totalEntityCount = total;
       }
 
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary({
-        ...updatedData,
-        unhealthy,
-        healthy: total - unhealthy,
-        totalDQEntities: total,
-        totalEntityCount,
-      });
+      // A newer filter request can finish first; do not let this older response
+      // replace the summary that belongs to the current URL filters.
+      if (!shouldIgnore()) {
+        const updatedData = transformToTestCaseStatusObject(data);
+        setTestCaseSummary({
+          ...updatedData,
+          unhealthy,
+          healthy: total - unhealthy,
+          totalDQEntities: total,
+          totalEntityCount,
+        });
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!shouldIgnore()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsTestCaseSummaryLoading(false);
+      if (!shouldIgnore()) {
+        setIsTestCaseSummaryLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    let ignore = false;
+
+    // The dashboard owns its chart requests. When this provider is backgrounded
+    // or the dashboard is active, retain the last summary instead of issuing
+    // duplicate requests with query parameters owned by another view.
+    if (!isActive || activeTab === DataQualityPageTabs.DASHBOARD) {
+      setIsTestCaseSummaryLoading(false);
+
+      return;
+    }
+
     if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
-      fetchTestSummary(filterParams);
+      fetchTestSummary(filterParams, () => ignore);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [filterKey]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, filterKey, isActive]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
+import { Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -45,6 +45,7 @@ import {
   formatNumberWithComma,
 } from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -464,6 +465,7 @@ const ColumnProfileTable = () => {
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin
+              containerClassName="tw:ml-auto tw:w-1/2"
               placeholder={t('message.find-in-table')}
               searchValue={searchText}
               typingInterval={500}
@@ -492,7 +494,20 @@ const ColumnProfileTable = () => {
               <Table.Body
                 items={isColumnsLoading || isLoading ? [] : flatRows}
                 renderEmptyState={() =>
-                  isColumnsLoading || isLoading ? null : (
+                  isColumnsLoading || isLoading ? (
+                    <div
+                      className="tw:p-4"
+                      data-testid="column-profile-table-loading-skeletons">
+                      {getSkeletonMockData(5).map((skeletonId) => (
+                        <Skeleton
+                          className="tw:mb-2"
+                          height={40}
+                          key={skeletonId}
+                          width="100%"
+                        />
+                      ))}
+                    </div>
+                  ) : (
                     <FilterTablePlaceHolder />
                   )
                 }>

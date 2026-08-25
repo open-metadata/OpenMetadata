@@ -94,9 +94,11 @@ import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -508,6 +510,97 @@ public class LineageResourceIT {
     deleteLineage(client, pipeline.getEntityReference(), targetTable.getEntityReference());
 
     cleanupPipeline(client, pipeline);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testPipelineReferenceLineageUsesOnlyUpstreamRelationships() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Pipeline unrelatedPipeline =
+        createPipeline(client, namespace, "pipeline_reference_wrong_relation");
+    Pipeline lineagePipeline = createPipeline(client, namespace, "pipeline_reference_lineage");
+    Table sourceTable = createTable(client, namespace, "pipeline_reference_source");
+    Table targetTable = createTable(client, namespace, "pipeline_reference_target");
+
+    LineageDetails unrelatedDetails =
+        new LineageDetails().withPipeline(unrelatedPipeline.getEntityReference());
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .insert(
+            sourceTable.getId(),
+            targetTable.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.CONTAINS.ordinal(),
+            JsonUtils.pojoToJson(unrelatedDetails));
+
+    EntityLineage unrelatedLineage =
+        getLineage(client, Entity.PIPELINE, unrelatedPipeline.getId().toString(), "1", "1");
+    assertTrue(unrelatedLineage.getUpstreamEdges().isEmpty());
+    assertTrue(unrelatedLineage.getDownstreamEdges().isEmpty());
+
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .delete(
+            sourceTable.getId(),
+            Entity.TABLE,
+            targetTable.getId(),
+            Entity.TABLE,
+            Relationship.CONTAINS.ordinal());
+
+    LineageDetails lineageDetails =
+        new LineageDetails()
+            .withPipeline(lineagePipeline.getEntityReference())
+            .withSource(LineageDetails.Source.PIPELINE_LINEAGE);
+    executeAddLineage(
+        client,
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(lineageDetails)));
+
+    EntityLineage pipelineLineage =
+        getLineage(client, Entity.PIPELINE, lineagePipeline.getId().toString(), "1", "1");
+    assertTrue(
+        pipelineLineage.getUpstreamEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getFromEntity().equals(sourceTable.getId())
+                        && edge.getToEntity().equals(lineagePipeline.getId())));
+    assertTrue(
+        pipelineLineage.getDownstreamEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getFromEntity().equals(lineagePipeline.getId())
+                        && edge.getToEntity().equals(targetTable.getId())));
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            LINEAGE_PATH
+                + "/pipeline/"
+                + lineagePipeline.getId()
+                + "/type/"
+                + LineageDetails.Source.PIPELINE_LINEAGE.value(),
+            null);
+
+    EntityLineage sourceLineage =
+        getLineage(client, Entity.TABLE, sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        sourceLineage.getDownstreamEdges().stream()
+            .noneMatch(
+                edge ->
+                    edge.getFromEntity().equals(sourceTable.getId())
+                        && edge.getToEntity().equals(targetTable.getId())));
+
+    cleanupPipeline(client, unrelatedPipeline);
+    cleanupPipeline(client, lineagePipeline);
+    cleanupTable(client, sourceTable);
     cleanupTable(client, targetTable);
   }
 

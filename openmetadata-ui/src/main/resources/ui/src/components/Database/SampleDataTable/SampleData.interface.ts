@@ -24,8 +24,17 @@ export type SampleDataType =
 
 type RecordProps = Record<string, SampleDataType>;
 
+/**
+ * `name` is the column name as the source system reports it. It is kept apart
+ * from `key`/`dataIndex` because those address the row record, which cannot be
+ * keyed by a raw column name (see SampleDataTable.component).
+ */
+export type SampleDataColumn = ColumnsType<RecordProps>[number] & {
+  name: string;
+};
+
 export interface SampleData {
-  columns?: ColumnsType<RecordProps>;
+  columns?: SampleDataColumn[];
   rows?: RecordProps[];
 }
 

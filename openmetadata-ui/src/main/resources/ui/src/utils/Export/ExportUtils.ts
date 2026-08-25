@@ -53,6 +53,53 @@ const computeSafePixelRatio = (
   return Math.min(DESIRED_PIXEL_RATIO, byArea, byDim);
 };
 
+// Called per DOM node by html-to-image while cloning the export subtree.
+// Returning false skips the node AND everything under it — no cloneNode, no
+// getComputedStyle, no serialization. On lineage exports the DOM clone step
+// dominates toCanvas cost (linear in element count), so pruning subtrees
+// that contribute zero pixels is the highest-leverage optimization
+// available here.
+//
+// Rules (each must be strictly non-visual — a false positive silently drops
+// an element from the exported PNG):
+//   1. `[data-export-hide="true"]` — explicit opt-out for components that
+//      know they don't paint during export (loading spinners, hover-only
+//      chrome, dev overlays). Only literal "true" — partial values stay
+//      included so a stray attribute doesn't silently drop content.
+//   2. `.sr-only` / `.visually-hidden` — screen-reader-only content.
+//
+// Deliberately NOT filtered: `.react-flow__handle`. React Flow always adds
+// that base class to every `<Handle>`, but OpenMetadata's lineage handles
+// (`<Handle className="lineage-node-handle" ... />` in CustomNodeV1) are
+// styled as visible 20x20 white bordered boxes with an SVG icon (see
+// `custom-node.less` `.react-flow .lineage-node-handle`), not the invisible
+// pips a blanket class match would assume. Tag any handles that really
+// shouldn't paint with `data-export-hide="true"` on a case-by-case basis.
+//
+// Must be O(1) per node — anything that walks the tree here defeats the
+// point.
+// Exported for testing — the rules are load-bearing on PNG-export
+// correctness (a false positive silently drops an element from the image)
+// so each rule must be covered in isolation, not just through the public
+// wrapper.
+export const shouldIncludeInExport = (node: Element): boolean => {
+  if (!(node instanceof HTMLElement)) {
+    return true;
+  }
+  const classList = node.classList;
+  if (
+    classList?.contains('sr-only') ||
+    classList?.contains('visually-hidden')
+  ) {
+    return false;
+  }
+  if (node.dataset?.exportHide === 'true') {
+    return false;
+  }
+
+  return true;
+};
+
 const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
   new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -146,6 +193,9 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       height: fullLogicalHeight,
       pixelRatio,
       quality: 1.0,
+      // Prune non-visual subtrees before html-to-image clones them —
+      // biggest lever we have for cutting DOM-clone time on large exports.
+      filter: shouldIncludeInExport,
       style: {
         width: imageWidth.toString(),
         height: imageHeight.toString(),

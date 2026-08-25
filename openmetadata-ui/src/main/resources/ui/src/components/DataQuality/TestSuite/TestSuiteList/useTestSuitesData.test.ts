@@ -270,8 +270,21 @@ describe('useTestSuitesData', () => {
     );
 
     expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ q: '*abc*', owner: 'u1' })
+      expect.objectContaining({ q: 'abc', owner: 'u1' })
     );
+  });
+
+  it('should send a reserved-character term verbatim, since the server parses q as literal text', async () => {
+    const url = 'https://example.com/data-quality/test-case-results';
+    renderData(buildProps({ searchValue: url }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
+    );
+
+    const { q } = mockGetListTestSuitesBySearch.mock.calls.at(-1)?.[0] ?? {};
+
+    expect(q).toBe(url);
   });
 
   it('should refetch when an injected filter changes (driving effect)', async () => {
@@ -289,7 +302,7 @@ describe('useTestSuitesData', () => {
     );
 
     expect(mockGetListTestSuitesBySearch).toHaveBeenLastCalledWith(
-      expect.objectContaining({ q: '*xyz*' })
+      expect.objectContaining({ q: 'xyz' })
     );
   });
 

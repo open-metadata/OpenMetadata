@@ -1,7 +1,7 @@
 # Individual scopes
 
 # Review from UI owners for changes around UI code
-/openmetadata-ui/src/main/resources/ui/ @open-metadata/ui
+/openmetadata-ui/src/main/resources/ui/ @chirag-madlani @karanh37 @ShaileshParmar11
 
 # Review from @chireg / @karan for changes around component library
 /openmetadata-ui-core-components/src/main/resources/ui/ @chirag-madlani @karanh37
@@ -24,9 +24,9 @@
 # Keep the wildcards specific to those two names so we do not accidentally
 # sweep in general-purpose CI scripts like classify_test_outcome.py that
 # unrelated workflows share.
-.github/workflows/*playwright*                @open-metadata/ui
-.github/playwright/                           @open-metadata/ui
-.github/scripts/*playwright*                  @open-metadata/ui
-.github/scripts/tests/*playwright*            @open-metadata/ui
-.github/scripts/*timing_baseline*             @open-metadata/ui
-.github/scripts/tests/*timing_baseline*       @open-metadata/ui
+.github/workflows/*playwright*                @chirag-madlani @karanh37 @ShaileshParmar11
+.github/playwright/                           @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/*playwright*                  @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/tests/*playwright*            @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/*timing_baseline*             @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/tests/*timing_baseline*       @chirag-madlani @karanh37 @ShaileshParmar11

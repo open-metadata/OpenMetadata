@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import base, { APIRequestContext, expect, Page } from '@playwright/test';
-import { Operation } from 'fast-json-patch';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -76,6 +75,7 @@ import {
   waitForDomainAssetsAddCommit,
   waitForDomainAssetsAddDryRun,
 } from '../../utils/domain';
+import { assignDomainOnlyAccess } from '../../utils/domainIsolationUtils';
 import {
   assignGlossaryTerm,
   createAnnouncement,
@@ -90,7 +90,7 @@ import {
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
-import { performUserLogin, visitUserProfilePage } from '../../utils/user';
+import { performUserLogin } from '../../utils/user';
 let user: UserClass;
 let domain: Domain;
 let classification: ClassificationClass;
@@ -2737,9 +2737,7 @@ test.describe('Domains Rbac', () => {
     user1 = new UserClass();
     test.slow();
 
-    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -2747,56 +2745,11 @@ test.describe('Domains Rbac', () => {
       user1.create(apiContext),
     ]);
 
-    const domainPayload: Operation[] = [
-      {
-        op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain1.responseData.id,
-          type: 'domain',
-        },
-      },
-      {
-        op: 'add',
-        path: '/domains/1',
-        value: {
-          id: domain3.responseData.id,
-          type: 'domain',
-        },
-      },
-    ];
+    // Bind the DomainOnlyAccessRole plus domain1 and domain3 to the user in a
+    // single API patch. This previously drove the user profile UI (edit roles
+    // popover + combobox), which flaked in beforeAll.
+    await assignDomainOnlyAccess(apiContext, user1, [domain1, domain3]);
 
-    await user1.patch({ apiContext, patchData: domainPayload });
-
-    // Add domain role to the user
-    await visitUserProfilePage(page, user1.responseData.name);
-    const initialRolesResponse = page.waitForResponse('/api/v1/roles/search?*');
-    await page.getByTestId('edit-roles-button').click();
-    await initialRolesResponse;
-
-    await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
-    const rolesCombobox = page.locator('input[role="combobox"]').nth(1);
-    await expect(rolesCombobox).toBeVisible();
-    await rolesCombobox.click();
-
-    await page.getByTestId('profile-edit-roles-select').waitFor();
-
-    const roleOption = page.getByText('Domain Only Access Role');
-    await expect(roleOption).toBeVisible();
-    await roleOption.click();
-
-    // Close the dropdown by pressing Escape
-    await page.keyboard.press('Escape');
-
-    // Wait for dropdown to close
-    await expect(page.locator('.ant-select-dropdown')).toBeHidden();
-
-    const patchRes = page.waitForResponse('/api/v1/users/*');
-    const saveButton = page.getByTestId('user-profile-edit-roles-save-button');
-    await expect(saveButton).toBeVisible();
-    await expect(saveButton).toBeEnabled();
-    await saveButton.click();
-    await patchRes;
     await afterAction();
   });
 
@@ -3677,13 +3630,15 @@ test.describe('Domain assets — glossary and inherited glossary term', () => {
       await assetGlossary.patch(apiContext, [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: assetDomain.responseData.id,
-            type: 'domain',
-            name: assetDomain.responseData.name,
-            displayName: assetDomain.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: assetDomain.responseData.id,
+              type: 'domain',
+              name: assetDomain.responseData.name,
+              displayName: assetDomain.responseData.displayName,
+            },
+          ],
         },
       ]);
 

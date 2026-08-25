@@ -40,8 +40,7 @@ const renderItems = () => {
       }
 
       popup = tippy('body', {
-        getReferenceClientRect:
-          props.clientRect as Props['getReferenceClientRect'],
+        getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
         appendTo: () => getDialogContainer(props.editor.view),
         content: component.element,
         showOnCreate: true,
@@ -60,8 +59,7 @@ const renderItems = () => {
       }
       if (hasPopup) {
         popup[0].setProps({
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
         });
       }
     },
@@ -76,16 +74,15 @@ const renderItems = () => {
         return true;
       }
 
-      if (props.event.key === 'Enter') {
-        if (
-          suggestionProps.items.filter((item) =>
-            item.title
-              .toLowerCase()
-              .startsWith(suggestionProps.query.toLowerCase())
-          ).length === 0
-        ) {
-          this.onExit();
-        }
+      if (
+        props.event.key === 'Enter' &&
+        suggestionProps.items.filter((item) =>
+          item.title
+            .toLowerCase()
+            .startsWith(suggestionProps.query.toLowerCase())
+        ).length === 0
+      ) {
+        this.onExit();
       }
 
       return (component?.ref as SlashCommandRef)?.onKeyDown(props) || false;

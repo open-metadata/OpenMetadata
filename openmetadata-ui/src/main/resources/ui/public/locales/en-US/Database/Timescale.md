@@ -2,6 +2,8 @@
 
 In this section, we provide guides and references to use the Timescale connector.
 
+You can find further information on the Timescale connector in the <a href="https://docs.open-metadata.org/connectors/database/timescale" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

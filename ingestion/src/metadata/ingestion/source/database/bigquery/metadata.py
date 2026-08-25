@@ -14,11 +14,11 @@ Bigquery source module
 """
 
 import os
+import threading
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from google import auth
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
@@ -81,6 +81,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
+    get_policy_tag_client,
 )
 from metadata.ingestion.source.database.bigquery.incremental_table_processor import (
     BigQueryIncrementalTableProcessor,
@@ -254,10 +255,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._taxonomy_to_tags = {}
         self._table_ddl_cache = {}
         self._policy_tag_client = None
+        self._policy_tag_prefetch_key: Optional[Tuple[str, ...]] = None  # noqa: UP045, UP006
+        self._policy_tag_lock = threading.Lock()
 
         if self.service_connection.includePolicyTags:
             try:
-                self._policy_tag_client = PolicyTagManagerClient()
+                self._policy_tag_client = get_policy_tag_client(self.service_connection)
             except Exception as exc:
                 logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")
 
@@ -513,39 +516,61 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         if not self.service_connection.includePolicyTags:
             return
 
-        self._policy_tag_cache.clear()
-        self._taxonomy_cache.clear()
-        self._taxonomy_to_tags.clear()
-
-        if not self._policy_tag_client:
-            logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
-            return
-
         list_project_ids = [self.context.get().database]
         if self.service_connection.taxonomyProjectID:
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
 
-        for project_id in list_project_ids:
-            try:
-                parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
-                taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
+        # This runs once per schema, so key the caches on the projects they hold
+        # rather than refetching every taxonomy for each dataset. Keying on the
+        # project list (not a done-flag) keeps a multi-project run from ever
+        # serving one project's taxonomies to another.
+        prefetch_key = tuple(list_project_ids)
 
-                for taxonomy in taxonomies:
-                    self._taxonomy_cache[taxonomy.name] = taxonomy.display_name
+        # The databaseSchema node fans out across threads (threads=True in
+        # database_service.py), so schemas reach this concurrently on one source
+        # instance. The lock makes a losing thread wait for a fully built cache
+        # instead of reading one mid-population, and the caches are swapped in
+        # rather than mutated so a consumer holding a reference never observes a
+        # half-filled dict.
+        with self._policy_tag_lock:
+            if prefetch_key == self._policy_tag_prefetch_key:
+                return
 
-                    if taxonomy.display_name not in self._taxonomy_to_tags:
-                        self._taxonomy_to_tags[taxonomy.display_name] = []
+            policy_tag_cache: Dict[str, Dict[str, str]] = {}  # noqa: UP006
+            taxonomy_cache: Dict[str, str] = {}  # noqa: UP006
+            taxonomy_to_tags: Dict[str, List[str]] = {}  # noqa: UP006
 
-                    policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
+            if self._policy_tag_client:
+                for project_id in list_project_ids:
+                    try:
+                        parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
+                        taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
 
-                    for tag in policy_tags:
-                        self._policy_tag_cache[tag.name] = {
-                            "display_name": tag.display_name,
-                            "taxonomy": taxonomy.display_name,
-                        }
-                        self._taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
-            except Exception as exc:
-                logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
+                        for taxonomy in taxonomies:
+                            taxonomy_cache[taxonomy.name] = taxonomy.display_name
+                            taxonomy_to_tags.setdefault(taxonomy.display_name, [])
+
+                            policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
+
+                            for tag in policy_tags:
+                                policy_tag_cache[tag.name] = {
+                                    "display_name": tag.display_name,
+                                    "taxonomy": taxonomy.display_name,
+                                }
+                                taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
+                    except Exception as exc:
+                        logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
+            else:
+                logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
+
+            self._policy_tag_cache = policy_tag_cache
+            self._taxonomy_cache = taxonomy_cache
+            self._taxonomy_to_tags = taxonomy_to_tags
+            # Set last, so a thread released from the lock above always sees
+            # fully built caches. Set even when a project failed: a denied
+            # taxonomy read will not start succeeding later in the same run, and
+            # retrying it per schema only repeats the warning.
+            self._policy_tag_prefetch_key = prefetch_key
 
     def _prefetch_table_ddls(self, schema_name: str):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""

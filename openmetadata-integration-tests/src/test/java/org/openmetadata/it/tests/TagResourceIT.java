@@ -848,6 +848,96 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void test_putPreservesRecognizers_ingestionScenario(TestNamespace ns) {
+    // A metadata connector re-creates a source tag with a bare PUT (name + classification +
+    // description only, no recognizers). This must NOT wipe the tag's configured recognizers
+    // nor turn off autoClassificationEnabled.
+    Classification classification = createClassification(ns);
+
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("pii_tag"));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag with recognizers");
+    createTag.setAutoClassificationEnabled(true);
+    createTag.setRecognizers(
+        List.of(
+            new Recognizer()
+                .withName("email_pattern_recognizer")
+                .withEnabled(true)
+                .withRecognizerConfig(
+                    new PredefinedRecognizer()
+                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER))));
+
+    Tag tag = createEntity(createTag);
+    Tag created = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertNotNull(created.getRecognizers());
+    assertEquals(1, created.getRecognizers().size());
+    assertTrue(created.getAutoClassificationEnabled());
+
+    // Byte-for-byte the ingestion sink's body: CreateTagRequest.model_dump_json() with no
+    // exclude_none, so every unset field is serialized as its Pydantic default.
+    String ingestionBody =
+        "{\"classification\":\""
+            + classification.getFullyQualifiedName()
+            + "\",\"parent\":null,\"name\":\""
+            + tag.getName()
+            + "\",\"displayName\":null,\"description\":\"Updated by metadata ingestion\","
+            + "\"style\":null,\"associatedTags\":null,\"provider\":null,\"mutuallyExclusive\":false,"
+            + "\"domains\":null,\"owners\":null,\"reviewers\":null,\"recognizers\":null,"
+            + "\"autoClassificationEnabled\":false,\"autoClassificationPriority\":50}";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags", ingestionBody, Tag.class);
+
+    Tag afterIngestion =
+        getEntityWithFields(tag.getId().toString(), "recognizers,autoClassificationEnabled");
+    int recognizerCount =
+        afterIngestion.getRecognizers() == null ? -1 : afterIngestion.getRecognizers().size();
+    assertEquals(
+        1,
+        recognizerCount,
+        "Bare PUT from ingestion must not drop recognizers (-1 means the field was deleted);"
+            + " autoClassificationEnabled is now "
+            + afterIngestion.getAutoClassificationEnabled());
+    assertTrue(
+        afterIngestion.getAutoClassificationEnabled(),
+        "Bare PUT from ingestion must not disable autoClassificationEnabled");
+
+    // A PUT that does name recognizers is an intentional write and must still apply.
+    CreateTag explicitUpsert =
+        new CreateTag()
+            .withName(tag.getName())
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Explicit recognizer update")
+            .withRecognizers(
+                List.of(
+                    new Recognizer()
+                        .withName("us_ssn_recognizer")
+                        .withEnabled(true)
+                        .withRecognizerConfig(
+                            new PredefinedRecognizer()
+                                .withName(PredefinedRecognizer.Name.US_SSN_RECOGNIZER))));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags", explicitUpsert, Tag.class);
+
+    Tag afterExplicitPut = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertEquals(1, afterExplicitPut.getRecognizers().size());
+    assertEquals(
+        "us_ssn_recognizer",
+        afterExplicitPut.getRecognizers().get(0).getName(),
+        "PUT naming recognizers must replace them");
+
+    // An explicit PATCH clearing recognizers must still delete them.
+    afterExplicitPut.setRecognizers(null);
+    patchEntity(afterExplicitPut.getId().toString(), afterExplicitPut);
+    Tag afterPatch = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertTrue(
+        afterPatch.getRecognizers() == null || afterPatch.getRecognizers().isEmpty(),
+        "Explicit PATCH clearing recognizers must still delete them");
+  }
+
+  @Test
   void test_recognizerFeedback_withRecognizerMetadata_targetsSpecificRecognizer(TestNamespace ns) {
     Classification classification = createClassification(ns);
 

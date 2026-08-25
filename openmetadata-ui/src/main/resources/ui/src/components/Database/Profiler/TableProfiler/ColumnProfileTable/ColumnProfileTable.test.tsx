@@ -16,6 +16,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
@@ -81,6 +82,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Skeleton: () => (
+      <span aria-hidden="true" data-testid="table-loading-skeleton" />
+    ),
     Table,
     Typography: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
@@ -201,6 +205,52 @@ describe('Test ColumnProfileTable component', () => {
       await screen.findByTestId('column-profile-table-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('searchbar')).toBeInTheDocument();
+  });
+
+  it('should render the search bar right-aligned at half width', async () => {
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(await screen.findByTestId('search-bar-container')).toHaveClass(
+      'tw:ml-auto',
+      'tw:w-1/2'
+    );
+  });
+
+  it('should show row skeletons while column data is loading', async () => {
+    let resolveColumns!: (value: {
+      data: unknown[];
+      paging: { total: number };
+    }) => void;
+    const { getTableColumnsByFQN } = jest.requireMock(
+      '../../../../../rest/tableAPI'
+    );
+    const { useFqn } = jest.requireMock('../../../../../hooks/useFqn');
+    useFqn.mockReturnValueOnce({ fqn: 'test.table' });
+    getTableColumnsByFQN.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveColumns = resolve;
+      })
+    );
+
+    render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('column-profile-table-loading-skeletons')
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByTestId('table-loading-skeleton')).toHaveLength(5);
+
+    await act(async () => {
+      resolveColumns({ data: [], paging: { total: 0 } });
+    });
+
+    expect(
+      screen.queryByTestId('column-profile-table-loading-skeletons')
+    ).not.toBeInTheDocument();
   });
 
   it('should mark the name column as the row header', async () => {

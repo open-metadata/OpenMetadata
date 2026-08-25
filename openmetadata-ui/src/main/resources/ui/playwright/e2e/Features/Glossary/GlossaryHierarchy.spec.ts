@@ -211,6 +211,24 @@ test.describe('Glossary Hierarchy', () => {
       );
       await waitForAllLoadersToDisappear(page);
 
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously (change-event consumer, ~1 req/s).
+      // Poll the API until the parent term's glossary field updates before
+      // asserting the UI — otherwise the UI check races the async write.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${parentTerm.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.glossary?.fullyQualifiedName;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBe(glossary2.responseData.fullyQualifiedName);
+
       // Verify parent and child are now in glossary2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);

@@ -673,11 +673,17 @@ const getTableColumns = (columns: string[]) =>
 const TableExtensionInput = ({
   columns,
   dataTestId,
+  error,
+  isRequired,
+  labelNode,
   onChange,
   value,
 }: {
   columns: string[];
   dataTestId: string;
+  error?: string;
+  isRequired: boolean;
+  labelNode: ReactNode;
   onChange: (value: TableExtensionValue) => void;
   value: unknown;
 }) => {
@@ -716,7 +722,17 @@ const TableExtensionInput = ({
   }, [columns, dataSource, onChange]);
 
   return (
-    <Box className="tw:gap-3" data-testid={dataTestId} direction="col">
+    <Box
+      aria-invalid={error ? true : undefined}
+      className="tw:gap-1.5 tw:[&_.rdg]:h-64!"
+      data-testid={dataTestId}
+      direction="col">
+      <Box align="center" justify="between">
+        <FormItemLabel label={labelNode} required={isRequired} />
+        <Button color="secondary" size="sm" onPress={handleAddRow}>
+          {t('label.add-entity', { entity: t('label.row') })}
+        </Button>
+      </Box>
       <TableTypePropertyEditTable
         columns={gridColumns}
         dataSource={dataSource}
@@ -725,9 +741,7 @@ const TableExtensionInput = ({
         handlePaste={handlePaste}
         setGridContainer={setGridContainer}
       />
-      <Button color="secondary" size="sm" onPress={handleAddRow}>
-        {t('label.add-entity', { entity: t('label.row') })}
-      </Button>
+      {error && <HintText isInvalid>{error}</HintText>}
     </Box>
   );
 };
@@ -756,17 +770,15 @@ const TableExtensionField = ({
           hasPopulatedTableRows(value) || !isRequired || requiredMessage,
       }}>
       {({ field, fieldState }) => (
-        <ExtensionFieldContainer
+        <TableExtensionInput
+          columns={columns}
+          dataTestId={dataTestId}
           error={fieldState.error?.message}
           isRequired={isRequired}
-          label={labelNode}>
-          <TableExtensionInput
-            columns={columns}
-            dataTestId={dataTestId}
-            value={field.value}
-            onChange={field.onChange}
-          />
-        </ExtensionFieldContainer>
+          labelNode={labelNode}
+          value={field.value}
+          onChange={field.onChange}
+        />
       )}
     </FormField>
   );

@@ -564,3 +564,26 @@ CREATE INDEX idx_security_service_entity_deleted_service_type ON security_servic
 CREATE INDEX idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
 CREATE INDEX idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
 CREATE INDEX idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (userId)
+);
+
+-- The Postgres counterpart of this version adds idx_profiler_data_time_series_fqnhash_pattern, a
+-- text_pattern_ops index that lets the table hard-delete profiler purge (issue #27041) serve
+--   entityFQNHash LIKE '<table hash>.%'
+-- from an index instead of a sequential scan.
+--
+-- MySQL needs no equivalent. profiler_data_time_series.entityFQNHash is declared
+--   VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+-- since 1.1.5 — a binary collation — so InnoDB can already answer a LIKE prefix predicate with a
+-- range scan on the leading column of the existing unique index
+-- profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation,
+-- timestamp). Adding a second index on the same leading column would be write overhead with no
+-- read benefit.

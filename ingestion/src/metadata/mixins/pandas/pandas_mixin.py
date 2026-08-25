@@ -31,6 +31,7 @@ from metadata.utils.datalake.datalake_utils import (
     DatalakeColumnWrapper,
     fetch_dataframe_generator,
 )
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -119,6 +120,8 @@ class PandasInterfaceMixin:
         Returns:
             Generator of sampled dataframes
         """
+        if not is_safe_pandas_query(sample_query):
+            raise RuntimeError(f"Unsafe sample query expression\n\n{sample_query}")
 
         def yield_sampled_dfs():
             dfs = raw_dataset

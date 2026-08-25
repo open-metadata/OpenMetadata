@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForIncidentToBeIndexed } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
@@ -36,6 +37,7 @@ import {
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -619,6 +621,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await reassignIncidentTask(actorPage, assignee1);
@@ -725,6 +728,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await actorPage.goto(testCasePageUrl);
 
       await testCaseResponse;
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await addAssigneeFromPopoverWidget({
@@ -1028,6 +1032,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
       userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
+      testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
@@ -1036,6 +1041,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
 
+    const assignmentStartedAt = Date.now();
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1045,6 +1051,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       },
       direct: true,
     });
+    // Browser API calls read the JWT from local storage, which page.request
+    // does not inherit. Poll with an authenticated context so a 401 cannot be
+    // mistaken for search-index lag.
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        assigneeTestCase.testCaseFqn,
+        assignmentStartedAt,
+        'Assigned',
+        assigneeTestCase.username
+      );
+    } finally {
+      await afterAction();
+    }
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeOption = page.locator(

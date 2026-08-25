@@ -385,7 +385,6 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               <IngestionWorkflowForm
                 hideFooter={hideFooter}
                 okText={t('label.next')}
-                operationType={status}
                 pipeLineType={pipelineType}
                 ref={workflowFormRef}
                 serviceCategory={serviceCategory}

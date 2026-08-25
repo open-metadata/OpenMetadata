@@ -20,7 +20,8 @@ import { Tag01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC, KeyboardEvent, MouseEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { renderIcon } from '../../../../utils/IconUtils';
+import { reduceColorOpacity } from '../../../../utils/ColorUtils';
+import { Icon } from '../../Icon/Icon';
 
 export interface TagChipProps {
   label: string;
@@ -88,16 +89,15 @@ const TagChip: FC<TagChipProps> = ({
   const { t } = useTranslation();
 
   const chipIcon = useMemo(
-    () =>
-      icon ? (
-        renderIcon(icon, {
-          size: 12,
-          style: { marginRight: 4, flexShrink: 0 },
-        })
-      ) : (
-        <Tag01 size={sizeStyles[size].icon} />
-      ),
-    [icon]
+    () => (
+      <Icon
+        fallback={<Tag01 size={sizeStyles[size].icon} />}
+        iconValue={icon}
+        size={12}
+        wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
+      />
+    ),
+    [icon, size]
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -121,7 +121,7 @@ const TagChip: FC<TagChipProps> = ({
         sizeStyles[size].root,
         variantStyles[variant],
         {
-          'tw:relative tw:pl-3': tagColor,
+          'tw:relative tw:overflow-hidden tw:pl-3': tagColor,
           'tw:cursor-not-allowed tw:opacity-50': disabled,
         },
         className
@@ -129,17 +129,30 @@ const TagChip: FC<TagChipProps> = ({
       data-tag-index={otherProps['data-tag-index']}
       data-testid={otherProps['data-testid']}
       role={onDelete ? 'button' : undefined}
-      style={{ maxWidth }}
+      style={{
+        maxWidth,
+        ...(tagColor
+          ? {
+              backgroundColor: reduceColorOpacity(tagColor, 0.05),
+              borderColor: reduceColorOpacity(tagColor, 0.2),
+            }
+          : {}),
+      }}
       tabIndex={tabIndex}
       onKeyDown={onDelete ? handleKeyDown : undefined}>
       {tagColor && (
         <span
-          className="tw:absolute tw:left-0 tw:top-1/2 tw:h-[70%] tw:w-0.75 tw:-translate-y-1/2 tw:rounded-[2px_0_0_2px]"
+          aria-hidden
+          className="tw:absolute tw:inset-y-0 tw:left-0 tw:w-1.5"
           style={{ backgroundColor: tagColor }}
         />
       )}
       {showIcon && chipIcon && (
-        <Box inline align="center" className="tw:mr-1 tw:shrink-0">
+        <Box
+          inline
+          align="center"
+          className="tw:mr-1 tw:shrink-0"
+          style={tagColor ? { color: tagColor } : undefined}>
           {chipIcon}
         </Box>
       )}
@@ -148,6 +161,7 @@ const TagChip: FC<TagChipProps> = ({
         data-testid={labelDataTestId}
         ellipsis={showEllipsis}
         size={sizeStyles[size].typography}
+        style={tagColor ? { color: tagColor } : undefined}
         weight={variant === 'blueGray' ? 'regular' : 'medium'}>
         {label}
       </Typography>

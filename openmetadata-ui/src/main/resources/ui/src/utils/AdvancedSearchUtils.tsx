@@ -130,9 +130,9 @@ export const generateSearchDropdownLabel = (
           />
         )}
         {option.icon && (
-          <span className="tw:flex tw:items-center flex-none">
+          <div className="tw:flex tw:items-center tw:flex-none">
             {option.icon}
-          </span>
+          </div>
         )}
         <div>
           <Typography.Text

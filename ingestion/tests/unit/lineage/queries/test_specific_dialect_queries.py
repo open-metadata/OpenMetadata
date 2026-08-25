@@ -663,7 +663,11 @@ CREATE SEQUENCE public.group_logs_id_seq
             set(),  # DDL statements don't have target tables for lineage
             dialect=Dialect.POSTGRES.value,
             # SqlFluff raises UnsupportedStatementException for SET and ALTER SEQUENCE statements
+            # SqlGlot: since collate-sqllineage 2.1.5 it also raises rather than silently
+            # returning empty lineage for statements it cannot parse, such as
+            # "SET client_min_messages=notice"
             test_sqlfluff=False,
+            test_sqlglot=False,
         )
 
         # No column lineage expected - DDL statements with no source or target tables
@@ -672,6 +676,7 @@ CREATE SEQUENCE public.group_logs_id_seq
             [],
             dialect=Dialect.POSTGRES.value,
             test_sqlfluff=False,
+            test_sqlglot=False,
         )
 
     def test_snowflake_insert_with_cte_and_sequence(self):

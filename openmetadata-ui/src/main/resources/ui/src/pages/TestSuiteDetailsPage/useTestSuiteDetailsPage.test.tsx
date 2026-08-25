@@ -48,6 +48,23 @@ const mockPermissions = {
 const mockGetEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => Promise.resolve(mockPermissions));
+let mockTestSuiteFQN = 'bundle_suite_fqn';
+
+const runTimeoutsImmediately = () => {
+  const originalSetTimeout = window.setTimeout;
+
+  return jest
+    .spyOn(window, 'setTimeout')
+    .mockImplementation((callback, delay, ...args) => {
+      if (delay === 500 && typeof callback === 'function') {
+        callback();
+
+        return 0;
+      }
+
+      return originalSetTimeout(callback, delay, ...args);
+    });
+};
 
 jest.mock('../../rest/testAPI');
 jest.mock('../../rest/ingestionPipelineAPI');
@@ -67,7 +84,7 @@ jest.mock('../../hooks/useChangeSummary', () => ({
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
-  useFqn: () => ({ fqn: 'bundle_suite_fqn' }),
+  useFqn: () => ({ fqn: mockTestSuiteFQN }),
 }));
 
 jest.mock('../../hooks/useEntityRules', () => ({
@@ -107,6 +124,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 describe('useTestSuiteDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTestSuiteFQN = 'bundle_suite_fqn';
     (getTestSuiteByName as jest.Mock).mockResolvedValue(mockTestSuite);
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [{ id: 'tc-1', name: 'tc_1' }],
@@ -238,32 +256,350 @@ describe('useTestSuiteDetailsPage', () => {
     expect(updateTestSuiteById).not.toHaveBeenCalled();
   });
 
-  it('should add test cases in bulk and refetch', async () => {
+  it('should retry stale rows until the authoritative count is indexed', async () => {
     const { result } = renderHook(() => useTestSuiteDetailsPage());
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(result.current.testCaseResult).toHaveLength(1);
     });
-    (getTestSuiteByName as jest.Mock).mockClear();
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [
+        { id: 'tc-1', type: 'testCase' },
+        { id: 'tc-9', type: 'testCase' },
+      ],
+    });
+
+    let resolveIndexedSearch!: (value: {
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }) => void;
+    const indexedSearch = new Promise<{
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }>((resolve) => {
+      resolveIndexedSearch = resolve;
+    });
+    let resolveSecondFetchStarted!: () => void;
+    const secondFetchStarted = new Promise<void>((resolve) => {
+      resolveSecondFetchStarted = resolve;
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-1', name: 'tc_1' }],
+        paging: { total: 1 },
+      })
+      .mockImplementationOnce(() => {
+        resolveSecondFetchStarted();
+
+        return indexedSearch;
+      });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+    let addRequest!: Promise<void>;
+
+    try {
+      act(() => {
+        addRequest = result.current.handleAddTestCaseSubmit({
+          selectAll: false,
+          includeIds: ['tc-9'],
+          excludeIds: [],
+        });
+      });
+
+      await act(async () => {
+        await Promise.race([secondFetchStarted, addRequest]);
+      });
+
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
+      expect(result.current.isTestCaseLoading).toBe(true);
+
+      await act(async () => {
+        resolveIndexedSearch({
+          data: [
+            { id: 'tc-1', name: 'tc_1' },
+            { id: 'tc-9', name: 'tc_9' },
+          ],
+          paging: { total: 2 },
+        });
+        await addRequest;
+      });
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 500);
+    } finally {
+      setTimeoutSpy.mockRestore();
+      (getListTestCaseBySearch as jest.Mock).mockReset();
+    }
+
+    expect(result.current.testCaseResult).toEqual([
+      expect.objectContaining({ id: 'tc-1' }),
+      expect.objectContaining({ id: 'tc-9' }),
+    ]);
+    expect(result.current.pagingData.paging.total).toBe(2);
+    expect(result.current.isTestCaseLoading).toBe(false);
+  });
+
+  it('should stop retrying stale rows after five attempts', async () => {
+    const { result } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [
+        { id: 'tc-1', type: 'testCase' },
+        { id: 'tc-9', type: 'testCase' },
+      ],
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'tc-1', name: 'tc_1' }],
+      paging: { total: 1 },
+    });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleAddTestCaseSubmit({
+          selectAll: false,
+          includeIds: ['tc-9'],
+          excludeIds: [],
+        });
+      });
+
+      expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(5);
+    expect(result.current.pagingData.paging.total).toBe(2);
+    expect(result.current.isTestCaseLoading).toBe(false);
+  });
+
+  it('should use the suite relationship count when search paging is stale after bulk add', async () => {
+    const { result } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.pagingData.paging.total).toBe(1);
+    });
+
+    let resolveOlderSearch!: (value: {
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }) => void;
+    const olderSearch = new Promise<{
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }>((resolve) => {
+      resolveOlderSearch = resolve;
+    });
+    let resolveRefreshedSearch!: (value: {
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }) => void;
+    const refreshedSearch = new Promise<{
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }>((resolve) => {
+      resolveRefreshedSearch = resolve;
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockImplementationOnce(() => olderSearch)
+      .mockImplementationOnce(() => refreshedSearch)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 2 },
+      });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [
+        { id: 'tc-1', type: 'testCase' },
+        { id: 'tc-9', type: 'testCase' },
+      ],
+    });
+
+    let olderRequest!: Promise<void>;
+    await act(async () => {
+      olderRequest = result.current.fetchTestCases();
+      await Promise.resolve();
+    });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      let addRequest!: Promise<void>;
+      act(() => {
+        addRequest = result.current.handleAddTestCaseSubmit({
+          selectAll: false,
+          includeIds: ['tc-9'],
+          excludeIds: [],
+        });
+      });
+
+      await waitFor(
+        () => {
+          expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
+        },
+        { timeout: 2000 }
+      );
+
+      expect(result.current.pagingData.paging.total).toBe(2);
+
+      await act(async () => {
+        resolveRefreshedSearch({
+          data: [{ id: 'tc-9', name: 'tc_9' }],
+          paging: { total: 1 },
+        });
+        await addRequest;
+      });
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+
+    expect(result.current.testCaseResult).toEqual([
+      expect.objectContaining({ id: 'tc-9' }),
+    ]);
+    expect(result.current.pagingData.paging.total).toBe(2);
 
     await act(async () => {
-      await result.current.handleAddTestCaseSubmit({
+      resolveOlderSearch({
+        data: [{ id: 'tc-stale', name: 'tc_stale' }],
+        paging: { total: 0 },
+      });
+      await olderRequest;
+    });
+
+    expect(result.current.testCaseResult).toEqual([
+      expect.objectContaining({ id: 'tc-9' }),
+    ]);
+    expect(result.current.pagingData.paging.total).toBe(2);
+  });
+
+  it('should preserve a filtered search total after bulk add', async () => {
+    const { result } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(result.current.pagingData.paging.total).toBe(1);
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [
+        { id: 'tc-1', type: 'testCase' },
+        { id: 'tc-9', type: 'testCase' },
+      ],
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 1 },
+      });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleAddTestCaseSubmit({
+          selectAll: false,
+          includeIds: ['tc-9'],
+          excludeIds: [],
+        });
+      });
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+
+    expect(result.current.pagingData.paging.total).toBe(2);
+
+    await act(async () => {
+      await result.current.fetchTestCases({ q: 'tc_9' });
+    });
+
+    expect(result.current.pagingData.paging.total).toBe(1);
+
+    await act(async () => {
+      await result.current.fetchTestCases();
+    });
+
+    expect(result.current.pagingData.paging.total).toBe(2);
+  });
+
+  it('should ignore a bulk add that finishes after navigating to another suite', async () => {
+    let resolveBulkAdd!: () => void;
+    const bulkAdd = new Promise<void>((resolve) => {
+      resolveBulkAdd = resolve;
+    });
+    (addTestCasesToLogicalTestSuiteBulk as jest.Mock).mockReturnValueOnce(
+      bulkAdd
+    );
+    (getTestSuiteByName as jest.Mock).mockImplementation((fqn: string) =>
+      Promise.resolve({
+        ...mockTestSuite,
+        id: `${fqn}-id`,
+        fullyQualifiedName: fqn,
+      })
+    );
+
+    const { result, rerender } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.testSuite?.fullyQualifiedName).toBe(
+        'bundle_suite_fqn'
+      );
+    });
+
+    let addRequest!: Promise<void>;
+    act(() => {
+      addRequest = result.current.handleAddTestCaseSubmit({
         selectAll: false,
         includeIds: ['tc-9'],
         excludeIds: [],
       });
     });
 
-    expect(addTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
-      'suite-id',
-      {
-        selectAll: false,
-        includeIds: ['tc-9'],
-        excludeIds: [],
-      }
+    mockTestSuiteFQN = 'another_suite_fqn';
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.testSuite?.fullyQualifiedName).toBe(
+        'another_suite_fqn'
+      );
+    });
+    (getTestSuiteByName as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await act(async () => {
+      resolveBulkAdd();
+      await addRequest;
+    });
+
+    expect(getTestSuiteByName).not.toHaveBeenCalled();
+    expect(getListTestCaseBySearch).not.toHaveBeenCalled();
+    expect(result.current.testSuite?.fullyQualifiedName).toBe(
+      'another_suite_fqn'
     );
-    expect(getTestSuiteByName).toHaveBeenCalled();
-    expect(result.current.isTestCaseModalOpen).toBe(false);
   });
 
   it('should surface suite fetch errors via toast', async () => {

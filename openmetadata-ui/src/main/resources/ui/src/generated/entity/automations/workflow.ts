@@ -2059,6 +2059,10 @@ export interface Connection {
      */
     creditCost?: number;
     /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
+    /**
      * Ingest external and internal stages.
      */
     includeStages?: boolean;
@@ -2945,6 +2949,10 @@ export interface Connection {
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?: FilterPattern;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
     /**
      * Connection Timeout in Seconds
      */
@@ -5256,6 +5264,7 @@ export enum AirflowConnectionScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",

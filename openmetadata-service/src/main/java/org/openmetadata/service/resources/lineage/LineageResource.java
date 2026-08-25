@@ -54,7 +54,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
@@ -74,6 +73,9 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineageSceneResolver;
@@ -82,11 +84,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.AsyncService;
-import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/lineage")
 @Tag(
@@ -635,7 +633,7 @@ public class LineageResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportMessage.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportLineageAsync(
       @Context UriInfo uriInfo,
@@ -664,31 +662,31 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime) {
     validateTemporalBounds(startTime, endTime);
-    String jobId = UUID.randomUUID().toString();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            String csvData =
-                dao.exportCsvAsync(
-                    fqn,
-                    upstreamDepth,
-                    downstreamDepth,
-                    queryFilter,
-                    entityType,
-                    deleted,
-                    startTime,
-                    endTime,
-                    subjectContext);
-            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, csvData);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
-    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    CsvAsyncJobArgs.LineageExportArgs args =
+        new CsvAsyncJobArgs.LineageExportArgs()
+            .setByEntityCount(false)
+            .setFqn(fqn)
+            .setEntityType(entityType)
+            .setQueryFilter(queryFilter)
+            .setDeleted(deleted)
+            .setStartTime(startTime)
+            .setEndTime(endTime)
+            .setUpstreamDepth(upstreamDepth)
+            .setDownstreamDepth(downstreamDepth);
+    return acceptLineageExportJob(securityContext, args);
+  }
+
+  /**
+   * Queues the export on the shared job table rather than a local executor, so the result is
+   * downloadable from any server via {@code GET /v1/csvAsyncJobs/{jobId}/result}.
+   */
+  private Response acceptLineageExportJob(
+      SecurityContext securityContext, CsvAsyncJobArgs.LineageExportArgs args) {
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createLineageExportJob(securityContext.getUserPrincipal().getName(), args);
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
@@ -764,7 +762,7 @@ public class LineageResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportMessage.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportLineageByEntityCountAsync(
       @Context UriInfo uriInfo,
@@ -823,36 +821,22 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime) {
     validateTemporalBounds(startTime, endTime);
-    String jobId = UUID.randomUUID().toString();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            String csvData =
-                dao.exportByEntityCountCsvAsync(
-                    fqn,
-                    direction,
-                    from,
-                    size,
-                    nodeDepth,
-                    maxDepth,
-                    queryFilter,
-                    deleted,
-                    entityType,
-                    includeSourceFields,
-                    startTime,
-                    endTime,
-                    subjectContext);
-            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, csvData);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
-    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
-    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+    CsvAsyncJobArgs.LineageExportArgs args =
+        new CsvAsyncJobArgs.LineageExportArgs()
+            .setByEntityCount(true)
+            .setFqn(fqn)
+            .setEntityType(entityType)
+            .setQueryFilter(queryFilter)
+            .setDeleted(deleted)
+            .setStartTime(startTime)
+            .setEndTime(endTime)
+            .setDirection(direction)
+            .setFrom(from)
+            .setSize(size)
+            .setNodeDepth(nodeDepth)
+            .setMaxDepth(maxDepth)
+            .setIncludeSourceFields(includeSourceFields);
+    return acceptLineageExportJob(securityContext, args);
   }
 
   @GET

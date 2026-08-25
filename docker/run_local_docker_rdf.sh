@@ -55,11 +55,11 @@ if [[ $startFuseki == "true" ]]; then
   export RDF_BASE_URI="${RDF_BASE_URI:-https://open-metadata.org/}"
   export RDF_DATASET="${RDF_DATASET:-openmetadata}"
   # RDF listeners slow down sample-data ingestion enough that the default 5-minute
-  # validation window is too aggressive for CI.
-  export VALIDATE_COMPOSE_MAX_RETRIES="${VALIDATE_COMPOSE_MAX_RETRIES:-60}"
-  export VALIDATE_COMPOSE_DAG_RUN_RETRIES="${VALIDATE_COMPOSE_DAG_RUN_RETRIES:-120}"
+  # validation window is too aggressive for CI. VALIDATION_TIMEOUT_SECONDS is the only
+  # knob: it sets the outer `timeout` and the validator's deadline is derived from it.
+  # Do not reintroduce VALIDATE_COMPOSE_MAX_RETRIES here — it overrides that deadline,
+  # so raising VALIDATION_TIMEOUT_SECONDS would silently have no effect.
   export VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS="${VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS:-10}"
-  export VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS="${VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS:-5}"
   export VALIDATION_TIMEOUT_SECONDS="${VALIDATION_TIMEOUT_SECONDS:-900}"
   export APP_RUN_WAIT_TIMEOUT_SECONDS="${APP_RUN_WAIT_TIMEOUT_SECONDS:-900}"
   export STRICT_DAG_VALIDATION=true
@@ -75,9 +75,7 @@ else
   unset RDF_BASE_URI
   unset RDF_DATASET
   unset VALIDATE_COMPOSE_MAX_RETRIES
-  unset VALIDATE_COMPOSE_DAG_RUN_RETRIES
   unset VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS
-  unset VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS
   export VALIDATION_TIMEOUT_SECONDS="${VALIDATION_TIMEOUT_SECONDS:-300}"
   export APP_RUN_WAIT_TIMEOUT_SECONDS="${APP_RUN_WAIT_TIMEOUT_SECONDS:-300}"
   unset STRICT_DAG_VALIDATION

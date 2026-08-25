@@ -598,8 +598,13 @@ test.describe('User Profile Feed Interactions', () => {
     const popover = page.locator('.ant-popover-card');
     await popover.waitFor({ state: 'visible' });
 
-    // Get the expected username from the popover BEFORE clicking
+    // Get the expected username from the popover BEFORE clicking. The popover
+    // renders an empty name until its user request resolves, so wait for the
+    // resolved text instead of capturing an empty string.
     const userNameElement = popover.getByTestId('user-name');
+
+    await expect(userNameElement).not.toBeEmpty();
+
     const expectedUserName = await userNameElement.textContent();
 
     // Set up response listener AFTER getting expected name and BEFORE clicking

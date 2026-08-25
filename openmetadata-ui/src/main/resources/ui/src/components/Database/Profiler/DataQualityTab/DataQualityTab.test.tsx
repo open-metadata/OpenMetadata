@@ -17,11 +17,15 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from '@testing-library/react';
 import React, { act } from 'react';
+import { Link } from 'react-router-dom';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
@@ -86,10 +90,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   const MockButton = ({
     children,
+    className,
+    href,
     onClick,
     'data-testid': testId,
     isDisabled,
   }: React.PropsWithChildren<{
+    className?: string;
+    href?: string;
     onClick?: React.MouseEventHandler;
     'data-testid'?: string;
     isDisabled?: boolean;
@@ -101,8 +109,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?.(e);
     };
 
+    if (href) {
+      return (
+        <a
+          className={className}
+          data-testid={testId}
+          href={href}
+          onClick={handleClick}>
+          {children}
+        </a>
+      );
+    }
+
     return (
-      <button data-testid={testId} disabled={isDisabled} onClick={handleClick}>
+      <button
+        className={className}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={handleClick}>
         {children}
       </button>
     );
@@ -193,8 +217,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTable.Cell = ({
     children,
     className,
-  }: React.PropsWithChildren<{ className?: string }>) => (
-    <td className={className}>{children}</td>
+    ...props
+  }: React.ComponentPropsWithoutRef<'td'>) => (
+    <td className={className} {...props}>
+      {children}
+    </td>
   );
 
   const MockBox = ({
@@ -241,9 +268,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children,
       title,
     }: React.PropsWithChildren<{ title?: string }>) => (
-      <div title={title}>{children}</div>
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
     ),
-    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    TooltipTrigger: ({
+      children,
+      className,
+      onPress,
+      'data-testid': testId,
+    }: React.PropsWithChildren<{
+      className?: string;
+      onPress?: () => void;
+      'data-testid'?: string;
+    }>) => (
+      <button className={className} data-testid={testId} onClick={onPress}>
+        {children}
+      </button>
+    ),
     Typography: ({
       children,
       className,
@@ -327,8 +369,8 @@ jest.mock('react-router-dom', () => {
     ...actual,
     Link: jest
       .fn()
-      .mockImplementation(({ children, ...rest }) => (
-        <span {...rest}>{children}</span>
+      .mockImplementation(({ children, to: _to, state: _state, ...rest }) => (
+        <a {...rest}>{children}</a>
       )),
     useNavigate: () => mockNavigateDataQualityTab,
   };
@@ -536,6 +578,104 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Should show a styled Tooltip with the full entity name for the Name cell, not a native title attribute', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameCellWrapper = await screen.findByTestId(firstRowData.name);
+    const trigger = within(nameCellWrapper).getByText(
+      getEntityName(firstRowData)
+    );
+
+    // The trigger is a real Link, wrapped in TooltipTrigger's <button> so
+    // hover/focus opens the tooltip - this deliberately nests <a> inside
+    // <button> (known, tracked separately on the shared component library
+    // side, not fixed here).
+    expect(trigger.tagName).toBe('A');
+    expect(trigger.parentElement?.tagName).toBe('BUTTON');
+    expect(trigger).not.toHaveAttribute('title');
+
+    const tooltip = within(nameCellWrapper).getByTestId('tooltip');
+
+    expect(tooltip).toHaveAttribute('title', getEntityName(firstRowData));
+  });
+
+  it('Should link the Name cell trigger to the test case detail page', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) =>
+        props.to?.pathname ===
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          firstRowData.fullyQualifiedName ?? ''
+        )
+    );
+
+    expect(nameLinkCall).toBeDefined();
+    expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData: undefined });
+  });
+
+  it('Should keep action dropdowns aligned when dimensions are present', async () => {
+    const dimensionalTestCase: TestCase = {
+      ...MOCK_TEST_CASE[0],
+      id: 'dimensional-test-case',
+      name: 'dimensional_test_case',
+      fullyQualifiedName: 'sample_data.dimensional_test_case',
+      dimensionColumns: ['country'],
+    };
+    const standardTestCase: TestCase = {
+      ...MOCK_TEST_CASE[1],
+      id: 'standard-test-case',
+      name: 'standard_test_case',
+      fullyQualifiedName: 'sample_data.standard_test_case',
+      dimensionColumns: undefined,
+    };
+
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          testCases={[dimensionalTestCase, standardTestCase]}
+        />
+      );
+    });
+
+    const dimensionalAction = await screen.findByTestId(
+      `action-dropdown-${dimensionalTestCase.name}`
+    );
+    const standardAction = await screen.findByTestId(
+      `action-dropdown-${standardTestCase.name}`
+    );
+
+    expect(
+      screen.getByTestId(`dimension-count-${dimensionalTestCase.name}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`dimension-count-${standardTestCase.name}`)
+    ).not.toBeInTheDocument();
+    expect(dimensionalAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(standardAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(dimensionalAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
+    expect(standardAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
   });
 
   it('Should show loading skeletons when isLoading is true', async () => {

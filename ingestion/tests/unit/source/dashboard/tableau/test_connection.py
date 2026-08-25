@@ -15,6 +15,7 @@ from metadata.ingestion.source.dashboard.tableau.client import (
     TableauChartsException,
     TableauDataModelsException,
     TableauOwnersNotFound,
+    TableauUpstreamTablesRedacted,
     TableauWorkBookException,
 )
 from metadata.ingestion.source.dashboard.tableau.connection import (
@@ -104,6 +105,7 @@ def test_collect_checks_maps_every_step():
         DashboardStep.GetViews,
         DashboardStep.GetOwners,
         DashboardStep.GetDataModels,
+        DashboardStep.GetSourceTables,
     }
 
 
@@ -215,6 +217,26 @@ def test_get_data_models_wraps_failure_as_check_error():
         provider.get_data_models()
 
     assert isinstance(exc_info.value.cause, TableauDataModelsException)
+
+
+def test_get_source_tables_passes():
+    provider, client = _checks()
+
+    evidence = provider.get_source_tables()
+
+    client.test_get_source_tables.assert_called_once_with()
+    assert evidence.summary == "source tables are named, so lineage can be built"
+    assert evidence.command == "read the source tables of a workbook data source"
+
+
+def test_get_source_tables_wraps_failure_as_check_error():
+    provider, client = _checks()
+    client.test_get_source_tables.side_effect = TableauUpstreamTablesRedacted("names withheld")
+
+    with pytest.raises(CheckError) as exc_info:
+        provider.get_source_tables()
+
+    assert isinstance(exc_info.value.cause, TableauUpstreamTablesRedacted)
 
 
 @pytest.mark.parametrize(
