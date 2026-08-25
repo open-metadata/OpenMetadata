@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -22,6 +23,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
@@ -39,6 +41,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -46,11 +49,13 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for the Data Retention application.
@@ -69,6 +74,15 @@ public class DataRetentionAppIT {
   private static final String APP_NAME = "DataRetentionApplication";
   // Default activityThreadsRetentionPeriod is 60 days; 90 days is safely past it.
   private static final long NINETY_DAYS_MILLIS = 90L * 24 * 60 * 60 * 1000;
+
+  /** org.quartz.threadPool.threadCount in AppScheduler — every thread must run the job once. */
+  private static final int APP_SCHEDULER_THREAD_COUNT = 10;
+
+  private static final int RUNS_AFTER_CONFIG_CHANGE = 3;
+
+  /** Not a schema default, so a stale read cannot be mistaken for the configured value. */
+  private static final int DISTINCT_RETENTION_DAYS = 11;
+
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -105,6 +119,59 @@ public class DataRetentionAppIT {
         1,
         threadRowCount(threadTable, recentThread.getId()),
         "recent conversation must be retained");
+  }
+
+  /**
+   * A config change must reach the next run. Quartz worker threads are long lived and cache the App
+   * they were handed, so once every thread has run this job at least once, a stale copy is all any
+   * later run sees — the job keeps pruning to whatever retention period was current when that
+   * thread first woke up, for the life of the process.
+   */
+  @Test
+  void test_appConfigurationChange_isUsedByTheNextRun() throws Exception {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+
+    App app = Apps.getByName(APP_NAME);
+    int original = changeEventRetentionPeriod(JsonUtils.getMap(app.getAppConfiguration()));
+    int changed =
+        original == DISTINCT_RETENTION_DAYS ? DISTINCT_RETENTION_DAYS + 1 : DISTINCT_RETENTION_DAYS;
+
+    try {
+      for (int i = 0; i < APP_SCHEDULER_THREAD_COUNT; i++) {
+        triggerAppAndWaitForCompletion();
+      }
+
+      setChangeEventRetentionPeriod(app.getId(), changed);
+
+      for (int run = 0; run < RUNS_AFTER_CONFIG_CHANGE; run++) {
+        AppRunRecord record = triggerAppAndWaitForCompletion();
+        assertEquals(
+            changed,
+            changeEventRetentionPeriod(record.getConfig()),
+            "run " + run + " used a stale appConfiguration");
+      }
+    } finally {
+      setChangeEventRetentionPeriod(app.getId(), original);
+    }
+  }
+
+  private void setChangeEventRetentionPeriod(UUID appId, int days) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/apps/" + appId,
+            String.format(
+                "[{\"op\":\"replace\",\"path\":\"/appConfiguration/changeEventRetentionPeriod\","
+                    + "\"value\":%d}]",
+                days),
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+  }
+
+  private int changeEventRetentionPeriod(Map<String, Object> config) {
+    assertNotNull(config, "run record carried no config");
+    return ((Number) config.get("changeEventRetentionPeriod")).intValue();
   }
 
   private Table createTestTable(TestNamespace ns) throws Exception {
