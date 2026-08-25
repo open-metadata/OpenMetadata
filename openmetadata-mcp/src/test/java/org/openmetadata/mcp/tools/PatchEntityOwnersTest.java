@@ -25,11 +25,11 @@ import org.openmetadata.service.jdbi3.UserRepository;
  * Owner resolution for patch_entity's typed fields.
  *
  * <p>These need {@code Entity}'s static repository lookups stubbed, which is why they live apart
- * from {@link TypedFieldPatchMergeTest} - and why they did not exist while the code shipped a path that
+ * from {@link PatchEntityMergeTest} - and why they did not exist while the code shipped a path that
  * deleted every owner on a typo. The behaviour under test is the one the tool description promises:
  * a name that does not resolve fails the call rather than being dropped.
  */
-class TypedFieldPatchOwnersTest {
+class PatchEntityOwnersTest {
 
   private static final String TEAM_NAME = "data-platform";
 
@@ -45,7 +45,7 @@ class TypedFieldPatchOwnersTest {
   }
 
   private static void apply(Table table, Map<String, Object> params) {
-    TypedFieldPatch.applyChanges(table, params);
+    PatchEntityTool.applyChanges(table, params);
   }
 
   /** Stubs the two repositories {@code getTeamsOrUsers} consults, resolving only {@link #TEAM_NAME}. */
