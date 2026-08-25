@@ -274,55 +274,29 @@ const buildExpandedDetailRow = <T extends object>(
  * `HTMLAttributes`: React Aria's Row types several of these itself, so a
  * hand-written shape drifts from what the component actually accepts.
  */
-type RowInteractionProps = Pick<
-  React.ComponentProps<typeof UntitledTable.Row>,
-  | 'draggable'
-  | 'onAction'
-  | 'onClick'
-  | 'onDoubleClick'
-  | 'onDragEnd'
-  | 'onDragEnter'
-  | 'onDragLeave'
-  | 'onDragOver'
-  | 'onDragStart'
-  | 'onDrop'
->;
+type RowInteractionProps = React.ComponentProps<typeof UntitledTable.Row> &
+  Record<string, unknown>;
 
+/**
+ * Forwards whatever `onRow` returned. Call sites hang test ids, aria
+ * attributes and mouse handlers off it, so an allowlist silently drops things
+ * nobody notices until the UI is in front of them.
+ *
+ * `onAction` is what makes `onClick` work at all: React Aria strips a row's
+ * click handler unless the row is interactive. The empty action marks it
+ * interactive so the call site's handler still receives a real MouseEvent,
+ * without adding a second activation path that would fire it twice.
+ *
+ * One thing does not survive: React Aria's Row owns drag and drop and never
+ * attaches native HTML5 drag handlers passed as props. Rows are dragged
+ * through `dragAndDropHooks`, not through `onRow`.
+ */
 const getRowInteractionProps = (
-  rowHandlers: RowInteractionProps,
-  hasAriaDragAndDrop: boolean
-): RowInteractionProps => {
-  const activation = {
-    onAction: rowHandlers.onClick ? noop : undefined,
-    onClick: rowHandlers.onClick,
-    onDoubleClick: rowHandlers.onDoubleClick,
-  };
-
-  if (hasAriaDragAndDrop) {
-    return activation;
-  }
-
-  const {
-    draggable,
-    onDragEnd,
-    onDragEnter,
-    onDragLeave,
-    onDragOver,
-    onDragStart,
-    onDrop,
-  } = rowHandlers;
-
-  return {
-    ...activation,
-    draggable,
-    onDragEnd,
-    onDragEnter,
-    onDragLeave,
-    onDragOver,
-    onDragStart,
-    onDrop,
-  };
-};
+  rowHandlers: RowInteractionProps
+): RowInteractionProps => ({
+  ...rowHandlers,
+  onAction: rowHandlers.onClick ? noop : undefined,
+});
 
 /**
  * React Aria keys rows and columns in one namespace, so a column id is only safe
@@ -340,6 +314,17 @@ const getRowInteractionProps = (
  * unique among themselves. Both are internal: `columnKeys` carries the original
  * key for anything reported back to the call site.
  */
+/**
+ * AntD's `bordered` draws a full grid. Rows already carry their own horizontal
+ * rule, so this adds the outer frame and the vertical separators, dropping the
+ * trailing one so the frame is not doubled.
+ */
+const BORDERED_CLASSES = [
+  'tw:border tw:border-secondary',
+  'tw:[&_th]:border-r tw:[&_th]:border-secondary tw:[&_th:last-child]:border-r-0',
+  'tw:[&_td]:border-r tw:[&_td]:border-secondary tw:[&_td:last-child]:border-r-0',
+].join(' ');
+
 const COLUMN_ID_PREFIX = 'col:';
 
 /**
@@ -1097,6 +1082,7 @@ const TableV2 = <T extends object>(
               // `z-index: 10` header above anything the page later drew over
               // the table, drawers and modals included.
               className={classNames(rest.className, {
+                [BORDERED_CLASSES]: rest.bordered,
                 // The legacy wrapper hardcoded `table-layout: fixed` after its
                 // prop spread, so every call site it served got fixed columns
                 // and none could opt out. Default to the same, but honour an
@@ -1311,10 +1297,7 @@ const TableV2 = <T extends object>(
                       data-row-key={rowKey}
                       id={rowIds[flatIndex]}
                       key={rowIds[flatIndex]}
-                      {...getRowInteractionProps(
-                        rowHandlers,
-                        Boolean(dragAndDropHooks)
-                      )}>
+                      {...getRowInteractionProps(rowHandlers)}>
                       {propsColumns.map((col, colIdx) => {
                         const colType = col as ColumnType<T>;
                         const cellKey = columnIds[colIdx];

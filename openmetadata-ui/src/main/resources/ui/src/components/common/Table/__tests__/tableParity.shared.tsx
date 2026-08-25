@@ -71,6 +71,8 @@ export interface ParityAdapter {
   queryPager: () => HTMLElement | null;
   /** The built-in pager's page-size control, or null when none is rendered. */
   queryPageSizeControl: () => HTMLElement | null;
+  /** Whether the table is drawing AntD's full `bordered` grid. */
+  isBordered: () => boolean;
   /**
    * How the rendered table solves its column widths. AntD sets it inline,
    * the core table through a utility class — the value is what matters.
@@ -408,6 +410,62 @@ export const runTableParitySuite = (
       renderTable({});
 
       expect(adapter.getTableLayout()).toBe('fixed');
+    });
+  });
+
+  describe(`${suiteName} — row props`, () => {
+    it('appends the class rowClassName returns to each row', () => {
+      renderTable({
+        rowClassName: (_record: ParityRow, index: number) => `mine-${index}`,
+      });
+
+      const rows = screen.getAllByRole('row').slice(1);
+
+      expect(rows[0].className).toContain('mine-0');
+      expect(rows[1].className).toContain('mine-1');
+    });
+
+    it('forwards every attribute onRow returns, not just the handlers', () => {
+      // Call sites hang test ids, aria attributes and mouse handlers off this.
+      renderTable({
+        onRow: () => ({ 'data-probe': 'yes', title: 'a row' }),
+      });
+
+      expect(document.querySelectorAll('[data-probe="yes"]')).toHaveLength(
+        PARITY_ROWS.length
+      );
+    });
+
+    it('reports the record and index onRow was called with', () => {
+      const onRow = jest.fn().mockReturnValue({});
+      renderTable({ onRow });
+
+      expect(onRow).toHaveBeenCalledWith(PARITY_ROWS[0], 0);
+    });
+
+    it('keys each row with the value rowKey resolves to', () => {
+      renderTable({ rowKey: 'name' });
+
+      const keys = screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.getAttribute('data-row-key'));
+
+      expect(keys).toEqual(PARITY_ROWS.map((row) => row.name));
+    });
+  });
+
+  describe(`${suiteName} — bordered`, () => {
+    it('draws the grid when bordered is set', () => {
+      renderTable({ bordered: true });
+
+      expect(adapter.isBordered()).toBe(true);
+    });
+
+    it('leaves the grid off by default', () => {
+      renderTable({});
+
+      expect(adapter.isBordered()).toBe(false);
     });
   });
 
@@ -876,6 +934,17 @@ export const runTableParitySuite = (
       act(() => adapter.activate(screen.getByTestId('column-dropdown')));
 
       expect(screen.getByTestId('column-menu-item-count')).toBeInTheDocument();
+    });
+
+    it('gives every listed column a drag handle to reorder by', () => {
+      renderTable(customizeProps);
+      act(() => adapter.activate(screen.getByTestId('column-dropdown')));
+
+      expect(
+        within(screen.getByTestId('column-menu-item-count')).getByTestId(
+          'draggable-menu-item-drag-icon'
+        )
+      ).toBeInTheDocument();
     });
 
     it('reveals a column when it is selected in the dropdown', () => {
