@@ -210,19 +210,15 @@ public class SemanticSearchTool implements McpTool {
   }
 
   /**
-   * Publishes {@code totalFound} in the same unit as everything else in the response: entities.
+   * Publishes {@code totalFound} in the same unit as everything else here: entities.
    *
-   * <p>{@code VectorSearchResponse.totalHits} is tempting and wrong. The vector service indexes
-   * several chunks per entity and {@code totalHits} counts chunks, while {@code results} is
-   * collapsed to one row per parent and {@code returnedCount}, {@code size}, {@code from} and
-   * {@code nextCursor} all count parents - {@link VectorPagingContract} says so in as many words.
-   * Reporting it made eight matching tables read as {@code totalFound: 96}, which is not a number
-   * about anything the caller asked for. Mirroring {@code returnedCount} instead, as this did
-   * before, was also wrong but at least shared a unit.
+   * <p>{@code VectorSearchResponse.totalHits} counts chunks, not entities - the vector service
+   * indexes several chunks per entity - while {@code results}, {@code returnedCount}, {@code size},
+   * {@code from} and {@code nextCursor} all count parents. Reporting it made eight matching tables
+   * read as {@code totalFound: 96}.
    *
-   * <p>So: report what is actually known. Once paging has stopped, {@code from + returnedCount} is
-   * the exact number of entities that matched. While it continues, that same figure is a lower
-   * bound, and it is labelled as one rather than passed off as a total.
+   * <p>So report what is known: once paging stops, {@code from + returnedCount} is exact. While it
+   * continues, the same figure is a lower bound and is labelled as one.
    */
   @VisibleForTesting
   static void addParentTotal(Map<String, Object> result, int from) {
@@ -392,11 +388,10 @@ public class SemanticSearchTool implements McpTool {
   }
 
   /**
-   * Emits column <em>names</em> rather than full column objects, matching what {@code
-   * search_metadata} already returns. Measured on a live 10-hit response, full {@code columns} was
-   * 68.6% of the payload (12,094 of 17,631 tokens) — paragraph-length per-column descriptions that
-   * do not help decide which asset is the right one. Names still answer "does this table have a
-   * customer_id column?"; {@code get_entity_details} stays the way to get column detail.
+   * Emits column <em>names</em> rather than full column objects, matching {@code search_metadata}.
+   * Full {@code columns} was most of a 10-hit response - per-column descriptions that do not help
+   * choose between assets. Names still answer "does this table have a customer_id column?", and
+   * {@code get_entity_details} stays the way to get the detail.
    */
   private void copyColumnNames(Map<String, Object> hit, Map<String, Object> cleaned) {
     if (hit.get("columns") instanceof List<?> columns && !columns.isEmpty()) {
@@ -414,10 +409,9 @@ public class SemanticSearchTool implements McpTool {
   /**
    * Caps the column-name list on a search hit.
    *
-   * <p>A single {@code dashboardDataModel} hit carrying ~1000 generated names took one live
-   * response to 50.2 KB, past the client's display budget, and the caller lost 9 of its 12 results.
-   * A hit exists to be chosen between, and no one picks an asset by reading its 900th column, so
-   * the list is capped and says when it was.
+   * <p>One hit carrying ~1000 generated names pushed a response past the client's display budget and
+   * cost the caller most of its results. Nobody picks an asset by its 900th column, so cap the list
+   * and say when it was cut.
    */
   private static void putCappedColumnNames(Map<String, Object> cleaned, List<Object> names) {
     if (names.size() <= MAX_COLUMN_NAMES) {
@@ -478,11 +472,9 @@ public class SemanticSearchTool implements McpTool {
   /**
    * Describes a failure as what it actually was.
    *
-   * <p>This used to pass {@code serverFault = true} unconditionally and append "use search_metadata
-   * instead of retrying this tool" to every failure, so a bad {@code filters} value, an unparseable
-   * cursor or a coercion error on {@code size} were all reported to the model as an embedding
-   * backend outage - telling it its arguments were fine and steering it off the tool permanently for
-   * something it caused and could have corrected.
+   * <p>This used to hardcode {@code serverFault = true} and tell every caller to stop using the
+   * tool, so a bad {@code filters} value or an unparseable cursor was reported as a backend outage -
+   * telling the caller its arguments were fine when they were the problem.
    */
   private static String failureMessage(Exception e) {
     boolean backendFault =

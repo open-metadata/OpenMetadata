@@ -303,17 +303,15 @@ public class DefaultToolContext {
   /**
    * The status the backend already reported, when the exception carries one.
    *
-   * <p>A search-client {@code ResponseException} stringifies with {@code status line [HTTP/1.1 400
-   * Bad Request]} in it, and its class name is {@code ResponseException} - which matches none of the
-   * name or message rules below, so it fell through to the default 500. That mattered more than a
-   * wrong number: {@link McpResponseTrim#summarizeFailure} turns a 5xx into the sentence "this is a
-   * backend fault, not a problem with the arguments you sent - retrying will not help", so a model
-   * that wrote a malformed {@code queryFilter} was told its arguments were fine and to stop trying.
-   * The reverse fired too: a genuine 5xx whose body contained {@code index_not_found_exception}
-   * matched the "not found" rule and was reported as a 404.
+   * <p>A search-client {@code ResponseException} embeds {@code status line [HTTP/1.1 400 Bad
+   * Request]} in its message but matches none of the name or message rules below, so it fell through
+   * to the default 500. {@link McpResponseTrim#summarizeFailure} turns a 5xx into "this is a backend
+   * fault, retrying will not help" - so a caller with a malformed {@code queryFilter} was told its
+   * arguments were fine. The reverse fired too: a real 5xx mentioning {@code
+   * index_not_found_exception} matched the "not found" rule and became a 404.
    *
-   * <p>Believing the status the backend actually reported settles both. Only 4xx and 5xx are taken;
-   * anything else falls through to the keyword table.
+   * <p>Believing the reported status settles both. Only 4xx and 5xx are taken; anything else falls
+   * through to the keyword table.
    */
   private static CategoryMatcher reportedStatus(String message) {
     CategoryMatcher matched = null;
@@ -375,9 +373,9 @@ public class DefaultToolContext {
                       || meta.name().contains("IllegalArgument")
                       || meta.name().contains("BadRequest")
                       || meta.message().contains("invalid argument")
-                      // A queryFilter the caller wrote is parsed before the request is sent, so
-                      // this failure carries no reported status and used to default to 500 - which
-                      // told the model its malformed DSL was a backend outage not worth retrying.
+                      // A caller's queryFilter is parsed before the request is sent, so this
+                      // failure carries no reported status and used to default to 500 - reporting
+                      // the caller's own malformed DSL as a backend outage.
                       || meta.message().contains("json parsing failed")
                       || meta.message().contains("failed to parse"),
               McpToolCallUsage.ErrorCategory.VALIDATION,

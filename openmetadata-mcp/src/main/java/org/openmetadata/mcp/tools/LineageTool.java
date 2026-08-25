@@ -58,11 +58,10 @@ public class LineageTool implements McpTool {
   /**
    * Accepts an endpoint by {@code fqn} as well as by {@code id}.
    *
-   * <p>This was the only tool of the MCP surface addressed by UUID: every other one takes
-   * {@code (entityType, fqn)}. That inconsistency forced a caller holding a search result — which
-   * names assets by FQN — to spend an extra lookup resolving an id, and it is why entity UUIDs
-   * could not simply be dropped from search hits. {@code fqn} is accepted as an alias for
-   * {@code fullyQualifiedName} because that is the name every other tool uses for it.
+   * <p>This was the only tool addressed by UUID; every other one takes {@code (entityType, fqn)}. A
+   * caller holding a search result, which names assets by FQN, had to spend a lookup resolving an
+   * id - and that is why UUIDs could not simply be dropped from search hits. {@code fqn} is an alias
+   * for {@code fullyQualifiedName}, the name every other tool uses.
    */
   private static EntityReference resolveEndpoint(Object raw, String paramName) {
     Map<String, Object> endpoint = asEndpointMap(raw, paramName);

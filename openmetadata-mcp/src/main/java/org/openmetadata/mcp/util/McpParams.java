@@ -76,9 +76,9 @@ public final class McpParams {
   /**
    * Reads a list-of-strings parameter, tolerating the single-string form.
    *
-   * <p>MCP clients serialize a one-element array inconsistently — some send {@code ["lineage"]},
-   * others {@code "lineage"} — and a model writing the call by hand does both. Accepting either
-   * costs one branch and removes a class of retry the caller cannot diagnose from a type error.
+   * <p>MCP clients serialize a one-element array inconsistently - some send {@code ["lineage"]},
+   * others {@code "lineage"}. Accepting either costs one branch and removes a retry the caller
+   * cannot diagnose from a type error.
    */
   /** A string parameter, or {@code fallback} when absent or blank. */
   public static String getString(Map<String, Object> params, String key, String fallback) {

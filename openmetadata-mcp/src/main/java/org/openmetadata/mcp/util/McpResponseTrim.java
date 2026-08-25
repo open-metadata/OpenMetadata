@@ -84,14 +84,11 @@ public final class McpResponseTrim {
    * Collapses an entity-reference-shaped map to the one field a caller can act on: its FQN.
    *
    * <p>Search hits embed full {@code EntityReference} objects for {@code service}, {@code database},
-   * {@code databaseSchema} and {@code owners} — each carrying id, type, name, displayName,
-   * description and href. Measured on a live 10-hit {@code search_metadata} response, those four
-   * fields were 44.5% of the payload and 19.2% of it was byte-identical repetition, because every
-   * hit from the same schema re-sends the same descriptor. Every MCP tool is addressed by
-   * {@code (entityType, fqn)}, so the FQN is the only part of a reference a caller can use.
+   * {@code databaseSchema} and {@code owners}, and every hit from the same schema repeats the same
+   * descriptor. Since every MCP tool is addressed by {@code (entityType, fqn)}, the rest is unusable
+   * weight.
    *
-   * <p>Returns the input untouched when it is not reference-shaped, so an unexpected payload is
-   * passed through rather than silently emptied.
+   * <p>Anything not reference-shaped is returned untouched, rather than silently emptied.
    */
   public static Object slimRef(Object value) {
     Object result = value;
@@ -106,13 +103,10 @@ public final class McpResponseTrim {
   }
 
   /**
-   * Keeps the one flag that survives collapsing a reference to its name.
+   * Keeps the one flag that has to survive collapsing a reference to its name.
    *
-   * <p>Slimming owners to bare strings made an owner inherited from the parent database look
-   * identical to a deliberately-assigned steward. That distinction is the entire answer to "who
-   * should I talk to" — a caller reported search saying {@code ["admin"]} and the entity read saying
-   * {@code {"name":"admin","inherited":true}}, calling them "same words, opposite meanings" — and
-   * recovering it cost a call. Six characters buy it back.
+   * <p>Without it, an owner inherited from the parent database looks identical to a deliberately
+   * assigned steward - and that distinction is the whole answer to "who should I talk to".
    */
   private static String inheritedSuffix(Map<?, ?> ref) {
     return Boolean.TRUE.equals(ref.get("inherited")) ? " (inherited)" : "";
@@ -121,10 +115,9 @@ public final class McpResponseTrim {
   /**
    * Drops the quoting OpenMetadata adds around an FQN segment containing a dot.
    *
-   * <p>A user named {@code vishnu.jain} has the FQN {@code "vishnu.jain"} — quotes included — so an
-   * owners list came back as {@code ["admin", "\"vishnu.jain\""]}, mixing quoted and unquoted
-   * entries in one array. The quotes only disambiguate segment boundaries inside a multi-part FQN;
-   * on a single segment they carry no information and make the value harder to compare or reuse.
+   * <p>A user named {@code vishnu.jain} has the FQN {@code "vishnu.jain"}, quotes included, so an
+   * owners list mixed quoted and unquoted entries. The quotes only separate segments inside a
+   * multi-part FQN; on a single segment they say nothing and make the value harder to reuse.
    */
   private static String unquoteSegment(String fqn) {
     String result = fqn;
@@ -150,8 +143,7 @@ public final class McpResponseTrim {
 
   /**
    * Collapses a tag-label-shaped map to its {@code tagFQN}. Tier and classification labels carry a
-   * paragraph-length {@code description} that is identical on every hit tagged with it — measured at
-   * 26.2% of one live search response for {@code tier} alone.
+   * paragraph-length {@code description} that repeats on every hit carrying that tag.
    */
   public static Object slimTag(Object value) {
     Object result = value;
@@ -167,12 +159,9 @@ public final class McpResponseTrim {
    * Collapses a certification to its FQN plus a resolved validity, e.g. {@code
    * "Certification.Gold (EXPIRED 2026-07-29)"}.
    *
-   * <p>Two problems in one field. Size: the nested label carries a description, a style colour and
-   * an {@code iconURL}, repeated verbatim on every certified hit — measured at 32.2% of one live
-   * search response. Correctness, which matters more: expiry ships only as raw epoch millis nested
-   * under {@code tagLabel.metadata.expiryDate}, with {@code state: "Confirmed"} beside it. An agent
-   * asked "which of this is trustworthy" reads Gold + Confirmed and reports a lapsed badge as a
-   * live trust signal unless it does epoch arithmetic. Resolving it here means it cannot.
+   * <p>The nested label repeats a description, colour and icon URL on every certified hit. More
+   * importantly, expiry ships as raw epoch millis next to {@code state: "Confirmed"}, so a lapsed
+   * badge reads as a live trust signal unless the caller does the date arithmetic itself.
    */
   public static Object slimCertification(Object value, long nowMillis) {
     Object result = value;
@@ -201,12 +190,9 @@ public final class McpResponseTrim {
               ? " (EXPIRED " + date + ")"
               : " (valid until " + date + ")";
     } else {
-      // The search index is inconsistent: some documents carry the full certification, others only
-      // {tagLabel:{tagFQN}} — and the asset that mattered most in testing was a stripped one. Two
-      // earlier wordings both misled. A bare label reads as a live badge; "(expiry unknown)" reads
-      // as "no expiry set", which a caller reported as "actively obscured the fact ... invites an
-      // agent that skips the follow-up to report a stale certification as valid". So name the cause
-      // and the remedy: the date exists, it is just not in this projection.
+      // The index is inconsistent: some documents carry the full certification, others only
+      // {tagLabel:{tagFQN}}. A bare label reads as a live badge and "(expiry unknown)" reads as "no
+      // expiry set", so say what is actually true - the date exists, just not in this projection.
       suffix = " (expiry not in this index - check get_entity_details before trusting)";
     }
     return suffix;
@@ -279,16 +265,12 @@ public final class McpResponseTrim {
   /**
    * Compresses a backend failure into something a model can act on.
    *
-   * <p>An OpenSearch {@code ResponseException} stringifies to its entire response body. Measured
-   * live, one failing {@code search_metadata} call put ~4,000 characters in front of the model — 24
-   * repetitions of {@code {"type":"null_pointer_exception","reason":null}} plus every shard name —
-   * which cost more context than several successful calls combined. Two agents independently lost a
-   * call to it: the payload named the internal index and host but never said whether the caller
-   * could do anything, so one retried an unretryable failure and the other could not tell a
-   * transient outage from a permanent one.
+   * <p>An OpenSearch {@code ResponseException} stringifies to its whole response body - one failing
+   * search put ~4,000 characters in front of the model, mostly the same error repeated per shard,
+   * and none of it said whether retrying would help.
    *
-   * <p>So: keep the first line, name the underlying cause once, and say explicitly whether the
-   * arguments were at fault. The operator-facing detail is already logged by the dispatch layer.
+   * <p>So: keep the first line, name the cause once, and say whether the arguments were at fault.
+   * The full text is already in the server log for the operator.
    */
   public static String summarizeFailure(Throwable t, boolean serverFault) {
     String message = safeMessage(t);

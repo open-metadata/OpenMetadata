@@ -111,7 +111,7 @@ public class GetLineageTool implements McpTool {
         upstreamDepth,
         downstreamDepth,
         options.includeColumnLineage());
-    // Passing the subject context is what applies the caller's domain restrictions to the graph
+    // The subject context applies the caller's domain restrictions
     // (LineageRepository.pruneLineageByDomain); the overload without it prunes nothing.
     EntityLineage lineage =
         Entity.getLineageRepository()
@@ -233,17 +233,15 @@ public class GetLineageTool implements McpTool {
   }
 
   /**
-   * Edge SQL is opt-in. Measured on a live 18-edge graph, {@code sqlQuery} was 93.8% of a 33,038
-   * token response (30,996 tokens) while the next-largest field, {@code toFQN}, was 1.1% — so a
-   * caller asking "what feeds this table?" paid ~31k tokens of SQL to learn 18 table names.
+   * Edge SQL is opt-in. On an 18-edge graph {@code sqlQuery} was ~94% of the response, so a caller
+   * asking "what feeds this table?" paid for transformation SQL to learn 18 table names.
    *
    * <p>When SQL is not requested the text is omitted and {@code hasSql} is set instead, so the
-   * caller still sees that a transformation exists and can re-request with {@code includeSql=true}.
-   * Dropping the field silently would hide that the SQL was ever there.
+   * caller still knows a transformation exists and can re-request with {@code includeSql=true}.
+   * Dropping it silently would hide that it was ever there.
    *
-   * <p>When SQL <em>is</em> requested it is returned in full and never cut — size is then controlled
-   * by returning fewer edges (see {@link #enforceSizeBudget}), which stays correct for a caller who
-   * explicitly asked for transformations.
+   * <p>When SQL <em>is</em> requested it is returned in full and never cut. Size is then controlled
+   * by returning fewer edges (see {@link #enforceSizeBudget}).
    */
   private static SqlText sqlText(LineageDetails details, boolean includeSql) {
     final String sql = details != null ? details.getSqlQuery() : null;
@@ -278,10 +276,8 @@ public class GetLineageTool implements McpTool {
   /**
    * Always states whether the graph is complete.
    *
-   * <p>A caller doing impact analysis cannot act on a graph that might be silently clipped —
-   * "30 downstream" and "at least 30 downstream" are different answers to "what breaks if I
-   * deprecate this". Measured live, an agent spent five of ten calls reconstructing that confidence
-   * from probes because the response carried no signal either way, while {@code get_entity_details}
+   * <p>"30 downstream" and "at least 30 downstream" are different answers to "what breaks if I
+   * deprecate this", and the response used to carry no signal either way. {@code get_entity_details}
    * has flagged the analogous column case with {@code columnsTruncated} all along.
    */
   static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
@@ -373,10 +369,9 @@ public class GetLineageTool implements McpTool {
    * specific to this tool, so the clamp stays here.
    */
   /**
-   * Zero is a meaningful request, not a mistake: "upstream only" is how a caller avoids paying for a
-   * direction it already has. {@code LineageRepository.getUpstreamLineage} short-circuits on 0, so
-   * the repository honours it — clamping the floor to 1 here silently overrode the caller and
-   * returned the very edges they asked to omit.
+   * Zero is a meaningful request, not a mistake: it is how a caller asks for one direction only.
+   * {@code LineageRepository} honours 0, so clamping the floor to 1 here silently overrode the
+   * caller and returned the edges they asked to omit.
    */
   private static int clampDepth(int depth) {
     return Math.min(Math.max(depth, 0), MAX_DEPTH);

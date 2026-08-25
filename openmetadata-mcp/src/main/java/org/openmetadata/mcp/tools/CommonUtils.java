@@ -69,12 +69,10 @@ public class CommonUtils {
   /**
    * Resolves owner names and fails on any that do not resolve, instead of dropping them.
    *
-   * <p>{@link #getTeamsOrUsers} returns only what it could resolve and says nothing about the rest -
-   * {@code findByNameOrNull} returning null is not an exception, so the {@code catch} never fires
-   * and nothing is logged. That is survivable for {@code create_*}, which guards with {@code
-   * if (!owners.isEmpty())}, but it is data loss for an update: one misspelled name resolves to an
-   * empty list, a {@code set} writes it, and every existing owner is deleted with a success
-   * response. The tool description promises the opposite, so this makes the promise true.
+   * <p>{@link #getTeamsOrUsers} returns only what it could resolve and says nothing about the rest:
+   * {@code findByNameOrNull} returning null is not an exception, so nothing is thrown or logged.
+   * On an update that is data loss - one misspelled name resolves to an empty list, a {@code set}
+   * writes it, and every existing owner is deleted with a success response.
    *
    * @param owners the raw {@code owners} parameter, a string or list of strings
    * @param paramName the parameter name to quote in the error
@@ -101,11 +99,9 @@ public class CommonUtils {
   /**
    * The current owners whose names the caller named, for removals.
    *
-   * <p>Removal must not go through {@link #requireTeamsOrUsers}: an owner who has since been
-   * deleted or deactivated no longer resolves in the directory, so requiring resolution would make
-   * exactly the stale reference a caller most wants to clear the one they cannot. Matching against
-   * what the entity already holds needs no directory at all. A name that is not an owner simply
-   * matches nothing, and the empty patch is reported by {@code requireChange}.
+   * <p>Removal must not go through {@link #requireTeamsOrUsers}: an owner who has been deleted no
+   * longer resolves, so requiring resolution would make the stale reference a caller most wants to
+   * clear the one they cannot. Matching what the entity already holds needs no directory lookup.
    */
   public static List<EntityReference> matchOwnersByName(
       Object owners, List<EntityReference> existing) {

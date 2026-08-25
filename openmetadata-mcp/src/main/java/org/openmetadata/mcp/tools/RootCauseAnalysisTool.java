@@ -143,10 +143,8 @@ public class RootCauseAnalysisTool implements McpTool {
   /**
    * Distinguishes "the failures start here" from "the failures are inherited from upstream".
    *
-   * <p>The DQ lineage walk returns the analysed entity among its own nodes when that entity has
-   * failing tests, so counting nodes reported an upstream failure that did not exist — a caller
-   * reading the old summary attributed a phantom root cause to a table with no failing upstream at
-   * all.
+   * <p>The DQ lineage walk includes the analysed entity among its own nodes when that entity has
+   * failing tests, so counting nodes reported an upstream failure that did not exist.
    */
   @VisibleForTesting
   static String summarize(String fqn, int upstreamFailures, boolean rootFails) {
@@ -186,15 +184,12 @@ public class RootCauseAnalysisTool implements McpTool {
     boolean rootFails = rootNode != null;
 
     upstreamAnalysis.put(ROOT_HAS_FAILING_TESTS, rootFails);
-    // Knowing THAT the root is failing without knowing WHICH tests failed sent a caller straight
-    // to a second search for the literal first clause of the question they asked. The failing
-    // results are already resolved for upstream nodes by the same helper - the root was simply
-    // excluded from it.
+    // Knowing that the root is failing without knowing which tests failed costs another search.
+    // The same helper already resolves this for upstream nodes; the root was just excluded.
     if (rootFails) {
       Map<String, Object> rootTests = addTestCaseResultForTestSuite(rootNode);
-      // A list with no total reads as possibly-trimmed, especially beside this tool's own notice
-      // that node and edge details are trimmed for context. A caller spent a call establishing that
-      // 3 was the complete set rather than a slice. Say so here instead.
+      // A list with no total reads as possibly-trimmed, especially next to this tool's own notice
+      // that node and edge details are cut for context. Say whether it is the full set.
       Object results = rootTests.get("testCaseResults");
       if (results instanceof List<?> list) {
         annotateCompleteness(rootTests, list.size());
@@ -217,10 +212,9 @@ public class RootCauseAnalysisTool implements McpTool {
   }
 
   /**
-   * When nothing upstream is failing, the DQ walk returns no upstream edges at all — so a caller
-   * asking "what could be causing this?" learned nothing about what even feeds the asset, and had to
-   * spend a second round trip on get_entity_lineage. The producers are cheap to resolve in-process
-   * and answer the question the tool exists for, so they are attached here instead.
+   * When nothing upstream is failing, the DQ walk returns no upstream edges at all - so a caller
+   * asking "what could be causing this?" learns nothing about what feeds the asset. The producers
+   * are cheap to resolve in-process, so attach them here instead of costing another call.
    */
   private static void addUpstreamProducers(
       Map<String, Object> upstreamAnalysis, RcaRequest request) {
@@ -279,9 +273,8 @@ public class RootCauseAnalysisTool implements McpTool {
   private static void addDownstreamNodes(
       Map<String, Object> downstreamAnalysis, SearchLineageResult result) {
     if (result.getNodes() != null) {
-      // The traversal includes the analysed asset itself at nodeDepth 0. Counting it as impacted
-      // overstates the blast radius by one on every call, and a caller quoting the number is then
-      // wrong in a way nothing in the payload contradicts.
+      // The traversal includes the analysed asset itself at nodeDepth 0, so counting it would
+      // overstate the blast radius by one on every call.
       downstreamAnalysis.put(
           "downstreamImpactedNodesCount", Math.max(0, result.getNodes().size() - 1));
       downstreamAnalysis.put("downstreamNodes", slimDownstreamNodes(result.getNodes()));
@@ -337,11 +330,9 @@ public class RootCauseAnalysisTool implements McpTool {
   /**
    * Strips the per-node bulk that impact analysis never reads.
    *
-   * <p>Measured on a live call: a single downstream node carried ~80 generated column names twice
-   * over — once as {@code columnNames}, again as full objects inside {@code aiContext.table.columns}
-   * — which was the majority of a 28,000 character response. A downstream node answers "what else
-   * breaks", so it needs identity: FQN, name, type, owners, tier. Column detail for any of them is a
-   * {@code get_entity_details} call away, and only for the one the caller cares about.
+   * <p>A single downstream node can carry its column names twice over - once as {@code columnNames},
+   * again inside {@code aiContext} - which dominated the response. A downstream node answers "what
+   * else breaks", so it needs identity only: FQN, name, type, owners, tier.
    */
   private static Map<String, Object> withoutBulkFields(Map<String, Object> entity) {
     NODE_BULK_FIELDS.forEach(entity::remove);
@@ -591,9 +582,8 @@ public class RootCauseAnalysisTool implements McpTool {
   /**
    * Failing tests for one node's suite, and - when it could not answer - why.
    *
-   * <p>This used to return a bare empty map for three different situations: the node has no suite,
-   * the search backend threw, and the suite genuinely has no failing tests. Beside a {@code status:
-   * "failed"} verdict those are opposite meanings, and the caller could not tell them apart.
+   * <p>An empty map used to mean three different things: no suite attached, the backend threw, or no
+   * failing tests. Next to a {@code status: "failed"} verdict those are opposite meanings.
    */
   private Map<String, Object> addTestCaseResultForTestSuite(Map<String, Object> node) {
     Map<String, Object> testCaseResult = new HashMap<>();
@@ -643,12 +633,10 @@ public class RootCauseAnalysisTool implements McpTool {
   /**
    * States how many tests are failing and whether that is all of them.
    *
-   * <p>{@code complete} was hardcoded true, which the lookup cannot back. {@code
-   * listLatestFromSearch} is called with a null limit, and {@code
-   * EntityTimeSeriesRepository.buildAggregationNodes} turns a null limit into a terms aggregation of
-   * {@link #RESULT_BUCKET_CAP} buckets - so a suite with more failing tests than that is silently
-   * truncated, and {@code totalCount} is set from the returned list, which cannot reveal the cut.
-   * Landing on the cap is therefore the one case where completeness is unknowable, and it says so.
+   * <p>{@code complete} was hardcoded true, which the lookup cannot back: it passes no limit, so
+   * {@code EntityTimeSeriesRepository} caps the aggregation at {@link #RESULT_BUCKET_CAP} buckets
+   * and a bigger suite is silently truncated. Landing exactly on the cap is the one case where
+   * completeness is unknowable, so say so.
    */
   @VisibleForTesting
   static void annotateCompleteness(Map<String, Object> tests, int failingCount) {

@@ -160,15 +160,13 @@ public final class AIContextMarkdown {
   }
 
   /**
-   * Names which of three states an all-zero test line means, since they are byte-identical in the
-   * counts above and are opposite trust verdicts.
+   * Says which of three states an all-zero test line means. They are identical in the counts above
+   * and are opposite trust verdicts.
    *
-   * <p>{@code total} is the discriminator and was previously ignored: gating only on
-   * passed+failed+aborted meant an asset with a test suite but no test cases in it - a normal state,
-   * since a suite is created before its tests - was told "no test has ever executed … treat quality
-   * here as unverified", asserting a state that did not exist and instructing the reader to distrust
-   * an asset with nothing wrong with it. This markdown is served over REST and read by an LLM, so
-   * the wrong verdict propagates into answers.
+   * <p>{@code total} is the discriminator and was ignored: gating only on passed+failed+aborted told
+   * an asset with a suite but no test cases - a normal state, since the suite is created first -
+   * that "no test has ever executed … treat quality here as unverified". This markdown is served
+   * over REST and read by an LLM, so a wrong verdict propagates into answers.
    */
   private static void appendCoverageVerdict(
       StringBuilder markdown, DataQuality dataQuality, int executed) {

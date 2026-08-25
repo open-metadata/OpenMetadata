@@ -236,11 +236,9 @@ public class SearchMetadataTool implements McpTool {
       LOG.debug("Applied query filter to query: {}", queryFilter);
     }
 
-    // Without a caller-supplied queryFilter there is no query to fold the exclusion into, so build
-    // one that carries nothing but the exclusion. The standard search path ANDs a queryFilter with
-    // the text query (OpenSearchSearchManager.applyQueryFilter), so this reaches the engine and the
-    // page backfills. Post-filtering here instead is what produced an empty page reading as "no
-    // such assets exist" - see dropExcludedTypes, which stays only as a backstop.
+    // With no caller-supplied queryFilter there is nothing to fold the exclusion into, so build a
+    // filter carrying only the exclusion. The standard search path ANDs it with the text query
+    // (OpenSearchSearchManager.applyQueryFilter), so the engine applies it and the page backfills.
     String exclusionFilter = queryFilter == null ? excludeOnlyFilter(excludedTypes) : null;
 
     LOG.info(
@@ -308,13 +306,11 @@ public class SearchMetadataTool implements McpTool {
   }
 
   /**
-   * Last-resort removal of excluded hits, for the path where no {@code queryFilter} was supplied and
-   * the exclusion could not be pushed into the query.
+   * Backstop removal of excluded hits. The real exclusion happens in {@link #excludeTypesFrom}.
    *
-   * <p>Post-filtering alone is not sufficient and was the first thing tried: it strips columns from
-   * a page that has already been fetched, so a page that happened to be all columns came back
-   * <em>empty</em> — which reads as "no such assets exist" when hundreds do. The real exclusion
-   * happens in {@link #excludeTypesFrom} so the engine fills the page with eligible hits.
+   * <p>Post-filtering alone is not enough: it strips hits from a page already fetched, so a page
+   * that happened to be all columns came back empty - which reads as "no such assets exist" when
+   * hundreds do.
    */
   private static Map<String, Object> dropExcludedTypes(
       Map<String, Object> response, Set<String> excluded) {
@@ -407,10 +403,9 @@ public class SearchMetadataTool implements McpTool {
         if (source == null) continue;
 
         Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
-        // A pure queryFilter lookup runs no scoring query, so every hit comes back with the same
-        // constant _score. Publishing that as "similarityScore" presents a filter match as a
-        // relevance ranking - a caller reported it as "a meaningless constant presented as a
-        // relevance signal". Emit it only when the scores actually discriminate.
+        // A pure queryFilter lookup runs no scoring query, so every hit carries the same constant
+        // _score. Publishing that as "similarityScore" presents a filter match as a ranking, so
+        // emit it only when the scores actually differ.
         if (hit.containsKey("_score") && scoresVary) {
           cleanedSource.put("similarityScore", hit.get("_score"));
         }
@@ -533,8 +528,8 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    // Slim requested fields too: `fields=certification` previously bypassed slimField and
-    // returned the whole nested label, expiry buried in epoch millis, on every hit.
+    // Slim requested fields too: `fields=certification` used to bypass slimField and return the
+    // whole nested label, with expiry as epoch millis, on every hit.
     for (String field : requestedFields) {
       if (source.containsKey(field)) {
         result.put(field, capBulkField(field, slimField(field, source.get(field)), result));
@@ -543,10 +538,8 @@ public class SearchMetadataTool implements McpTool {
 
     addSlimTestCaseResult(source, result);
 
-    // Truncate long descriptions to optimize LLM context usage, and SAY SO. A silent cut is worse
-    // than a short field: measured live, a caller read a truncated description as the complete text
-    // and lost the sentence that carried the asset's strongest documentation signal. Columns have
-    // been flagged with columnsTruncated all along; descriptions were not.
+    // Truncate long descriptions, and say so. A silent cut is worse than a short field: the caller
+    // reads it as the complete text. Columns were already flagged this way; descriptions were not.
     if (result.get("description") instanceof String description) {
       String trimmed = McpResponseTrim.truncateDescription(description);
       result.put("description", trimmed);
@@ -561,18 +554,14 @@ public class SearchMetadataTool implements McpTool {
   /**
    * Distinguishes a test that has never executed from a field that was simply not returned.
    *
-   * <p>{@code testCaseStatus} is present and accurate once a test has run, so the absence is
-   * genuine — but absence alone is ambiguous, and two callers independently spent extra calls
-   * fetching a test suite summary purely to learn that "no status" meant "never ran". Naming the
-   * state answers it in the hit itself.
+   * <p>{@code testCaseStatus} is accurate once a test has run, so its absence is genuine - but
+   * absence alone is ambiguous, and callers spent extra calls just to learn that "no status" meant
+   * "never ran".
    *
-   * <p>It is reported as a separate {@code neverRun} flag rather than as a {@code testCaseStatus}
-   * value, because {@code testCaseStatus} is a closed schema enum — {@code Success}, {@code Failed},
-   * {@code Aborted}, {@code Queued} ({@code openmetadata-spec} {@code tests/basic.json}) — with a
-   * generated {@code TestCaseStatus} parser behind it. Writing {@code "NeverRun"} into it, as this
-   * previously did, invents a value that exists nowhere in OpenMetadata and throws in any client
-   * that parses the field into its enum. The absence of a status is left exactly as the index has
-   * it, and the inference is published beside it where it can be ignored.
+   * <p>Reported as a separate {@code neverRun} flag, not as a {@code testCaseStatus} value:
+   * {@code testCaseStatus} is a closed schema enum (Success, Failed, Aborted, Queued) with a
+   * generated parser behind it, so writing {@code "NeverRun"} into it invents a value that exists
+   * nowhere in OpenMetadata and throws in any client that parses the field.
    */
   private static void markNeverRunTestCase(Map<String, Object> result) {
     boolean isTestCase = TEST_CASE_ENTITY.equals(result.get("entityType"));
@@ -611,27 +600,23 @@ public class SearchMetadataTool implements McpTool {
   /**
    * Entity references and tag labels are collapsed to the identifier a caller can act on.
    *
-   * <p>Measured on a live 10-hit {@code search_metadata} response: {@code tier} was 26.2% of the
-   * payload on its own — the same paragraph-length Tier.Tier1 description repeated on every tagged
-   * hit — and {@code service}/{@code database}/{@code databaseSchema} a further 32.9%, of which
-   * 19.2% was byte-identical repetition because hits from one schema re-send its descriptor. Every
-   * MCP tool is addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
+   * <p>{@code tier}, {@code service}, {@code database} and {@code databaseSchema} each repeat a full
+   * descriptor on every hit, which on a 10-hit response was most of the payload. Every MCP tool is
+   * addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
    */
   /**
    * Caps a hydrated bulk field on a search hit.
    *
-   * <p>{@code fields=columns} hydrates every column object with its full prose description. One
-   * live discovery call asked for 3 tables and got ~30,000 characters, the bulk of it a 100-column
-   * demo table the caller had already decided against. A search hit exists to be chosen between;
-   * full column detail is what {@code get_entity_details} is for.
+   * <p>{@code fields=columns} hydrates every column with its full description, so one wide table can
+   * dominate a page. A search hit exists to be chosen between; {@code get_entity_details} is where
+   * the full detail lives.
    */
   /** True when hit scores vary, i.e. something actually ranked them. */
   /**
    * Wraps a query so excluded entity types never match, letting the engine backfill the page.
    *
-   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a sweep for
-   * certified assets returned 244 hits whose first 30 were all columns inheriting their parent's
-   * badge, costing the caller a whole call to re-issue with a hand-written {@code must_not}.
+   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a broad
+   * sweep can return mostly columns inheriting their parent's tags or certification.
    */
   /**
    * A queryFilter whose only job is to exclude entity types, for the path where the caller supplied

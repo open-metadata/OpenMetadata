@@ -78,10 +78,7 @@ public class GetEntityTool implements McpTool {
   private static final String TEST_SUITE_KEY = "testSuite";
   private static final String CERTIFICATION_KEY = "certification";
 
-  /**
-   * Two hops, not one: the second hop is what tells a caller whether a lone neighbour is the whole
-   * story or the start of a chain, and reading it costs one call instead of one per neighbour.
-   */
+  /** Two hops. The second one is what tells a caller whether a lone neighbour starts a chain. */
   private static final int REACH_DEPTH = 2;
 
   private static final String COLUMN_OFFSET_PARAM = "columnOffset";
@@ -145,13 +142,10 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Reads up to {@link #MAX_BATCH} entities in one call.
+   * Reads up to {@link #MAX_BATCH} entities in one call instead of one call each.
    *
-   * <p>A "tell me about these assets" question previously cost one round trip per asset, and a
-   * search result routinely names several worth inspecting. Each entity is resolved independently:
-   * an unknown type, a missing asset or a permission denial yields an {@code error} entry for that
-   * one entity rather than failing the whole call, which is what makes batching safe to use on a
-   * list the caller has not verified.
+   * <p>Each entity resolves on its own, so an unknown type, a missing asset or a denied permission
+   * returns an {@code error} entry for that entity rather than failing the whole call.
    */
   private Map<String, Object> readMany(
       Authorizer authorizer,
@@ -200,9 +194,8 @@ public class GetEntityTool implements McpTool {
   record EntityRef(String entityType, String fqn) {}
 
   /**
-   * Splits {@code entityType:fqn} on the FIRST colon only — an FQN legitimately contains colons
-   * (a test case FQN embeds them), so splitting on every colon would corrupt valid input.
-   * Returns null for anything unparseable so the caller can report it per entity.
+   * Splits {@code entityType:fqn} on the first colon only, because an FQN can contain colons.
+   * Returns null when unparseable, so the caller can report it per entity.
    */
   @VisibleForTesting
   static EntityRef parseReference(String reference) {
@@ -260,22 +253,16 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Folds the follow-up calls a caller would otherwise have to make into this one.
+   * Folds lineage and test health into this response, so the caller does not spend a call on each.
+   * Both are cheap in-process reads.
    *
-   * <p>Measured across four live agent runs, the dominant cost was not payload size but round
-   * trips: a "tell me about this asset" task took 7 calls against a floor of 2, and three of those
-   * were fetching lineage and data-quality health for an entity already in hand. Both are cheap
-   * in-process reads, so they are available here on request.
-   *
-   * <p>Each section degrades on its own: a failure or a permission denial on lineage leaves a note
-   * in place of that section rather than failing an otherwise good entity read.
+   * <p>Each section degrades on its own: if one fails, its slot carries a note and the entity read
+   * still succeeds.
    */
   /**
-   * What an include section needs to fetch <em>and authorize</em> its own data.
-   *
-   * <p>Bundled rather than passed as four arguments because each section reaches a different entity
-   * than the one that was authorized in {@link #readOne} - lineage reaches the neighbours, quality
-   * reaches the test suite - so each has to carry the caller's identity with it.
+   * What an include section needs to fetch and authorize its own data. Each section reaches a
+   * different entity than {@link #readOne} authorized - lineage the neighbours, quality the test
+   * suite - so each carries the caller's identity.
    */
   private record IncludeContext(
       Authorizer authorizer,
@@ -309,21 +296,16 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Immediate upstream and downstream neighbours as FQNs, plus whether the graph continues past
-   * them. {@code get_entity_lineage} remains the tool for depth and edge detail.
+   * Immediate neighbours, plus whether the graph continues past them. {@code get_entity_lineage} is
+   * still the tool for depth and edge detail.
    *
-   * <p>Reads to {@link #REACH_DEPTH} rather than one hop, and decides "is there more" from where the
-   * edges attach to the root instead of probing each neighbour. The probe it replaces looked each
-   * neighbour up under the <em>root's</em> entity type, so the first neighbour of a different type -
-   * a table feeding a dashboard, the ordinary shape - threw {@code EntityNotFoundException}, {@link
-   * #section} swallowed it, and the whole lineage block degraded to {@code unavailable} while the
-   * correct neighbour lists sat in hand. It also cost one repository call per neighbour; this costs
-   * one for the entity.
+   * <p>Reads two hops once and decides "is there more" from which edges touch the root. Probing
+   * each neighbour instead means looking it up under the root's entity type, which fails whenever a
+   * neighbour is a different type - a table feeding a dashboard, say.
    */
   private static Map<String, Object> neighbours(IncludeContext ctx) {
-    // The caller's subject context is what applies domain restrictions to the graph
-    // (LineageRepository.pruneLineageByDomain). Without it, a domain-restricted caller who can see
-    // this entity would also see the FQNs of neighbours they are not allowed to know exist.
+    // The subject context applies the caller's domain restrictions
+    // (LineageRepository.pruneLineageByDomain). Without it they see neighbours they cannot access.
     EntityLineage lineage =
         Entity.getLineageRepository()
             .getByName(
@@ -341,10 +323,7 @@ public class GetEntityTool implements McpTool {
     return summary;
   }
 
-  /**
-   * Fills one direction: the neighbours whose edge touches the root, and whether any edge in that
-   * direction does not - which is exactly "there is a second hop".
-   */
+  /** Neighbours whose edge touches the root, and whether any edge in that direction does not. */
   @VisibleForTesting
   static void addDirection(
       Map<String, Object> summary,
@@ -373,9 +352,8 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * The analysed entity's id, which every reach decision is measured against. Failing here is
-   * deliberate: without it the direction flags would be guesses, and {@link #section} turns the
-   * failure into a note on the lineage block rather than a lost entity read.
+   * The entity's own id, which every reach decision is measured against. Throwing when it is absent
+   * lets {@link #section} report it, rather than guessing the flags.
    */
   private static UUID rootId(EntityLineage lineage, String fqn) {
     EntityReference entity = lineage.getEntity();
@@ -394,12 +372,8 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Says whether the graph continues past the immediate neighbours.
-   *
-   * <p>"Immediate neighbours only" describes the scope but not the shape: a lone upstream is
-   * ambiguous between "that is the whole story" and "that is hop one of a chain". A caller named
-   * this its strongest note, having spent a whole call on a confirming lineage read whose only new
-   * fact was that the chain terminated.
+   * Says whether the graph continues past the immediate neighbours. Without it a single upstream is
+   * ambiguous between "that is everything" and "that is the first of several hops".
    */
   private static String reachNote(boolean continues) {
     return continues
@@ -419,18 +393,16 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Test health for the entity's suite. The suite reference is already on the entity, but its
-   * pass/fail counts live on the suite — which is why answering "are the tests passing?" previously
-   * cost a search plus a second get_entity_details.
+   * Test health for the entity's suite. The entity carries the suite reference but not its
+   * pass/fail counts, so answering "are the tests passing?" otherwise costs another call.
    */
   private static Object quality(Map<String, Object> entity, IncludeContext ctx) {
     Object suiteRef = entity.get(TEST_SUITE_KEY);
     Object result = Map.of("note", "No test suite is attached to this entity.");
     if (suiteRef instanceof Map<?, ?> ref && ref.get("fullyQualifiedName") != null) {
       String suiteFqn = ref.get("fullyQualifiedName").toString();
-      // A test suite is its own entity with its own policies, so viewing the table it is attached
-      // to does not imply the right to read it. Authorizing here keeps this fold-in exactly as
-      // permissive as the test-suite resource it saves a call to, rather than more.
+      // A test suite is its own entity with its own policies, so being able to see the table it is
+      // attached to does not imply the right to read it.
       ctx.authorizer()
           .authorize(
               ctx.securityContext(),
@@ -442,9 +414,8 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> health = new LinkedHashMap<>();
       health.put("testSuite", suiteFqn);
       health.put("summary", withNeverRun(suite.get("summary")));
-      // columnTestSummary gives counts keyed by an entityLink - enough to know a column has an
-      // aborted test, not enough to name it, which cost a caller a call. The suite already carries
-      // per-test name and status; pass it through rather than making them go and fetch it.
+      // columnTestSummary counts tests per column but does not name them. The suite already has
+      // per-test names and statuses, so pass those through instead of forcing another call.
       Object perTest = suite.get("testCaseResultSummary");
       if (perTest instanceof List<?> list && !list.isEmpty()) {
         health.put("tests", list);
@@ -455,12 +426,9 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Resolves certification expiry here too, not only in search hits.
-   *
-   * <p>The asymmetry was the trap: search returned "Certification.Gold (EXPIRED 2026-07-29)" while
-   * this tool handed back {@code expiryDate: 1785312839519} beside {@code state: "Confirmed"}. A
-   * caller reported converting the epoch by hand to notice a badge had lapsed four weeks earlier —
-   * "arguably the most actionable thing about this asset, and easy to skim straight past".
+   * Resolves certification expiry here too, not only in search hits. This tool used to return
+   * {@code expiryDate} as epoch millis next to {@code state: "Confirmed"}, so a lapsed badge read as
+   * a live one unless the caller converted the timestamp by hand.
    */
   private static void resolveCertification(Map<String, Object> entity) {
     Object certification = entity.get(CERTIFICATION_KEY);
@@ -472,14 +440,11 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Adds the bucket the test-suite summary cannot express: tests that exist but have never run.
+   * Adds the bucket the raw summary cannot express: tests that exist but have never run.
    *
-   * <p>The raw summary reports success/failed/aborted/queued against a total. For a suite whose
-   * tests have never executed, every bucket is zero while total is 13 — which reads as "13 tests,
-   * no failures, healthy" and is the exact opposite of the truth. Two callers independently named
-   * this the worst defect they hit, one calling it "the difference the user\'s question turns on".
-   * search_metadata flags the same state per hit as {@code neverRun: true}; this closes the gap so
-   * the folded summary cannot say less than the tool it is meant to replace.
+   * <p>The summary counts success/failed/aborted/queued against a total. When nothing has run, every
+   * bucket is zero while total is 13 - which reads as "13 tests, no failures, healthy" and is the
+   * opposite of the truth.
    */
   @VisibleForTesting
   static Object withNeverRun(Object rawSummary) {
@@ -487,11 +452,9 @@ public class GetEntityTool implements McpTool {
     if (rawSummary instanceof Map<?, ?> summary) {
       Map<String, Object> annotated = new LinkedHashMap<>();
       summary.forEach((key, value) -> annotated.put(String.valueOf(key), value));
-      // Queued deliberately does not count as executed. A queued test has produced no verdict, so
-      // counting it would let a suite waiting to run report neverRun: 0 - the "zero failures reads
-      // as healthy" trap this method exists to close. It also keeps this identical to
-      // AIContextMarkdown.appendCoverageVerdict, whose DataQuality carries no queued count at all,
-      // so the same suite cannot get opposite verdicts from two tools.
+      // Queued does not count as executed: a queued test has produced no verdict, so counting it
+      // would let a suite that is only waiting to run report neverRun: 0. This also matches
+      // AIContextMarkdown.appendCoverageVerdict, so both tools give the same verdict.
       int executed =
           intOf(annotated.get("success"))
               + intOf(annotated.get("failed"))

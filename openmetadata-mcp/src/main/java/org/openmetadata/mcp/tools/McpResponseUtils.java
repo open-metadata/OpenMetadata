@@ -47,11 +47,10 @@ public final class McpResponseUtils {
    * {@link #compact} plus the two things only an update can answer: the new version, and which
    * fields actually changed.
    *
-   * <p>{@code changeDescription} is noise on a create - nothing changed, the entity is new - which
-   * is why {@link #compact} strips it. On a patch it is the confirmation the caller wrote for, and
-   * dropping it would make a partly-applied update indistinguishable from a fully applied one. It is
-   * reduced to the field names rather than passed through: the full object carries old and new
-   * values for every field, which is far more than "did my change land" needs.
+   * <p>{@link #compact} strips {@code changeDescription} because it is noise on a create - nothing
+   * changed, the entity is new. On a patch it is the confirmation the caller wrote for. Only the
+   * field names are kept: the full object carries old and new values for every field, far more than
+   * "did my change land" needs.
    */
   public static Map<String, Object> compactPatch(EntityInterface entity, EventType changeType) {
     Map<String, Object> doc = compact(entity, changeType);
