@@ -291,7 +291,43 @@ module.exports = function transformer(file, api) {
       newAttrs.push(renameAttr(loadingAttr, 'isLoading'));
     }
     if (iconAttr) {
-      newAttrs.push(renameAttr(iconAttr, 'iconLeading'));
+      // `icon={<X />}` -> `iconLeading={X}` when the element carries no props.
+      //
+      // Core sizes icons through a `data-icon` attribute that it only stamps
+      // on the *component* form (`iconLeading={X}`). An element passed
+      // through as-is gets no sizing, which is harmless for antd icons (their
+      // svg is `1em`) but renders a bare SVG import at 0x0 - an icon-only
+      // button then collapses to padding and becomes invisible.
+      //
+      // Handing core the component reference keeps it on the supported path.
+      // Elements that carry props are left alone: core overwrites `className`
+      // on the component path, so converting one would silently drop it.
+      const iconValue = iconAttr.value;
+      const inner =
+        iconValue &&
+        iconValue.type === 'JSXExpressionContainer' &&
+        iconValue.expression.type === 'JSXElement'
+          ? iconValue.expression
+          : null;
+      const isProplessComponent =
+        inner &&
+        inner.openingElement.name.type === 'JSXIdentifier' &&
+        /^[A-Z]/.test(inner.openingElement.name.name) &&
+        (inner.openingElement.attributes || []).length === 0 &&
+        (inner.children || []).length === 0;
+
+      if (isProplessComponent) {
+        newAttrs.push(
+          j.jsxAttribute(
+            j.jsxIdentifier('iconLeading'),
+            j.jsxExpressionContainer(
+              j.identifier(inner.openingElement.name.name)
+            )
+          )
+        );
+      } else {
+        newAttrs.push(renameAttr(iconAttr, 'iconLeading'));
+      }
     }
     // `htmlType` -> native `type`, processed *after* the visual `type` ->
     // `color` rewrite above so the two never collide on the same prop name.

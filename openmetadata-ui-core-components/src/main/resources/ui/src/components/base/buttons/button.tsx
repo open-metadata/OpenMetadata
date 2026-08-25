@@ -8,7 +8,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { cloneElement, forwardRef, isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
@@ -18,7 +18,7 @@ import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 export const styles = sortCx({
   common: {
     root: [
-      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:before:absolute tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
@@ -28,6 +28,8 @@ export const styles = sortCx({
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
       'tw:*:data-icon:pointer-events-none tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
     ].join(' '),
+    focusOutline:
+      'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   sizes: {
@@ -208,6 +210,8 @@ export interface CommonProps {
   showTextWhileLoading?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
+  /** Omits the default focus outline when the surrounding UI intentionally does not use one */
+  hideFocusOutline?: boolean;
 }
 
 /**
@@ -258,6 +262,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       color = 'primary',
       children,
       className,
+      hideFocusOutline,
       noTextPadding,
       ellipsis,
       iconLeading: IconLeading,
@@ -273,26 +278,6 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const Component = href ? AriaLink : AriaButton;
 
     const isIcon = (IconLeading || IconTrailing) && !children;
-
-    // An icon passed as an *element* (`iconLeading={<EditIcon />}`) used to
-    // render untouched, while an icon passed as a *component*
-    // (`iconLeading={EditIcon}`) is given `data-icon`. All of the button's
-    // icon styling hangs off that attribute - `tw:*:data-icon:size-5` and the
-    // per-size overrides such as `tw:*:data-icon:size-3` size it, and the
-    // loading state hides `*:not([data-icon=loading])`. Without it an element
-    // icon gets no dimensions at all, so an icon-only button collapses to zero
-    // size and becomes invisible and unclickable.
-    //
-    // Stamping `data-icon` onto the element makes both call shapes behave
-    // identically. Sizing is left to the root's `*:data-icon:` variants rather
-    // than the fixed `styles.common.icon` class so per-size overrides still
-    // win. An explicit `data-icon` from the caller is preserved.
-    const withIconAttr = (icon: ReactNode, position: 'leading' | 'trailing') =>
-      isValidElement<{ 'data-icon'?: string }>(icon)
-        ? cloneElement(icon, {
-            'data-icon': icon.props['data-icon'] ?? position,
-          })
-        : icon;
     const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
       color
     );
@@ -329,6 +314,9 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         {...props}
         className={cx(
           styles.common.root,
+          // A base reset also suppresses the native outline when React Aria's
+          // data-focus-visible state is absent, such as a forced browser pseudo-state.
+          hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
           isLinkType && styles.sizes[size].linkRoot,
@@ -345,7 +333,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
         isDisabled={disabled}>
         {/* Leading icon */}
-        {isValidElement(IconLeading) && withIconAttr(IconLeading, 'leading')}
+        {isValidElement(IconLeading) && IconLeading}
         {isReactComponent(IconLeading) && (
           <IconLeading className={styles.common.icon} data-icon="leading" />
         )}
@@ -396,7 +384,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
 
         {/* Trailing icon */}
-        {isValidElement(IconTrailing) && withIconAttr(IconTrailing, 'trailing')}
+        {isValidElement(IconTrailing) && IconTrailing}
         {isReactComponent(IconTrailing) && (
           <IconTrailing className={styles.common.icon} data-icon="trailing" />
         )}

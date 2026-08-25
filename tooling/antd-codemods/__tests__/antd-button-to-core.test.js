@@ -198,8 +198,8 @@ defineInlineTest(
   transform,
   OPTS,
   `import { Button } from 'antd';\nconst App = () => <Button icon={<PlusOutlined />}>Add</Button>;`,
-  `import { Button } from '@openmetadata/ui-core-components';\nconst App = () => <Button color='secondary' iconLeading={<PlusOutlined />}>Add</Button>;`,
-  '`icon={...}` -> `iconLeading={...}` (any value form)'
+  `import { Button } from '@openmetadata/ui-core-components';\nconst App = () => <Button color='secondary' iconLeading={PlusOutlined}>Add</Button>;`,
+  '`icon={<X />}` -> `iconLeading={X}`: core only sizes the component form'
 );
 
 // -- `block` into existing/absent className + dynamic-className skip --
@@ -445,3 +445,27 @@ describe('console.warn reporting', () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });
+
+// -- `icon` element -> component reference --------------------------------
+
+// Core stamps `data-icon` (which carries all icon sizing) only on the
+// component form. A propless element passed straight through gets no sizing:
+// harmless for antd icons, whose svg is 1em, but a bare SVG import renders
+// 0x0 and the icon-only button collapses to padding.
+defineInlineTest(
+  transform,
+  OPTS,
+  `import { Button } from 'antd';\nconst App = () => <Button icon={<EditIcon />} />;`,
+  `import { Button } from '@openmetadata/ui-core-components';\nconst App = () => <Button color='secondary' iconLeading={EditIcon} />;`,
+  'propless `icon={<X />}` -> `iconLeading={X}` (component form, gets sizing)'
+);
+
+// Core overwrites `className` on the component path, so converting an element
+// that carries props would silently drop them.
+defineInlineTest(
+  transform,
+  OPTS,
+  `import { Button } from 'antd';\nconst App = () => <Button icon={<EditIcon className="x" />} />;`,
+  `import { Button } from '@openmetadata/ui-core-components';\nconst App = () => <Button color='secondary' iconLeading={<EditIcon className="x" />} />;`,
+  '`icon={<X className=... />}` stays an element so its props survive'
+);

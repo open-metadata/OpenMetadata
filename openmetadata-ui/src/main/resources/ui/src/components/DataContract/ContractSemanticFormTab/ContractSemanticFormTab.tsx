@@ -255,7 +255,7 @@ export const ContractSemanticFormTab: React.FC<{
                                   className="delete-expand-button"
                                   color="secondary-destructive"
                                   data-testid={`delete-semantic-${field.key}`}
-                                  iconLeading={<DeleteIcon />}
+                                  iconLeading={DeleteIcon}
                                   size="sm"
                                   onClick={() => {
                                     handleDeleteSemantic(field.key);

@@ -64,7 +64,7 @@ export const EditIconButton = ({
           className={classNames('bordered', className)}
           {...props}
           color="secondary"
-          iconLeading={<EditIcon />}
+          iconLeading={EditIcon}
           size={toCoreSize(size)}
         />
       ) : (
@@ -94,7 +94,7 @@ export const RequestIconButton = ({
           className={classNames('bordered', className)}
           {...props}
           color="secondary"
-          iconLeading={<RequestIcon />}
+          iconLeading={RequestIcon}
           size={toCoreSize(size)}
         />
       ) : (
@@ -122,7 +122,7 @@ export const CommentIconButton = ({
           className={classNames('bordered', className)}
           {...props}
           color="secondary"
-          iconLeading={<CommentIcon />}
+          iconLeading={CommentIcon}
           size={toCoreSize(size)}
         />
       ) : (
@@ -149,7 +149,7 @@ export const AlignRightIconButton = ({
         data-testid="tab-expand-button"
         {...props}
         color="tertiary"
-        iconLeading={<ExpandIcon />}
+        iconLeading={ExpandIcon}
         size={toCoreSize(size)}
       />
     </Tooltip>
@@ -169,7 +169,7 @@ export const CardExpandCollapseIconButton = ({
       tabIndex={0}
       {...props}
       color="tertiary"
-      iconLeading={<CardExpandCollapseIcon />}
+      iconLeading={CardExpandCollapseIcon}
       isDisabled={disabled}
       size={toCoreSize(size)}
     />
@@ -215,7 +215,7 @@ export const DeleteIconButton = ({
         className={classNames('bordered', className)}
         {...props}
         color="secondary"
-        iconLeading={<IconDelete />}
+        iconLeading={IconDelete}
         size={toCoreSize(size)}
       />
     </Tooltip>

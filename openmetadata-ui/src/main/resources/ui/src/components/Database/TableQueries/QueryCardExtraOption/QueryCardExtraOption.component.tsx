@@ -214,7 +214,7 @@ const QueryCardExtraOption = ({
             className="flex-center button-size"
             color="tertiary"
             data-testid="query-btn"
-            iconLeading={<IconDropdown />}
+            iconLeading={IconDropdown}
             size="xs"
           />
         </Tooltip>

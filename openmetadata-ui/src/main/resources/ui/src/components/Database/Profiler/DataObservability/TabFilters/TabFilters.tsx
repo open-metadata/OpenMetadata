@@ -254,7 +254,7 @@ const TabFilters = () => {
               <Button
                 color="secondary"
                 data-testid="profiler-setting-btn"
-                iconLeading={<SettingIcon />}
+                iconLeading={SettingIcon}
                 size="lg"
                 onClick={onSettingButtonClick}
               />

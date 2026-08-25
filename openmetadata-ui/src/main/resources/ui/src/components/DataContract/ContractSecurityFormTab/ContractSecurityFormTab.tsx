@@ -248,7 +248,7 @@ export const ContractSecurityFormTab: React.FC<{
                                     className="delete-expand-button"
                                     color="secondary-destructive"
                                     data-testid={`delete-policy-${policyField.key}`}
-                                    iconLeading={<DeleteIcon />}
+                                    iconLeading={DeleteIcon}
                                     size="sm"
                                     onClick={() => {
                                       handleDeletePolicy(policyField.key);

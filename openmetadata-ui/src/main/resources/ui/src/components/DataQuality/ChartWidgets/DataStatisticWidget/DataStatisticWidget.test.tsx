@@ -47,7 +47,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <button
       data-testid={props['data-testid'] as string}
       onClick={props.onClick as React.MouseEventHandler}>
-      {props.iconTrailing as React.ReactNode}
+      {/* Core Button takes an icon as either an element or a component
+          reference; only the component form gets sized. Handle both, inline:
+          a jest.mock factory is hoisted above module consts, so it cannot
+          call an out-of-scope helper. */}
+      {typeof props.iconTrailing === 'function'
+        ? (() => {
+            const TrailingIcon =
+              props.iconTrailing as React.FunctionComponent;
+
+            return <TrailingIcon />;
+          })()
+        : typeof props.iconTrailing === 'object' && props.iconTrailing !== null
+        ? (props.iconTrailing as React.ReactNode)
+        : null}
       {children}
     </button>
   ),

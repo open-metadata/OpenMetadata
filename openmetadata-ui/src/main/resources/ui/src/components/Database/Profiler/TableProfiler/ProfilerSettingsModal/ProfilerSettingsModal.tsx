@@ -959,7 +959,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Button
           className="drawer-close-icon flex-center"
           color="link-gray"
-          iconLeading={<CloseIcon />}
+          iconLeading={CloseIcon}
           onClick={handleCancel}
         />
       }

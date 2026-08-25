@@ -293,7 +293,7 @@ const Table = <T extends object>(
                     className="remove-button-background-hover"
                     color="tertiary"
                     data-testid="column-dropdown"
-                    iconLeading={<ColumnIcon />}
+                    iconLeading={ColumnIcon}
                     size="xs"
                     title={t('label.show-or-hide-column-plural')}>
                     {t('label.customize')}
