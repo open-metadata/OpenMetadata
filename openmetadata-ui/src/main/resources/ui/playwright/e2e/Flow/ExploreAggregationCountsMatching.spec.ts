@@ -146,6 +146,19 @@ async function runSearchValidation(page: Page): Promise<void> {
     }
   });
 
+  // Asserted before any tab is clicked: the antd Menu is single-select, so the first
+  // click on another tab deselects this one. Buckets are ordered by doc_count, which is
+  // not the auto-selection order (findActiveSearchIndex picks the top-hit index), so this
+  // cannot be checked from inside the click loop.
+  await test.step('Verify the auto-selected tab is active', async () => {
+    const initialTabTestId =
+      ENTITY_TYPE_TO_TAB_TESTID[initialTabSearchIndex ?? ''];
+
+    if (initialTabTestId) {
+      await expect(getSelectedTab(page, initialTabTestId)).toBeVisible();
+    }
+  });
+
   await test.step('Click each tab and verify search results match entity type', async () => {
     for (const bucket of entityTypeBuckets) {
       const tabTestId = ENTITY_TYPE_TO_TAB_TESTID[bucket.key];
@@ -163,10 +176,8 @@ async function runSearchValidation(page: Page): Promise<void> {
       let tabSearchBody: TabSearchBody;
 
       if (bucket.key === initialTabSearchIndex) {
-        // The auto-selected tab is already loaded; clicking it is a no-op in the
-        // Menu onClick handler, so no request would ever arrive to wait for.
-        await expect(getSelectedTab(page, tabTestId)).toBeVisible();
-
+        // The auto-selected tab was already loaded by the initial search; clicking it
+        // is a no-op in the Menu onClick handler, so no request would ever arrive.
         tabSearchBody = initialTabSearchBody;
       } else {
         const tabSearchResPromise = page.waitForResponse((response) =>
