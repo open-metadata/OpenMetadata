@@ -92,6 +92,9 @@ COMMON_MAX_SHARDS = 28
 # suite. 30 s preserves a reasonable margin so the first plan after re-enable
 # does not silently over-pack the shard.
 FALLBACK_TEST_MS = 30_000
+CHECKED_IN_TIMING_BASELINE = (
+    Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
+)
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     # Six long-running tests (each 5-10 min per test.setTimeout) inside one
@@ -359,6 +362,22 @@ def load_history(
         identity: percentile_75(values)
         for identity, values in identity_durations.items()
     }
+    return weights, identity_weights
+
+
+def load_history_with_baseline(
+    paths: list[Path], baseline: Path = CHECKED_IN_TIMING_BASELINE
+) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
+    """Use seeded timings only when downloaded history has no matching evidence."""
+    resolved_baseline = baseline.resolve()
+    weights, identity_weights = load_history(
+        [path for path in paths if path.resolve() != resolved_baseline]
+    )
+    baseline_weights, baseline_identity_weights = load_history([baseline])
+    for test_id, weight in baseline_weights.items():
+        weights.setdefault(test_id, weight)
+    for identity, weight in baseline_identity_weights.items():
+        identity_weights.setdefault(identity, weight)
     return weights, identity_weights
 
 
@@ -664,7 +683,7 @@ def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
-    test_weights, identity_weights = load_history(args.history)
+    test_weights, identity_weights = load_history_with_baseline(args.history)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

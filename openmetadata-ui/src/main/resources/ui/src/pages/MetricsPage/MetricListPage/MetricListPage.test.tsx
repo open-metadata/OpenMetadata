@@ -34,6 +34,16 @@ const mockNavigate = jest.fn();
 const mockGetResourcePermission = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
+const mockDocumentTitle = jest.fn();
+
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => {
+    mockDocumentTitle(title);
+
+    return null;
+  },
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const React = jest.requireActual('react');
@@ -508,6 +518,7 @@ describe('MetricListPage', () => {
     expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
     expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value trend/i)).not.toBeInTheDocument();
+    expect(mockDocumentTitle).toHaveBeenCalledWith('label.metric-plural');
   });
 
   it('renders metric type colors and uppercase mono granularity consistently', async () => {

@@ -22,7 +22,17 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import AddMetricPage from './AddMetricPage';
 
 const mockNavigate = jest.fn();
+const mockDocumentTitle = jest.fn();
 let query = '';
+
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => {
+    mockDocumentTitle(title);
+
+    return null;
+  },
+}));
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -163,6 +173,7 @@ describe('AddMetricPage', () => {
     expect(screen.getByTestId('heading')).toHaveTextContent(
       'Create governed metric'
     );
+    expect(mockDocumentTitle).toHaveBeenCalledWith('Create governed metric');
   });
 
   it('creates an existing-group root through the atomic CreateMetric contract', async () => {

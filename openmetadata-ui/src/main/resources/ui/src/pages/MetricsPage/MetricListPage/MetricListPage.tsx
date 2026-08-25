@@ -62,6 +62,7 @@ import type { ChangeEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -1191,6 +1192,7 @@ const MetricListPage = () => {
   if (isPermissionPending) {
     return (
       <main className="tw:min-h-full tw:bg-primary tw:px-4 tw:py-7 tw:md:px-8">
+        <DocumentTitle title={t('label.metric-plural')} />
         {renderLoading()}
       </main>
     );
@@ -1200,6 +1202,7 @@ const MetricListPage = () => {
     <main
       className="tw:min-h-full tw:bg-primary tw:px-4 tw:py-7 tw:md:px-8 tw:md:pb-10"
       data-testid="metric-list-page">
+      <DocumentTitle title={t('label.metric-plural')} />
       <Box
         align="start"
         className="tw:mb-6 tw:flex-wrap"

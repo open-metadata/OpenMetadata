@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -330,9 +331,14 @@ const MetricDetailsPage = () => {
     fetchResourcePermission(metricFqn);
   }, [metricFqn]);
 
+  const documentTitle = (
+    <DocumentTitle title={entityName || t('label.metric')} />
+  );
+
   if (permissionsLoading || metricLoading) {
     return (
       <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        {documentTitle}
         <Box
           aria-label={t('label.loading')}
           direction="col"
@@ -347,6 +353,7 @@ const MetricDetailsPage = () => {
   if (isError) {
     return (
       <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        {documentTitle}
         <Card>
           <Card.Content>
             <Typography className="tw:text-error-primary" size="text-sm">
@@ -362,6 +369,7 @@ const MetricDetailsPage = () => {
   if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
     return (
       <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        {documentTitle}
         <Card>
           <Card.Content>
             <Typography className="tw:text-tertiary" size="text-sm">
@@ -375,6 +383,7 @@ const MetricDetailsPage = () => {
   if (metricError) {
     return (
       <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        {documentTitle}
         <Card>
           <Card.Content>
             <Box direction="col" gap={3}>
@@ -403,18 +412,21 @@ const MetricDetailsPage = () => {
   }
 
   return (
-    <MetricDetails
-      currentUser={currentUser}
-      fetchMetricDetails={refetchMetricDetails}
-      metricDetails={metricDetails}
-      metricPermissions={metricPermissions}
-      onDeleteMetric={deleteMetricHandler}
-      onFollowMetric={followMetric}
-      onMetricUpdate={handleMetricUpdate}
-      onRestoreMetric={restoreMetricHandler}
-      onUnFollowMetric={unFollowMetric}
-      onVersionChange={versionHandler}
-    />
+    <>
+      {documentTitle}
+      <MetricDetails
+        currentUser={currentUser}
+        fetchMetricDetails={refetchMetricDetails}
+        metricDetails={metricDetails}
+        metricPermissions={metricPermissions}
+        onDeleteMetric={deleteMetricHandler}
+        onFollowMetric={followMetric}
+        onMetricUpdate={handleMetricUpdate}
+        onRestoreMetric={restoreMetricHandler}
+        onUnFollowMetric={unFollowMetric}
+        onVersionChange={versionHandler}
+      />
+    </>
   );
 };
 

@@ -33,6 +33,7 @@ const mockNavigate = jest.fn();
 const mockGetEntityPermissionByFqn = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockMetricDetails = jest.fn();
+const mockDocumentTitle = jest.fn();
 
 const currentUser = {
   id: 'current-user',
@@ -49,6 +50,15 @@ const metric: Metric = {
   version: 1.2,
   followers: [],
 };
+
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => {
+    mockDocumentTitle(title);
+
+    return null;
+  },
+}));
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -192,6 +202,7 @@ describe('MetricDetailsPage', () => {
         fqn: 'finance.gross_margin',
       })
     );
+    expect(mockDocumentTitle).toHaveBeenLastCalledWith('Gross Margin');
   });
 
   it('renders not-found and no-view states without mounting details', async () => {

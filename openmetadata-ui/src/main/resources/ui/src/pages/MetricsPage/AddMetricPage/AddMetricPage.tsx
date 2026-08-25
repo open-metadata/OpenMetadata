@@ -27,6 +27,7 @@ import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import MetricGroupSelect from '../../../components/Metric/MetricGroupSelect/MetricGroupSelect';
 import MetricReferencePicker from '../../../components/Metric/MetricReferencePicker/MetricReferencePicker';
 import { ROUTES } from '../../../constants/constants';
@@ -236,6 +237,7 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
     <main
       className="tw:min-h-full tw:bg-secondary tw:px-4 tw:py-6 tw:md:px-6"
       data-testid="add-metric-container">
+      <DocumentTitle title={title} />
       <Box
         className="tw:mx-auto tw:w-full tw:max-w-5xl"
         direction="col"

@@ -193,6 +193,60 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_checked_in_baseline_augments_downloaded_history(tmp_path):
+    planner = load_script("build_playwright_shards")
+    downloaded = tmp_path / "downloaded.json"
+    baseline = tmp_path / "timing-baseline.json"
+    downloaded.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "title": "existing test",
+                        "durationMs": 100,
+                    }
+                ],
+            }
+        )
+    )
+    baseline.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "title": "existing test",
+                        "durationMs": 900,
+                    },
+                    {
+                        "id": "new-test",
+                        "file": "Features/New.spec.ts",
+                        "title": "new test",
+                        "durationMs": 200,
+                    }
+                ],
+            }
+        )
+    )
+
+    weights, identity_weights = planner.load_history_with_baseline(
+        [downloaded], baseline
+    )
+
+    assert weights == {"existing-test": 100, "new-test": 200}
+    assert identity_weights[("Features/Existing.spec.ts", "existing test")] == 100
+    assert identity_weights[("Features/New.spec.ts", "new test")] == 200
+    assert planner.load_history_with_baseline([downloaded, baseline], baseline) == (
+        weights,
+        identity_weights,
+    )
+
+
 def test_emit_unweighted_warnings_annotates_files_over_threshold(capsys):
     planner = load_script("build_playwright_shards")
     # A file with more tests than UNWEIGHTED_WARN_MIN_TESTS should be annotated.

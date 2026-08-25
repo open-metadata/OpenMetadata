@@ -383,9 +383,9 @@ class TaskWorkflowHandlerTest {
       when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(false);
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
 
-      IllegalStateException exception =
+      TaskStateConflictException exception =
           assertThrows(
-              IllegalStateException.class,
+              TaskStateConflictException.class,
               () ->
                   new TaskWorkflowHandler(1, 0)
                       .resolveTask(
