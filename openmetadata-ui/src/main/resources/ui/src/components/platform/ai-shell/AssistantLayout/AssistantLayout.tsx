@@ -13,7 +13,9 @@
 
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAnalytics } from 'use-analytics';
 import { useAppModeBanners, useAppModeOverlays } from '../appModeExtensions';
 import Sidebar from '../Sidebar/Sidebar';
 import './assistant-layout.less';
@@ -35,6 +37,18 @@ interface AssistantLayoutProps {
 const AssistantLayout: React.FC<AssistantLayoutProps> = ({ children }) => {
   const banners = useAppModeBanners();
   const overlays = useAppModeOverlays();
+  const { pathname, search, hash } = useLocation();
+  const analytics = useAnalytics();
+
+  // App-mode routes render outside `AppContainer`, which is what records page
+  // views for authenticated OpenMetadata routes. Mirror that here so navigation
+  // inside the AI shell also reaches web analytics (and downstream adoption
+  // metrics), which it otherwise would not.
+  useEffect(() => {
+    if (pathname !== '/') {
+      analytics?.page();
+    }
+  }, [pathname, search, hash, analytics]);
 
   return (
     <>
