@@ -25,8 +25,9 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataRe
  * reporting, without OpenMetadata having to know those tables exist.
  *
  * <p>Extensions run after every built-in cleanup, so a job that fails partway still leaves
- * OpenMetadata's own tables pruned. A provider that throws is isolated: the run is marked {@code
- * ACTIVE_ERROR} and the remaining extensions still run.
+ * OpenMetadata's own tables pruned. A provider that throws is isolated by {@link
+ * DataRetentionExtensionRegistry}: the run is marked {@code ACTIVE_ERROR} and the remaining
+ * extensions still run.
  */
 public interface DataRetentionExtension {
 

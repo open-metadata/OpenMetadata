@@ -4,10 +4,10 @@ import java.util.List;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 
 /**
- * Registered in {@code src/test/resources/META-INF/services} so {@link
- * DataRetentionExtensions#discover()} can be tested against the real ServiceLoader rather than a
- * hand-built list. It is on the classpath of every test in this module, so its step deletes
- * nothing.
+ * A well-behaved provider for {@link DataRetentionExtensionRegistryTest} to register in a throwaway
+ * {@code META-INF/services} directory, so discovery is exercised against the real ServiceLoader
+ * rather than a hand-built list. Public with a no-arg constructor because ServiceLoader requires
+ * both. Its step deletes nothing.
  */
 public class InertTestRetentionExtension implements DataRetentionExtension {
 
