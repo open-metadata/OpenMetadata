@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import tsParser from '@typescript-eslint/parser';
 import { Linter, RuleTester } from 'eslint';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -25,7 +26,11 @@ import rule from '../justified-rule-disable.ts';
 const STUB_RULE = { create: () => ({}) };
 
 const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
+  languageOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+    parser: tsParser,
+  },
   plugins: {
     playwright: { rules: { 'no-force-option': STUB_RULE } },
     'om-playwright': { rules: { 'no-positional-locator': STUB_RULE } },
@@ -90,7 +95,11 @@ ruleTester.run('justified-rule-disable', rule, {
 test('bare block-form eslint-disable self-suppresses this rule (pinned; enforcement is the CI grep guard, not this rule)', () => {
   const linter = new Linter();
   const messages = linter.verify('/* eslint-disable */\nconst a = 1;', {
-    languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      parser: tsParser,
+    },
     plugins: { 'om-playwright': { rules: { 'justified-rule-disable': rule } } },
     rules: { 'om-playwright/justified-rule-disable': 'error' },
   });

@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
+import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 import rule from '../require-assertion-per-test.ts';
 
 const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
+  languageOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+    parser: tsParser,
+  },
 });
 
 ruleTester.run('require-assertion-per-test', rule, {

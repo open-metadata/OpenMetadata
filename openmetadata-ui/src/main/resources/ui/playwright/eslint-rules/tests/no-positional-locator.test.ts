@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
+import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 import rule from '../no-positional-locator.ts';
 
 const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
+  languageOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+    parser: tsParser,
+  },
 });
 
 ruleTester.run('no-positional-locator', rule, {
@@ -36,6 +41,26 @@ ruleTester.run('no-positional-locator', rule, {
     `const el = page.locator('.x').first;`,
   ],
   invalid: [
+    // TypeScript-only receivers. These parse only under @typescript-eslint/parser,
+    // which is exactly why an espree-only RuleTester could not have caught them:
+    // a single `!` or `as` used to erase a violation silently.
+    {
+      code: `await rows!.last().click();`,
+      errors: [{ messageId: 'positional' }],
+    },
+    {
+      code: `await (rows as Locator).nth(2).click();`,
+      errors: [{ messageId: 'positional' }],
+    },
+    {
+      code: `await (await Promise.resolve(rows)).first().click();`,
+      errors: [{ messageId: 'positional' }],
+    },
+    // Computed member access is the same call written differently.
+    {
+      code: `await page.locator('td')['first']().click();`,
+      errors: [{ messageId: 'positional' }],
+    },
     {
       code: `await page.getByTestId('row').first().click();`,
       errors: [{ messageId: 'positional' }],

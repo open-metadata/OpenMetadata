@@ -307,13 +307,24 @@ jobs:
           # rule can be disabled unjustified. Neither can be caught by
           # justified-rule-disable.js itself: ESLint filters a rule's own
           # reports on lines its own disable comment covers, so a rule cannot
-          # police a directive that disables the rule. eslint-rules/ is excluded
-          # by path: the plugin's own source and RuleTester fixtures quote these
-          # exact strings deliberately, and it is a linter rather than a test —
-          # eslint.config.mjs does not apply the guardrail rules to it either.
-          if MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?\s*(\*/|$)|eslint-disable.*om-playwright/justified-rule-disable' \
+          # police a directive that disables the rule.
+          #
+          # The pattern matches a directive with an EMPTY rule list, which is
+          # what disables everything — including the justified forms
+          # `/* eslint-disable -- why */` and `// eslint-disable-line -- why`,
+          # where the justification is not a rule name and the directive still
+          # silences all 18 rules. A directive that names a rule is left alone.
+          #
+          # The exclusion is a path filter, not --exclude-dir: grep matches
+          # --exclude-dir against a basename at any depth, so a spec parked in
+          # playwright/e2e/**/eslint-rules/ would be linted by eslint.config.mjs
+          # (which only ignores the adjacent playwright/eslint-rules/) yet
+          # skipped here. Only the real plugin directory is exempt, and only
+          # because its own source and RuleTester fixtures quote these strings.
+          MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?[[:space:]]*(\*/|--|$)|eslint-disable.*om-playwright/justified-rule-disable' \
                playwright/ --include='*.ts' --include='*.tsx' \
-               --exclude-dir='eslint-rules'); then
+               | grep -v '^playwright/eslint-rules/' || true)
+          if [ -n "$MATCHES" ]; then
             echo "$MATCHES"
             echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"

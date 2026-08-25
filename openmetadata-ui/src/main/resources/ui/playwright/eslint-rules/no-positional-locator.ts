@@ -28,6 +28,63 @@ const LOCATOR_RECEIVER_TYPES = new Set([
   'MemberExpression',
 ]);
 
+// Wrappers that are transparent to the receiver: `rows!.first()`,
+// `(rows as Locator).first()` and `await (…).first()` are the same positional
+// call with a node in between. TypeScript-only wrappers matter especially
+// here — the rule ships under @typescript-eslint/parser, so without unwrapping
+// them a single `!` silently erases a violation.
+interface WrapperNode {
+  type: string;
+  expression?: WrapperNode;
+  argument?: WrapperNode;
+}
+
+interface PropertyNode {
+  type: string;
+  name?: string;
+  value?: unknown;
+}
+
+const TRANSPARENT_WRAPPERS = new Set([
+  'TSNonNullExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+  'AwaitExpression',
+]);
+
+const unwrapReceiver = (node: WrapperNode): WrapperNode | undefined => {
+  let current: WrapperNode | undefined = node;
+
+  while (current && TRANSPARENT_WRAPPERS.has(current.type)) {
+    current = current.expression ?? current.argument;
+  }
+
+  return current;
+};
+
+// `.first()` and `page.locator('x')['first']()` are the same call. A property
+// read that is not a plain identifier is not automatically safe.
+const getMethodName = (
+  property: PropertyNode,
+  computed: boolean
+): string | null => {
+  let name: string | null = null;
+
+  if (!computed && property.type === 'Identifier') {
+    name = property.name ?? null;
+  } else if (
+    computed &&
+    property.type === 'Literal' &&
+    typeof property.value === 'string'
+  ) {
+    name = property.value as string;
+  }
+
+  return name;
+};
+
 /**
  * Argument count discriminates the real Playwright API from same-named
  * calls that share a method name but not the shape — e.g. lodash's
@@ -46,13 +103,17 @@ const isPositionalLocatorCall = (node: CallExpression): boolean => {
     return false;
   }
 
-  const methodName =
-    callee.property.type === 'Identifier' ? callee.property.name : null;
+  const methodName = getMethodName(
+    callee.property as unknown as PropertyNode,
+    callee.computed
+  );
+  const receiver = unwrapReceiver(callee.object as unknown as WrapperNode);
 
   return (
     methodName !== null &&
     POSITIONAL.has(methodName) &&
-    LOCATOR_RECEIVER_TYPES.has(callee.object.type) &&
+    receiver !== undefined &&
+    LOCATOR_RECEIVER_TYPES.has(receiver.type) &&
     hasPositionalArity(node, methodName)
   );
 };

@@ -21,42 +21,53 @@ const SUPPRESSIONS = path.join(
   '../../../eslint-suppressions.json'
 );
 
-test('suppressions baseline only ever shrinks', () => {
+test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
-  let total = 0;
-  for (const file of Object.values(suppressions)) {
-    for (const rule of Object.values(file)) {
-      total += rule.count;
+  const actual: Record<string, number> = {};
+  for (const file of Object.values(suppressions) as Record<
+    string,
+    { count: number }
+  >[]) {
+    for (const [ruleId, entry] of Object.entries(file)) {
+      actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }
   }
 
-  // The ratchet's starting notch, set once when this gate lands, then only
-  // ever moved downward as violations are fixed. Once the gate is live a rise
-  // means new violations were suppressed instead of fixed, and is never
-  // acceptable.
+  // The ratchet's recorded state, per rule. Exact equality rather than a
+  // ceiling, deliberately: a `total <= CEILING` bound accumulates headroom as
+  // the burn-down PRs land. Drop the total to 200 against a 1,520 bound and
+  // 1,320 units of free space open up, into which a new violation can be
+  // suppressed with CI fully green — and nothing recomputes the bound.
   //
-  // The initial value is not a budget — it is simply what an unlinted corpus
-  // accumulated. None of these rules has ever been enforced on `main`, so
-  // nothing has been holding the count down, and it drifts upward with every
-  // test written against no linter. Re-measure with
-  // `yarn lint:playwright --suppress-all` if the corpus moves again
-  // before this lands; the burn-down PRs take it apart from here.
-  const CEILING = Number(process.env.PW_SUPPRESSION_CEILING ?? 1520);
+  // Lower a number when you fix violations, and commit the pruned
+  // eslint-suppressions.json in the same change. Raising one is almost always
+  // wrong: a new violation should be fixed, not suppressed. Either direction
+  // is now an explicit edit here that a reviewer sees.
+  //
+  // Known gap: counts are per file+rule, so swapping one violation for another
+  // of the same rule in the same file stays invisible to this check.
+  const EXPECTED: Record<string, number> = {
+    'om-playwright/justified-rule-disable': 12,
+    'om-playwright/no-blanket-test-slow': 83,
+    'om-playwright/no-positional-locator': 1341,
+    'om-playwright/require-assertion-per-test': 1,
+    'playwright/no-force-option': 11,
+    'playwright/no-skipped-test': 5,
+    'playwright/no-wait-for-selector': 36,
+    'playwright/no-wait-for-timeout': 31,
+  };
 
-  assert.ok(
-    total <= CEILING,
-    `suppression total ${total} exceeds ceiling ${CEILING} — fix the violations rather than suppressing them`
+  assert.deepStrictEqual(
+    actual,
+    EXPECTED,
+    'The suppressions baseline no longer matches the counts recorded in this ' +
+      'test. If you fixed violations, run `yarn lint:playwright:suppressions` ' +
+      'and lower the matching numbers here. If a count went up, a new ' +
+      'violation was suppressed instead of fixed — fix it.'
   );
 });
 
-// The 18 guardrail rules are scoped to `**/playwright/**/*.{ts,tsx}` in
-// eslint.config.mjs, deliberately: the local plugin under `eslint-rules/` is
-// CommonJS `.js` and is not a Playwright test, so applying test rules to it is
-// meaningless. That scoping only holds as a guardrail while the test corpus
-// really is TypeScript-only — Playwright's default `testMatch` DOES collect
-// `*.spec.js`, so a JavaScript spec would run with none of the rules applied.
-// This test makes the TypeScript-only invariant explicit rather than assumed.
 test('the playwright corpus stays TypeScript-only', () => {
   const ROOT = path.join(import.meta.dirname, '../..');
   // eslint-rules/ is the CommonJS plugin itself; doc-generator/ is lint-ignored
