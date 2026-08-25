@@ -14,6 +14,9 @@ Test that get_dagbag does not parse the whole DAG folder.
 A deploy only needs the DAG file it has just written. Collecting the folder made a
 single deploy cost O(total DAGs) and a bulk deploy O(total DAGs^2), which is what
 made `deploy-pipelines` exceed its client deadline on larger deployments.
+
+Airflow < 3.0 builds the bag with `read_dags_from_db=True`, which already early
+returns out of `collect_dags`, so these assertions only apply from 3.0 onwards.
 """
 
 import os
@@ -22,6 +25,13 @@ from unittest.mock import patch
 
 import pytest
 from airflow.models import DagBag
+from airflow.version import version as airflow_version
+from packaging import version
+
+pytestmark = pytest.mark.skipif(
+    version.parse(airflow_version) < version.parse("3.0.0"),
+    reason="get_dagbag only builds a non-collecting DagBag on Airflow 3+",
+)
 
 
 def _write_dag_file(folder, dag_id: str):

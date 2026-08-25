@@ -120,24 +120,38 @@ def get_request_conf() -> Optional[dict]:  # noqa: UP045
 
 def get_dagbag():
     """
-    Build an empty DagBag for the deploy path.
+    Build a DagBag for the deploy path.
 
     The only caller is `DagDeployer.refresh_session_dag`, which immediately calls
     `process_file` on the DAG file it has just written and then asks for that single
     `dag_id`. `process_file` bags the DAG itself, so the bag never needs to be
     populated from anywhere else.
 
-    Collecting the whole folder here re-parsed every DAG in the deployment on every
-    single deploy, which made one deploy cost O(total DAGs) and a bulk deploy
-    O(total DAGs^2). It also defeated `process_file`: `collect_dags` stamps
-    `file_last_changed` for every file it walks, including the one just written, so
-    the subsequent `process_file` call hit its `only_if_updated` early return and the
-    DAG was bagged by the folder walk as a side effect rather than on purpose.
+    On Airflow < 3.0 the bag is built with `read_dags_from_db=True`, which makes both
+    the constructor's collect and `collect_dags` early return. That path never walked
+    the DAG folder, so it is left exactly as it was -- including on the 2.2 to 2.4
+    range, where DagBag has no `collect_dags` keyword at all.
 
-    `collect_dags=False` is accepted by DagBag on both Airflow 2.x and 3.x, so this
-    needs no version branching.
+    On Airflow >= 3.0 that keyword is not passed, so `collect_dags` re-parsed every
+    DAG in the deployment on every single deploy: one deploy costing O(total DAGs)
+    and a bulk deploy O(total DAGs^2). `collect_dags=False` removes that walk. It
+    also un-masks `process_file`, since `collect_dags` stamps `file_last_changed` for
+    every file it walks -- including the one just written -- so the following
+    `process_file` hit its `only_if_updated` early return and the DAG was bagged by
+    the folder walk as a side effect rather than on purpose.
     """
-    return DagBag(dag_folder=settings.DAGS_FOLDER, collect_dags=False)
+    airflow_server = version.parse(airflow_version)
+
+    if airflow_server >= version.parse("3.0.0"):
+        return DagBag(dag_folder=settings.DAGS_FOLDER, collect_dags=False)
+
+    dagbag = DagBag(dag_folder=settings.DAGS_FOLDER, read_dags_from_db=True)
+    dagbag.collect_dags()
+
+    if hasattr(dagbag, "collect_dags_from_db"):
+        dagbag.collect_dags_from_db()
+
+    return dagbag
 
 
 class ScanDagsTask(Process):
