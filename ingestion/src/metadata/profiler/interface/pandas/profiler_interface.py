@@ -18,7 +18,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -38,6 +38,7 @@ from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
+from metadata.profiler.constants import CREATE_DATETIME, SIZE_IN_BYTES
 from metadata.profiler.interface.profiler_interface import (
     ProfilerInterface,
     ProfilerProcessorStatus,
@@ -48,6 +49,7 @@ from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import PandasRunner
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
+from metadata.utils.datalake.object_stats import get_object_stats
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -175,11 +177,50 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             row_dict = {}
             for metric in metrics:
                 row_dict[metric.name()] = metric().df_fn(runner)
+            row_dict.update(self._get_object_stats())
             return row_dict  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to compute profile for {exc}")
             raise RuntimeError(exc)  # noqa: B904
+
+    def _get_object_stats(self) -> dict[str, Any]:
+        """Size and creation time of the object backing the table.
+
+        Best effort: a missing `HeadObject` permission must degrade to "no size", never to
+        "no profile", so we swallow the error instead of letting it bubble up to the
+        `RuntimeError` that aborts the whole table.
+
+        Subclasses of this interface are not always backed by an object store (BurstIQ has no
+        `configSource` at all), in which case `get_object_stats` falls back to empty stats.
+        """
+        # The schema an object-store table hangs off of is its bucket; without one there is
+        # nothing to look the object up in.
+        database_schema = self.table_entity.databaseSchema
+        if database_schema is None:
+            return {}
+
+        try:
+            stats = get_object_stats(
+                getattr(self.service_connection_config, "configSource", None),
+                self.client.client,
+                database_schema.name,
+                self.table_entity.name.root,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch object stats for {self.table_entity.name.root}: {exc}")
+            return {}
+
+        # A size of 0 is a real size, hence `is not None` rather than a truthiness check.
+        return {
+            key: value
+            for key, value in (
+                (SIZE_IN_BYTES, stats.size_in_bytes),
+                (CREATE_DATETIME, stats.create_date_time),
+            )
+            if value is not None
+        }
 
     def _compute_static_metrics(
         self,

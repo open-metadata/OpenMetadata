@@ -257,8 +257,12 @@ test.describe('Explore Assets Discovery', () => {
 
     // The user should not be visible in the owners filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Owners"]');
+    // Match on the typed value: opening the dropdown fires its own aggregation
+    // for the same field, and a glob matching both races ahead of the search.
     const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=false*`
+      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName&value=*${encodeURIComponent(
+        user.responseData.displayName
+      )}*deleted=false*`
     );
 
     await page.fill(
@@ -281,7 +285,9 @@ test.describe('Explore Assets Discovery', () => {
     await page.click('[data-testid="search-dropdown-Domains"]');
 
     const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=false*`
+      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword&value=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}*deleted=false*`
     );
 
     await page.fill(
@@ -317,8 +323,11 @@ test.describe('Explore Assets Discovery', () => {
     const ownerSearchText = user.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Owners"]');
 
+    // Match on the typed value, not the dropdown's own initial aggregation.
     const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=true*`
+      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName&value=*${encodeURIComponent(
+        ownerSearchText
+      )}*deleted=true*`
     );
 
     await page.fill('[data-testid="search-input"]', ownerSearchText);
@@ -356,7 +365,9 @@ test.describe('Explore Assets Discovery', () => {
     await page.click('[data-testid="search-dropdown-Domains"]');
 
     const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=true*`
+      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword&value=*${encodeURIComponent(
+        domainSearchText
+      )}*deleted=true*`
     );
 
     await page.fill('[data-testid="search-input"]', domainSearchText);

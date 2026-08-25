@@ -780,6 +780,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         children: (
           <>
             <TitleComponent
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when creating a new page
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
               placeholder={getKnowledgePageName(knowledgePage)}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
