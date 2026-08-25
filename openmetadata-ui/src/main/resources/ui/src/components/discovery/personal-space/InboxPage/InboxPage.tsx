@@ -12,10 +12,10 @@
  */
 
 import {
-  Box,
-  EmptyPlaceholder,
-  FeaturedIcon,
-  Tabs,
+    Box,
+    EmptyPlaceholder,
+    FeaturedIcon,
+    Tabs
 } from '@openmetadata/ui-core-components';
 import React, { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';

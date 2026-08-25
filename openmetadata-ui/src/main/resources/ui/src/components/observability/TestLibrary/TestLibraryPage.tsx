@@ -13,6 +13,9 @@
 import { Button } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -21,9 +24,6 @@ import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component
 import TestDefinitionForm from '../../TestLibrary/TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from '../../TestLibrary/TestDefinitionList/TestDefinitionTable.component';
 import { useTestDefinitionListPage } from '../../TestLibrary/TestDefinitionList/useTestDefinitionListPage';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import TestDefinitionFilterBar from './TestDefinitionFilterBar';

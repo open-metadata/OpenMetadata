@@ -17,30 +17,30 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import React, { PropsWithChildren, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import UploadDocumentModal from '../UploadDocumentModal/UploadDocumentModal.component';
-import {
-  QuickLinkFormModal,
-  QuickLinkFormModalFormData,
-} from '../../KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  CreateKnowledgePage,
-  PageType,
+    CreateKnowledgePage,
+    PageType
 } from '../../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import {
-  CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
-  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+    CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+    CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY
 } from '../../../utils/ContextCenterQueryKeys';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../utils/ToastUtils';
+import {
+    QuickLinkFormModal,
+    QuickLinkFormModalFormData
+} from '../../KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { Intent } from '../../platform/ai-shell/AppModule.types';
 import { LiveRefreshBoundary } from '../../platform/ai-shell/LiveRefreshBoundary/LiveRefreshBoundary';
 import { useIntent } from '../../platform/ai-shell/useIntent';
+import UploadDocumentModal from '../UploadDocumentModal/UploadDocumentModal.component';
 import './ContextCenterLayout.less';
 
 const ADD_QUICK_LINK_PERMISSIONS = {

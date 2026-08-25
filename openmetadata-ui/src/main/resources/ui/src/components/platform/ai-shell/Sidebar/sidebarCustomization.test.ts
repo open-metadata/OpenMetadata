@@ -13,9 +13,9 @@
 import { NavigationItem } from '../../../../generated/system/ui/uiCustomization';
 import { IconComponent, MainNavItem, MORE_NAV_KEY } from './navConfig';
 import {
-  applySidebarCustomization,
-  getDefaultSidebarNavigation,
-  MainNavNode,
+    applySidebarCustomization,
+    getDefaultSidebarNavigation,
+    MainNavNode
 } from './sidebarCustomization';
 
 const Icon = (() => null) as unknown as IconComponent;
@@ -113,6 +113,7 @@ describe('applySidebarCustomization', () => {
     // 'gone' is not a real item → dropped. 'a' kept. Every other real item is
     // appended so nothing silently disappears.
     const keys = itemKeys(nodes).filter((k) => k !== 'more');
+
     expect(keys).toContain('a');
     expect(keys).not.toContain('gone');
     expect(keys).toEqual(expect.arrayContaining(KEYS));

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  RadioButton,
-  RadioGroup,
-  Typography,
+    Box,
+    Button,
+    RadioButton,
+    RadioGroup,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -23,8 +23,8 @@ import { useTranslation } from 'react-i18next';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import { DefaultAppMode } from '../../../generated/api/configuration/appConfiguration';
 import {
-  getAppConfiguration,
-  patchAppConfiguration,
+    getAppConfiguration,
+    patchAppConfiguration
 } from '../../../rest/settingConfigAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 

@@ -15,19 +15,19 @@ import { ButtonUtility } from '@openmetadata/ui-core-components';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import {
-  useAppModeSidebarHeader,
-  useAppModeSidebarMainFooter,
-  useAppModeSidebarRecent,
+    useAppModeSidebarHeader,
+    useAppModeSidebarMainFooter,
+    useAppModeSidebarRecent
 } from '../appModeExtensions';
-import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import MoreNavPopover from './MoreNavPopover';
+import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';
-import { MainNavNode } from './sidebarCustomization';
 import SidebarBrand from './SidebarBrand';
+import { MainNavNode } from './sidebarCustomization';
 import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
-import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 
 export interface MainPanelProps {
   onCollapse: () => void;

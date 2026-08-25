@@ -13,14 +13,14 @@
 
 import { AppModule, IconComponent, SubNavConfig, SubNavItem } from '../AppModule.types';
 
-export type {
-  IconComponent,
-  IntentName,
-  SubNavConfig,
-  SubNavItem,
-  SubNavSection,
-} from '../AppModule.types';
 export { Intent } from '../AppModule.types';
+export type {
+    IconComponent,
+    IntentName,
+    SubNavConfig,
+    SubNavItem,
+    SubNavSection
+} from '../AppModule.types';
 
 export type NavAction = { kind: 'navigate'; path: string };
 

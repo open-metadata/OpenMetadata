@@ -14,17 +14,17 @@
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
 import {
-  AI_APP_MODE,
-  APP_MODE_HINT_STORAGE_KEY,
-  APP_MODE_HINT_TTL_MS,
-  APP_MODE_SESSION_KEY,
-  DEFAULT_APP_MODE,
+    AI_APP_MODE,
+    APP_MODE_HINT_STORAGE_KEY,
+    APP_MODE_HINT_TTL_MS,
+    APP_MODE_SESSION_KEY,
+    DEFAULT_APP_MODE
 } from '../constants/appMode.constants';
 import { DefaultAppMode } from '../generated/api/configuration/appConfiguration';
 import { Document } from '../generated/entity/docStore/document';
 import {
-  PersonaPreferences,
-  UICustomization,
+    PersonaPreferences,
+    UICustomization
 } from '../generated/system/ui/uiCustomization';
 import { AppMode } from '../generated/type/personaPreferences';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';

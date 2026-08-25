@@ -24,8 +24,8 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../constants/GlobalSettings.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -35,15 +35,15 @@ import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import {
-  AppMode,
-  PersonaPreferences,
+    AppMode,
+    PersonaPreferences
 } from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
-  createDocument,
-  getDocumentByFQN,
-  updateDocument,
+    createDocument,
+    getDocumentByFQN,
+    updateDocument
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';

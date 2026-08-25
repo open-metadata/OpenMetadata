@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  Tabs,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    Tabs,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -24,6 +24,21 @@ import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import Fqn from '../../../utils/Fqn';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import {
+    getEntityDetailsPath,
+    getServiceDetailsPath
+} from '../../../utils/RouterUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -37,26 +52,11 @@ import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/
 import IncidentManagerPageHeader from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import { useTestCaseIncidentHeader } from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
-import { ServiceCategory } from '../../../enums/service.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityFQN } from '../../../utils/FeedUtilsPure';
-import Fqn from '../../../utils/Fqn';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-} from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
-import { TestCaseDetailProps } from './TestCaseDetail.types';
 import './test-case-detail.less';
+import { TestCaseDetailProps } from './TestCaseDetail.types';
 
 const breakableTooltipText = (text?: ReactNode) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>

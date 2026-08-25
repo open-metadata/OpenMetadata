@@ -13,6 +13,9 @@
 
 import { Box } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
+import type { FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import HeaderShell from '../../../../components/common/HeaderShell/HeaderShell.component';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
@@ -22,9 +25,6 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import { getExplorePath } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import type { FormEvent } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { ExploreQuickFilters } from './ExploreQuickFilters';
 import type { QuickFilter } from './ExploreQuickFilters.interface';
 import { ExploreSearchCardInfo } from './ExploreSearchCardInfo';

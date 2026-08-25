@@ -13,8 +13,8 @@
 
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { matchModuleByPathname } from '../state/useActiveModule';
 import { useAllAppModules } from '../sharedAppModules';
+import { matchModuleByPathname } from '../state/useActiveModule';
 
 /**
  * Returns the key of the nav item whose route namespace contains the current

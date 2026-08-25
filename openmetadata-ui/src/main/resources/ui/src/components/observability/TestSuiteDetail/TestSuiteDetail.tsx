@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  Dialog,
-  DialogTrigger,
-  Modal,
-  ModalOverlay,
-  Tabs,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    Dialog,
+    DialogTrigger,
+    Modal,
+    ModalOverlay,
+    Tabs,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -28,6 +28,15 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
+import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
+import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -38,18 +47,9 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
-import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
-import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
-import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>

@@ -12,8 +12,8 @@
  */
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import {
-  getCustomizePageCategories,
-  getCustomizePageOptions,
+    getCustomizePageCategories,
+    getCustomizePageOptions
 } from './PersonaUtils';
 
 describe('PersonaUtils', () => {

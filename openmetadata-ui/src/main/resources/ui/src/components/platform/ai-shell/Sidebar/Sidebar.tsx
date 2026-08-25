@@ -13,11 +13,11 @@
 
 import classNames from 'classnames';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -27,10 +27,10 @@ import { matchModuleByPathname } from '../state/useActiveModule';
 import MainPanel from './MainPanel';
 import { buildMainNavItems, resolveActiveSubNavKey } from './navConfig';
 import Rail, { RailItem } from './Rail';
+import './sidebar.less';
 import SubPanel from './SubPanel';
 import SubRail from './SubRail';
 import { useCustomizedMainNav } from './useCustomizedMainNav';
-import './sidebar.less';
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();

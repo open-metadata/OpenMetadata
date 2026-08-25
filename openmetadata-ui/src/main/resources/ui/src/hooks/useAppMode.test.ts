@@ -14,33 +14,33 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
-  AI_APP_MODE,
-  APP_MODE_HINT_STORAGE_KEY,
-  APP_MODE_HINT_TTL_MS,
-  APP_MODE_SESSION_KEY,
-  DEFAULT_APP_MODE,
+    AI_APP_MODE,
+    APP_MODE_HINT_STORAGE_KEY,
+    APP_MODE_HINT_TTL_MS,
+    APP_MODE_SESSION_KEY,
+    DEFAULT_APP_MODE
 } from '../constants/appMode.constants';
 import { Document } from '../generated/entity/docStore/document';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import {
-  clearAppMode,
-  CONFIG_MODE_TO_RUNTIME,
-  getAppDefaultMode,
-  isAppModeHintFresh,
-  PREFERENCE_MODE_TO_RUNTIME,
-  readAppModeHint,
-  readAppModeSession,
-  resolveEffectiveAppMode,
-  resolveInitialAppMode,
-  resolvePersonaAppMode,
-  RUNTIME_TO_PREFERENCE_WIRE,
-  setAppDefaultMode,
-  translatePreferenceMode,
-  translateWireMode,
-  useAppMode,
-  useAppModeStore,
-  useIsAiMode,
-  writeAppMode,
+    clearAppMode,
+    CONFIG_MODE_TO_RUNTIME,
+    getAppDefaultMode,
+    isAppModeHintFresh,
+    PREFERENCE_MODE_TO_RUNTIME,
+    readAppModeHint,
+    readAppModeSession,
+    resolveEffectiveAppMode,
+    resolveInitialAppMode,
+    resolvePersonaAppMode,
+    RUNTIME_TO_PREFERENCE_WIRE,
+    setAppDefaultMode,
+    translatePreferenceMode,
+    translateWireMode,
+    useAppMode,
+    useAppModeStore,
+    useIsAiMode,
+    writeAppMode
 } from './useAppMode';
 
 const resetStore = () => {

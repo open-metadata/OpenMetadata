@@ -13,8 +13,8 @@
 
 import { PageType } from '../generated/system/ui/uiCustomization';
 import personaClassBase, {
-  CustomizeIconKeys,
-  PersonaClassBase,
+    CustomizeIconKeys,
+    PersonaClassBase
 } from './PersonaClassBase';
 
 jest.mock('./i18next/LocalUtil', () => ({

@@ -20,15 +20,15 @@ import { useNavigate } from 'react-router-dom';
 import appModeAIIcon from '../../assets/svg/app-mode-ai.svg';
 import { ReactComponent as AppModeClassicIcon } from '../../assets/svg/app-mode-classic.svg';
 import {
-  AI_APP_MODE,
-  DEFAULT_APP_MODE,
+    AI_APP_MODE,
+    DEFAULT_APP_MODE
 } from '../../constants/appMode.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import {
-  RUNTIME_TO_PREFERENCE_WIRE,
-  useAppMode,
-  useIsAiMode,
-  writeAppMode,
+    RUNTIME_TO_PREFERENCE_WIRE,
+    useAppMode,
+    useIsAiMode,
+    writeAppMode
 } from '../../hooks/useAppMode';
 
 const OPTION_ICON_BOX =

@@ -108,9 +108,12 @@ jest.mock('react-aria-components', () => ({
   }: React.PropsWithChildren<
     Record<string, unknown> & { onAction?: () => void }
   >) => (
-    <div {...(rest as React.HTMLAttributes<HTMLDivElement>)} onClick={onAction}>
+    <button
+      type="button"
+      {...(rest as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+      onClick={onAction}>
       {children}
-    </div>
+    </button>
   ),
   Popover: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   SubmenuTrigger: ({ children }: React.PropsWithChildren) => (
@@ -130,7 +133,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children,
       onAction,
     }: React.PropsWithChildren<{ onAction?: () => void }>) => (
-      <div onClick={onAction}>{children}</div>
+      <button type="button" onClick={onAction}>
+        {children}
+      </button>
     ),
     Separator: () => <hr />,
   },

@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 import {
-  borderAfter,
-  Box,
-  EmptyPlaceholderAction,
+    borderAfter,
+    Box,
+    EmptyPlaceholderAction
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TestSuiteListPanel } from '../../../DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.component';
 import { useTestSuitesListPage } from '../../../DataQuality/TestSuite/TestSuiteList/useTestSuitesListPage';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import DqSummaryPanel from '../DqSummaryPanel';
 
 // Mirrors the core `Button` `secondary`/`md` look so the owner trigger (a plain

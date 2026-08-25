@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-  IconComponent,
-  MainNavItem,
-  MORE_NAV_KEY,
+    IconComponent,
+    MainNavItem,
+    MORE_NAV_KEY
 } from '../../components/platform/ai-shell/Sidebar/navConfig';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
-  getSidebarHiddenKeys,
-  getSidebarNavigationItems,
-  getSidebarTreeData,
-  isValidSidebarTree,
-  SidebarTreeNode,
+    getSidebarHiddenKeys,
+    getSidebarNavigationItems,
+    getSidebarTreeData,
+    isValidSidebarTree,
+    SidebarTreeNode
 } from './CustomizeAppModeSidebarPage.utils';
 
 jest.mock('../../utils/i18next/LocalUtil', () => ({
@@ -48,7 +48,9 @@ describe('getSidebarTreeData', () => {
     const tree = getSidebarTreeData(items, null, VISIBLE);
 
     expect(tree.map((n) => n.key)).toEqual(['a', 'b', MORE_NAV_KEY]);
+
     const more = tree.find((n) => n.key === MORE_NAV_KEY);
+
     expect(more?.children?.map((c) => c.key)).toEqual(['c']);
     // More is never a leaf, so items can always be dropped back into it.
     expect(more?.isLeaf).toBe(false);
@@ -69,7 +71,9 @@ describe('getSidebarTreeData', () => {
     const tree = getSidebarTreeData(items, customization, VISIBLE);
 
     expect(tree.map((n) => n.key)).toEqual(['b', MORE_NAV_KEY, 'c']);
+
     const more = tree.find((n) => n.key === MORE_NAV_KEY);
+
     expect(more?.children?.map((c) => c.key)).toEqual(['a']);
   });
 

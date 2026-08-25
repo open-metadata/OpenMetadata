@@ -15,8 +15,8 @@ import { ReactComponent as ClassificationActiveIcon } from '../../../assets/svg/
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-default.svg';
 import { ReactComponent as GlossaryActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-active.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-default.svg';
-import { ReactComponent as GovernActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/governance-active.svg';
 import { ReactComponent as GovernIcon } from '../../../assets/svg/ask-collate-nav-bar/governanace-default.svg';
+import { ReactComponent as GovernActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/governance-active.svg';
 import { ReactComponent as MetricsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-active.svg';
 import { ReactComponent as MetricsIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-default.svg';
 import { ReactComponent as OntologyActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/ontology-active.svg';

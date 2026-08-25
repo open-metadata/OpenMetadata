@@ -13,8 +13,8 @@
 import { ChevronDown } from '@untitledui/icons';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
-import DqSearchFilterChip from './DqSearchFilterChip';
 import { chipLabel, chipTriggerClassName } from './dqFilterChip.utils';
+import DqSearchFilterChip from './DqSearchFilterChip';
 
 const DqFilterChip = ({
   filter,

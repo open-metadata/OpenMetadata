@@ -16,30 +16,30 @@ import classNames from 'classnames';
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
-  ExploreProps,
-  ExploreQuickFilterField,
-  ExploreSearchIndex,
-  SearchHitCounts,
-  UrlParams,
+    ExploreProps,
+    ExploreQuickFilterField,
+    ExploreSearchIndex,
+    SearchHitCounts,
+    UrlParams
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM,
+    ROUTES
 } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
@@ -57,18 +57,18 @@ import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
-  extractTermKeys,
-  findActiveSearchIndex,
-  getBrowsePathQueryFilter,
-  parseSearchParams,
+    extractTermKeys,
+    findActiveSearchIndex,
+    getBrowsePathQueryFilter,
+    parseSearchParams
 } from '../../utils/ExplorePureUtils';
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath, getExploreTabPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
-  QueryFieldInterface,
-  QueryFilterInterface,
+    QueryFieldInterface,
+    QueryFilterInterface
 } from './ExplorePage.interface';
 
 const EXPLORE_PAGE_SIZE_OPTIONS = [

@@ -73,12 +73,12 @@ import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
 import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflow-settings.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../constants/GlobalSettings.constants';
 import {
-  ResourceEntity,
-  UIPermission,
+    ResourceEntity,
+    UIPermission
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
 import { t } from './i18next/LocalUtil';

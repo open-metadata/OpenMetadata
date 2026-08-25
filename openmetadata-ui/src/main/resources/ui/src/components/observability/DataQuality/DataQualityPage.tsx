@@ -16,6 +16,17 @@ import { ChevronDown, Plus, Upload01 } from '@untitledui/icons';
 import { ComponentType, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ExportTypes } from '../../../constants/Export.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { TestCase } from '../../../generated/tests/testCase';
+import { TestSuite } from '../../../generated/tests/testSuite';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import DataQualityProvider, {
+    useDataQualityProvider
+} from '../../../pages/DataQuality/DataQualityProvider';
+import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
@@ -25,17 +36,6 @@ import BundleSuiteFormDrawer from '../../DataQuality/BundleSuiteForm/BundleSuite
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportData } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import { ExportTypes } from '../../../constants/Export.constants';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { TestCase } from '../../../generated/tests/testCase';
-import { TestSuite } from '../../../generated/tests/testSuite';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
-import DataQualityProvider, {
-  useDataQualityProvider,
-} from '../../../pages/DataQuality/DataQualityProvider';
-import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';

@@ -14,14 +14,14 @@ import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import DataQualityTab from '../../../Database/Profiler/DataQualityTab/DataQualityTab';
-import TestCaseListTableHeader from '../../../DataQuality/TestCases/TestCaseListTableHeader.component';
-import { useTestCaseListPage } from '../../../DataQuality/TestCases/useTestCaseListPage';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DataQualityTab from '../../../Database/Profiler/DataQualityTab/DataQualityTab';
+import TestCaseListTableHeader from '../../../DataQuality/TestCases/TestCaseListTableHeader.component';
+import { useTestCaseListPage } from '../../../DataQuality/TestCases/useTestCaseListPage';
 import FilterBar from '../../common/FilterChip/FilterBar';
 import DqSummaryPanel from '../DqSummaryPanel';
 

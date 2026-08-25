@@ -44,6 +44,7 @@ describe('ExtensionPointRegistry', () => {
     });
 
     const contributions = registry.getContributions(POINT);
+
     expect(contributions).toHaveLength(1);
     expect(contributions[0]).toEqual({ key: 'a', v: 2 });
   });

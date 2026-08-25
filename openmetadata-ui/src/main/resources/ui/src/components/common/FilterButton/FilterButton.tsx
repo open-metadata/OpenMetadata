@@ -12,10 +12,10 @@
  */
 
 import {
-  Button,
-  Dropdown,
-  Input,
-  Tooltip,
+    Button,
+    Dropdown,
+    Input,
+    Tooltip
 } from '@openmetadata/ui-core-components';
 import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
 import React, { useMemo, useState } from 'react';

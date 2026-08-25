@@ -81,6 +81,7 @@ describe('useCustomizedMainNav', () => {
       const keys = nodeKeys(result.current.nodes).filter(
         (k) => k !== MORE_NAV_KEY
       );
+
       expect(keys[0]).toBe('c');
       expect(keys).not.toContain('a');
       expect(keys).toContain('b');

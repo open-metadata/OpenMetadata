@@ -17,19 +17,19 @@ import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { IconComponent } from '../AppModule.types';
+import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 import {
-  useAppModeSidebarHeader,
-  useAppModeSidebarRailFooter,
-  useAppModeSidebarRecentRail,
+    useAppModeSidebarHeader,
+    useAppModeSidebarRailFooter,
+    useAppModeSidebarRecentRail
 } from '../appModeExtensions';
+import { IconComponent } from '../AppModule.types';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
-import { MainNavNode } from './sidebarCustomization';
 import SidebarBrand from './SidebarBrand';
+import { MainNavNode } from './sidebarCustomization';
 import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
-import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 
 export interface RailItem {
   key: string;

@@ -12,10 +12,10 @@
  */
 
 import {
-  Popover,
-  PopoverTrigger,
-  Tooltip,
-  TooltipTrigger,
+    Popover,
+    PopoverTrigger,
+    Tooltip,
+    TooltipTrigger
 } from '@openmetadata/ui-core-components';
 import { DotsHorizontal } from '@untitledui/icons';
 import classNames from 'classnames';

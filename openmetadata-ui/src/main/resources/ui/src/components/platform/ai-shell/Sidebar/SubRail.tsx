@@ -16,8 +16,8 @@ import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { RailItem } from './Rail';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
+import { RailItem } from './Rail';
 
 export interface SubRailProps {
   items: RailItem[];

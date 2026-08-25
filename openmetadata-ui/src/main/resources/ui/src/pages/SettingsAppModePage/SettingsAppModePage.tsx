@@ -21,8 +21,8 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Persona } from '../../generated/entity/teams/persona';
 import {
-  AppMode,
-  PersonaPreferences,
+    AppMode,
+    PersonaPreferences
 } from '../../generated/type/personaPreferences';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';

@@ -17,15 +17,15 @@ import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useUnreadInboxActivity } from '../../../../hooks/useUnreadInboxActivity';
-import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { ReactComponent as InboxIconActive } from '../../../../assets/svg/ask-collate-nav-bar/inbox-active.svg';
 import { ReactComponent as InboxIconDefault } from '../../../../assets/svg/ask-collate-nav-bar/inbox-default.svg';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { useUnreadInboxActivity } from '../../../../hooks/useUnreadInboxActivity';
+import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../inbox.constants';
 import { getDefaultInboxDateRange } from '../InboxPage/inbox.utils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 
 const OPEN_TASK_COUNT_STALE_TIME = 30 * 1000;
 

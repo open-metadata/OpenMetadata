@@ -17,10 +17,10 @@ import { isNumber } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { emitIntent } from '../useIntent';
 import { resolveActiveSubNavKey, SubNavConfig, SubNavItem } from './navConfig';
-import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 
 export interface SubPanelProps {
   config: SubNavConfig;

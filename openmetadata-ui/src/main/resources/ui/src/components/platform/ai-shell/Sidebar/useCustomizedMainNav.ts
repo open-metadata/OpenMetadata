@@ -21,9 +21,9 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getDocumentByFQN } from '../../../../rest/DocStoreAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-  APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
-  APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
-  APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT,
+    APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
+    APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
+    APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT
 } from './appModeSidebar.constants';
 import { MainNavItem } from './navConfig';
 import { applySidebarCustomization, MainNavNode } from './sidebarCustomization';

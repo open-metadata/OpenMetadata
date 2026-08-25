@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestSummarySegmentId } from '../../DataQuality/SummaryPannel/SummaryPanel.interface';
 import {
-  DQ_CHART_BLUE_COLOR,
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-  DQ_CHART_WARNING_COLOR,
-  GREY_200,
+    DQ_CHART_BLUE_COLOR,
+    DQ_CHART_FAILED_COLOR,
+    DQ_CHART_SUCCESS_COLOR,
+    DQ_CHART_WARNING_COLOR,
+    GREY_200
 } from '../../../constants/Color.constants';
+import { TestSummarySegmentId } from '../../DataQuality/SummaryPannel/SummaryPanel.interface';
 
 // 2.0 redesign chart palette (shared DQ chart constants).
 export const SEGMENT_COLORS: Record<TestSummarySegmentId, string> = {

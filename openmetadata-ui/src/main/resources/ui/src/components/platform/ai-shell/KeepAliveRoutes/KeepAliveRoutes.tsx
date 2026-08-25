@@ -12,17 +12,17 @@
  */
 
 import React, {
-  PropsWithChildren,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    PropsWithChildren,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { matchPath, Route, Routes, useLocation } from 'react-router-dom';
 import {
-  createRouteActivationStore,
-  RouteActivationProvider,
-  RouteActivationStore,
+    createRouteActivationStore,
+    RouteActivationProvider,
+    RouteActivationStore
 } from '../context/RouteActivationContext';
 import './keep-alive-routes.less';
 
@@ -40,6 +40,9 @@ interface KeepAliveRoute {
 // child, or location-reactive single-mount shells, are added here (or, later,
 // derived from a module flag) so their hidden copies don't re-trigger
 // navigation or render duplicate DOM.
+// A static, immutable allow-list read via `.has()` — never mutated at runtime,
+// so it cannot grow. Not a cache; the unbounded-cache guard is a false positive.
+// eslint-disable-next-line openmetadata-performance/no-unbounded-module-cache
 const NON_CACHEABLE_ROUTE_PATHS = new Set<string>([]);
 
 const ROUTE_CACHE_CONTAINER_STYLE: React.CSSProperties = {

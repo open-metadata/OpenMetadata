@@ -12,22 +12,22 @@
  */
 
 import {
-  Box,
-  ButtonUtility,
-  Divider,
-  Input,
-  SelectPopover,
+    Box,
+    ButtonUtility,
+    Divider,
+    Input,
+    SelectPopover
 } from '@openmetadata/ui-core-components';
 import { isAppleDevice } from '@react-aria/utils';
 import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
+import type { FormEvent, RefObject } from 'react';
+import { lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
 import type { SearchIndex } from '../../../../enums/search.enum';
-import type { FormEvent, RefObject } from 'react';
-import { lazy, Suspense } from 'react';
-import { useTranslation } from 'react-i18next';
 import { isFocusWithinSearchControl } from './ExploreSearchInput.utils';
 
 const Suggestions = lazy(
@@ -138,6 +138,12 @@ export const ExploreSearchInput = ({
 
   return (
     <Box className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3">
+      {/*
+        eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions --
+        onBlur closes the suggestion popover when focus leaves the search
+        landmark (relatedTarget check). It is focus management on the form
+        itself, not synthetic interactivity added to a non-interactive element.
+      */}
       <form
         aria-label={t(SEARCH_PLACEHOLDER_KEY)}
         className="tw:relative tw:w-full tw:min-w-0"

@@ -12,10 +12,10 @@
  */
 
 import { PropsWithChildren } from 'react';
-import AdminProtectedRoute from '../../../AppRouter/AdminProtectedRoute';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
+import AdminProtectedRoute from '../../../AppRouter/AdminProtectedRoute';
 import { LiveRefreshBoundary } from '../LiveRefreshBoundary/LiveRefreshBoundary';
 
 interface PermissionedLiveRouteProps extends PropsWithChildren {

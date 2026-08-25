@@ -14,8 +14,8 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
-  getGlossaryHomeCrumb,
-  getHomeCrumb,
+    getGlossaryHomeCrumb,
+    getHomeCrumb
 } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';

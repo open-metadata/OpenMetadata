@@ -13,14 +13,14 @@
 import { Box } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import '../../../DataQuality/DataQualityDashboard/data-quality-dashboard.style.less';
 import DqDashboardSectionContent, {
-  DQ_DASHBOARD_SECTIONS,
-  type DqDashboardSectionKey,
+    DQ_DASHBOARD_SECTIONS,
+    type DqDashboardSectionKey
 } from '../../../DataQuality/DataQualityDashboard/DqDashboardSectionContent.component';
 import { useDataQualityDashboardFilters } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import DqFilterBar from './DqFilterBar';
 import DqSectionCard from './DqSectionCard';
-import '../../../DataQuality/DataQualityDashboard/data-quality-dashboard.style.less';
 
 const DQ_SECTION_CLASS_NAMES: Partial<Record<DqDashboardSectionKey, string>> = {
   // The pie-chart cards carry a variable number of legend rows, so their
