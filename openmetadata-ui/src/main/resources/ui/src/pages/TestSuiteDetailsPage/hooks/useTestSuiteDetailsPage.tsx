@@ -348,35 +348,32 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   );
 
   const fetchTestCases = useCallback(
-    async (param?: ListTestCaseParamsBySearch) => {
+    async (
+      param?: ListTestCaseParamsBySearch,
+      shouldFetchIngestionPipelines = true
+    ) => {
       const visibleRequest = {
         q: testCaseSearchQuery.trim() || undefined,
         ...param,
       };
       visibleTestCaseRequestGeneration.current += 1;
       visibleTestCaseRequest.current = visibleRequest;
-      await fetchTestCasesWithTotal(visibleRequest);
+      await fetchTestCasesWithTotal(
+        visibleRequest,
+        false,
+        shouldFetchIngestionPipelines
+      );
     },
     [fetchTestCasesWithTotal, testCaseSearchQuery]
   );
 
   const handleTestCaseSearch = useCallback(
     async (query: string) => {
-      const normalizedQuery = query.trim();
-      visibleTestCaseRequestGeneration.current += 1;
-      visibleTestCaseRequest.current = {
-        offset: 0,
-        q: normalizedQuery || undefined,
-      };
       setTestCaseSearchQuery(query);
       handlePageChange(INITIAL_PAGING_VALUE);
-      await fetchTestCasesWithTotal(
-        visibleTestCaseRequest.current,
-        false,
-        false
-      );
+      await fetchTestCases({ offset: 0, q: query.trim() || undefined }, false);
     },
-    [fetchTestCasesWithTotal, handlePageChange]
+    [fetchTestCases, handlePageChange]
   );
 
   const fetchTestCasesWithTotalRef = useRef(fetchTestCasesWithTotal);
@@ -565,7 +562,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             testSuiteFQN,
             total: authoritativeTotal,
           };
-          if (!testCaseSearchQuery && isCurrentVisibleRequest()) {
+          if (!testCaseSearchQuery.trim() && isCurrentVisibleRequest()) {
             handlePagingChange((currentPaging) => ({
               ...currentPaging,
               total: authoritativeTotal,

@@ -109,14 +109,6 @@ const TestSuiteDetailsPage = () => {
   const testCaseSearchLabel = t('label.search-entity', {
     entity: testCasePluralLabel,
   });
-  const testCaseSearchInputProps = useMemo<ComponentProps<typeof Input>>(
-    () => ({
-      ...searchInputProps,
-      icon: searchInputIcon,
-      placeholder: testCaseSearchLabel,
-    }),
-    [searchInputIcon, searchInputProps, testCaseSearchLabel]
-  );
 
   const afterDeleteAction = () => {
     navigate(
@@ -183,7 +175,7 @@ const TestSuiteDetailsPage = () => {
                 afterDeleteAction={fetchTestCases}
                 breadcrumbData={incidentUrlState}
                 fetchTestCases={handleSortTestCase}
-                hasActiveFilters={Boolean(testCaseSearchQuery)}
+                hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
                 isLoading={isLoading || isTestCaseLoading}
                 pagingData={pagingData}
                 removeFromTestSuite={removeFromTestSuite}
@@ -191,10 +183,12 @@ const TestSuiteDetailsPage = () => {
                 tableHeader={
                   <Box align="center" className="tw:w-full" justify="end">
                     <Input
+                      {...searchInputProps}
                       aria-label={testCaseSearchLabel}
                       className="tw:w-full tw:max-w-72"
+                      icon={searchInputIcon}
                       inputDataTestId="test-suite-test-case-search"
-                      {...testCaseSearchInputProps}
+                      placeholder={testCaseSearchLabel}
                     />
                   </Box>
                 }
@@ -240,7 +234,8 @@ const TestSuiteDetailsPage = () => {
     testCaseSearchQuery,
     testCaseSearchLabel,
     testCasePluralLabel,
-    testCaseSearchInputProps,
+    searchInputIcon,
+    searchInputProps,
     handleTestSuiteUpdate,
     ingestionPipelineCount,
     t,

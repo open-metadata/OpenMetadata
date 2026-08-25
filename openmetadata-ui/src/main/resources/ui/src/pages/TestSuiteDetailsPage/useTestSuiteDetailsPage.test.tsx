@@ -524,11 +524,15 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.isTestCaseLoading).toBe(false);
   });
 
-  it('should use the suite relationship count when search paging is stale after bulk add', async () => {
+  it('should use the suite relationship count for whitespace-only search after bulk add', async () => {
     const { result } = renderHook(() => useTestSuiteDetailsPage());
 
     await waitFor(() => {
       expect(result.current.pagingData.paging.total).toBe(1);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch(' ');
     });
 
     let resolveOlderSearch!: (value: {
