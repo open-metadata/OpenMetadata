@@ -148,7 +148,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -5157,10 +5156,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Runs multi-repository work through the retained SQL-object root so every child DAO joins the
+   * callback handle. Opening this boundary directly on {@link Entity#getJdbi()} does not bind the
+   * on-demand DAO graph, allowing nested repository writes to commit independently of the outer
+   * unit of work.
+   */
   public final <R> R executeInTransaction(final Supplier<R> work) {
-    final AtomicReference<R> result = new AtomicReference<>();
-    flushInOneTransaction(() -> result.set(work.get()));
-    return result.get();
+    final DeferralScope scope = new DeferralScope();
+    boolean committed = false;
+    try {
+      final R result =
+          DeadlockRetry.execute(
+              () ->
+                  daoCollection.inTransaction(
+                      ignored -> {
+                        scope.reopenForAttempt();
+                        return work.get();
+                      }));
+      committed = true;
+      return result;
+    } finally {
+      scope.finish(committed);
+      if (!committed) {
+        storedEntityJson.remove();
+      }
+    }
   }
 
   /**

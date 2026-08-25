@@ -69,7 +69,7 @@ public final class CoOccurrenceQueryBuilder {
         "PREFIX om: <" + OM_NS + ">",
         "SELECT ?term (COUNT(DISTINCT ?domain) AS ?domainCount) WHERE {",
         "  ?entity om:hasGlossaryTerm ?term .",
-        "  ?entity om:hasDomain ?domain .",
+        "  ?entity om:belongsToDomain ?domain .",
         "}",
         "GROUP BY ?term",
         "HAVING (COUNT(DISTINCT ?domain) >= " + safeMin + ")",

@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -38,6 +41,27 @@ class SparqlQueryToolTest {
 
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
   private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
+
+  @Test
+  void rejectsNonAdminBeforeAccessingTheGraph() {
+    final Authorizer deniedAuthorizer = mock(Authorizer.class);
+    final RdfRepository repository = enabledRepository();
+    doThrow(new AuthorizationException("Admin permission is required"))
+        .when(deniedAuthorizer)
+        .authorizeAdmin(SECURITY_CONTEXT);
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            tool(repository)
+                .execute(
+                    deniedAuthorizer,
+                    SECURITY_CONTEXT,
+                    Map.of("query", "SELECT * WHERE { ?s ?p ?o }")));
+
+    verify(deniedAuthorizer).authorizeAdmin(SECURITY_CONTEXT);
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
 
   @Test
   void rejectsMissingBlankAndMalformedQueries() {
@@ -96,7 +120,7 @@ class SparqlQueryToolTest {
   void returnsTypedSelectResult() throws IOException {
     RdfRepository repository = enabledRepository();
     String query = "SELECT * WHERE { ?s ?p ?o } LIMIT 1";
-    when(repository.executeSparqlQuery(query, "application/sparql-results+json"))
+    when(repository.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
         .thenReturn("{\"results\":{\"bindings\":[]}}");
 
     SparqlQueryTool.Result result =

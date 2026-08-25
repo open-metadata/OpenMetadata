@@ -193,6 +193,58 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(tmp_path):
+    planner = load_script("build_playwright_shards")
+    history = tmp_path / "history.json"
+    baseline = tmp_path / "timing-baseline.json"
+    history.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "leafTitle": "uses current history",
+                        "durationMs": 200,
+                    }
+                ],
+            }
+        )
+    )
+    baseline.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "leafTitle": "uses current history",
+                        "durationMs": 900,
+                    },
+                    {
+                        "id": "new-test",
+                        "file": "Features/New.spec.ts",
+                        "leafTitle": "uses baseline fallback",
+                        "durationMs": 700,
+                    },
+                ],
+            }
+        )
+    )
+
+    weights, identity_weights = planner.load_history_with_baseline_fallback(
+        [history], baseline
+    )
+
+    assert weights == {"existing-test": 200, "new-test": 700}
+    assert identity_weights == {
+        ("Features/Existing.spec.ts", "uses current history"): 200,
+        ("Features/New.spec.ts", "uses baseline fallback"): 700,
+    }
+
+
 def test_emit_unweighted_warnings_annotates_files_over_threshold(capsys):
     planner = load_script("build_playwright_shards")
     # A file with more tests than UNWEIGHTED_WARN_MIN_TESTS should be annotated.

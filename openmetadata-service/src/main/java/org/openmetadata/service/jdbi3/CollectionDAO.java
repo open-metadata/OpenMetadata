@@ -67,6 +67,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.jdbi.v3.sqlobject.transaction.Transactional;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -211,7 +212,7 @@ import org.openmetadata.service.util.jdbi.BindUUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public interface CollectionDAO {
+public interface CollectionDAO extends Transactional<CollectionDAO> {
   @CreateSqlObject
   DatabaseDAO databaseDAO();
 

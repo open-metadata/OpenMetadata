@@ -95,11 +95,11 @@ class CoOccurrenceQueryBuilderTest {
     }
 
     @Test
-    @DisplayName("Joins om:hasGlossaryTerm with om:hasDomain on the same entity")
+    @DisplayName("Joins glossary terms to the canonical entity-domain predicate")
     void joinsCorrectly() {
       String sparql = CoOccurrenceQueryBuilder.glossaryReach(2, 20);
       assertTrue(sparql.contains("?entity om:hasGlossaryTerm ?term"));
-      assertTrue(sparql.contains("?entity om:hasDomain ?domain"));
+      assertTrue(sparql.contains("?entity om:belongsToDomain ?domain"));
     }
   }
 

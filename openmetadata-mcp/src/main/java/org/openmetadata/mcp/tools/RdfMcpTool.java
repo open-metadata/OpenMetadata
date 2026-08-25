@@ -13,6 +13,7 @@
 
 package org.openmetadata.mcp.tools;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -40,6 +41,18 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
     }
     return repository;
   }
+
+  @Override
+  public final T execute(
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return executeAuthorized(params);
+  }
+
+  protected abstract T executeAuthorized(final Map<String, Object> params) throws IOException;
 
   @Override
   public final T execute(

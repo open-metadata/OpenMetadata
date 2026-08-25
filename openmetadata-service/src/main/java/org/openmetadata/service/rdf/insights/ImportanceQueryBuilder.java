@@ -1,19 +1,19 @@
 package org.openmetadata.service.rdf.insights;
 
 /**
- * Builds the SPARQL query that ranks entities by an importance score blending OpenMetadata's
- * existing usage percentile (real query data) with downstream lineage count (graph topology).
+ * Builds the SPARQL query that ranks entities by an importance score blending a primary signal
+ * with downstream lineage count. The primary signal is OpenMetadata's usage percentile when
+ * available and PageRank centrality otherwise.
  *
  * <p>Scoring formula:
  *
  * <pre>{@code
- * score = 0.6 * (usagePercentile / 100)
+ * primarySignal = usagePercentile / 100 when available, otherwise centralityScore
+ * score = 0.6 * primarySignal
  *       + 0.4 * (downstreamCount / max(downstreamCount across the entity type))
- *       + 0.0 * centralityScore   // 3.1.b will plug PageRank here for null-usage entities
  * }</pre>
  *
- * <p>Both terms are 0–1 after normalization. Entities without usage data fall to the bottom
- * until 3.1.b's PageRank fallback lands and {@code om:centralityScore} starts populating.
+ * <p>Both terms are 0–1 after normalization. Entities without either primary signal use zero.
  */
 public final class ImportanceQueryBuilder {
 
@@ -61,15 +61,19 @@ public final class ImportanceQueryBuilder {
         "      } GROUP BY ?e",
         "    }",
         "  }",
-        "  BIND(COALESCE(?usagePct, 0.0) / 100.0 AS ?usageNorm)",
+        "  BIND(",
+        "    COALESCE(",
+        "      xsd:double(?usagePct) / 100.0,",
+        "      xsd:double(?centrality),",
+        "      0.0)",
+        "    AS ?usageOrCentralityNorm)",
         "  BIND(",
         "    IF(?maxDownstream > 0,",
         "       xsd:double(?downstreamCount) / xsd:double(?maxDownstream),",
         "       0.0)",
         "    AS ?downstreamNorm)",
-        "  BIND(COALESCE(?centrality, 0.0) AS ?centralityNorm)",
         "  BIND(",
-        "    (0.6 * ?usageNorm) + (0.4 * ?downstreamNorm) + (0.0 * ?centralityNorm)",
+        "    (0.6 * ?usageOrCentralityNorm) + (0.4 * ?downstreamNorm)",
         "    AS ?score)",
         "}",
         "ORDER BY DESC(?score) DESC(?downstreamCount)",

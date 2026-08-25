@@ -35,11 +35,27 @@ WHERE appName IN ('RdfIndexApp', 'SearchIndexingApplication');
 -- Search reindexing is staged and recreates every selected index. Include every entity so the
 -- new relationshipType index and the new glossaryTerm attribute mapping are materialized.
 UPDATE installed_apps
-SET json = JSON_SET(json, '$.appConfiguration.entities', JSON_ARRAY('all'))
+SET json = JSON_SET(
+  COALESCE(json, JSON_OBJECT()),
+  '$.appConfiguration',
+  JSON_SET(
+    COALESCE(JSON_EXTRACT(json, '$.appConfiguration'), JSON_OBJECT()),
+    '$.entities',
+    JSON_ARRAY('all')
+  )
+)
 WHERE name = 'SearchIndexingApplication';
 
 UPDATE apps_marketplace
-SET json = JSON_SET(json, '$.appConfiguration.entities', JSON_ARRAY('all'))
+SET json = JSON_SET(
+  COALESCE(json, JSON_OBJECT()),
+  '$.appConfiguration',
+  JSON_SET(
+    COALESCE(JSON_EXTRACT(json, '$.appConfiguration'), JSON_OBJECT()),
+    '$.entities',
+    JSON_ARRAY('all')
+  )
+)
 WHERE name = 'SearchIndexingApplication';
 
 -- Ontology Studio relationships use stable identifiers independent of physical row order.

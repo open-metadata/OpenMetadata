@@ -21,8 +21,6 @@ import java.util.function.Supplier;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Executes bounded, read-only SPARQL queries for MCP clients. */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
@@ -43,9 +41,7 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       String format, String queryType, String body, boolean truncated, int byteCount) {}
 
   @Override
-  public Result execute(
-      Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
-      throws IOException {
+  protected Result executeAuthorized(final Map<String, Object> params) throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String sparql = parameters.requiredString("query");
     RdfSparqlService.ReadQuery query = RdfSparqlService.ReadQuery.parse(sparql);

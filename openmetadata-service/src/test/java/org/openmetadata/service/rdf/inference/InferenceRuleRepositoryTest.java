@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -68,6 +69,21 @@ class InferenceRuleRepositoryTest {
         "https://metadata.example/graph/inferred/a-rule",
         first.getFirst().getGraphUri().toString());
     verify(ruleDAO, times(4)).insertIfAbsent(anyString(), anyString(), anyBoolean(), anyLong());
+  }
+
+  @Test
+  void retriesStarterPackInitializationAfterAnInsertFails() {
+    doThrow(new IllegalStateException("database unavailable"))
+        .doNothing()
+        .when(ruleDAO)
+        .insertIfAbsent(anyString(), anyString(), anyBoolean(), anyLong());
+    when(ruleDAO.listActive()).thenReturn(List.of());
+
+    assertThrows(IllegalStateException.class, repository::list);
+    assertTrue(repository.list().isEmpty());
+
+    verify(ruleDAO, times(InferenceRuleStarterPack.load().size() + 1))
+        .insertIfAbsent(anyString(), anyString(), anyBoolean(), anyLong());
   }
 
   @Test

@@ -148,22 +148,21 @@ class ImportanceQueryBuilderTest {
   class ScoreFormula {
 
     @Test
-    @DisplayName("Score blends usage (0.6) and downstream (0.4) with centrality reserved at 0.0")
+    @DisplayName("Score blends the usage-or-centrality signal (0.6) and downstream count (0.4)")
     void weightsExpressed() {
       String body = ImportanceQueryBuilder.build("table", "daily", 20);
-      assertTrue(body.contains("0.6 * ?usageNorm"), "Got: " + body);
+      assertTrue(body.contains("0.6 * ?usageOrCentralityNorm"), "Got: " + body);
       assertTrue(body.contains("0.4 * ?downstreamNorm"), "Got: " + body);
-      assertTrue(
-          body.contains("0.0 * ?centralityNorm"),
-          "Centrality term must be reserved at 0.0 until 3.1.b ships its PageRank fallback");
     }
 
     @Test
-    @DisplayName("Usage percentile is divided by 100 to land in 0-1")
-    void usageNormalizedTo01() {
-      assertTrue(
-          ImportanceQueryBuilder.build("table", "daily", 20)
-              .contains("COALESCE(?usagePct, 0.0) / 100.0"));
+    @DisplayName("Centrality fills in only when the normalized usage percentile is absent")
+    void centralityIsTheUsageFallback() {
+      String body = ImportanceQueryBuilder.build("table", "daily", 20);
+      assertTrue(body.contains("COALESCE("));
+      assertTrue(body.contains("xsd:double(?usagePct) / 100.0"));
+      assertTrue(body.contains("xsd:double(?centrality)"));
+      assertTrue(body.contains("AS ?usageOrCentralityNorm"));
     }
 
     @Test

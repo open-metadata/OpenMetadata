@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
+TIMING_BASELINE = (
+    Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
+)
 FULL_PROJECTS = {
     "chromium",
     "Basic",
@@ -362,6 +365,18 @@ def load_history(
     return weights, identity_weights
 
 
+def load_history_with_baseline_fallback(
+    paths: list[Path], baseline: Path = TIMING_BASELINE
+) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
+    weights, identity_weights = load_history(paths)
+    baseline_weights, baseline_identity_weights = load_history([baseline])
+    for test_id, duration in baseline_weights.items():
+        weights.setdefault(test_id, duration)
+    for identity, duration in baseline_identity_weights.items():
+        identity_weights.setdefault(identity, duration)
+    return weights, identity_weights
+
+
 def apply_history_weights(
     units: list[Unit],
     test_weights: dict[str, int],
@@ -664,7 +679,7 @@ def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
-    test_weights, identity_weights = load_history(args.history)
+    test_weights, identity_weights = load_history_with_baseline_fallback(args.history)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

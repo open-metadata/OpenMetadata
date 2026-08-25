@@ -51,26 +51,38 @@ import {
 
 const FORMAT_OPTIONS: ReadonlyArray<{
   value: SparqlPlaygroundFormat;
-  label: string;
+  labelKey: string;
 }> = [
-  { value: 'json', label: 'JSON (SELECT/ASK)' },
-  { value: 'csv', label: 'CSV (SELECT)' },
-  { value: 'tsv', label: 'TSV (SELECT)' },
-  { value: 'xml', label: 'XML (SELECT/ASK)' },
-  { value: 'turtle', label: 'Turtle (CONSTRUCT/DESCRIBE)' },
-  { value: 'jsonld', label: 'JSON-LD (CONSTRUCT/DESCRIBE)' },
-  { value: 'ntriples', label: 'N-Triples (CONSTRUCT/DESCRIBE)' },
-  { value: 'rdfxml', label: 'RDF-XML (CONSTRUCT/DESCRIBE)' },
+  { value: 'json', labelKey: 'label.sparql-format-json-select-ask' },
+  { value: 'csv', labelKey: 'label.sparql-format-csv-select' },
+  { value: 'tsv', labelKey: 'label.sparql-format-tsv-select' },
+  { value: 'xml', labelKey: 'label.sparql-format-xml-select-ask' },
+  {
+    value: 'turtle',
+    labelKey: 'label.sparql-format-turtle-construct-describe',
+  },
+  {
+    value: 'jsonld',
+    labelKey: 'label.sparql-format-json-ld-construct-describe',
+  },
+  {
+    value: 'ntriples',
+    labelKey: 'label.sparql-format-n-triples-construct-describe',
+  },
+  {
+    value: 'rdfxml',
+    labelKey: 'label.sparql-format-rdf-xml-construct-describe',
+  },
 ];
 
 const INFERENCE_OPTIONS: ReadonlyArray<{
   value: SparqlPlaygroundInference;
-  label: string;
+  labelKey: string;
 }> = [
-  { value: 'none', label: 'none' },
-  { value: 'rdfs', label: 'rdfs' },
-  { value: 'owl', label: 'owl' },
-  { value: 'custom', label: 'custom' },
+  { value: 'none', labelKey: 'label.none' },
+  { value: 'rdfs', labelKey: 'label.rdfs' },
+  { value: 'owl', labelKey: 'label.owl' },
+  { value: 'custom', labelKey: 'label.custom' },
 ];
 
 const FORMAT_EXTENSIONS: Record<SparqlPlaygroundFormat, string> = {
@@ -308,7 +320,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                 data-testid="sparql-format-select"
                 items={FORMAT_OPTIONS.map((o) => ({
                   id: o.value,
-                  label: o.label,
+                  label: t(o.labelKey),
                 }))}
                 size="sm"
                 value={format}
@@ -324,7 +336,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                 data-testid="sparql-inference-select"
                 items={INFERENCE_OPTIONS.map((o) => ({
                   id: o.value,
-                  label: o.label,
+                  label: t(o.labelKey),
                 }))}
                 size="sm"
                 value={inference}

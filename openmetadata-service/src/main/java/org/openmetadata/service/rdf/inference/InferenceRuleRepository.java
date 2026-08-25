@@ -21,7 +21,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -36,7 +35,7 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
   private final RdfInferenceRuleDAO ruleDAO;
   private final Clock clock;
   private final String inferredGraphBaseUri;
-  private final AtomicBoolean starterPackInitialized = new AtomicBoolean();
+  private volatile boolean starterPackInitialized;
 
   public InferenceRuleRepository(
       final RdfInferenceRuleDAO ruleDAO, final Clock clock, final String rdfBaseUri) {
@@ -103,13 +102,20 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
   }
 
   private void initializeStarterPack() {
-    if (starterPackInitialized.compareAndSet(false, true)) {
+    if (starterPackInitialized) {
+      return;
+    }
+    synchronized (this) {
+      if (starterPackInitialized) {
+        return;
+      }
       final long updatedAt = clock.millis();
       InferenceRuleStarterPack.load()
           .forEach(
               rule ->
                   ruleDAO.insertIfAbsent(
                       rule.getName(), JsonUtils.pojoToJson(rule), true, updatedAt));
+      starterPackInitialized = true;
     }
   }
 
