@@ -12,10 +12,12 @@
  */
 package org.openmetadata.service.search;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +49,6 @@ public final class HighlightFieldClassifier {
 
   private static final Logger LOG = LoggerFactory.getLogger(HighlightFieldClassifier.class);
 
-  private static final String MAPPINGS = "mappings";
-  private static final String PROPERTIES = "properties";
   private static final String TYPE = "type";
   private static final String ENABLED = "enabled";
   private static final char PATH_SEPARATOR = '.';
@@ -126,8 +126,7 @@ public final class HighlightFieldClassifier {
     Map<String, Map<String, HighlightSupport>> byEntity = new HashMap<>();
     Map<String, HighlightSupport> anyEntity = new HashMap<>();
     for (Map.Entry<String, Map<String, Object>> entry : entityIndexMappings().entrySet()) {
-      Map<String, HighlightSupport> unsupported = new HashMap<>();
-      collectUnsupported(childProperties(entry.getValue().get(MAPPINGS)), "", unsupported);
+      Map<String, HighlightSupport> unsupported = collectUnsupported(entry.getValue());
       if (!unsupported.isEmpty()) {
         byEntity.put(entry.getKey(), Collections.unmodifiableMap(unsupported));
         anyEntity.putAll(unsupported);
@@ -147,39 +146,28 @@ public final class HighlightFieldClassifier {
     return result;
   }
 
-  private static void collectUnsupported(
-      Map<String, Object> properties, String prefix, Map<String, HighlightSupport> collected) {
-    for (Map.Entry<String, Object> entry : properties.entrySet()) {
-      Map<String, Object> node = asMap(entry.getValue());
-      String path = prefix.isEmpty() ? entry.getKey() : prefix + PATH_SEPARATOR + entry.getKey();
-      HighlightSupport support = classifyNode(node);
-      if (support == HighlightSupport.SUPPORTED) {
-        collectUnsupported(childProperties(node), path, collected);
-      } else {
-        collected.put(path, support);
-      }
-    }
+  private static Map<String, HighlightSupport> collectUnsupported(Map<String, Object> mapping) {
+    Map<String, HighlightSupport> collected = new HashMap<>();
+    IndexMappingProperties.walk(
+        IndexMappingProperties.topLevel(JsonUtils.valueToTree(mapping)),
+        (path, field) -> {
+          HighlightSupport support = classifyNode(field);
+          if (support != HighlightSupport.SUPPORTED) {
+            collected.put(path, support);
+          }
+          // Stop at an unsupported node: everything beneath it inherits the verdict, and its
+          // children are not separately mapped anyway.
+          return support == HighlightSupport.SUPPORTED;
+        });
+    return collected;
   }
 
-  private static HighlightSupport classifyNode(Map<String, Object> node) {
+  private static HighlightSupport classifyNode(JsonNode field) {
     HighlightSupport result = HighlightSupport.SUPPORTED;
-    if (Boolean.FALSE.equals(node.get(ENABLED))) {
+    if (!field.path(ENABLED).asBoolean(true)) {
       result = HighlightSupport.NOT_INDEXED;
-    } else if (NO_ANALYZER_TYPES.contains(String.valueOf(node.get(TYPE)))) {
+    } else if (NO_ANALYZER_TYPES.contains(field.path(TYPE).asText(""))) {
       result = HighlightSupport.NOT_ANALYZABLE;
-    }
-    return result;
-  }
-
-  private static Map<String, Object> childProperties(Object node) {
-    return asMap(asMap(node).get(PROPERTIES));
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> asMap(Object value) {
-    Map<String, Object> result = Map.of();
-    if (value instanceof Map) {
-      result = (Map<String, Object>) value;
     }
     return result;
   }

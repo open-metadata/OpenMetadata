@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -279,55 +278,42 @@ class IndexMappingNestedFieldConsistencyTest {
 
   private static void findExtensionTypeViolations(
       JsonNode properties, String currentPath, List<String> violations, String entity) {
-    Iterator<String> fieldNames = properties.fieldNames();
-    while (fieldNames.hasNext()) {
-      String name = fieldNames.next();
-      JsonNode fieldNode = properties.get(name);
-      String path = currentPath.isEmpty() ? name : currentPath + "." + name;
-      if (name.equals("extension")) {
-        String type = fieldNode.path("type").asText("");
-        boolean disabledObject =
-            "object".equals(type) && !fieldNode.path("enabled").asBoolean(true);
-        if (!disabledObject) {
-          String detail =
-              type.isEmpty()
-                  ? "missing \"type\" (implicit object)"
-                  : "\"" + type + "\" enabled=" + fieldNode.path("enabled").asText("true");
-          violations.add(entity + " (" + path + "): " + detail);
-        }
-      }
-      JsonNode childProps = fieldNode.path("properties");
-      if (!childProps.isMissingNode()) {
-        findExtensionTypeViolations(childProps, path, violations, entity);
-      }
-    }
+    IndexMappingProperties.walk(
+        properties,
+        (path, fieldNode) -> {
+          if (path.endsWith("extension")) {
+            String type = fieldNode.path("type").asText("");
+            boolean disabledObject =
+                "object".equals(type) && !fieldNode.path("enabled").asBoolean(true);
+            if (!disabledObject) {
+              String detail =
+                  type.isEmpty()
+                      ? "missing \"type\" (implicit object)"
+                      : "\"" + type + "\" enabled=" + fieldNode.path("enabled").asText("true");
+              violations.add(entity + " (" + path + "): " + detail);
+            }
+          }
+          return true;
+        });
   }
 
   private static void findViolations(
       JsonNode properties, String fieldName, String currentPath, List<String> violations) {
-    Iterator<String> fieldNames = properties.fieldNames();
-    while (fieldNames.hasNext()) {
-      String name = fieldNames.next();
-      JsonNode fieldNode = properties.get(name);
-      String path = currentPath.isEmpty() ? name : currentPath + "." + name;
-      if (name.equals(fieldName) && fieldNode.has("properties")) {
-        if (!fieldNode.has("type") || !"nested".equals(fieldNode.path("type").asText())) {
-          violations.add(path);
-        }
-      }
-      JsonNode childProps = fieldNode.path("properties");
-      if (!childProps.isMissingNode()) {
-        findViolations(childProps, fieldName, path, violations);
-      }
-    }
+    IndexMappingProperties.walk(
+        properties,
+        (path, fieldNode) -> {
+          boolean isTarget = path.equals(fieldName) || path.endsWith("." + fieldName);
+          if (isTarget
+              && fieldNode.has("properties")
+              && (!fieldNode.has("type") || !"nested".equals(fieldNode.path("type").asText()))) {
+            violations.add(path);
+          }
+          return true;
+        });
   }
 
   private static JsonNode getTopLevelProperties(JsonNode root) {
-    JsonNode props = root.path("mappings").path("properties");
-    if (!props.isMissingNode()) {
-      return props;
-    }
-    props = root.path("properties");
+    JsonNode props = IndexMappingProperties.topLevel(root);
     return props.isMissingNode() ? null : props;
   }
 }

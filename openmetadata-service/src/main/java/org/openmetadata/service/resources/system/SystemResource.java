@@ -295,6 +295,16 @@ public class SystemResource {
    * would disable every highlight toggle in the UI. Derived here, the served flag is correct
    * regardless of what is in the database.
    */
+  /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
+  private SearchSettings storedSearchSettings() {
+    SearchSettings result = null;
+    Settings stored = systemRepository.getConfigWithKey(SettingsType.SEARCH_SETTINGS.value());
+    if (stored != null && stored.getConfigValue() != null) {
+      result = JsonUtils.convertValue(stored.getConfigValue(), SearchSettings.class);
+    }
+    return result;
+  }
+
   private Settings withHighlightFlags(Settings settings) {
     Settings result = settings;
     if (settings != null && settings.getConfigValue() != null) {
@@ -644,7 +654,7 @@ public class SystemResource {
       SearchSettings incomingSearchSettings =
           JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
       searchSettingsHandler.validateGlobalSettings(incomingSearchSettings.getGlobalSettings());
-      searchSettingsHandler.validateHighlightFields(incomingSearchSettings);
+      searchSettingsHandler.validateHighlightFields(incomingSearchSettings, storedSearchSettings());
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);

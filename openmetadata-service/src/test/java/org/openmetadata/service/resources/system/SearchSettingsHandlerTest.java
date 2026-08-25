@@ -134,6 +134,38 @@ class SearchSettingsHandlerTest {
   }
 
   @Test
+  void everyConfiguredSearchFieldGetsAHighlightVerdict() {
+    // allowedFields is not a complete list of configurable fields — table configures name.keyword,
+    // name.compound, displayName.compound and columnNamesFuzzy with no allowedFields entry. The UI
+    // renders a row per search field and reads the verdict from allowedFields, so a missing entry
+    // silently disabled those toggles.
+    searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
+
+    List<String> withoutVerdict = new ArrayList<>();
+    for (AssetTypeConfiguration assetConfig : defaultSearchSettings.getAssetTypeConfigurations()) {
+      Set<String> annotated =
+          defaultSearchSettings.getAllowedFields().stream()
+              .filter(
+                  allowed -> assetConfig.getAssetType().equalsIgnoreCase(allowed.getEntityType()))
+              .flatMap(allowed -> allowed.getFields().stream())
+              .map(Field::getName)
+              .collect(Collectors.toSet());
+      CommonUtil.listOrEmpty(assetConfig.getSearchFields()).stream()
+          .map(FieldBoost::getField)
+          .filter(field -> !annotated.contains(field))
+          .forEach(field -> withoutVerdict.add(assetConfig.getAssetType() + ":" + field));
+    }
+
+    assertTrue(
+        withoutVerdict.isEmpty(),
+        "every configured search field must carry a highlight verdict: " + withoutVerdict);
+    assertEquals(
+        Boolean.TRUE,
+        allowedField("table", "name.keyword").getHighlight(),
+        "name.keyword is a keyword multi-field and is highlightable");
+  }
+
+  @Test
   void annotatedFlagAgreesWithWhatTheSavePathAccepts() {
     // The UI decides what to offer from this flag while the API decides what to accept from the
     // classifier. If they ever disagreed, the UI would offer a toggle whose save 400s.
@@ -231,6 +263,42 @@ class SearchSettingsHandlerTest {
     assertTrue(
         exception.getMessage().contains("flattened"),
         "Message must explain why: " + exception.getMessage());
+  }
+
+  @Test
+  void aHighlightFieldThisClusterAlreadyStoredIsDroppedRatherThanRejected() {
+    // A cluster upgraded from before this check carries the bad value, and the UI round-trips the
+    // whole highlightFields array on every save (a disabled toggle does not remove the entry).
+    // Rejecting would 400 every future save — including unrelated edits — with an error the admin
+    // cannot clear from the UI. Dropping it self-heals on the next save.
+    SearchSettings stored = highlightSettings("table", "extension.someCustomProperty");
+    SearchSettings incoming = highlightSettings("table", "extension.someCustomProperty");
+    incoming.getAssetTypeConfigurations().get(0).getHighlightFields().add("description");
+
+    searchSettingsHandler.validateHighlightFields(incoming, stored);
+
+    assertEquals(
+        List.of("description"),
+        incoming.getAssetTypeConfigurations().get(0).getHighlightFields(),
+        "the legacy value must be dropped and the good one kept");
+  }
+
+  @Test
+  void aNewlyAddedUnsupportedHighlightFieldIsStillRejectedWhenOthersWereStored() {
+    // Dropping legacy values must not become a blanket amnesty — a value this payload introduces is
+    // still refused even when the same asset type already carries a different bad one.
+    SearchSettings stored = highlightSettings("table", "extension.alreadyThere");
+    SearchSettings incoming = highlightSettings("table", "extension.alreadyThere");
+    incoming.getAssetTypeConfigurations().get(0).getHighlightFields().add("extension.brandNew");
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateHighlightFields(incoming, stored));
+
+    assertTrue(
+        exception.getMessage().contains("extension.brandNew"),
+        "the newly added field must be the one rejected: " + exception.getMessage());
   }
 
   @Test

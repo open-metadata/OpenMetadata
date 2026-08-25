@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.Field;
@@ -20,6 +21,7 @@ import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.search.HighlightFieldClassifier;
 import org.openmetadata.service.search.HighlightFieldClassifier.HighlightSupport;
 
+@Slf4j
 public class SearchSettingsHandler {
   private static final int MIN_AGGREGATE_SIZE = 100;
   private static final int MAX_AGGREGATE_SIZE = 10000;
@@ -150,10 +152,61 @@ public class SearchSettingsHandler {
    */
   public void annotateHighlightableFields(SearchSettings searchSettings) {
     if (searchSettings != null) {
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(searchSettings.getAssetTypeConfigurations())) {
+        backfillConfiguredSearchFields(searchSettings, assetConfig);
+      }
       for (AllowedSearchFields allowedFields : listOrEmpty(searchSettings.getAllowedFields())) {
         annotateHighlightableFields(allowedFields);
       }
     }
+  }
+
+  /**
+   * Gives every configured search field an {@code allowedFields} entry so it can carry a highlight
+   * verdict.
+   *
+   * <p>{@code allowedFields} is not a complete list of configurable fields — 63 of the shipped
+   * search fields have no entry (`name.keyword`, `name.compound`, `columnNamesFuzzy`, …). The UI
+   * renders one row per *search field* and reads the verdict from {@code allowedFields}, so a
+   * missing entry reads as "not highlightable" and disables a toggle that would have worked. The
+   * placeholder is added on the read path only and is never persisted.
+   */
+  private void backfillConfiguredSearchFields(
+      SearchSettings searchSettings, AssetTypeConfiguration assetConfig) {
+    AllowedSearchFields allowedFields =
+        allowedFieldsFor(searchSettings, assetConfig.getAssetType());
+    Set<String> known = new HashSet<>();
+    for (Field field : listOrEmpty(allowedFields.getFields())) {
+      known.add(field.getName());
+    }
+    for (FieldBoost searchField : listOrEmpty(assetConfig.getSearchFields())) {
+      if (known.add(searchField.getField())) {
+        allowedFields
+            .getFields()
+            .add(new Field().withName(searchField.getField()).withDescription(""));
+      }
+    }
+  }
+
+  private AllowedSearchFields allowedFieldsFor(SearchSettings searchSettings, String assetType) {
+    AllowedSearchFields result = null;
+    for (AllowedSearchFields allowedFields : listOrEmpty(searchSettings.getAllowedFields())) {
+      if (allowedFields.getEntityType() != null
+          && allowedFields.getEntityType().equalsIgnoreCase(assetType)) {
+        result = allowedFields;
+      }
+    }
+    if (result == null) {
+      result = new AllowedSearchFields().withEntityType(assetType).withFields(new ArrayList<>());
+      if (searchSettings.getAllowedFields() == null) {
+        searchSettings.setAllowedFields(new ArrayList<>());
+      }
+      searchSettings.getAllowedFields().add(result);
+    } else if (result.getFields() == null) {
+      result.withFields(new ArrayList<>());
+    }
+    return result;
   }
 
   private void annotateHighlightableFields(AllowedSearchFields allowedFields) {
@@ -164,32 +217,71 @@ public class SearchSettingsHandler {
     }
   }
 
+  /** Equivalent to {@link #validateHighlightFields(SearchSettings, SearchSettings)} with no stored settings — every unsupported field counts as newly added. */
+  public void validateHighlightFields(SearchSettings searchSettings) {
+    validateHighlightFields(searchSettings, null);
+  }
+
   /**
-   * Rejects highlight fields that the index mapping cannot highlight.
+   * Rejects highlight fields the index mapping cannot highlight, but only when the incoming payload
+   * introduces them. A value already in {@code storedSettings} is dropped instead.
+   *
+   * <p>The split exists because rejecting outright would lock an upgraded cluster out of Settings &gt;
+   * Search entirely: a highlight field stored before this check existed (a custom property, say —
+   * the v1130/v11210 scrubs only remove hardcoded {@code columns.children.*} paths) is round-tripped
+   * by the UI on every save, since a disabled toggle does not remove the entry. Every subsequent PUT,
+   * even for an unrelated change, would 400 with an error the admin has no way to clear from the UI.
+   * Dropping the legacy value self-heals on the next save while still refusing new ones.
    *
    * <p>Deliberately not part of {@link #validateSearchSettings}: that runs inside {@link
    * #mergeSearchSettings}, which {@code SettingsCache} calls at startup, and a cluster carrying a
-   * bad value from before this check existed must not be unable to boot. This runs on the incoming
-   * REST payload only, so a bad value is rejected when an admin tries to save it.
+   * bad value must not be unable to boot.
    */
-  public void validateHighlightFields(SearchSettings searchSettings) {
+  public void validateHighlightFields(
+      SearchSettings searchSettings, SearchSettings storedSettings) {
     if (searchSettings != null) {
       for (AssetTypeConfiguration assetConfig :
           listOrEmpty(searchSettings.getAssetTypeConfigurations())) {
-        validateHighlightFields(assetConfig);
+        validateHighlightFields(
+            assetConfig, storedHighlightFields(storedSettings, assetConfig.getAssetType()));
       }
     }
   }
 
-  private void validateHighlightFields(AssetTypeConfiguration assetConfig) {
+  private Set<String> storedHighlightFields(SearchSettings storedSettings, String assetType) {
+    Set<String> result = new HashSet<>();
+    if (storedSettings != null) {
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(storedSettings.getAssetTypeConfigurations())) {
+        if (assetConfig.getAssetType() != null
+            && assetConfig.getAssetType().equalsIgnoreCase(assetType)) {
+          result.addAll(listOrEmpty(assetConfig.getHighlightFields()));
+        }
+      }
+    }
+    return result;
+  }
+
+  private void validateHighlightFields(
+      AssetTypeConfiguration assetConfig, Set<String> alreadyStored) {
+    List<String> retained = new ArrayList<>();
     for (String field : listOrEmpty(assetConfig.getHighlightFields())) {
       HighlightSupport support =
           HighlightFieldClassifier.classify(assetConfig.getAssetType(), field);
-      if (support != HighlightSupport.SUPPORTED) {
+      if (support == HighlightSupport.SUPPORTED) {
+        retained.add(field);
+      } else if (alreadyStored.contains(field)) {
+        LOG.warn(
+            "Dropping stored highlight field '{}' for asset type '{}': {}",
+            field,
+            assetConfig.getAssetType(),
+            support);
+      } else {
         throw new SystemSettingsException(
             unsupportedHighlightMessage(field, assetConfig.getAssetType(), support));
       }
     }
+    assetConfig.setHighlightFields(retained);
   }
 
   private String unsupportedHighlightMessage(

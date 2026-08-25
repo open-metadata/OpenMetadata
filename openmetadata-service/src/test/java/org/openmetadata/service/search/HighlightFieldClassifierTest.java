@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.search.IndexMappingLoader;
@@ -98,6 +99,29 @@ class HighlightFieldClassifierTest {
     // reindex, so the drop must survive the mapping's move to enabled:false.
     assertTrue(HighlightFieldClassifier.isHighlightUnsafeField("extension"));
     assertTrue(HighlightFieldClassifier.isHighlightUnsafeField("extension.anything"));
+  }
+
+  @Test
+  void crossIndexCollisionsStayLimitedToKnownNonHighlightablePaths() {
+    // The query-time guard classifies without knowing the target index, so it uses the union of
+    // unsupported paths. A path that is enabled:false in one mapping but a normal analyzed field in
+    // another is therefore dropped everywhere. Three such collisions exist today and none is a
+    // plausible highlight field; this pins that set so a mapping change that would newly swallow a
+    // real field fails here rather than silently removing highlights in production.
+    Set<String> knownCollisions =
+        Set.of("changeDescription", "incrementalChangeDescription", "users");
+
+    for (String field : knownCollisions) {
+      assertTrue(
+          HighlightFieldClassifier.isHighlightUnsafeField(field),
+          field + " is expected to be dropped by the union guard");
+    }
+    assertFalse(
+        HighlightFieldClassifier.isHighlightUnsafeField("description"),
+        "a field analyzed in every index must never collide");
+    assertFalse(
+        HighlightFieldClassifier.isHighlightUnsafeField("name"),
+        "a field analyzed in every index must never collide");
   }
 
   @Test
