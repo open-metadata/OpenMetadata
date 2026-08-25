@@ -70,6 +70,19 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testCustomDataQualityDimensionIsJsonEscaped() {
+    // Custom dimensions are free-form, so backslashes, quotes and control characters must not be
+    // able to break the generated filter JSON.
+    String dimension = "Back\\slash \"quoted\"\ttabbed";
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("dataQualityDimension", dimension);
+
+    JsonNode actual = parse(searchListFilter.getCondition(Entity.TEST_CASE));
+
+    assertEquals(dimension, actual.at("/query/bool/filter/0/term/dataQualityDimension").asText());
+  }
+
+  @Test
   void testDataQualityDimensionNoDimensionCondition() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam(

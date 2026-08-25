@@ -1385,6 +1385,34 @@ describe('DataQualityUtils', () => {
       });
     });
 
+    it('should emit a dataQualityDimension op when the dimension is cleared', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        // The normalizer always emits the key; an empty value means cleared.
+        value: { ...baseValue, dataQualityDimension: undefined },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch).toContainEqual({
+        op: 'remove',
+        path: '/dataQualityDimension',
+      });
+    });
+
+    it('should keep the existing dataQualityDimension when the form omits the field', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        value: baseValue,
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch.some((op) => op.path === '/dataQualityDimension')).toBe(
+        false
+      );
+    });
+
     it('should keep the existing dataQualityDimension when only parameters are edited', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
