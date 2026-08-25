@@ -13,6 +13,7 @@
 import type { DateTimeWidgetProps } from '@react-awesome-query-builder/ui';
 import moment from 'moment';
 import type { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // DateInput from @openmetadata/ui-core-components is not publicly exported and requires
 // @internationalized/date CalendarDate objects, which are incompatible with the query
@@ -64,6 +65,7 @@ const OMDateWidget: FC<DateTimeWidgetProps> = ({
   valueFormat,
   dateFormat,
 }) => {
+  const { t } = useTranslation();
   const kind = getInputKind(fieldType, valueFormat ?? dateFormat);
   const storedFormat = valueFormat ?? dateFormat ?? RAQB_DEFAULT_FORMATS[kind];
   const nativeFormat = NATIVE_FORMATS[kind];
@@ -83,6 +85,7 @@ const OMDateWidget: FC<DateTimeWidgetProps> = ({
 
   return (
     <input
+      aria-label={placeholder ?? t('label.value')}
       className={classNameValue}
       disabled={readonly}
       placeholder={placeholder}

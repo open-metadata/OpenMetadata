@@ -114,6 +114,7 @@ export const generateSearchDropdownLabel = (
         style={{ alignItems: 'flex-start', gap: '8px' }}>
         <input
           readOnly
+          aria-label={option.label}
           checked={checked}
           data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
           style={option.description ? { marginTop: 4 } : undefined}

@@ -335,6 +335,7 @@ const QueryBuilderWidgetV1: FC<{
 
           {showFilteredResourceCount && (
             <a
+              aria-label={t('message.click-here-to-view-assets-on-explore')}
               className="tw:mt-2 tw:block tw:no-underline"
               data-testid="view-assets-banner-button"
               href={queryURL}
