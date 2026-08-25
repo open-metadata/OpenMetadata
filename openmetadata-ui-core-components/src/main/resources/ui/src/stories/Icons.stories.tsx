@@ -73,7 +73,8 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
           onChange={(e) => setSearch(e.target.value)}
         />
         {query && (
-          <span style={{ color: '#667085', fontSize: '12px', marginLeft: '10px' }}>
+          <span
+            style={{ color: '#667085', fontSize: '12px', marginLeft: '10px' }}>
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -95,7 +96,6 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
           {filtered.map(([name, Icon]) => (
             <button
               key={name}
-              title={`Click to copy import for ${name}`}
               style={{
                 alignItems: 'center',
                 background: copied === name ? '#f0fdf4' : '#fff',
@@ -108,6 +108,7 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                 padding: '10px 6px',
                 transition: 'border-color 0.1s',
               }}
+              title={`Click to copy import for ${name}`}
               onClick={() => handleCopy(name)}>
               <Icon
                 color={copied === name ? '#16a34a' : '#344054'}
