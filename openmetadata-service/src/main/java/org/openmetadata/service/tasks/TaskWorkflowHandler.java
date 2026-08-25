@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -84,6 +85,9 @@ public class TaskWorkflowHandler {
   static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 50L;
   static final long DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS =
       (DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS - 1) * DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS;
+
+  /** Suggestion payload {@code source} marking a suggestion an agent produced. */
+  private static final String AGENT_SUGGESTION_SOURCE = "Agent";
 
   private static TaskWorkflowHandler instance;
   private final int runtimeTaskReadinessAttempts;
@@ -260,28 +264,33 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    // Resolve in Flowable workflow
+    // Resolve in Flowable workflow. A null namespace map means the runtime user task never
+    // materialised (async advance timed out) — completing with no variables would drop the
+    // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
-    boolean workflowSuccess = workflowHandler.resolveTask(taskId, namespacedVariables);
+    boolean workflowSuccess =
+        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
+        // Workflow-managed Metric tasks must not bypass their approval workflow when the runtime
+        // task disappears between the readiness check and resolution.
         if (requiresRuntimeTaskReadiness) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format(
                   "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
                   taskId,
                   transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
         }
         if (resolutionType == null) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format(
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
         if (TaskRepository.isTerminalStatus(task.getStatus())) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
         LOG.warn(
@@ -290,7 +299,7 @@ public class TaskWorkflowHandler {
         return applyTaskResolution(
             task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
       }
-      throw new IllegalStateException(
+      throw TaskStateConflictException.of(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
@@ -1100,6 +1109,24 @@ public class TaskWorkflowHandler {
     }
   }
 
+  /**
+   * Whether the text being applied is what the agent actually proposed.
+   *
+   * <p>The payload here is the reviewer's resolution merged over the task's, and the merge keeps the
+   * original {@code source} — so a reviewer who rewrote the text still arrives labelled
+   * {@code Agent}. Comparing against the task's own suggestion separates the two.
+   */
+  private boolean isAgentAuthored(Task task, JsonNode payloadNode, String appliedValue) {
+    boolean agentSourced =
+        AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null));
+    String proposed =
+        Optional.ofNullable(task)
+            .map(Task::getPayload)
+            .map(payload -> JsonUtils.valueToTree(payload).path("suggestedValue").asText(null))
+            .orElse(null);
+    return agentSourced && (proposed == null || proposed.equals(appliedValue));
+  }
+
   private void applySuggestion(
       Task task,
       Object payload,
@@ -1123,7 +1150,7 @@ public class TaskWorkflowHandler {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
           String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-          if (changeSummaryField != null) {
+          if (changeSummaryField != null && isAgentAuthored(task, payloadNode, suggestedValue)) {
             repository.patchChangeSummary(
                 entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
           }
@@ -1134,7 +1161,12 @@ public class TaskWorkflowHandler {
         }
         boolean success =
             FieldPathUtils.updateFieldDescription(
-                entity, repository, user, fieldPath, suggestedValue);
+                entity,
+                repository,
+                user,
+                fieldPath,
+                suggestedValue,
+                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
         if (success) {
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
@@ -1146,21 +1178,12 @@ public class TaskWorkflowHandler {
         List<TagLabel> tags =
             JsonUtils.readValue(suggestedValue, new TypeReference<List<TagLabel>>() {});
         if (tags != null && !tags.isEmpty()) {
-          boolean isEntityLevel =
-              fieldPath == null
-                  || fieldPath.isEmpty()
-                  || fieldPath.equals("description")
-                  || !fieldPath.contains("::");
-
-          if (isEntityLevel) {
+          // Reuse the same field-path resolution as applyTagUpdate so both "::" and dot-form
+          // paths (e.g. columns.customer_id.tags) land on the suggested field, not the parent.
+          if (isEntityLevelTagPath(fieldPath)) {
             applyEntityLevelTags(entity, repository, user, tags);
-          } else {
-            String[] parts = fieldPath.split("::");
-            String targetFqn = entity.getFullyQualifiedName();
-            if (parts.length >= 2) {
-              targetFqn = entity.getFullyQualifiedName() + "." + parts[1];
-            }
-            repository.applyTags(tags, targetFqn);
+          } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
+            repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",

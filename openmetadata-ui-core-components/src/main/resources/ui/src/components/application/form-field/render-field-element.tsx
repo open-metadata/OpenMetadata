@@ -198,6 +198,14 @@ export const renderFieldElement = (
           value={field.value ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}
@@ -222,6 +230,14 @@ export const renderFieldElement = (
           value={field.value ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}
@@ -245,6 +261,14 @@ export const renderFieldElement = (
           value={field.value ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}
@@ -269,6 +293,14 @@ export const renderFieldElement = (
           value={field.value ?? props.initialValue ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}

@@ -71,6 +71,7 @@ public class CreateTagTool implements McpTool {
 
     final TagRepository repo = (TagRepository) Entity.getEntityRepository(Entity.TAG);
     repo.prepareInternal(entity, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.TAG, entity);
 
     final String userName = CommonUtils.principal(securityContext);
     // createOrUpdate silently overwrites an existing tag at this FQN — tools.json marks

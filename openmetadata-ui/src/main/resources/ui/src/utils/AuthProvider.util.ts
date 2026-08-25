@@ -64,11 +64,21 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
+    // Forward the server-configured response type; without it the oidc-client
+    // UserManager silently drops the field and every provider requests the
+    // implicit 'id_token' flow regardless of configuration (#29597).
+    response_type: responseType ?? 'id_token',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -88,7 +98,13 @@ export const getUserManagerConfig = (
 export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
   const testStore = new WebStorageStateStore({
     store: globalThis.localStorage,
     prefix: SSO_TEST_LOGIN_STORE_PREFIX,
@@ -98,7 +114,7 @@ export const getCandidateUserManagerConfig = (
     authority,
     client_id: clientId,
     redirect_uri: getRedirectUri(callbackUrl),
-    response_type: 'id_token',
+    response_type: responseType ?? 'id_token',
     scope: scope || 'openid email profile',
     loadUserInfo: false,
     userStore: testStore,
@@ -177,6 +193,7 @@ export const getAuthConfig = (
       };
 
       break;
+    // eslint-disable-next-line sonarjs/no-duplicated-branches -- distinct auth provider; config kept separate
     case AuthProvider.AwsCognito:
       config = {
         authority,
@@ -184,7 +201,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType: 'code',
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,

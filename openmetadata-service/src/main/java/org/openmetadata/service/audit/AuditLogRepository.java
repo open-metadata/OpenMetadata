@@ -27,6 +27,7 @@ import org.openmetadata.service.events.AuditLogger;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -150,7 +151,9 @@ public class AuditLogRepository {
    */
   public void writeAuthEvent(EventType eventType, String userName, UUID userId) {
     AsyncService.getInstance()
-        .execute(
+        .executeDatabaseTask(
+            DatabaseOperation.AUDIT_LOG,
+            eventType + ":" + userName,
             () -> {
               ChangeEvent changeEvent =
                   new ChangeEvent()

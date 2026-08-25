@@ -40,7 +40,11 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
   private Include include;
   private Fields requestedFields;
+  private final Set<String> loadedFieldNames = new HashSet<>();
   private RelationIncludes relationIncludes;
+  // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
+  // of once per entity. Null for single-entity requests, which keep the per-entity load.
+  private BulkFieldHydrator bulkFieldHydrator;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -110,6 +114,21 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.entityRepository = repository;
   }
 
+  /**
+   * Bulk-authorization variant: {@code bulkFieldHydrator} is shared by every {@link ResourceContext}
+   * in one bulk request. The first entity whose policy reads an on-demand field batch-loads it for
+   * the whole request; later reads are no-ops. Omitting it (the constructor above) keeps the
+   * per-entity on-demand load used by single-entity requests.
+   */
+  public ResourceContext(
+      @NonNull String resource,
+      T entity,
+      EntityRepository<T> repository,
+      BulkFieldHydrator bulkFieldHydrator) {
+    this(resource, entity, repository);
+    this.bulkFieldHydrator = bulkFieldHydrator;
+  }
+
   @Override
   public List<EntityReference> getOwners() {
     resolveEntity();
@@ -167,7 +186,40 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   @Override
   public List<TagLabel> getTags() {
     resolveEntity();
-    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
+    if (entity == null) {
+      return Collections.emptyList();
+    }
+    ensureTagsLoaded();
+    return Entity.getEntityTags(getResource(), entity);
+  }
+
+  /**
+   * Populates tags on the already-resolved entity. Tags are the one policy attribute with unbounded
+   * cardinality — a heavily tagged table can carry tens of thousands — so they are excluded from the
+   * authorization load and fetched only when a condition actually reads them. A deployment whose
+   * policies use no tag conditions therefore never pays for them. The fields are applied to the
+   * existing instance, so this adds no entity reload.
+   */
+  // Package-private so the bulk batch-vs-per-entity routing can be unit-tested directly.
+  void ensureTagsLoaded() {
+    if (!loadedFieldNames.contains(Entity.FIELD_TAGS) && entityRepository.isSupportsTags()) {
+      if (bulkFieldHydrator != null) {
+        bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
+      } else {
+        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+      }
+      loadedFieldNames.add(Entity.FIELD_TAGS);
+    }
+  }
+
+  @Override
+  public EntityInterface getResolvedEntity() {
+    return entity;
+  }
+
+  @Override
+  public Set<String> getLoadedFields() {
+    return Collections.unmodifiableSet(loadedFieldNames);
   }
 
   @Override
@@ -194,13 +246,11 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         fieldList = entityRepository.getPatchFields();
       } else if (operation == ResourceContextInterface.Operation.PUT) {
         fieldList = entityRepository.getPutFields();
-      } else if (requestedFields != null) {
-        fieldList = requestedFields;
       } else {
-        fieldList = Fields.EMPTY_FIELDS;
+        fieldList = authorizationFields();
       }
-      fieldList = withPolicyEvaluationFields(fieldList);
 
+      loadedFieldNames.addAll(fieldList.getFieldList());
       Include includeToUse = resolveInclude();
       boolean fromCache = useRepositoryCache();
       if (relationIncludesToUse == null) {
@@ -221,21 +271,40 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return entity;
   }
 
-  Fields withPolicyEvaluationFields(Fields requested) {
-    Set<String> fields = new HashSet<>(requested.getFieldList());
+  /**
+   * Bounded policy attributes the entity must carry for evaluation. These are always loaded so a
+   * condition can never read an attribute as absent merely because the caller did not request it —
+   * an unloaded attribute makes a conditional rule misfire in both directions (isOwner reads false
+   * and a Deny fails open; noOwner reads true and a Deny over-blocks). Tags are deliberately absent
+   * here and fetched on demand by {@link #ensureTagsLoaded()} because their cardinality is
+   * unbounded. Caller-requested fields are unioned on top rather than replaced, so the decision
+   * never sees less than it did before.
+   */
+  private Fields authorizationFields() {
+    String fields = "";
     if (entityRepository.isSupportsOwners()) {
-      fields.add(Entity.FIELD_OWNERS);
-    }
-    if (entityRepository.isSupportsTags()) {
-      fields.add(Entity.FIELD_TAGS);
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
     }
     if (entityRepository.isSupportsDomains()) {
-      fields.add(Entity.FIELD_DOMAINS);
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
     }
     if (entityRepository.isSupportsReviewers()) {
-      fields.add(Entity.FIELD_REVIEWERS);
+      fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
     }
-    return new Fields(fields);
+    // Requested explicitly rather than riding along with tags: setFields populates certification
+    // when either tags or certification is present, so excluding tags from this set would leave
+    // matchAnyCertification reading null and its Deny rule failing open.
+    if (entityRepository.isSupportsCertification()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_CERTIFICATION);
+    }
+    Fields securityFields = entityRepository.getFields(fields);
+    Fields result = securityFields;
+    if (requestedFields != null) {
+      Set<String> merged = new HashSet<>(securityFields.getFieldList());
+      merged.addAll(requestedFields.getFieldList());
+      result = new Fields(merged);
+    }
+    return result;
   }
 
   private Include resolveInclude() {

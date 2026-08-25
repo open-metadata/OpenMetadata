@@ -2,8 +2,11 @@ package org.openmetadata.service.jobs;
 
 import io.dropwizard.lifecycle.Managed;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,12 +30,20 @@ public class GenericBackgroundWorker implements Managed {
   // prevents double execution across pool threads and across servers.
   public static final int WORKER_POOL_SIZE = 3;
 
+  // How often this server stamps updatedAt on the jobs it is running. The cleanup
+  // sweeper treats a job with no recent heartbeat as orphaned, so this must stay
+  // comfortably below CsvAsyncJobManager.RUNNING_JOB_STALE_AFTER.
+  private static final long HEARTBEAT_SECONDS = 60L;
+
   private final JobDAO jobDao;
   private final JobHandlerRegistry handlerRegistry;
   private final Semaphore workerSlots = new Semaphore(WORKER_POOL_SIZE);
+  // Bounded by WORKER_POOL_SIZE — a job is added when claimed and removed when it finishes.
+  private final Set<Long> inFlightJobIds = ConcurrentHashMap.newKeySet();
   private volatile boolean running = true;
   private Thread pollerThread;
   private ExecutorService workerPool;
+  private ScheduledExecutorService heartbeatScheduler;
 
   public GenericBackgroundWorker(JobDAO jobDao, JobHandlerRegistry handlerRegistry) {
     this.jobDao = jobDao;
@@ -44,14 +55,45 @@ public class GenericBackgroundWorker implements Managed {
     LOG.info("Starting background job worker with {} executor threads", WORKER_POOL_SIZE);
     running = true;
     workerPool = createWorkerPool();
+    heartbeatScheduler = createHeartbeatScheduler();
     pollerThread = new Thread(this::runWorker, "background-job-poller");
     pollerThread.setDaemon(true);
     pollerThread.start();
   }
 
+  private ScheduledExecutorService createHeartbeatScheduler() {
+    ScheduledExecutorService scheduler =
+        Executors.newSingleThreadScheduledExecutor(
+            runnable -> {
+              Thread thread = new Thread(runnable, "background-job-heartbeat");
+              thread.setDaemon(true);
+              return thread;
+            });
+    scheduler.scheduleWithFixedDelay(
+        this::heartbeatInFlightJobs, HEARTBEAT_SECONDS, HEARTBEAT_SECONDS, TimeUnit.SECONDS);
+    return scheduler;
+  }
+
+  // Tells the cluster these jobs still have a live owner. Without it a long export
+  // that reports no progress for a while — the gather phase of a large recursive
+  // export, say — would look orphaned and be failed out from under itself.
+  private void heartbeatInFlightJobs() {
+    long now = System.currentTimeMillis();
+    for (Long jobId : inFlightJobIds) {
+      try {
+        jobDao.touchJob(jobId, now);
+      } catch (Exception e) {
+        LOG.warn("Failed to heartbeat background job {}", jobId, e);
+      }
+    }
+  }
+
   @Override
   public void stop() {
     running = false;
+    if (heartbeatScheduler != null) {
+      heartbeatScheduler.shutdownNow();
+    }
     if (pollerThread != null) {
       pollerThread.interrupt();
       try {
@@ -145,12 +187,14 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   private void runClaimedJob(BackgroundJob job) {
+    inFlightJobIds.add(job.getId());
     try {
       processJob(job);
     } catch (Exception e) {
       LOG.error("Background Job {} failed with unexpected error", job.getId(), e);
       jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
     } finally {
+      inFlightJobIds.remove(job.getId());
       workerSlots.release();
     }
   }

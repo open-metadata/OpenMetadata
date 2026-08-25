@@ -62,7 +62,10 @@ import type { ChangeEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth.component';
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill.component';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -501,7 +504,10 @@ const MetricListPage = () => {
     try {
       setIsMetricActionsOpen(false);
       setIsExporting(true);
-      await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      const exportJob = await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      // Claim the just-started job so the tray always surfaces it, even if it
+      // finishes before the tray's first fetch.
+      markCsvJobOwned((exportJob as { jobId?: string })?.jobId);
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -869,7 +875,7 @@ const MetricListPage = () => {
           const metric = row;
 
           return (
-            <Table.Row id={row.id} key={row.id}>
+            <Table.Row className="tw:cursor-pointer" id={row.id} key={row.id}>
               <Table.Cell>{renderMetricName(metric, depth)}</Table.Cell>
               {visibleColumns.includes('description') && (
                 <Table.Cell>
@@ -1234,17 +1240,21 @@ const MetricListPage = () => {
                 </Badge>
                 <Button
                   color="link-gray"
+                  data-testid="clear-metric-selection"
                   iconLeading={XClose}
                   onPress={() => setSelectedMetricIds([])}>
                   {t('label.clear')}
                 </Button>
                 {permission.EditAll && (
                   <Button
+                    className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
                     color="link-color"
                     data-testid="bulk-edit-metric"
                     iconLeading={Edit03}
                     onPress={handleBulkEdit}>
-                    {t('label.edit')}
+                    {t('label.bulk-edit-count', {
+                      count: selectedMetricIds.length,
+                    })}
                   </Button>
                 )}
                 {permission.Delete && (
@@ -1279,7 +1289,7 @@ const MetricListPage = () => {
               {!selectedMetricIds.length && (
                 <>
                   <Dropdown.Root>
-                    <Button color="link-gray" iconTrailing={ChevronDown}>
+                    <Button color="link-color" iconTrailing={ChevronDown}>
                       {statusFilter
                         ? getStatusLabel(statusFilter)
                         : t('label.status')}
@@ -1305,11 +1315,12 @@ const MetricListPage = () => {
                   </Dropdown.Root>
                   {permission.EditAll && (
                     <Button
+                      className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                       color="link-color"
                       data-testid="bulk-edit-metric"
                       iconLeading={Edit03}
                       onPress={handleBulkEdit}>
-                      {t('label.edit')}
+                      {t('label.bulk-edit-all')}
                     </Button>
                   )}
                   <span
@@ -1367,7 +1378,10 @@ const MetricListPage = () => {
                     className="tw:h-5 tw:w-px tw:bg-border-secondary"
                   />
                   <Dropdown.Root>
-                    <Button color="link-color" iconLeading={Settings01}>
+                    <Button
+                      className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
+                      color="link-color"
+                      iconLeading={Settings01}>
                       {t('label.customize')}
                     </Button>
                     <Dropdown.Popover>

@@ -183,7 +183,9 @@ export const applyProgressToAgent = (
     fields = buildRunningFields(agent, update);
   }
 
-  return { ...agent, ...fields };
+  // The event names the run it belongs to, which is how a run that started
+  // while the page was open becomes tailable without refetching the pipeline.
+  return { ...agent, ...fields, currentRunId: update.runId };
 };
 
 /**

@@ -417,7 +417,7 @@ test.describe(
         );
 
         // Assign second domain (should REPLACE first, not add to it)
-        await assignDomainWidget(page, testDomain2.responseData);
+        await assignDomainWidget(page, testDomain2.responseData, false, true);
 
         // Verify second domain is visible
         await expect(page.getByTestId('domain-link')).toContainText(

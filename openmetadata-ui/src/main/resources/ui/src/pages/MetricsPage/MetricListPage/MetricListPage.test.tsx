@@ -316,7 +316,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onChange,
       ...props
     }: React.InputHTMLAttributes<HTMLInputElement>) => (
-      <input {...props} onChange={onChange} />
+      <input aria-label="Search" {...props} onChange={onChange} />
     ),
     Modal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     ModalOverlay: ({
@@ -582,7 +582,7 @@ describe('MetricListPage', () => {
   });
 
   it('shows loading, empty, no-permission, and retryable error states', async () => {
-    let resolvePermission: (value: unknown) => void = () => undefined;
+    let resolvePermission: (value: unknown) => void = (_value) => undefined;
     mockGetResourcePermission.mockReturnValueOnce(
       new Promise((resolve) => {
         resolvePermission = resolve;

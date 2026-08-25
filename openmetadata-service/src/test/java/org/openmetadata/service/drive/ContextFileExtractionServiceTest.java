@@ -51,6 +51,8 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 @ExtendWith(MockitoExtension.class)
 class ContextFileExtractionServiceTest {
 
+  private static final String UPLOADER = "test.user";
+
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
   @Mock private AssetRepository assetRepository;
@@ -78,7 +80,8 @@ class ContextFileExtractionServiceTest {
             .withFileType(ContextFileType.PDF)
             .withFileExtension("pdf")
             .withHeadContentId(contentId.toString())
-            .withProcessingStatus(ProcessingStatus.Uploaded);
+            .withProcessingStatus(ProcessingStatus.Uploaded)
+            .withUpdatedBy(UPLOADER);
 
     content =
         new ContextFileContent()
@@ -86,7 +89,8 @@ class ContextFileExtractionServiceTest {
             .withName("v1")
             .withAssetId("asset-1")
             .withContextFile(file.getEntityReference())
-            .withProcessingStatus(ProcessingStatus.Uploaded);
+            .withProcessingStatus(ProcessingStatus.Uploaded)
+            .withUpdatedBy(UPLOADER);
 
     asset = new Asset();
     asset.setId("asset-1");
@@ -112,9 +116,9 @@ class ContextFileExtractionServiceTest {
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
     verify(repository, times(2))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
     verify(contentRepository, times(2))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), eq(UPLOADER));
 
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());

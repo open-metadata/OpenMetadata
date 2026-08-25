@@ -56,7 +56,10 @@ jest.mock(
         .mockImplementation(({ children, onUpdate }) => (
           <div
             data-testid="user-selectable-list"
-            onClick={() => onUpdate({ id: 'ID', type: 'user' })}>
+            role="button"
+            tabIndex={0}
+            onClick={() => onUpdate({ id: 'ID', type: 'user' })}
+            onKeyDown={() => onUpdate({ id: 'ID', type: 'user' })}>
             {children}
           </div>
         )),

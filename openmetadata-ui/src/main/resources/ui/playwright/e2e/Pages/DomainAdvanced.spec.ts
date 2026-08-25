@@ -160,11 +160,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain1.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain1.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -184,11 +186,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'replace',
-            path: '/domains/0',
-            value: {
-              id: domain2.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain2.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -232,11 +236,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -246,11 +252,13 @@ test.describe('Move Assets Between Domains', () => {
         patchData: [
           {
             op: 'replace',
-            path: '/domains/0',
-            value: {
-              id: subDomain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: subDomain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -313,7 +321,7 @@ test.describe('Subdomain Permissions', () => {
         resources: ['All'],
         operations: ['ViewAll', 'EditDescription'],
         effect: 'allow',
-        condition: `hasDomain('${domain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -647,11 +655,13 @@ test.describe('Cross-Domain Access Denial', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: accessibleDomain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: accessibleDomain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -661,11 +671,13 @@ test.describe('Cross-Domain Access Denial', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: inaccessibleDomain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: inaccessibleDomain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -678,7 +690,7 @@ test.describe('Cross-Domain Access Denial', () => {
         resources: ['All'],
         operations: ['ViewAll'],
         effect: 'allow',
-        condition: `hasDomain('${accessibleDomain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -855,11 +867,13 @@ test.describe('Data Product Asset Management', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -952,11 +966,13 @@ test.describe('Domain Search and Filter', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });

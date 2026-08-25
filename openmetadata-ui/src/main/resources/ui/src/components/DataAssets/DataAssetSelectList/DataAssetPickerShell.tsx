@@ -222,6 +222,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           {searchable && (
             <Box>
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
                 autoFocus
                 className="tw:w-full"
                 icon={SearchLg}
@@ -232,7 +233,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                   t('label.search-entity', { entity: t('label.asset-plural') })
                 }
                 value={searchText}
-                wrapperClassName="tw:rounded-none tw:bg-transparent tw:shadow-none"
+                wrapperClassName="tw:rounded-none tw:bg-transparent! tw:shadow-none! tw:outline-0!"
                 onChange={(value) => onSearchChange?.(value)}
               />
             </Box>

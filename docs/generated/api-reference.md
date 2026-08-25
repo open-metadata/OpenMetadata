@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1770 endpoints** across 73 resource packages · 1760 carry a summary.
+**1781 endpoints** across 74 resource packages · 1771 carry a summary.
 
 ## (root)
 
@@ -34,6 +34,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/activity/count` | Get activity event count |
 | `GET` | `/v1/activity/entity/{entityType}/name/{fqn}` | Get activity for a specific entity by fully qualified name |
 | `GET` | `/v1/activity/entity/{entityType}/{entityId}` | Get activity for a specific entity by ID |
+| `GET` | `/v1/activity/following` | Get activity feed for entities the current user follows |
 | `GET` | `/v1/activity/my-feed` | Get personalized activity feed for current user |
 | `GET` | `/v1/activity/user/{userId}` | Get activity by a specific user |
 | `DELETE` | `/v1/activity/{id}/reaction/{reactionType}` | Remove a reaction from an activity event |
@@ -198,7 +199,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/apiCollections` | Create or update API Collection |
 | `DELETE` | `/v1/apiCollections/async/{id}` | Asynchronously delete a API Collection by Id |
 | `PUT` | `/v1/apiCollections/bulk` | Bulk create or update API collections |
-| `PUT` | `/v1/apiCollections/deleteStale` | Delete stale apicollections within a scope |
+| `DELETE` | `/v1/apiCollections/deleteStale` | Delete stale apicollections within a scope |
 | `DELETE` | `/v1/apiCollections/name/{fqn}` | Delete a API Collection by fully qualified name |
 | `GET` | `/v1/apiCollections/name/{fqn}` | Get a APICollection by fully qualified name |
 | `PATCH` | `/v1/apiCollections/name/{fqn}` | Update a APICollection by name. |
@@ -214,7 +215,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/apiEndpoints` | Update API Endpoint |
 | `DELETE` | `/v1/apiEndpoints/async/{id}` | Asynchronously delete a APIEndpoint by id |
 | `PUT` | `/v1/apiEndpoints/bulk` | Bulk create or update API endpoints |
-| `PUT` | `/v1/apiEndpoints/deleteStale` | Delete stale apiendpoints within a scope |
+| `DELETE` | `/v1/apiEndpoints/deleteStale` | Delete stale apiendpoints within a scope |
 | `DELETE` | `/v1/apiEndpoints/name/{fqn}` | Delete a APIEndpoint by fully qualified name |
 | `GET` | `/v1/apiEndpoints/name/{fqn}` | Get a Endpoint by fully qualified name. |
 | `PATCH` | `/v1/apiEndpoints/name/{fqn}` | Update a APIEndpoint using name. |
@@ -286,6 +287,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `GET` | `/v1/audit/logs` | List audit log events |
 | `GET` | `/v1/audit/logs/export` | Export audit log events as JSON (async) |
+| `GET` | `/v1/audit/logs/export/{jobId}` | Get the status of an audit log export job |
 | `GET` | `/v1/audit/logs/export/{jobId}/result` | Download a completed audit log export |
 
 ## automations
@@ -334,7 +336,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/charts` | Create or update chart |
 | `DELETE` | `/v1/charts/async/{id}` | Asynchronously delete a chart by Id |
 | `PUT` | `/v1/charts/bulk` | Bulk create or update charts |
-| `PUT` | `/v1/charts/deleteStale` | Delete stale charts within a scope |
+| `DELETE` | `/v1/charts/deleteStale` | Delete stale charts within a scope |
 | `DELETE` | `/v1/charts/name/{fqn}` | Delete a chart by fully qualified name |
 | `GET` | `/v1/charts/name/{fqn}` | Get a chart by fully qualified name |
 | `PATCH` | `/v1/charts/name/{fqn}` | Update a chart by name. |
@@ -399,7 +401,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/dashboards` | Create or update a dashboard |
 | `DELETE` | `/v1/dashboards/async/{id}` | Asynchronously delete a dashboard by Id |
 | `PUT` | `/v1/dashboards/bulk` | Bulk create or update dashboards |
-| `PUT` | `/v1/dashboards/deleteStale` | Delete stale dashboards within a scope |
+| `DELETE` | `/v1/dashboards/deleteStale` | Delete stale dashboards within a scope |
 | `DELETE` | `/v1/dashboards/name/{fqn}` | Delete a dashboard by fully qualified name |
 | `GET` | `/v1/dashboards/name/{fqn}` | Get a dashboard by fully qualified name |
 | `PATCH` | `/v1/dashboards/name/{fqn}` | Update a dashboard by name. |
@@ -463,7 +465,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/databaseSchemas` | Create or update schema |
 | `DELETE` | `/v1/databaseSchemas/async/{id}` | Asynchronously delete a schema by Id |
 | `PUT` | `/v1/databaseSchemas/bulk` | Bulk create or update databaseSchemas |
-| `PUT` | `/v1/databaseSchemas/deleteStale` | Delete stale databaseschemas within a scope |
+| `DELETE` | `/v1/databaseSchemas/deleteStale` | Delete stale databaseschemas within a scope |
 | `GET` | `/v1/databaseSchemas/entityRelationship` | Search Schema Entity Relationship |
 | `DELETE` | `/v1/databaseSchemas/name/{fqn}` | Delete a schema by fully qualified name |
 | `GET` | `/v1/databaseSchemas/name/{fqn}` | Get a schema by fully qualified name |
@@ -489,7 +491,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/databases` | Create or update database |
 | `DELETE` | `/v1/databases/async/{id}` | Asynchronously delete a database by Id |
 | `PUT` | `/v1/databases/bulk` | Bulk create or update databases |
-| `PUT` | `/v1/databases/deleteStale` | Delete stale databases within a scope |
+| `DELETE` | `/v1/databases/deleteStale` | Delete stale databases within a scope |
 | `DELETE` | `/v1/databases/name/{fqn}` | Delete a database by fully qualified name |
 | `GET` | `/v1/databases/name/{fqn}` | Get a database by fully qualified name |
 | `PATCH` | `/v1/databases/name/{fqn}` | Update a database by name. |
@@ -514,7 +516,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/storedProcedures` | Create or update Stored Procedure |
 | `DELETE` | `/v1/storedProcedures/async/{id}` | Asynchronously delete a StoredProcedure by Id |
 | `PUT` | `/v1/storedProcedures/bulk` | Bulk create or update storedProcedures |
-| `PUT` | `/v1/storedProcedures/deleteStale` | Delete stale storedprocedures within a scope |
+| `DELETE` | `/v1/storedProcedures/deleteStale` | Delete stale storedprocedures within a scope |
 | `DELETE` | `/v1/storedProcedures/name/{fqn}` | Delete a schema by fully qualified name |
 | `GET` | `/v1/storedProcedures/name/{fqn}` | Get a Stored Procedure by fully qualified name |
 | `PATCH` | `/v1/storedProcedures/name/{fqn}` | Update a Stored Procedure by name. |
@@ -532,7 +534,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/tables` | Create or update a table |
 | `DELETE` | `/v1/tables/async/{id}` | Asynchronously delete a table by Id |
 | `PUT` | `/v1/tables/bulk` | Bulk create or update tables |
-| `PUT` | `/v1/tables/deleteStale` | Delete stale tables within a scope |
+| `DELETE` | `/v1/tables/deleteStale` | Delete stale tables within a scope |
 | `GET` | `/v1/tables/entityRelationship` | Search Entity Relationship |
 | `GET` | `/v1/tables/entityRelationship/{direction}` | Search entity relationship with Direction |
 | `DELETE` | `/v1/tables/name/{fqn}` | Delete a table by fully qualified name |
@@ -616,7 +618,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/dashboard/datamodels` | Create or update dashboard datamodel |
 | `DELETE` | `/v1/dashboard/datamodels/async/{id}` | Asynchronously delete a data model by `id`. |
 | `PUT` | `/v1/dashboard/datamodels/bulk` | Bulk create or update dashboardDataModels |
-| `PUT` | `/v1/dashboard/datamodels/deleteStale` | Delete stale dashboarddatamodels within a scope |
+| `DELETE` | `/v1/dashboard/datamodels/deleteStale` | Delete stale dashboarddatamodels within a scope |
 | `DELETE` | `/v1/dashboard/datamodels/name/{fqn}` | Delete a data model by fully qualified name. |
 | `GET` | `/v1/dashboard/datamodels/name/{fqn}` | Get a dashboard datamodel by fully qualified name |
 | `PATCH` | `/v1/dashboard/datamodels/name/{fqn}` | Update a dashboard datamodel by name. |
@@ -842,6 +844,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/directories` | Create or update a directory |
 | `DELETE` | `/v1/drives/directories/async/{id}` | Asynchronously delete a directory by Id |
 | `PUT` | `/v1/drives/directories/bulk` | Bulk create or update directories |
+| `DELETE` | `/v1/drives/directories/deleteStale` | Delete stale directories within a scope |
 | `GET` | `/v1/drives/directories/export` | Export directories to CSV |
 | `POST` | `/v1/drives/directories/import` | Import directory from CSV |
 | `DELETE` | `/v1/drives/directories/name/{fqn}` | Delete a directory by fully qualified name |
@@ -862,6 +865,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/files` | Create or update a file |
 | `DELETE` | `/v1/drives/files/async/{id}` | Asynchronously delete a file by Id |
 | `PUT` | `/v1/drives/files/bulk` | Bulk create or update files |
+| `DELETE` | `/v1/drives/files/deleteStale` | Delete stale files within a scope |
 | `DELETE` | `/v1/drives/files/name/{fqn}` | Delete a file by fully qualified name |
 | `GET` | `/v1/drives/files/name/{fqn}` | Get a file by fully qualified name |
 | `PATCH` | `/v1/drives/files/name/{fqn}` | Update a file by name. |
@@ -883,6 +887,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/spreadsheets` | Create or update a spreadsheet |
 | `DELETE` | `/v1/drives/spreadsheets/async/{id}` | Asynchronously delete a spreadsheet by Id |
 | `PUT` | `/v1/drives/spreadsheets/bulk` | Bulk create or update spreadsheets |
+| `DELETE` | `/v1/drives/spreadsheets/deleteStale` | Delete stale spreadsheets within a scope |
 | `DELETE` | `/v1/drives/spreadsheets/name/{fqn}` | Delete a spreadsheet by fully qualified name |
 | `GET` | `/v1/drives/spreadsheets/name/{fqn}` | Get a spreadsheet by fully qualified name |
 | `PATCH` | `/v1/drives/spreadsheets/name/{fqn}` | Update a spreadsheet by name. |
@@ -900,6 +905,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/drives/worksheets` | Create or update a worksheet |
 | `DELETE` | `/v1/drives/worksheets/async/{id}` | Asynchronously delete a worksheet by Id |
 | `PUT` | `/v1/drives/worksheets/bulk` | Bulk create or update worksheets |
+| `DELETE` | `/v1/drives/worksheets/deleteStale` | Delete stale worksheets within a scope |
 | `DELETE` | `/v1/drives/worksheets/name/{fqn}` | Delete a worksheet by fully qualified name |
 | `GET` | `/v1/drives/worksheets/name/{fqn}` | Get a worksheet by fully qualified name |
 | `PATCH` | `/v1/drives/worksheets/name/{fqn}` | Update a worksheet by name. |
@@ -1279,7 +1285,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/mlmodels` | Create or update an ML model |
 | `DELETE` | `/v1/mlmodels/async/{id}` | Asynchronously delete an ML model by Id |
 | `PUT` | `/v1/mlmodels/bulk` | Bulk create or update ML models |
-| `PUT` | `/v1/mlmodels/deleteStale` | Delete stale mlmodels within a scope |
+| `DELETE` | `/v1/mlmodels/deleteStale` | Delete stale mlmodels within a scope |
 | `DELETE` | `/v1/mlmodels/name/{fqn}` | Delete a ML model by fully qualified name |
 | `GET` | `/v1/mlmodels/name/{fqn}` | Get an ML model by fully qualified name |
 | `PATCH` | `/v1/mlmodels/name/{fqn}` | Update an ML model by name. |
@@ -1316,7 +1322,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/pipelines` | Create or update a pipeline |
 | `DELETE` | `/v1/pipelines/async/{id}` | Asynchronously delete a pipeline by Id |
 | `PUT` | `/v1/pipelines/bulk` | Bulk create or update pipelines |
-| `PUT` | `/v1/pipelines/deleteStale` | Delete stale pipelines within a scope |
+| `DELETE` | `/v1/pipelines/deleteStale` | Delete stale pipelines within a scope |
 | `GET` | `/v1/pipelines/executionTrend` | Get pipeline execution trend |
 | `GET` | `/v1/pipelines/metrics` | Get aggregated pipeline metrics |
 | `DELETE` | `/v1/pipelines/name/{fqn}` | Delete a pipeline by fully qualified name |
@@ -1473,7 +1479,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/searchIndexes` | Update SearchIndex |
 | `DELETE` | `/v1/searchIndexes/async/{id}` | Asynchronously delete a SearchIndex by id |
 | `PUT` | `/v1/searchIndexes/bulk` | Bulk create or update search indexes |
-| `PUT` | `/v1/searchIndexes/deleteStale` | Delete stale searchindexes within a scope |
+| `DELETE` | `/v1/searchIndexes/deleteStale` | Delete stale searchindexes within a scope |
 | `DELETE` | `/v1/searchIndexes/name/{fqn}` | Delete a SearchIndex by fully qualified name |
 | `GET` | `/v1/searchIndexes/name/{fqn}` | Get a SearchIndex by fully qualified name |
 | `PATCH` | `/v1/searchIndexes/name/{fqn}` | Update a SearchIndex using name. |
@@ -1488,6 +1494,12 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/searchIndexes/{id}/versions` | List SearchIndex versions |
 | `GET` | `/v1/searchIndexes/{id}/versions/{version}` | Get a version of the SearchIndex |
 | `PUT` | `/v1/searchIndexes/{id}/vote` | Update Vote for a Entity |
+
+## services
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/overview` | Get service counts and one merged, name-sorted page of services |
 
 ## services/apiservices
 
@@ -1831,7 +1843,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/containers` | Create or update a Container |
 | `DELETE` | `/v1/containers/async/{id}` | Asynchronously delete a Container |
 | `PUT` | `/v1/containers/bulk` | Bulk create or update containers |
-| `PUT` | `/v1/containers/deleteStale` | Delete stale containers within a scope |
+| `DELETE` | `/v1/containers/deleteStale` | Delete stale containers within a scope |
 | `DELETE` | `/v1/containers/name/{fqn}` | Delete a Container by fully qualified name |
 | `GET` | `/v1/containers/name/{fqn}` | Get an Container by name |
 | `PATCH` | `/v1/containers/name/{fqn}` | Update a Container using name. |
@@ -1976,6 +1988,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/personas/name/{fqn}/context` | Get the materialized AI context for a persona by name |
 | `DELETE` | `/v1/personas/name/{name}` | Delete a Persona by name |
 | `GET` | `/v1/personas/name/{name}` | Get a Persona by name |
+| `GET` | `/v1/personas/search` | Search personas |
 | `DELETE` | `/v1/personas/{id}` | Delete a Persona by id |
 | `GET` | `/v1/personas/{id}` | Get a persona by id |
 | `PATCH` | `/v1/personas/{id}` | Update a Persona |
@@ -2071,6 +2084,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/{id}/assets` | List assets owned by this user or their teams |
 | `GET` | `/v1/users/{id}/versions` | List user versions |
 | `GET` | `/v1/users/{id}/versions/{version}` | Get a version of the user |
+| `GET` | `/v1/users/{userId}/preferences` | Get user preferences |
+| `DELETE` | `/v1/users/{userId}/preferences/{type}` | Delete a user preference |
+| `PUT` | `/v1/users/{userId}/preferences/{type}` | Create or replace a user preference |
 
 ## testsupport
 
@@ -2094,7 +2110,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/topics` | Update topic |
 | `DELETE` | `/v1/topics/async/{id}` | Asynchronously delete a topic by id |
 | `PUT` | `/v1/topics/bulk` | Bulk create or update topics |
-| `PUT` | `/v1/topics/deleteStale` | Delete stale topics within a scope |
+| `DELETE` | `/v1/topics/deleteStale` | Delete stale topics within a scope |
 | `DELETE` | `/v1/topics/name/{fqn}` | Delete a topic by fully qualified name |
 | `GET` | `/v1/topics/name/{fqn}` | Get a topic by fully qualified name |
 | `PATCH` | `/v1/topics/name/{fqn}` | Update a topic using name. |

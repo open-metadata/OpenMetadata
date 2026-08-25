@@ -306,7 +306,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(chartDetails)} title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(chartDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
@@ -24,14 +24,14 @@ import {
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
-import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
-  OPEN_METADATA,
-  servicesDisplayName,
-} from '../../../constants/Services.constant';
+  getServiceEmptyStateConfig,
+  SERVICE_EMPTY_STATE_ICON_CLASS,
+} from '../../../constants/ServiceEmptyState.constant';
+import { OPEN_METADATA } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -79,9 +79,9 @@ const Services = ({ serviceName }: ServicesProps) => {
   const { isFetchingStatus } = useAirflowStatus();
 
   const navigate = useNavigate();
-  const handleAddServiceClick = () => {
+  const handleAddServiceClick = useCallback(() => {
     navigate(connectionsRouterClassBase.getAddServicePath(serviceName));
-  };
+  }, [navigate, serviceName]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
@@ -304,40 +304,63 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName, t]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (addServicePermission && isEmpty(searchTerm) && !serviceQueryFilter) {
+    // A search or filter that matched nothing is not a first-run state — telling the user to
+    // connect their first service there would be wrong, so it keeps the plain no-data message. The
+    // deleted view is the same kind of narrowing: "no deleted services" says nothing about whether
+    // the category has any.
+    if (!isEmpty(searchTerm) || serviceQueryFilter || deleted) {
       return (
         <ErrorPlaceHolder
-          className="p-lg border-none"
-          doc={CONNECTORS_DOCS}
-          heading={t(servicesDisplayName[serviceName].key, {
-            entity: t(servicesDisplayName[serviceName].entity),
-          })}
-          permission={addServicePermission}
-          permissionValue={t('label.create-entity', {
-            entity: t(servicesDisplayName[serviceName].key, {
-              entity: t(servicesDisplayName[serviceName].entity),
-            }),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddServiceClick}
+          className="mt-24 border-none"
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
         />
       );
     }
 
+    const {
+      icon: EmptyStateIcon,
+      titleKey,
+      descriptionKey,
+    } = getServiceEmptyStateConfig(serviceName);
+
     return (
-      <ErrorPlaceHolder
-        className="mt-24 border-none"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      // EmptyPlaceholder fills its nearest positioned ancestor, so the host has to be relative.
+      <div
+        className="tw:relative tw:min-h-[400px]"
+        data-testid="services-empty-placeholder">
+        <EmptyPlaceholder
+          description={t(descriptionKey)}
+          // `footer` rather than `actions` so the button keeps the same LimitWrapper the header
+          // button has — service creation is limit-gated wherever the action appears.
+          footer={
+            addServicePermission && (
+              <LimitWrapper resource="dataAssets">
+                {/* Not `add-service-button` — that testid belongs to the header button, which is
+                    on screen at the same time, so reusing it would make the selector ambiguous. */}
+                <Button
+                  color="primary"
+                  data-testid="add-placeholder-button"
+                  size="md"
+                  onPress={handleAddServiceClick}>
+                  {t('label.add-new-entity', { entity: t('label.service') })}
+                </Button>
+              </LimitWrapper>
+            )
+          }
+          icon={<EmptyStateIcon className={SERVICE_EMPTY_STATE_ICON_CLASS} />}
+          title={t(titleKey)}
+          variant="blank"
+        />
+      </div>
     );
   }, [
     addServicePermission,
-    servicesDisplayName,
     serviceName,
     searchTerm,
     serviceQueryFilter,
-    addServicePermission,
+    deleted,
     handleAddServiceClick,
+    t,
   ]);
 
   const serviceTypeFilters = useMemo(() => {
@@ -484,7 +507,7 @@ const Services = ({ serviceName }: ServicesProps) => {
               </Col>
               <Col span={24}>
                 <div className="m-b-xss" data-testid="service-type">
-                  <label className="m-b-0">{`${t('label.type')}:`}</label>
+                  <span className="m-b-0">{`${t('label.type')}:`}</span>
                   <span className="font-normal m-l-xss text-grey-body">
                     {service.serviceType}
                   </span>

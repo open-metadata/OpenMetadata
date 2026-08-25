@@ -14,6 +14,7 @@
 import {
   Box,
   EmptyPlaceholder,
+  Skeleton,
   Table,
   TableCard,
   Tooltip,
@@ -63,6 +64,7 @@ import {
 } from '../../../../utils/IngestionListTableUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
+import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
@@ -469,7 +471,24 @@ const TestSuitePipelineTab = ({
 
             <Table.Body
               items={isLoading ? [] : dataSource}
-              renderEmptyState={() => (isLoading ? <></> : emptyPlaceholder)}>
+              renderEmptyState={() =>
+                isLoading ? (
+                  <div
+                    className="tw:p-4"
+                    data-testid="pipeline-table-loading-skeletons">
+                    {getSkeletonMockData(5).map((skeletonId) => (
+                      <Skeleton
+                        className="tw:mb-2"
+                        height={40}
+                        key={skeletonId}
+                        width="100%"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  emptyPlaceholder
+                )
+              }>
               {(item) => {
                 const record = item;
                 const testCasesCount =

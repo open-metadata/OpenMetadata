@@ -339,6 +339,9 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            # The OpenMetadata API never answers HTML, so a page here means the
+            # request reached the UI or a proxy instead of the API.
+            raise_on_html=True,
             **(additional_client_config_arguments or {}),
         )
 
@@ -822,8 +825,10 @@ class OpenMetadata(
         }
         url = f"{self.get_suffix(entity)}/deleteStale"
         try:
-            resp = self.client.put(url, json=request)
+            resp = self.client.delete(url, json=request)
         except APIError as err:
+            # A server without the endpoint routes DELETE /<collection>/deleteStale to
+            # `deleteById`, whose UUID path param rejects "deleteStale" with a 404.
             if err.status_code == 404:
                 logger.debug(
                     "deleteStale endpoint unavailable for %s; falling back to legacy delete",
@@ -1047,10 +1052,9 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run version api call. Return `true` if response is not None
+        Run version api call. Raises with an actionable message if the API is not reachable.
         """
-        raw_version = self.client.get("/system/version")["version"]
-        return raw_version is not None
+        return bool(self.get_server_version())
 
     def close(self):
         """

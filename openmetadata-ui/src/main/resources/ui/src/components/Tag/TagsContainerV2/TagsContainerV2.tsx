@@ -14,7 +14,7 @@
 import { Col, Form, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isEmpty, isEqual } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -52,7 +52,6 @@ import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.inter
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import TagsV1 from '../TagsV1/TagsV1.component';
@@ -95,7 +94,7 @@ const TagsContainerV2 = ({
     updateActiveTagDropdownKey,
   } = useGenericContext();
   const { selectedUserSuggestions } = useSuggestionsContext();
-  const [tags, setTags] = useState<TableTagsProps>();
+  const tags = useMemo(() => getFilterTags(selectedTags), [selectedTags]);
   const [internalIsEditTags, setInternalIsEditTags] = useState(false);
 
   const { isEditTags, dropdownKey } = useMemo(() => {
@@ -490,10 +489,6 @@ const TagsContainerV2 = ({
     return null;
   }, [permission, entityType, isGlossaryType, selectedUserSuggestions]);
 
-  useEffect(() => {
-    setTags(getFilterTags(selectedTags));
-  }, [selectedTags]);
-
   if (newLook) {
     return (
       <WidgetCard
@@ -507,6 +502,7 @@ const TagsContainerV2 = ({
         {/* Since WidgetCard is another component without onClick, wrapping the content in a
             div to stop propagation */}
         <div
+          role="presentation"
           onClick={(e) => {
             e.stopPropagation();
           }}>
@@ -524,6 +520,7 @@ const TagsContainerV2 = ({
       // still keep their clicks to themselves, but the padding and the gaps between chips no
       // longer swallow them. On a clickable row or card those dead spots made the whole tags
       // column look unclickable.
+      role="presentation"
       onClick={stopPropagationIfInteractive}>
       {suggestionDataRender ?? (
         <>

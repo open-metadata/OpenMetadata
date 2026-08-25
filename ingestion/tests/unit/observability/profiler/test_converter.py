@@ -18,6 +18,7 @@ from uuid import UUID
 
 import sqlalchemy
 from pytest import mark
+from snowflake.sqlalchemy import dialect as snowflake_dialect
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -84,6 +85,22 @@ def test_snowflake_case_sensitive_orm(mock_schema, mock_database, column_definit
     assert orm_table.__table_args__["schema"] == "schema"
     for name, _ in column_definition:
         assert hasattr(orm_table, name)
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="lowercase_schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="DATABASE")
+def test_snowflake_lowercase_schema_is_quoted(mock_schema, mock_database):
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="ALBUM",
+        columns=[Column(name="ID", dataType=DataType.INT)],
+        serviceType=DatabaseServiceType.Snowflake,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    compiled_query = str(sqlalchemy.select(orm_table).compile(dialect=snowflake_dialect()))
+    assert 'FROM "lowercase_schema"."ALBUM"' in compiled_query
 
 
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")

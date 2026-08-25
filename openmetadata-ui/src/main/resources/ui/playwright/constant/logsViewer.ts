@@ -15,3 +15,22 @@
 export const LOGS_VIEWER_PIPELINE_STATUS_RETRY_INTERVAL_MS = 30_000;
 
 export const LOGS_VIEWER_PIPELINE_STATUS_MAX_WAIT_MS = 5 * 60_000;
+
+/**
+ * Budget for a freshly triggered run to report its first `running` status row.
+ * Deliberately short: the live-logs test has to stay inside `test.slow()`, so a
+ * scheduler that has not started the DAG by now is a failure to report, not
+ * something to keep waiting on.
+ */
+export const LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS = 60_000;
+
+/** Delay between two reads while waiting for that first `running` row. */
+export const LOGS_VIEWER_RUNNING_STATUS_INTERVAL_MS = 2_000;
+
+/** Pipeline states that mean the run is over and can no longer be tailed. */
+export const TERMINAL_PIPELINE_STATES = [
+  'success',
+  'failed',
+  'partialSuccess',
+  'stopped',
+];

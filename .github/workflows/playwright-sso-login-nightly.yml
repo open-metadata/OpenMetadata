@@ -36,7 +36,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  group: sso-login-nightly-${{ github.ref }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
   cancel-in-progress: true
 
 jobs:
@@ -115,8 +115,15 @@ jobs:
 
       - name: Start Keycloak SAML IdP
         if: startsWith(matrix.provider.name, 'keycloak-')
+        env:
+          # Must name the host this leg's browser uses, or Keycloak answers
+          # "Invalid Request". The '-crosssite' leg fronts the IdP on 127.0.0.1.
+          KEYCLOAK_HOSTNAME: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
+          # The OM container needs to reach Keycloak by name; localhost:8080 is
+          # its own loopback. Tolerates a missing network and a repeat attach.
+          docker network connect ometa_network openmetadata-keycloak-saml || true
           timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 
       - name: Run SSO Login Spec

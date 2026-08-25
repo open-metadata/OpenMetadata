@@ -105,7 +105,12 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
         onTitleClick,
       }) => (
         <div data-testid="widget-header">
-          <span data-testid="widget-title" onClick={onTitleClick}>
+          <span
+            data-testid="widget-title"
+            role="button"
+            tabIndex={0}
+            onClick={onTitleClick}
+            onKeyDown={onTitleClick}>
             {title}
           </span>
           {isEditView && (

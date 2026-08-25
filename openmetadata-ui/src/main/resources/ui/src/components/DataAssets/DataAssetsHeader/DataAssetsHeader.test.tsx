@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -145,11 +146,19 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
 });
 
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="breadcrumb">HeaderBreadcrumb.component</div>
-    ))
+  jest.fn().mockImplementation(({ items }) => (
+    <div data-testid="breadcrumb">
+      {items.map((item: { href?: string; label: string }, index: number) =>
+        item.href ? (
+          <a href={item.href} key={index}>
+            {item.label}
+          </a>
+        ) : (
+          <span key={index}>{item.label}</span>
+        )
+      )}
+    </div>
+  ))
 );
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
@@ -344,6 +353,44 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByTestId('metric-header-info')).toHaveTextContent(
       'orders-count'
     );
+  });
+
+  it('should render an explicitly supplied breadcrumb trail', () => {
+    const tableHeaderProps = {
+      ...mockProps,
+      dataAsset: {
+        id: 'table-id',
+        name: 'orders',
+        fullyQualifiedName: 'service.database.schema.orders',
+        columns: [],
+      },
+      entityType: EntityType.TABLE,
+    } as DataAssetsHeaderProps;
+
+    render(
+      <DataAssetsHeader
+        {...tableHeaderProps}
+        breadcrumbData={[
+          {
+            name: 'Test Suites',
+            url: '/data-quality/test-suites/table-suites',
+          },
+          {
+            name: 'orders',
+            url: '/table/service.database.schema.orders/profiler/data-quality',
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'Test Suites' })).toHaveAttribute(
+      'href',
+      '/data-quality/test-suites/table-suites'
+    );
+    expect(
+      within(screen.getByTestId('breadcrumb')).getByText('orders')
+    ).not.toHaveAttribute('href');
+    expect(screen.queryByText('name')).not.toBeInTheDocument();
   });
 
   it('should call getContainerAncestors API on Page load for container assets', () => {

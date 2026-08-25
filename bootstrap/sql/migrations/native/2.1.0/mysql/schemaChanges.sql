@@ -89,3 +89,17 @@ SET @metric_group_membership_index_ddl = (
 PREPARE metric_group_membership_index_stmt FROM @metric_group_membership_index_ddl;
 EXECUTE metric_group_membership_index_stmt;
 DEALLOCATE PREPARE metric_group_membership_index_stmt;
+
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- Pairing it with relation serves every pipeline lineage path without widening the generic table schema.
+CREATE INDEX idx_entity_relationship_pipeline_relation
+ON entity_relationship (
+    (CAST(json->>'$.pipeline.id' AS CHAR(36)) COLLATE utf8mb4_bin),
+    relation
+);
+
+-- Switch Oracle services to python-oracledb's native SQLAlchemy dialect.
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
+WHERE serviceType = 'Oracle'
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';

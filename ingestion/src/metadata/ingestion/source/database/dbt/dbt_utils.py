@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.testDefinition import EntityType
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -29,6 +30,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
     DbtCommonEnum,
+    DbtTestSuccessEnum,
     RawQueriesEnum,
 )
 from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation, UpstreamNode
@@ -689,15 +691,21 @@ def get_manifest_column_name(manifest_node) -> Optional[str]:  # noqa: UP045
     return None
 
 
-def get_dbt_test_definition_name(manifest_node) -> str:
+def get_dbt_test_definition_name(manifest_node, entity_type: EntityType) -> str:
     """
     Return the dbt test type (e.g. "unique", "not_null") from
     test_metadata for generic tests. Singular tests and source freshness
     nodes have no test_metadata, so fall back to the node name.
+
+    Suffixed with entity_type so a table-scoped usage of a type (e.g. a
+    composite-key "unique" check with no single column) never shares a
+    TestDefinition with that same type's column-scoped usage - the two
+    have incompatible entityLink shapes and the server rejects the mismatch.
     """
     test_metadata = getattr(manifest_node, "test_metadata", None)
     test_type = getattr(test_metadata, "name", None) if test_metadata else None
-    return test_type or manifest_node.name
+    name = test_type or manifest_node.name
+    return name if entity_type == EntityType.COLUMN else f"{name}_{entity_type.value.lower()}"
 
 
 def get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
@@ -839,6 +847,20 @@ def get_dbt_test_primary_table_fqn(dbt_test) -> Optional[str]:  # noqa: UP045
     return primary_table_fqn
 
 
+def is_compiled_only_result(dbt_test_result) -> bool:
+    """
+    Tell a compiled-only run_results entry apart from an executed test result.
+
+    ``dbt run`` and ``dbt docs generate`` list test nodes in run_results.json with
+    the *node* status ``success`` and ``message=null`` even though no test SQL ran.
+    An executed test instead carries a *test* status (``pass``/``fail``/``warn``/
+    ``error``), and dbt leaves ``message`` null for passing tests, so ``message``
+    alone cannot be used as the discriminator (issue #29824). ``failures`` would be
+    the other signal but it is dropped by ``REQUIRED_RESULTS_KEYS`` before parsing.
+    """
+    return not dbt_test_result.message and dbt_test_result.status.value == DbtTestSuccessEnum.SUCCESS.value
+
+
 def generate_entity_link(dbt_test):
     """
     Method returns entity link for dbt test cases.
@@ -911,6 +933,18 @@ def get_dbt_model_name(manifest_node) -> str:
     Get the alias or name of the manifest node
     """
     return manifest_node.alias if hasattr(manifest_node, "alias") and manifest_node.alias else manifest_node.name
+
+
+def get_source_physical_name(manifest_node) -> str:
+    """
+    Get the warehouse table name of a dbt source node.
+
+    Sources carry no ``alias``; they name the physical table through ``identifier``, which
+    dbt lets you set independently of the logical ``name`` used in ``source()`` calls.
+    https://docs.getdbt.com/reference/resource-properties/identifier
+    """
+    identifier = getattr(manifest_node, "identifier", None)
+    return identifier or get_dbt_model_name(manifest_node)
 
 
 def get_corrected_name(name: Optional[str]):  # noqa: UP045

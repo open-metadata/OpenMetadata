@@ -144,6 +144,13 @@ def main() -> None:
             for entry in impact_map["canary"]:
                 add_selection(selected, entry, repo_root)
 
+        delegated_patterns = impact_map.get("delegatedSpecs", [])
+        selected = {
+            spec: projects
+            for spec, projects in selected.items()
+            if not matches(spec, delegated_patterns)
+        }
+
         plan = {
             "version": 1,
             "mode": "targeted",
