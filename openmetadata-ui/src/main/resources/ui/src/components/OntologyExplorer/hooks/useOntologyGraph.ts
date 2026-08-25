@@ -666,11 +666,12 @@ export function useOntologyGraph({
       if (!comboId) {
         return;
       }
-      if (!nodesByCombo.has(comboId)) {
-        nodesByCombo.set(comboId, []);
+      let comboNodes = nodesByCombo.get(comboId);
+      if (!comboNodes) {
+        comboNodes = [];
+        nodesByCombo.set(comboId, comboNodes);
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
-      nodesByCombo.get(comboId)!.push(node);
+      comboNodes.push(node);
     });
 
     const updates: NodeData[] = [];
