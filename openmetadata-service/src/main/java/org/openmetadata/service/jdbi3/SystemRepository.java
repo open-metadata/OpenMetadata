@@ -1136,6 +1136,10 @@ public class SystemRepository {
     boolean reindexNeeded() {
       return !stalePending.isEmpty() || !missingIndexes.isEmpty();
     }
+
+    boolean passed() {
+      return driftComputed && !reindexNeeded() && clusterHealthy;
+    }
   }
 
   static ReindexStatus classifyReindexStatus(
@@ -1270,8 +1274,7 @@ public class SystemRepository {
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
       SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
-      boolean healthy = status.driftComputed() && !status.reindexNeeded();
-      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
+      result = step.withPassed(status.passed()).withMessage(buildReindexStatusMessage(status));
     } else {
       result =
           step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");

@@ -109,6 +109,34 @@ class SystemRepositoryReindexStatusTest {
   }
 
   @Test
+  void degradedClusterFailsEvenWhenNoReindexNeeded() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), false, true);
+    assertFalse(status.passed());
+  }
+
+  @Test
+  void cleanUpToDateHealthyClusterPasses() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
+    assertTrue(status.passed());
+  }
+
+  @Test
+  void reindexNeededFailsEvenWhenClusterHealthy() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of("dashboard"), 0, List.of(), List.of(), true, true);
+    assertFalse(status.passed());
+  }
+
+  @Test
+  void driftComputeFailureFailsEvenWhenClusterHealthy() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
+    assertFalse(status.passed());
+  }
+
+  @Test
   void driftComputeFailureIsNotReportedAsUpToDate() {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
