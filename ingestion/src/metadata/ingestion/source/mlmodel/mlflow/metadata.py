@@ -135,9 +135,11 @@ class MlflowSource(MlModelServiceSource):
 
             yield model, latest_version
 
-    # Set when the page budget runs out with models still pending. A run that could not
-    # see the whole registry must not drive deletions.
-    listing_truncated: bool = False
+    # What the last listing managed to see, for the deletion pass to consult. Both are
+    # recorded positively -- a listing that is truncated, abandoned mid-walk or never
+    # started leaves them at these defaults, so the unsafe cases fail closed.
+    listing_complete: bool = False
+    listed_model_count: int = 0
 
     def _iter_registered_models(self) -> Iterable[RegisteredModel]:
         """
@@ -147,6 +149,9 @@ class MlflowSource(MlModelServiceSource):
         ingestion at the page size and drops the rest without a word. Pages are streamed
         rather than collected so ingestion starts on the first one.
         """
+        self.listing_complete = False
+        self.listed_model_count = 0
+
         page_token = None
         total = 0
         pages = 0
@@ -154,15 +159,16 @@ class MlflowSource(MlModelServiceSource):
         while pages < MAX_MODEL_PAGES:
             page = self.client.search_registered_models(page_token=page_token)
             total += len(page)
+            self.listed_model_count = total
             pages += 1
             yield from page
 
             page_token = getattr(page, "token", None)
             if not page_token:
+                self.listing_complete = True
                 break
 
         if page_token:
-            self.listing_truncated = True
             reason = (
                 f"Stopped listing registered models after {MAX_MODEL_PAGES} pages with more still "
                 f"pending; only {total} model(s) were listed. Narrow the run with "
@@ -260,16 +266,26 @@ class MlflowSource(MlModelServiceSource):
 
     def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """
-        Reconcile deletions only when the whole registry was seen.
+        Reconcile deletions only off a listing that saw the whole registry.
 
         The base implementation deletes every model in OpenMetadata that this run did not
-        yield. Off a truncated listing that would soft-delete perfectly good models whose
-        only fault was sitting beyond the page budget, so skip the pass entirely.
+        yield, which is only sound when the absence of a model means the registry no longer
+        has it. A listing that stopped early or came back empty cannot support that
+        reading, and acting on it soft-deletes healthy entities.
         """
-        if self.listing_truncated:
+        if not self.listing_complete:
             logger.warning(
-                "Skipping deleted-model reconciliation: the registry listing was truncated, so "
-                "models beyond the page budget would be wrongly marked as deleted."
+                "Skipping deleted-model reconciliation: the registry listing did not complete, so "
+                "models it never reached would be wrongly marked as deleted."
+            )
+            return
+
+        if not self.listed_model_count:
+            logger.warning(
+                "Skipping deleted-model reconciliation: the registry listed no models at all. "
+                "Reading that as `every model was deleted` would soft-delete every model under "
+                "this service, when the likelier cause is a `registryUri` pointing at a registry "
+                "that holds none of them, or credentials that may not list models."
             )
             return
 
