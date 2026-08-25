@@ -296,6 +296,7 @@ export const CommonWidgets = ({
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
         multiple={entityRules.canAddMultipleDataProducts}
+        requireDomainForDataProduct={entityRules.requireDomainForDataProduct}
         onSave={handleDataProductsSave}
       />
     );
@@ -303,6 +304,8 @@ export const CommonWidgets = ({
     dataProducts,
     domains,
     editDataProductPermission,
+    entityRules.canAddMultipleDataProducts,
+    entityRules.requireDomainForDataProduct,
     handleDataProductsSave,
   ]);
 

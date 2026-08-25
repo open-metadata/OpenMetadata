@@ -95,14 +95,17 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const fetchAPI = useCallback(
     async (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQNs =
-        displayActiveDomains?.map(
-          (domain) => domain.fullyQualifiedName ?? ''
-        ) ?? [];
+      // When the "Data Product Domain Validation" rule is disabled, list Data
+      // Products across all domains instead of scoping to the asset's domains.
+      const domainFQNs = entityRules.requireDomainForDataProduct
+        ? displayActiveDomains?.map(
+            (domain) => domain.fullyQualifiedName ?? ''
+          ) ?? []
+        : [];
 
       return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [displayActiveDomains]
+    [displayActiveDomains, entityRules.requireDomainForDataProduct]
   );
 
   const handleSaveWithDataProducts = useCallback(
@@ -204,7 +207,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       return editingState;
     }
 
-    if (!displayActiveDomains || displayActiveDomains.length === 0) {
+    if (
+      entityRules.requireDomainForDataProduct &&
+      (!displayActiveDomains || displayActiveDomains.length === 0)
+    ) {
       return (
         <Typography.Text className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
@@ -219,7 +225,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         })}
       </span>
     );
-  }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
+  }, [
+    isLoading,
+    isEditing,
+    editingState,
+    displayActiveDomains,
+    entityRules.requireDomainForDataProduct,
+    t,
+  ]);
 
   const dataProductsDisplay = useMemo(
     () => (
@@ -272,11 +285,12 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return dataProductsDisplay;
   }, [isLoading, isEditing, editingState, dataProductsDisplay]);
 
+  const canAssignDataProduct =
+    displayActiveDomains?.length > 0 ||
+    !entityRules.requireDomainForDataProduct;
+
   const canShowEditButton =
-    showEditButton &&
-    hasPermission &&
-    !isLoading &&
-    displayActiveDomains?.length > 0;
+    showEditButton && hasPermission && !isLoading && canAssignDataProduct;
 
   if (!displayDataProducts?.length) {
     return (

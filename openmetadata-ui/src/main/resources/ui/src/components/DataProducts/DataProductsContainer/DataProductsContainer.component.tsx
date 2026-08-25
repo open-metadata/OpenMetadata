@@ -39,6 +39,7 @@ interface DataProductsContainerProps {
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
   newLook?: boolean;
   multiple?: boolean;
+  requireDomainForDataProduct?: boolean;
 }
 
 const DataProductsContainer = ({
@@ -49,10 +50,16 @@ const DataProductsContainer = ({
   onSave,
   newLook = false,
   multiple = true,
+  requireDomainForDataProduct = true,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // When the "Data Product Domain Validation" rule is disabled a Data Product
+  // can be assigned regardless of the asset's domains, so the domain gate is
+  // lifted and the dropdown lists Data Products across all domains.
+  const domainMissing = requireDomainForDataProduct && isEmpty(activeDomains);
 
   const handleAddClick = () => {
     setIsEditMode(true);
@@ -61,12 +68,13 @@ const DataProductsContainer = ({
   const fetchAPI = useCallback(
     (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQNs =
-        activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
+      const domainFQNs = requireDomainForDataProduct
+        ? activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? []
+        : [];
 
       return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [activeDomains]
+    [activeDomains, requireDomainForDataProduct]
   );
 
   const redirectLink = useCallback(
@@ -117,8 +125,8 @@ const DataProductsContainer = ({
   }, [handleCancel, handleSave, dataProducts, fetchAPI]);
 
   const showAddTagButton = useMemo(
-    () => hasPermission && !isEmpty(activeDomains) && isEmpty(dataProducts),
-    [hasPermission, dataProducts, activeDomains]
+    () => hasPermission && !domainMissing && isEmpty(dataProducts),
+    [hasPermission, dataProducts, domainMissing]
   );
 
   const renderDataProducts = useMemo(() => {
@@ -126,7 +134,7 @@ const DataProductsContainer = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
+    if (isEmpty(dataProducts) && hasPermission && domainMissing) {
       return (
         <Typography.Text className="text-sm text-grey-muted">
           {t('message.select-domain-to-add-data-product')}
@@ -157,7 +165,7 @@ const DataProductsContainer = ({
         </Tag>
       );
     });
-  }, [dataProducts, activeDomains]);
+  }, [dataProducts, activeDomains, domainMissing]);
 
   const header = useMemo(() => {
     return (
@@ -176,7 +184,7 @@ const DataProductsContainer = ({
               onClick={handleAddClick}
             />
           )}
-          {hasPermission && !isEmpty(activeDomains) && (
+          {hasPermission && !domainMissing && (
             <Row gutter={12}>
               {!isEmpty(dataProducts) && (
                 <Col>
@@ -196,7 +204,7 @@ const DataProductsContainer = ({
         </Space>
       )
     );
-  }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
+  }, [showHeader, dataProducts, hasPermission, showAddTagButton, domainMissing]);
 
   const addTagButton = useMemo(
     () =>

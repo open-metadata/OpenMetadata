@@ -819,3 +819,91 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  `Data Product Domain Validation Rule Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    // With the "Data Product Domain Validation" rule disabled, the Data Product
+    // dropdown is no longer scoped to the asset's domain, so an asset can be
+    // assigned a Data Product that belongs to a different domain.
+    test('should allow assigning a Data Product from a different domain', async ({
+      page,
+      browser,
+    }) => {
+      test.slow(true);
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const assetDomain = new Domain();
+      const productDomain = new Domain();
+      const crossDomainDataProduct = new DataProduct([productDomain]);
+      const crossTable = new TableClass();
+
+      try {
+        await assetDomain.create(apiContext);
+        await productDomain.create(apiContext);
+        await crossDomainDataProduct.create(apiContext);
+        await crossTable.create(apiContext);
+
+        await redirectToHomePage(page);
+        await crossTable.visitEntityPage(page);
+
+        // Asset belongs to assetDomain only.
+        await assignDomainWidget(page, assetDomain.responseData);
+
+        const dataProductWidget = page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-container');
+
+        await dataProductWidget.getByTestId('add-data-product').click();
+
+        const dpFqn = crossDomainDataProduct.responseData.fullyQualifiedName;
+        const dpTag = page.getByTestId(`tag-${dpFqn}`);
+
+        // The Data Product from productDomain is offered even though the asset
+        // is in assetDomain, because the domain validation rule is disabled.
+        await expect(async () => {
+          const searchResponse = page.waitForResponse((response) =>
+            response.url().includes('/api/v1/search/query')
+          );
+          await page
+            .locator('[data-testid="data-product-selector"] input')
+            .clear();
+          await page
+            .locator('[data-testid="data-product-selector"] input')
+            .fill(crossDomainDataProduct.data.displayName);
+          await searchResponse;
+          await expect(dpTag).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+        await dpTag.click();
+
+        const patchReq = page.waitForResponse(
+          (req) =>
+            req.request().method() === 'PATCH' &&
+            req.url().includes(`/api/v1/${crossTable.endpoint}/`)
+        );
+        await page
+          .getByTestId('data-product-dropdown-actions')
+          .getByTestId('saveAssociatedTag')
+          .click();
+        await patchReq;
+
+        await expect(
+          page
+            .getByTestId('KnowledgePanel.DataProducts')
+            .getByTestId('data-products-list')
+            .getByTestId(`data-product-${dpFqn}`)
+        ).toBeVisible();
+      } finally {
+        await crossTable.delete(apiContext);
+        await crossDomainDataProduct.delete(apiContext);
+        await productDomain.delete(apiContext);
+        await assetDomain.delete(apiContext);
+        await afterAction();
+      }
+    });
+  }
+);
