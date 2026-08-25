@@ -142,19 +142,20 @@ public class SearchSettingsHandler {
   }
 
   /**
-   * Marks each allowed field with whether the index mapping can highlight it, so the UI can offer
-   * the highlight toggle only where it would work.
+   * Shapes a copy of the settings for serving: every field the UI will render carries a verdict on
+   * whether the index mapping can highlight it.
    *
-   * <p>Derived rather than configured: the flag is computed from the same classifier that rejects a
-   * bad value in {@link #validateHighlightFields}, so the toggle the UI offers and the save the API
-   * accepts can never disagree. Storing it in the seed instead would create a second source of truth
-   * that drifts the first time a mapping changes.
+   * <p>Call this on the response only. It mutates the object it is given and persists nothing — the
+   * flag is derived from the index mapping, so storing it would create a second source of truth that
+   * goes stale the first time a mapping changes. It is computed by the same classifier that rejects
+   * a bad value in {@link #validateHighlightFields}, so what the UI offers and what the API accepts
+   * cannot disagree.
    */
   public void annotateHighlightableFields(SearchSettings searchSettings) {
     if (searchSettings != null) {
       for (AssetTypeConfiguration assetConfig :
           listOrEmpty(searchSettings.getAssetTypeConfigurations())) {
-        backfillConfiguredSearchFields(searchSettings, assetConfig);
+        listConfiguredSearchFieldsAsAllowed(searchSettings, assetConfig);
       }
       for (AllowedSearchFields allowedFields : listOrEmpty(searchSettings.getAllowedFields())) {
         annotateHighlightableFields(allowedFields);
@@ -163,16 +164,17 @@ public class SearchSettingsHandler {
   }
 
   /**
-   * Gives every configured search field an {@code allowedFields} entry so it can carry a highlight
-   * verdict.
+   * Adds an {@code allowedFields} entry for any configured search field that lacks one, so it has
+   * somewhere to carry its verdict.
    *
-   * <p>{@code allowedFields} is not a complete list of configurable fields — 63 of the shipped
-   * search fields have no entry (`name.keyword`, `name.compound`, `columnNamesFuzzy`, …). The UI
-   * renders one row per *search field* and reads the verdict from {@code allowedFields}, so a
-   * missing entry reads as "not highlightable" and disables a toggle that would have worked. The
-   * placeholder is added on the read path only and is never persisted.
+   * <p>Not a migration and not a repair of stored data — this runs on the outgoing copy of each
+   * settings read. It exists because the UI renders one row per <em>search field</em> but reads the
+   * verdict from {@code allowedFields}, and the two lists do not coincide: 63 of the shipped search
+   * fields have no {@code allowedFields} entry ({@code name.keyword}, {@code name.compound},
+   * {@code columnNamesFuzzy}, …). Without an entry the UI sees no verdict and disables a toggle that
+   * would have worked.
    */
-  private void backfillConfiguredSearchFields(
+  private void listConfiguredSearchFieldsAsAllowed(
       SearchSettings searchSettings, AssetTypeConfiguration assetConfig) {
     AllowedSearchFields allowedFields =
         allowedFieldsFor(searchSettings, assetConfig.getAssetType());
