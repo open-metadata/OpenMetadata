@@ -57,12 +57,19 @@ const buildItemsKey = (nodes: FieldNode[]): string => {
   return parts.join('|');
 };
 
-const OMFieldSelect: FC<FieldProps> = ({
+// RAQB's FieldProps carries no test hook. Callers (see QueryBuilderOMConfig
+// renderField) pass an optional data-testid so the field select stays
+// addressable in Playwright — the operator renderer reuses this component
+// without the hook, so the testid must not be emitted unconditionally.
+type OMFieldSelectProps = FieldProps & { dataTestId?: string };
+
+const OMFieldSelect: FC<OMFieldSelectProps> = ({
   items,
   selectedKey,
   setField,
   readonly,
   placeholder,
+  dataTestId,
 }) => {
   // RAQB recreates `items` on every render. Keep the mapped array's identity
   // stable across content-equal renders: react-aria rebuilds the ComboBox
@@ -109,6 +116,7 @@ const OMFieldSelect: FC<FieldProps> = ({
       // Keep the popup open on transiently-empty filter results — React Aria
       // otherwise closes it and the interaction dead-ends.
       allowsEmptyCollection
+      data-testid={dataTestId}
       inputValue={inputValue}
       isDisabled={readonly}
       items={filteredItems}

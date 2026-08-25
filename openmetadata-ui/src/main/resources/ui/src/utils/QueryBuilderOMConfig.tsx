@@ -25,7 +25,9 @@ export const OMConfig: BasicConfig = {
   ...QbBasicConfig,
   settings: {
     ...QbBasicConfig.settings,
-    renderField: (props) => <OMFieldSelect {...props} />,
+    renderField: (props) => (
+      <OMFieldSelect {...props} dataTestId="advanced-search-field-select" />
+    ),
     // RAQB passes the same FieldProps shape (including setField) to both
     // field and operator renderers, so the same select component works for both.
     renderOperator: (props) => <OMFieldSelect {...props} />,
