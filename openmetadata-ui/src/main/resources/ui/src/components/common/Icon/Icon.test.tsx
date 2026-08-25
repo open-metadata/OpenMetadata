@@ -149,9 +149,9 @@ describe('Icon', () => {
         />
       );
 
-      expect(
-        container.querySelector('[aria-hidden="true"]')
-      ).not.toHaveStyle({ marginRight: '4px' });
+      expect(container.querySelector('[aria-hidden="true"]')).not.toHaveStyle({
+        marginRight: '4px',
+      });
     });
 
     it('should render the img element with the resolved src', () => {
@@ -205,9 +205,9 @@ describe('Icon', () => {
       );
 
       expect(getByTestId('icon-image')).toHaveStyle({ borderRadius: '50%' });
-      expect(
-        container.querySelector('[aria-hidden="true"]')
-      ).not.toHaveStyle({ borderRadius: '50%' });
+      expect(container.querySelector('[aria-hidden="true"]')).not.toHaveStyle({
+        borderRadius: '50%',
+      });
     });
 
     it('should fall back to fallback content when the image fails to load', () => {
