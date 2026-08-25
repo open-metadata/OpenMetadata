@@ -157,16 +157,16 @@ export const TooltipTrigger = forwardRef<
   TooltipTriggerProps
 >(function TooltipTrigger({ children, className, ...buttonProps }, ref) {
   return (
-      <AriaButton
-        ref={ref}
-        {...buttonProps}
-        className={(values) =>
-          cx(
-            'tw:h-max tw:w-max tw:outline-hidden',
-            typeof className === 'function' ? className(values) : className
-          )
-        }>
-        {children}
-      </AriaButton>
+    <AriaButton
+      ref={ref}
+      {...buttonProps}
+      className={(values) =>
+        cx(
+          'tw:h-max tw:w-max tw:outline-hidden',
+          typeof className === 'function' ? className(values) : className
+        )
+      }>
+      {children}
+    </AriaButton>
   );
 });
