@@ -455,31 +455,54 @@ describe('StringUtils', () => {
   });
 
   describe('escapeESReservedCharacters', () => {
-    it('should escape every Lucene reserved character', () => {
-      expect(escapeESReservedCharacters('a+b-c=d&e')).toBe(
-        String.raw`a\+b\-c\=d\&e`
-      );
-      expect(escapeESReservedCharacters('(a){b}[c]')).toBe(
-        String.raw`\(a\)\{b\}\[c\]`
-      );
-      expect(escapeESReservedCharacters('a*b?c:d/e')).toBe(
-        String.raw`a\*b\?c\:d\/e`
-      );
-    });
-
-    it('should escape a single pipe so consecutive pipes cannot form an OR operator', () => {
-      expect(escapeESReservedCharacters('a|b')).toBe(String.raw`a\|b`);
-      expect(escapeESReservedCharacters('a||||b')).toBe(String.raw`a\|\|\|\|b`);
-    });
-
-    it('should leave a plain term untouched', () => {
-      expect(escapeESReservedCharacters('Customer Support')).toBe(
-        'Customer Support'
-      );
-    });
-
-    it('should return an empty string for an undefined term', () => {
+    it('should return an empty string for undefined and empty input', () => {
       expect(escapeESReservedCharacters()).toBe('');
+      expect(escapeESReservedCharacters('')).toBe('');
+    });
+
+    it('should leave text without reserved characters untouched', () => {
+      expect(escapeESReservedCharacters('sample_data orders')).toBe(
+        'sample_data orders'
+      );
+    });
+
+    it('should escape every reserved character of a pasted URL', () => {
+      expect(escapeESReservedCharacters('https://example.com/path?x=1')).toBe(
+        String.raw`https\:\/\/example.com\/path\?x\=1`
+      );
+    });
+
+    it.each([
+      ['+', String.raw`\+`],
+      ['-', String.raw`\-`],
+      ['=', String.raw`\=`],
+      ['&', String.raw`\&`],
+      ['|', String.raw`\|`],
+      ['>', String.raw`\>`],
+      ['<', String.raw`\<`],
+      ['!', String.raw`\!`],
+      ['(', String.raw`\(`],
+      [')', String.raw`\)`],
+      ['{', String.raw`\{`],
+      ['}', String.raw`\}`],
+      ['[', String.raw`\[`],
+      [']', String.raw`\]`],
+      ['^', String.raw`\^`],
+      ['"', String.raw`\"`],
+      ['~', String.raw`\~`],
+      ['*', String.raw`\*`],
+      ['?', String.raw`\?`],
+      [':', String.raw`\:`],
+      ['\\', '\\\\'],
+      ['/', String.raw`\/`],
+    ])('should escape the reserved character %s', (input, expected) => {
+      expect(escapeESReservedCharacters(input)).toBe(expected);
+    });
+
+    it('should escape a Lucene field query so it is searched as literal text', () => {
+      expect(escapeESReservedCharacters('name:value')).toBe(
+        String.raw`name\:value`
+      );
     });
   });
 });

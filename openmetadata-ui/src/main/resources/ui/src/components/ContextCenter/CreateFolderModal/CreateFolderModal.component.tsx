@@ -95,6 +95,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
                 {t('label.entity-name', { entity: t('label.folder') })}
               </Typography>
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the folder name input when the modal opens
                 autoFocus
                 data-testid="folder-name-input"
                 placeholder={t('label.entity-name', {

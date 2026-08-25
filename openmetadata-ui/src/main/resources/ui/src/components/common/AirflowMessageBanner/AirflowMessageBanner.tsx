@@ -44,10 +44,8 @@ const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
 
   // For hybrid runner, always show the banner even if status is 200 — but it has nothing to say
   // without a reason. For other platforms, only show when Airflow is not available.
-  if (isAirflowAvailable) {
-    if (platform !== AIRFLOW_HYBRID || isEmpty(reason)) {
-      return null;
-    }
+  if (isAirflowAvailable && (platform !== AIRFLOW_HYBRID || isEmpty(reason))) {
+    return null;
   }
 
   const message = isEmpty(reason) ? unreachableFallbackMessage : reason;
