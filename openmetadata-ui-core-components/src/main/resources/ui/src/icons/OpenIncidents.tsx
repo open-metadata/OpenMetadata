@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const OpenIncidents: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M11.54 17.2H8.46c-3.704 0-5.556 0-6.239-1.204-.682-1.205.265-2.802 2.16-5.996l1.54-2.597C7.74 4.335 8.65 2.801 10 2.801s2.26 1.534 4.08 4.602L15.62 10c1.894 3.194 2.842 4.791 2.159 5.996s-2.535 1.205-6.24 1.205M9.996 7.602v3.2" /><path stroke="currentColor" strokeWidth={1.3} d="M10.1 13.802H10m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0" /></svg>;
-OpenIncidents.displayName = "OpenIncidents";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M11.54 17.2H8.46c-3.704 0-5.556 0-6.239-1.204-.682-1.205.265-2.802 2.16-5.996l1.54-2.597C7.74 4.335 8.65 2.801 10 2.801s2.26 1.534 4.08 4.602L15.62 10c1.894 3.194 2.842 4.791 2.159 5.996s-2.535 1.205-6.24 1.205M9.996 7.602v3.2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M10.1 13.802H10m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+OpenIncidents.displayName = 'OpenIncidents';

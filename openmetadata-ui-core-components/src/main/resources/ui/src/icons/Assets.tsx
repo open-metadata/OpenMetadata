@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Assets: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M10.002 6.8c3.534 0 6.4-1.075 6.4-2.4S13.536 2 10.002 2s-6.4 1.075-6.4 2.4 2.865 2.4 6.4 2.4M6.004 9.074c.481.145 1.02.264 1.6.352m8.798.574c0 1.326-2.866 2.4-6.4 2.4s-6.4-1.075-6.4-2.4m2.402 4.672c.481.145 1.02.264 1.6.352" /><path stroke="currentColor" strokeWidth={1.3} d="M16.402 4.398v11.2c0 1.326-2.866 2.4-6.4 2.4s-6.4-1.074-6.4-2.4v-11.2" /></svg>;
-Assets.displayName = "Assets";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M10.002 6.8c3.534 0 6.4-1.075 6.4-2.4S13.536 2 10.002 2s-6.4 1.075-6.4 2.4 2.865 2.4 6.4 2.4M6.004 9.074c.481.145 1.02.264 1.6.352m8.798.574c0 1.326-2.866 2.4-6.4 2.4s-6.4-1.075-6.4-2.4m2.402 4.672c.481.145 1.02.264 1.6.352"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M16.402 4.398v11.2c0 1.326-2.866 2.4-6.4 2.4s-6.4-1.074-6.4-2.4v-11.2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Assets.displayName = 'Assets';

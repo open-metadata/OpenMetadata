@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const StoredProcedure: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M7.474 4.105H6.21a2.105 2.105 0 0 0-2.106 2.106v1.684A2.105 2.105 0 0 1 2 10a2.105 2.105 0 0 1 2.105 2.105v1.685a2.105 2.105 0 0 0 2.106 2.105h1.263m5.053-11.79h1.264a2.105 2.105 0 0 1 2.105 2.106v1.684A2.105 2.105 0 0 0 18 10a2.105 2.105 0 0 0-2.105 2.105v1.685a2.105 2.105 0 0 1-2.106 2.105h-1.263" /></svg>;
-StoredProcedure.displayName = "StoredProcedure";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M7.474 4.105H6.21a2.105 2.105 0 0 0-2.106 2.106v1.684A2.105 2.105 0 0 1 2 10a2.105 2.105 0 0 1 2.105 2.105v1.685a2.105 2.105 0 0 0 2.106 2.105h1.263m5.053-11.79h1.264a2.105 2.105 0 0 1 2.105 2.106v1.684A2.105 2.105 0 0 0 18 10a2.105 2.105 0 0 0-2.105 2.105v1.685a2.105 2.105 0 0 1-2.106 2.105h-1.263"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+StoredProcedure.displayName = 'StoredProcedure';

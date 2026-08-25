@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const SearchService: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M8.9 12.1a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4m2.998-.202 2.4 2.4" /><path stroke="currentColor" strokeWidth={1.3} d="M16.222 2.5H3.778C2.796 2.5 2 3.34 2 4.375v11.25c0 1.035.796 1.875 1.778 1.875h12.444c.982 0 1.778-.84 1.778-1.875V4.375c0-1.036-.796-1.875-1.778-1.875" /></svg>;
-SearchService.displayName = "SearchService";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M8.9 12.1a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4m2.998-.202 2.4 2.4"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M16.222 2.5H3.778C2.796 2.5 2 3.34 2 4.375v11.25c0 1.035.796 1.875 1.778 1.875h12.444c.982 0 1.778-.84 1.778-1.875V4.375c0-1.036-.796-1.875-1.778-1.875"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+SearchService.displayName = 'SearchService';

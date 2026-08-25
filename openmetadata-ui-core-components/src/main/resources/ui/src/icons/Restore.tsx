@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Restore: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M3.593 2v2.506a.25.25 0 0 0 .444.16A8 8 0 1 1 2 10" /></svg>;
-Restore.displayName = "Restore";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M3.593 2v2.506a.25.25 0 0 0 .444.16A8 8 0 1 1 2 10"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Restore.displayName = 'Restore';

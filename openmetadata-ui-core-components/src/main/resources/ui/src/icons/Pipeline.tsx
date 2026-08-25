@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Pipeline: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M5.182 18a2.217 2.217 0 1 0 0-4.434 2.217 2.217 0 0 0 0 4.434m9.636-11.566a2.217 2.217 0 1 0 0-4.434 2.217 2.217 0 0 0 0 4.434" /><path stroke="currentColor" strokeWidth={1.3} d="M7.398 15.783h4.53a2.89 2.89 0 0 0 2.892-2.892V6.434" /></svg>;
-Pipeline.displayName = "Pipeline";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M5.182 18a2.217 2.217 0 1 0 0-4.434 2.217 2.217 0 0 0 0 4.434m9.636-11.566a2.217 2.217 0 1 0 0-4.434 2.217 2.217 0 0 0 0 4.434"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M7.398 15.783h4.53a2.89 2.89 0 0 0 2.892-2.892V6.434"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Pipeline.displayName = 'Pipeline';

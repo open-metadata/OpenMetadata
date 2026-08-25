@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const SearchIndex: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M8.5 15a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13m9.497 3-4.2-4.2M6 7h5m-5 3h3" /></svg>;
-SearchIndex.displayName = "SearchIndex";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M8.5 15a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13m9.497 3-4.2-4.2M6 7h5m-5 3h3"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+SearchIndex.displayName = 'SearchIndex';

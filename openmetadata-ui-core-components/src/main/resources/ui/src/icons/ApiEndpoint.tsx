@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const ApiEndpoint: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="m5.733 5.733-2.58 2.95a2 2 0 0 0 0 2.634l2.58 2.95m8.534-8.534 2.58 2.95a2 2 0 0 1 0 2.634l-2.58 2.95M11.6 3.066 8.4 16.932" /></svg>;
-ApiEndpoint.displayName = "ApiEndpoint";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="m5.733 5.733-2.58 2.95a2 2 0 0 0 0 2.634l2.58 2.95m8.534-8.534 2.58 2.95a2 2 0 0 1 0 2.634l-2.58 2.95M11.6 3.066 8.4 16.932"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+ApiEndpoint.displayName = 'ApiEndpoint';

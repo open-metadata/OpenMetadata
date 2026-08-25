@@ -16,9 +16,28 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Copy: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x={2} y={4.668} stroke="currentColor" strokeWidth={1.3} rx={2.5} /><path stroke="currentColor" strokeWidth={1.3} d="M7.332 2.001h7.666a3 3 0 0 1 3 3v7.667" /></svg>;
-Copy.displayName = "Copy";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <rect rx={2.5} stroke="currentColor" strokeWidth={1.3} x={2} y={4.668} />
+    <path
+      d="M7.332 2.001h7.666a3 3 0 0 1 3 3v7.667"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Copy.displayName = 'Copy';

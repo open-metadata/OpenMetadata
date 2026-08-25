@@ -16,9 +16,37 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Database: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M10.002 6.8c3.534 0 6.4-1.075 6.4-2.4S13.536 2 10.002 2s-6.4 1.075-6.4 2.4 2.865 2.4 6.4 2.4" /><path stroke="currentColor" strokeWidth={1.3} d="M3.602 4.398v11.2c0 1.328 2.864 2.4 6.4 2.4s6.4-1.072 6.4-2.4v-11.2" /><path stroke="currentColor" strokeWidth={1.3} d="M3.602 10c0 1.328 2.864 2.4 6.4 2.4s6.4-1.072 6.4-2.4" /></svg>;
-Database.displayName = "Database";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M10.002 6.8c3.534 0 6.4-1.075 6.4-2.4S13.536 2 10.002 2s-6.4 1.075-6.4 2.4 2.865 2.4 6.4 2.4"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M3.602 4.398v11.2c0 1.328 2.864 2.4 6.4 2.4s6.4-1.072 6.4-2.4v-11.2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M3.602 10c0 1.328 2.864 2.4 6.4 2.4s6.4-1.072 6.4-2.4"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Database.displayName = 'Database';

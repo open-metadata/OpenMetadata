@@ -16,9 +16,61 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Gold: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path fill="url(#gold_a)" stroke="#C67E17" d="M5.223 2h9.553a2.15 2.15 0 0 1 2.149 2.15v5.014c0 4.155-3.057 7.117-6.925 8.836-3.87-1.72-6.926-4.68-6.926-8.836V4.15A2.15 2.15 0 0 1 5.224 2Z" /><mask id="gold_b" x={3} y={2} maskUnits="userSpaceOnUse"><path fill="#fff" d="M5.223 2h9.553a2.15 2.15 0 0 1 2.149 2.15v5.014c0 4.155-3.057 7.117-6.925 8.836-3.87-1.72-6.926-4.68-6.926-8.836V4.15A2.15 2.15 0 0 1 5.224 2" /></mask><g mask="url(#gold_b)"><path fill="#fff" d="M10.001 7.016c3.298 0 5.97-1.604 5.97-3.582 0-1.979-2.672-3.582-5.97-3.582s-5.97 1.603-5.97 3.582 2.673 3.582 5.97 3.582" opacity={0.3} /><path fill="#E39A24" d="M10 23.734c3.957 0 7.164-1.925 7.164-4.299S13.957 15.137 10 15.137s-7.164 1.924-7.164 4.298S6.043 23.734 10 23.734" opacity={0.28} /></g><path fill="#fff" d="m9.997 4.008.898 2.488 2.646.086-2.092 1.624.74 2.54-2.192-1.484-2.192 1.485.74-2.541-2.092-1.624L9.1 6.496z" /><defs><linearGradient id="gold_a" x1={3.074} x2={3.074} y1={2} y2={18} gradientUnits="userSpaceOnUse"><stop stopColor="#FCD877" /><stop offset={1} stopColor="#E39A24" /></linearGradient></defs></svg>;
-Gold.displayName = "Gold";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M5.223 2h9.553a2.15 2.15 0 0 1 2.149 2.15v5.014c0 4.155-3.057 7.117-6.925 8.836-3.87-1.72-6.926-4.68-6.926-8.836V4.15A2.15 2.15 0 0 1 5.224 2Z"
+      fill="url(#gold_a)"
+      stroke="#C67E17"
+    />
+    <mask id="gold_b" maskUnits="userSpaceOnUse" x={3} y={2}>
+      <path
+        d="M5.223 2h9.553a2.15 2.15 0 0 1 2.149 2.15v5.014c0 4.155-3.057 7.117-6.925 8.836-3.87-1.72-6.926-4.68-6.926-8.836V4.15A2.15 2.15 0 0 1 5.224 2"
+        fill="#fff"
+      />
+    </mask>
+    <g mask="url(#gold_b)">
+      <path
+        d="M10.001 7.016c3.298 0 5.97-1.604 5.97-3.582 0-1.979-2.672-3.582-5.97-3.582s-5.97 1.603-5.97 3.582 2.673 3.582 5.97 3.582"
+        fill="#fff"
+        opacity={0.3}
+      />
+      <path
+        d="M10 23.734c3.957 0 7.164-1.925 7.164-4.299S13.957 15.137 10 15.137s-7.164 1.924-7.164 4.298S6.043 23.734 10 23.734"
+        fill="#E39A24"
+        opacity={0.28}
+      />
+    </g>
+    <path
+      d="m9.997 4.008.898 2.488 2.646.086-2.092 1.624.74 2.54-2.192-1.484-2.192 1.485.74-2.541-2.092-1.624L9.1 6.496z"
+      fill="#fff"
+    />
+    <defs>
+      <linearGradient
+        gradientUnits="userSpaceOnUse"
+        id="gold_a"
+        x1={3.074}
+        x2={3.074}
+        y1={2}
+        y2={18}>
+        <stop stopColor="#FCD877" />
+        <stop offset={1} stopColor="#E39A24" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+Gold.displayName = 'Gold';

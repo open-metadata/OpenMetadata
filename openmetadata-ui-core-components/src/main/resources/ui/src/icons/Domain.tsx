@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Domain: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} /><ellipse cx={10.001} cy={10} stroke="currentColor" strokeWidth={1.3} rx={3.2} ry={8} /><path stroke="currentColor" strokeWidth={1.3} d="M2.8 10h14.4" /></svg>;
-Domain.displayName = "Domain";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
+    <ellipse
+      cx={10.001}
+      cy={10}
+      rx={3.2}
+      ry={8}
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path d="M2.8 10h14.4" stroke="currentColor" strokeWidth={1.3} />
+  </svg>
+);
+Domain.displayName = 'Domain';

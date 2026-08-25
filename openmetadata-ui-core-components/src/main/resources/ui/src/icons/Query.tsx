@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Query: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M5.645 7.555 8.31 9.777l-2.666 2.222m5.336.446h3.556" /><path stroke="currentColor" strokeWidth={1.3} d="M15.868 2.5H4.312c-1.227 0-2.222.933-2.222 2.083v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083" /></svg>;
-Query.displayName = "Query";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M5.645 7.555 8.31 9.777l-2.666 2.222m5.336.446h3.556"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M15.868 2.5H4.312c-1.227 0-2.222.933-2.222 2.083v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Query.displayName = 'Query';

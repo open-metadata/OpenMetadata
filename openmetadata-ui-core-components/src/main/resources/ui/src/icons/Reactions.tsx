@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Reactions: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M17.085 8.857q.151.74.153 1.524a7.619 7.619 0 1 1-6.095-7.467M15.71 2v4.571m2.291-2.29H13.43" /><path stroke="currentColor" strokeWidth={1.3} d="M6.57 12.668a3.8 3.8 0 0 0 3.048 1.524 3.8 3.8 0 0 0 3.047-1.524m-.285-5.041v.403m-5.524-.403v.403m.286-.127c0-.315-.128-.571-.286-.571s-.286.256-.286.571c0 .316.128.572.286.572s.286-.256.286-.572m5.523 0c0-.315-.127-.571-.285-.571s-.286.256-.286.571c0 .316.128.572.286.572s.285-.256.285-.572" /></svg>;
-Reactions.displayName = "Reactions";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M17.085 8.857q.151.74.153 1.524a7.619 7.619 0 1 1-6.095-7.467M15.71 2v4.571m2.291-2.29H13.43"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M6.57 12.668a3.8 3.8 0 0 0 3.048 1.524 3.8 3.8 0 0 0 3.047-1.524m-.285-5.041v.403m-5.524-.403v.403m.286-.127c0-.315-.128-.571-.286-.571s-.286.256-.286.571c0 .316.128.572.286.572s.286-.256.286-.572m5.523 0c0-.315-.127-.571-.285-.571s-.286.256-.286.571c0 .316.128.572.286.572s.285-.256.285-.572"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Reactions.displayName = 'Reactions';

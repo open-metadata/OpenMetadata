@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const ListView: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M7.48 3.863H18M7.48 10H18M7.48 16.137H18M2.329 3.864h-.11m.22 0a.22.22 0 1 1-.439 0 .22.22 0 0 1 .438 0M2.329 10h-.11m.22 0A.22.22 0 1 1 2 10a.22.22 0 0 1 .438 0m-.109 6.137h-.11m.22 0a.22.22 0 1 1-.439 0 .22.22 0 0 1 .438 0" /></svg>;
-ListView.displayName = "ListView";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M7.48 3.863H18M7.48 10H18M7.48 16.137H18M2.329 3.864h-.11m.22 0a.22.22 0 1 1-.439 0 .22.22 0 0 1 .438 0M2.329 10h-.11m.22 0A.22.22 0 1 1 2 10a.22.22 0 0 1 .438 0m-.109 6.137h-.11m.22 0a.22.22 0 1 1-.439 0 .22.22 0 0 1 .438 0"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+ListView.displayName = 'ListView';

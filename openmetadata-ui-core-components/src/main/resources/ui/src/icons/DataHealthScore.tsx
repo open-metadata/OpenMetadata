@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const DataHealthScore: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M2.398 6.218c.8-3.033 4.344-5.173 7.719-1.03 3.809-4.673 7.83-1.354 7.882 2.226 0 5.328-6.375 9.702-7.882 9.702-.902 0-3.544-1.564-5.523-3.961" /><path stroke="currentColor" strokeWidth={1.3} d="M13.273 9.372H11.38l-1.892 2.523L6.967 7.48l-1.892 2.523H2" /></svg>;
-DataHealthScore.displayName = "DataHealthScore";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M2.398 6.218c.8-3.033 4.344-5.173 7.719-1.03 3.809-4.673 7.83-1.354 7.882 2.226 0 5.328-6.375 9.702-7.882 9.702-.902 0-3.544-1.564-5.523-3.961"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M13.273 9.372H11.38l-1.892 2.523L6.967 7.48l-1.892 2.523H2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+DataHealthScore.displayName = 'DataHealthScore';

@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const ChevronLeft: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.8} d="M13.621 2 6.812 8.942a1.517 1.517 0 0 0 0 2.116L13.622 18" /></svg>;
-ChevronLeft.displayName = "ChevronLeft";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M13.621 2 6.812 8.942a1.517 1.517 0 0 0 0 2.116L13.622 18"
+      stroke="currentColor"
+      strokeWidth={1.8}
+    />
+  </svg>
+);
+ChevronLeft.displayName = 'ChevronLeft';

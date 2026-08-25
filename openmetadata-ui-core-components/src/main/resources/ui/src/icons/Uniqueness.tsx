@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Uniqueness: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="m8.511 8.271 1.134-2.403a.39.39 0 0 1 .711 0l1.133 2.403 2.535.388c.326.05.455.468.22.708l-1.834 1.87.433 2.64c.055.34-.285.599-.576.438L10 13.068l-2.266 1.247c-.291.16-.631-.098-.576-.437l.433-2.641-1.834-1.87c-.235-.24-.106-.658.22-.708zM17.273 10h.728M10 2.727V2m0 16v-.727m5.817-1.456-.727-.727m.727-10.906-.727.727M4.184 15.817l.727-.727M4.184 4.184l.727.727M2 10h.727" /></svg>;
-Uniqueness.displayName = "Uniqueness";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="m8.511 8.271 1.134-2.403a.39.39 0 0 1 .711 0l1.133 2.403 2.535.388c.326.05.455.468.22.708l-1.834 1.87.433 2.64c.055.34-.285.599-.576.438L10 13.068l-2.266 1.247c-.291.16-.631-.098-.576-.437l.433-2.641-1.834-1.87c-.235-.24-.106-.658.22-.708zM17.273 10h.728M10 2.727V2m0 16v-.727m5.817-1.456-.727-.727m.727-10.906-.727.727M4.184 15.817l.727-.727M4.184 4.184l.727.727M2 10h.727"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Uniqueness.displayName = 'Uniqueness';

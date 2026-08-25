@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const MlModel: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M4.146 6.293a2.146 2.146 0 1 0 0-4.293 2.146 2.146 0 0 0 0 4.293m0 11.707a2.146 2.146 0 1 0 0-4.293 2.146 2.146 0 0 0 0 4.293m11.707-5.852a2.146 2.146 0 1 0 0-4.292 2.146 2.146 0 0 0 0 4.292M6.098 5.121l7.805 3.903m-7.805 5.853 7.805-3.902" /></svg>;
-MlModel.displayName = "MlModel";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M4.146 6.293a2.146 2.146 0 1 0 0-4.293 2.146 2.146 0 0 0 0 4.293m0 11.707a2.146 2.146 0 1 0 0-4.293 2.146 2.146 0 0 0 0 4.293m11.707-5.852a2.146 2.146 0 1 0 0-4.292 2.146 2.146 0 0 0 0 4.292M6.098 5.121l7.805 3.903m-7.805 5.853 7.805-3.902"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+MlModel.displayName = 'MlModel';

@@ -16,9 +16,37 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const StorageService: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M10 7.136c3.818 0 6.913-1.15 6.913-2.568S13.818 2 10 2 3.086 3.15 3.086 4.568 6.18 7.136 10 7.136" /><path stroke="currentColor" strokeWidth={1.3} d="M3.086 4.566v10.865c0 1.432 3.091 2.568 6.914 2.568s6.913-1.136 6.913-2.568V4.566" /><path stroke="currentColor" strokeWidth={1.3} d="M3.086 10c0 1.432 3.091 2.568 6.914 2.568s6.913-1.136 6.913-2.568" /></svg>;
-StorageService.displayName = "StorageService";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M10 7.136c3.818 0 6.913-1.15 6.913-2.568S13.818 2 10 2 3.086 3.15 3.086 4.568 6.18 7.136 10 7.136"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M3.086 4.566v10.865c0 1.432 3.091 2.568 6.914 2.568s6.913-1.136 6.913-2.568V4.566"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M3.086 10c0 1.432 3.091 2.568 6.914 2.568s6.913-1.136 6.913-2.568"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+StorageService.displayName = 'StorageService';

@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const BehaviorPersonality: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M17.113 18c0-1.24 0-1.86-.153-2.366a3.56 3.56 0 0 0-2.37-2.37c-.505-.153-1.126-.153-2.366-.153H7.78c-1.241 0-1.861 0-2.366.153a3.56 3.56 0 0 0-2.37 2.37C2.89 16.14 2.89 16.76 2.89 18M14 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0" /></svg>;
-BehaviorPersonality.displayName = "BehaviorPersonality";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M17.113 18c0-1.24 0-1.86-.153-2.366a3.56 3.56 0 0 0-2.37-2.37c-.505-.153-1.126-.153-2.366-.153H7.78c-1.241 0-1.861 0-2.366.153a3.56 3.56 0 0 0-2.37 2.37C2.89 16.14 2.89 16.76 2.89 18M14 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+BehaviorPersonality.displayName = 'BehaviorPersonality';

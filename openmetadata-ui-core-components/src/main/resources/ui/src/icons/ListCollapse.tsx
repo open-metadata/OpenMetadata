@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const ListCollapse: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M2 3.73h6.018M2 7.91h6.018M2 12.09h6.018M2 16.27h6.018m9.983-12.54-3.04 3.04-3.04-3.04m6.08 12.446-3.04-3.04-3.04 3.04" /></svg>;
-ListCollapse.displayName = "ListCollapse";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M2 3.73h6.018M2 7.91h6.018M2 12.09h6.018M2 16.27h6.018m9.983-12.54-3.04 3.04-3.04-3.04m6.08 12.446-3.04-3.04-3.04 3.04"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+ListCollapse.displayName = 'ListCollapse';

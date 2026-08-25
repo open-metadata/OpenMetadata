@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Home: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M3.598 16.469V10.25a2 2 0 0 1 .53-1.356l4.4-4.767a2 2 0 0 1 2.94 0l4.4 4.767a2 2 0 0 1 .53 1.357v6.217a1 1 0 0 1-1 1h-2.8a1 1 0 0 1-1-1v-2.594a1 1 0 0 0-1-1h-1.2a1 1 0 0 0-1 1v2.594a1 1 0 0 1-1 1h-2.8a1 1 0 0 1-1-1Z" /><path stroke="currentColor" strokeWidth={1.3} d="M2 11.069 8.54 4.09a2 2 0 0 1 2.92 0L18 11.07" /></svg>;
-Home.displayName = "Home";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M3.598 16.469V10.25a2 2 0 0 1 .53-1.356l4.4-4.767a2 2 0 0 1 2.94 0l4.4 4.767a2 2 0 0 1 .53 1.357v6.217a1 1 0 0 1-1 1h-2.8a1 1 0 0 1-1-1v-2.594a1 1 0 0 0-1-1h-1.2a1 1 0 0 0-1 1v2.594a1 1 0 0 1-1 1h-2.8a1 1 0 0 1-1-1Z"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M2 11.069 8.54 4.09a2 2 0 0 1 2.92 0L18 11.07"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Home.displayName = 'Home';

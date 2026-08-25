@@ -16,9 +16,37 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Lineage: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M12.183 10H8.547m3.636-5.602c-.764 0-1.382.62-1.382 1.382v8.437a1.38 1.38 0 0 0 1.381 1.381" /><rect x={2} y={6.801} stroke="currentColor" strokeWidth={1.3} rx={3.2} /><circle cx={16} cy={4} r={1.35} stroke="currentColor" strokeWidth={1.3} /><circle cx={16} cy={9.602} r={1.35} stroke="currentColor" strokeWidth={1.3} /><circle cx={16} cy={16} r={1.35} stroke="currentColor" strokeWidth={1.3} /></svg>;
-Lineage.displayName = "Lineage";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M12.183 10H8.547m3.636-5.602c-.764 0-1.382.62-1.382 1.382v8.437a1.38 1.38 0 0 0 1.381 1.381"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <rect rx={3.2} stroke="currentColor" strokeWidth={1.3} x={2} y={6.801} />
+    <circle cx={16} cy={4} r={1.35} stroke="currentColor" strokeWidth={1.3} />
+    <circle
+      cx={16}
+      cy={9.602}
+      r={1.35}
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <circle cx={16} cy={16} r={1.35} stroke="currentColor" strokeWidth={1.3} />
+  </svg>
+);
+Lineage.displayName = 'Lineage';

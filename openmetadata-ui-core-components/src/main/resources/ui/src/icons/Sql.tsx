@@ -16,9 +16,28 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Sql: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x={2} y={2} stroke="currentColor" strokeWidth={1.3} rx={8} /><path stroke="currentColor" strokeWidth={1.3} d="M10.133 11.377h3.997M5.867 12.41 8.365 10 5.867 7.59" /></svg>;
-Sql.displayName = "Sql";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <rect rx={8} stroke="currentColor" strokeWidth={1.3} x={2} y={2} />
+    <path
+      d="M10.133 11.377h3.997M5.867 12.41 8.365 10 5.867 7.59"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Sql.displayName = 'Sql';

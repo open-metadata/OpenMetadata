@@ -16,9 +16,31 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Manage: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path fill="currentColor" d="M10 10.813a.813.813 0 1 0 0-1.626.813.813 0 0 0 0 1.626m0-5.688A.813.813 0 1 0 10 3.5a.813.813 0 0 0 0 1.625M10 16.5a.813.813 0 1 0 0-1.625.813.813 0 0 0 0 1.625" /><path stroke="currentColor" strokeWidth={1.3} d="M10 10.813a.813.813 0 1 0 0-1.626.813.813 0 0 0 0 1.626m0-5.688A.813.813 0 1 0 10 3.5a.813.813 0 0 0 0 1.625M10 16.5a.813.813 0 1 0 0-1.625.813.813 0 0 0 0 1.625" /></svg>;
-Manage.displayName = "Manage";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M10 10.813a.813.813 0 1 0 0-1.626.813.813 0 0 0 0 1.626m0-5.688A.813.813 0 1 0 10 3.5a.813.813 0 0 0 0 1.625M10 16.5a.813.813 0 1 0 0-1.625.813.813 0 0 0 0 1.625"
+      fill="currentColor"
+    />
+    <path
+      d="M10 10.813a.813.813 0 1 0 0-1.626.813.813 0 0 0 0 1.626m0-5.688A.813.813 0 1 0 10 3.5a.813.813 0 0 0 0 1.625M10 16.5a.813.813 0 1 0 0-1.625.813.813 0 0 0 0 1.625"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Manage.displayName = 'Manage';

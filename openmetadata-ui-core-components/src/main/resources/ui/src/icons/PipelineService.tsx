@@ -16,9 +16,37 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const PipelineService: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M15.778 2.5H4.222C2.995 2.5 2 3.433 2 4.583v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083" /><path stroke="currentColor" strokeWidth={1.3} d="M6.5 14.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m7-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3" /><path stroke="currentColor" strokeWidth={1.3} d="M8.035 13.001h2.466a3 3 0 0 0 3-3V8.578" /></svg>;
-PipelineService.displayName = "PipelineService";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M15.778 2.5H4.222C2.995 2.5 2 3.433 2 4.583v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M6.5 14.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m7-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M8.035 13.001h2.466a3 3 0 0 0 3-3V8.578"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+PipelineService.displayName = 'PipelineService';

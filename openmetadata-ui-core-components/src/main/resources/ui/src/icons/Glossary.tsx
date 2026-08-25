@@ -16,9 +16,28 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Glossary: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x={4} y={2} stroke="currentColor" strokeWidth={1.3} rx={3} /><path stroke="currentColor" strokeWidth={1.3} d="M13.174 9.489a.5.5 0 0 1-.854.353l-.88-.88a.5.5 0 0 0-.707 0l-.88.88A.5.5 0 0 1 9 9.49V2.696A.696.696 0 0 1 9.696 2h2.782a.696.696 0 0 1 .696.696z" /></svg>;
-Glossary.displayName = "Glossary";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <rect rx={3} stroke="currentColor" strokeWidth={1.3} x={4} y={2} />
+    <path
+      d="M13.174 9.489a.5.5 0 0 1-.854.353l-.88-.88a.5.5 0 0 0-.707 0l-.88.88A.5.5 0 0 1 9 9.49V2.696A.696.696 0 0 1 9.696 2h2.782a.696.696 0 0 1 .696.696z"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Glossary.displayName = 'Glossary';

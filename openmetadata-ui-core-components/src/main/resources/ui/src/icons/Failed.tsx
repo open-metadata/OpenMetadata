@@ -16,9 +16,27 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Failed: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="m12.4 7.6-4.8 4.8m0-4.8 4.8 4.8M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0" /></svg>;
-Failed.displayName = "Failed";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="m12.4 7.6-4.8 4.8m0-4.8 4.8 4.8M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Failed.displayName = 'Failed';

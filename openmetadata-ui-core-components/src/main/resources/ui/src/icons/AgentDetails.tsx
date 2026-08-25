@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const AgentDetails: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M2 10.002c0-3.017 0-4.526.89-5.463s2.324-.937 5.19-.937h3.84c2.866 0 4.3 0 5.19.937s.89 2.446.89 5.463 0 4.525-.89 5.462c-.89.938-2.324.938-5.19.938H8.08c-2.866 0-4.3 0-5.19-.938S2 13.018 2 10.002" /><path stroke="currentColor" strokeWidth={1.3} d="M10.405 13.603c-.1-1.28-1.145-2.292-2.452-2.377l-.348-.023q-.186.005-.35.013c-1.295.062-2.35 1.12-2.45 2.387M9 7.802a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0m3.004-.2h3.2m-3.2 2.8h3.2" /></svg>;
-AgentDetails.displayName = "AgentDetails";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M2 10.002c0-3.017 0-4.526.89-5.463s2.324-.937 5.19-.937h3.84c2.866 0 4.3 0 5.19.937s.89 2.446.89 5.463 0 4.525-.89 5.462c-.89.938-2.324.938-5.19.938H8.08c-2.866 0-4.3 0-5.19-.938S2 13.018 2 10.002"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M10.405 13.603c-.1-1.28-1.145-2.292-2.452-2.377l-.348-.023q-.186.005-.35.013c-1.295.062-2.35 1.12-2.45 2.387M9 7.802a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0m3.004-.2h3.2m-3.2 2.8h3.2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+AgentDetails.displayName = 'AgentDetails';

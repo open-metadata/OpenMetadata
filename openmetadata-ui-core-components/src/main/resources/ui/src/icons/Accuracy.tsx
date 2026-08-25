@@ -16,9 +16,32 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const Accuracy: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path stroke="currentColor" strokeWidth={1.3} d="M12.505 2.4a8 8 0 1 0 5.129 5.2" /><path stroke="currentColor" strokeWidth={1.3} d="M14 10a4 4 0 1 1-4-4m6-2-6 6m6-6V2m0 2h2" /></svg>;
-Accuracy.displayName = "Accuracy";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <path
+      d="M12.505 2.4a8 8 0 1 0 5.129 5.2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M14 10a4 4 0 1 1-4-4m6-2-6 6m6-6V2m0 2h2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+  </svg>
+);
+Accuracy.displayName = 'Accuracy';

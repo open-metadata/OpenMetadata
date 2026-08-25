@@ -16,9 +16,30 @@ interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
+
 export const MinusCircle: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
-}) => <svg fill="none" viewBox="0 0 20 20" width={size} height={size} stroke={color} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><circle cx={10.441} cy={9.941} r={8} stroke="currentColor" strokeWidth={1.8} /><path stroke="currentColor" strokeWidth={1.8} d="M14.441 9.941h-8" /></svg>;
-MinusCircle.displayName = "MinusCircle";
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 20 20"
+    width={size}
+    {...props}>
+    <circle
+      cx={10.441}
+      cy={9.941}
+      r={8}
+      stroke="currentColor"
+      strokeWidth={1.8}
+    />
+    <path d="M14.441 9.941h-8" stroke="currentColor" strokeWidth={1.8} />
+  </svg>
+);
+MinusCircle.displayName = 'MinusCircle';
