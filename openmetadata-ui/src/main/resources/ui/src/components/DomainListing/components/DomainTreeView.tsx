@@ -84,9 +84,8 @@ const DomainTreeView = ({
   const [hierarchy, setHierarchy] = useState<Domain[]>([]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedFqn, setSelectedFqn] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<EntityTabs>(
-    EntityTabs.DOCUMENTATION
-  );
+  // Undefined = no explicit tab; DomainDetails resolves it to the persona's first tab.
+  const [activeTab, setActiveTab] = useState<EntityTabs | undefined>(undefined);
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [isHierarchyLoading, setIsHierarchyLoading] = useState<boolean>(false);
   const [isDomainLoading, setIsDomainLoading] = useState<boolean>(false);
@@ -485,7 +484,8 @@ const DomainTreeView = ({
 
   useEffect(() => {
     if (selectedFqn) {
-      setActiveTab(EntityTabs.DOCUMENTATION);
+      // Reset so the newly selected domain lands on its first rendered tab.
+      setActiveTab(undefined);
     }
   }, [selectedFqn]);
 
@@ -734,7 +734,8 @@ const DomainTreeView = ({
         if (requestedTab && Object.values(EntityTabs).includes(requestedTab)) {
           setActiveTab(requestedTab);
         } else {
-          setActiveTab(EntityTabs.DOCUMENTATION);
+          // No tab in the URL -- let DomainDetails resolve the first rendered tab.
+          setActiveTab(undefined);
         }
 
         updateExpansionForFqn(decodedFqn);
