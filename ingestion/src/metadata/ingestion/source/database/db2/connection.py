@@ -47,6 +47,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.db2.utils import (
     check_clidriver_version,
     install_clidriver,
+    patch_ibmi_dialect,
 )
 from metadata.utils.constants import THREE_MIN, UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -80,6 +81,7 @@ class Db2IbmiStrategy(Db2Strategy):
     by the port (9471) rather than connection parameters."""
 
     def build(self) -> Engine:
+        patch_ibmi_dialect()
         return create_generic_db_connection(
             connection=self._connection,
             get_connection_url_fn=self.get_connection_url,
