@@ -554,104 +554,117 @@
       }
     },
     {
-      "name": "create_glossary_term",
-      "title": "Create Glossary Term",
+      "name": "create_entity",
+      "title": "Create Entity",
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
+        "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Create one governance or knowledge entity: glossary, glossaryTerm, classification, tag, domain, dataProduct, metric or contextMemory. Fields every type shares are top-level parameters; fields only one type accepts go in 'attributes'. When a type's requirements are not already known, call describe_entity_type first - it returns that type's attributes with their allowed values and which are required. An unknown attribute is rejected with the accepted names for that type and nothing is created, so one retry is enough. An owner or reviewer name that matches no user or team is also rejected rather than dropped. Creating with a name that is already taken UPDATES that entity in place and needs edit rights on it as well as create rights. To create a test case use create_test_case; for lineage use create_lineage. Writes take effect immediately - confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
-          "glossary": {
+          "entityType": {
             "type": "string",
-            "description": "Glossary in which the term belongs. This should be its fully qualified name."
-          },
-          "parentTerm": {
-            "type": "string",
-            "description": "Optional parent term for the new term. This should be its fully qualified name defined as <glossary>.<term>. If the Glossary Term has other parents, the Fully Qualified Name will be <glossary>.<parent>...<term>. If not provided, the term will be created at the root level of the glossary."
+            "enum": [
+              "glossary",
+              "glossaryTerm",
+              "classification",
+              "tag",
+              "domain",
+              "dataProduct",
+              "metric",
+              "contextMemory"
+            ],
+            "description": "Type of entity to create."
           },
           "name": {
             "type": "string",
-            "description": "Glossary Term name."
+            "description": "Entity name, unique within its parent scope."
           },
           "description": {
             "type": "string",
-            "description": "Glossary Term description."
+            "description": "Description of the entity in markdown."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name."
           },
           "owners": {
             "type": "array",
-            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "User or team names to own the entity, e.g. ['john.doe', 'Data Platform']. A name that resolves to neither fails the call."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tag FQNs to apply, e.g. ['PII.Sensitive', 'Tier.Tier1']."
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Domain FQNs the entity belongs to."
           },
           "reviewers": {
             "type": "array",
-            "description": "Glossary Term reviewers. These are OpenMetadata Users or Teams who will review and approve the glossary term. If reviewers are set, the term will go through an approval workflow (status will be Draft until approved). If you don't know who the reviewers should be, you can leave this empty.",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "User or team names to review the entity."
           },
           "extension": {
             "type": "object",
-            "description": "Custom properties to set on the glossary term, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
-            "additionalProperties": true
+            "description": "Custom properties as {propertyName: value}."
+          },
+          "attributes": {
+            "type": "object",
+            "description": "Fields specific to this entityType, e.g. {'glossary': 'Finance'} for a glossaryTerm, {'classification': 'PII'} for a tag, or {'domainType': 'Aggregate'} for a domain. Get the exact schema from describe_entity_type."
           }
         },
         "required": [
-          "glossary",
-          "name",
-          "description"
+          "entityType",
+          "name"
         ]
       }
     },
     {
-      "name": "create_glossary",
-      "title": "Create Glossary",
+      "name": "describe_entity_type",
+      "title": "Describe Entity Type",
       "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Glossary. A Glossary is a collection of terms that are used to define the business vocabulary of an organization. Typically, similar terms are grouped together in a Glossary. For example, a Glossary names 'Marketing' could contain terms like 'Campaign', 'Lead', 'Opportunity', etc. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Return the 'attributes' create_entity accepts for one entityType: each field's name, type, whether it is required, and its allowed values. Call this before create_entity when the type's requirements are not already known, rather than guessing attribute names.",
       "parameters": {
         "type": "object",
         "properties": {
-          "name": {
+          "entityType": {
             "type": "string",
-            "description": "Name of the glossary. Must be unique."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the glossary in Markdown format."
-          },
-          "owners": {
-            "type": "array",
-            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "reviewers": {
-            "type": "array",
-            "description": "Users or teams who review changes to terms in this glossary. Setting reviewers turns on the approval workflow: new terms enter as Draft and stay there until a reviewer approves them. Leave empty for terms to be created already Approved.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "mutuallyExclusive": {
-            "type": "boolean",
-            "description": "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to tag an entity. When mutually exclusive is `false`, multiple terms from this group can be used to tag an entity. This is an important setting. If you are not sure, ask the user to clarify. If the user doesn't know, set it to `false`.",
-            "default": false
+            "enum": [
+              "glossary",
+              "glossaryTerm",
+              "classification",
+              "tag",
+              "domain",
+              "dataProduct",
+              "metric",
+              "contextMemory"
+            ],
+            "description": "Type whose attribute schema to return."
           }
         },
         "required": [
-          "name",
-          "description",
-          "mutuallyExclusive"
+          "entityType"
         ]
       }
     },
@@ -664,7 +677,7 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Update an existing entity by applying a JSONPatch document (RFC 6902), exactly as the REST PATCH API takes it. Any operation on any field is allowed and is passed through as written, so a patch touches only the paths it names - see https://jsonpatch.com. THE PATH DECIDES WHETHER YOU ADD OR REPLACE, which is the easy thing to get wrong on arrays: '/owners/-' APPENDS one owner, while '/owners' REPLACES the whole list with what you supply. Same for tags, reviewers, domains, experts and dataProducts. To append: {\"op\": \"add\", \"path\": \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}. To remove one: {\"op\": \"remove\", \"path\": \"/owners/0\"}. To replace the whole list deliberately, target the array itself. If you do not know what a list currently holds, read it with get_entity_details first. Use 'replace' for a field that already has a value and 'add' for one that is absent or to extend an array. NOT for creating entities - use the matching create_* tool; NOT for Context Center memories - use create_context_memory. FIELD NAMING: array fields are plural - 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Owners and domains are entity references: {\"id\": \"<uuid>\", \"type\": \"user\"|\"team\"|\"domain\"}. A tier is a tag, e.g. {\"tagFQN\": \"Tier.Tier1\"} - so replacing '/tags' wholesale drops the asset's tier and its glossary terms along with it. Look entity UUIDs up with search or get tools before patching, and do not guess field names from prior knowledge - schema fields have been renamed over time. Call get_entity_details on the target and use only names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling.",
+      "description": "Update an existing entity. Two ways to say what changes, and you must use exactly one. (1) TYPED FIELDS - pass 'description', 'displayName', 'owners' or 'tags' directly and the server reads the entity, applies them and computes the patch itself. Prefer this: it needs no read first, so a one-field edit is one call rather than two, and array fields take an explicit mode. (2) 'patch' - a JSONPatch document you write yourself, for any field the typed form does not expose. Both take the same permission check and the same write path. NOT for creating entities — use create_entity for that (create_test_case for test cases, create_lineage for lineage), including Context Center memories, which are create_entity with entityType='contextMemory'. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -678,13 +691,63 @@
           },
           "patch": {
             "type": "string",
-            "description": "The JSONPatch document, as a JSON array string. Each operation has 'op' (add, remove, replace, move, copy, test), 'path' (a JSON Pointer starting with /), and 'value' where the op needs one. Example: [{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"new description\"}]. Appending to an array uses the '-' index: [{\"op\": \"add\", \"path\": \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}]."
+            "description": "A JSONPatch document, as a JSON array string. Only for fields the typed form does not expose - for description, displayName, owners or tags use those parameters instead and skip the read. JSONPatch operations as a JSON array string. Each operation has 'op' — use 'replace' to change a field that already has a value, 'add' only for a field that is absent or to append to an array, 'remove' to clear one, 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
+          },
+          "description": {
+            "type": "string",
+            "description": "New description in Markdown."
+          },
+          "descriptionMode": {
+            "type": "string",
+            "enum": [
+              "set",
+              "append"
+            ],
+            "default": "set",
+            "description": "'set' (default) replaces the description; 'append' adds to the existing text after a blank line. Use 'append' when adding a note to curated text you do not want to lose. Note 'append' is not idempotent - retrying the same call appends the text twice."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name."
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "User or team names. Unresolvable names fail the call rather than being dropped."
+          },
+          "ownersMode": {
+            "type": "string",
+            "enum": [
+              "set",
+              "add",
+              "remove"
+            ],
+            "default": "add",
+            "description": "'add' (default) merges into the owner list, 'set' replaces it entirely, 'remove' subtracts."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tag FQNs such as 'PII.Sensitive' or 'Tier.Tier1'. Setting a tier means passing its tag here. Glossary terms cannot be set through this tool; with tagsMode 'add' (the default) any already on the entity are preserved."
+          },
+          "tagsMode": {
+            "type": "string",
+            "enum": [
+              "set",
+              "add",
+              "remove"
+            ],
+            "default": "add",
+            "description": "'add' (default) merges into the tag list, 'set' replaces it entirely, 'remove' subtracts. Prefer 'add': the tags array also carries the entity's tier and glossary terms, and 'set' removes any you do not restate."
           }
         },
         "required": [
           "entityType",
-          "fqn",
-          "patch"
+          "fqn"
         ]
       }
     },
@@ -911,401 +974,6 @@
       }
     },
     {
-      "name": "create_metric",
-      "title": "Create Metric",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the metric. Must be unique and must not contain '::'."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the metric in Markdown format."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name for the metric."
-          },
-          "metricExpressionLanguage": {
-            "type": "string",
-            "description": "Language used to define the metric expression.",
-            "enum": [
-              "SQL",
-              "Java",
-              "JavaScript",
-              "Python",
-              "External"
-            ]
-          },
-          "metricExpressionCode": {
-            "type": "string",
-            "description": "The code or query that computes the metric value (e.g. a SQL SELECT statement)."
-          },
-          "metricType": {
-            "type": "string",
-            "description": "Type of the metric.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVERAGE",
-              "RATIO",
-              "PERCENTAGE",
-              "MIN",
-              "MAX",
-              "MEDIAN",
-              "MODE",
-              "STANDARD_DEVIATION",
-              "VARIANCE",
-              "OTHER"
-            ]
-          },
-          "granularity": {
-            "type": "string",
-            "description": "Time granularity at which the metric is computed.",
-            "enum": [
-              "SECOND",
-              "MINUTE",
-              "HOUR",
-              "DAY",
-              "WEEK",
-              "MONTH",
-              "QUARTER",
-              "YEAR"
-            ]
-          },
-          "unitOfMeasurement": {
-            "type": "string",
-            "description": "Unit of measurement for the metric value.",
-            "enum": [
-              "COUNT",
-              "DOLLARS",
-              "PERCENTAGE",
-              "TIMESTAMP",
-              "SIZE",
-              "REQUESTS",
-              "EVENTS",
-              "TRANSACTIONS",
-              "OTHER"
-            ]
-          },
-          "customUnitOfMeasurement": {
-            "type": "string",
-            "description": "Custom unit of measurement string. Required only when unitOfMeasurement is 'OTHER'."
-          },
-          "owners": {
-            "type": "array",
-            "description": "List of OpenMetadata usernames or team names to set as owners of this metric.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "reviewers": {
-            "type": "array",
-            "description": "List of OpenMetadata usernames or team names to set as reviewers of this metric.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "relatedMetrics": {
-            "type": "array",
-            "description": "Fully qualified names of related metrics (e.g. 'DailyRevenue', 'WeeklyRevenue').",
-            "items": {
-              "type": "string"
-            }
-          },
-          "tags": {
-            "type": "array",
-            "description": "Tag FQNs to apply to this metric (e.g. 'Tier.Tier1', 'PII.Sensitive').",
-            "items": {
-              "type": "string"
-            }
-          },
-          "domains": {
-            "type": "array",
-            "description": "Fully qualified names of the domains this metric belongs to (e.g. 'Finance', 'Marketing'). Assigns the metric to a domain for governance and access control.",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "metricExpressionLanguage",
-          "metricExpressionCode"
-        ]
-      }
-    },
-    {
-      "name": "create_classification",
-      "title": "Create Classification",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Creates a new Classification in OpenMetadata. A Classification is a top-level container that groups related Tags (e.g. 'PII', 'Tier'). The 'name' becomes the root segment of every tag FQN under it. The 'mutuallyExclusive' flag is immutable once the classification exists: if you set it on an existing classification it is ignored and a '_warning' is returned. Owner and reviewer names must already exist in OpenMetadata. Any domain FQNs must already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the classification. Becomes the root segment of tag FQNs (e.g. 'PII' -> 'PII.Sensitive'). Must be unique."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the classification in Markdown format."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name for the classification."
-          },
-          "mutuallyExclusive": {
-            "type": "boolean",
-            "description": "If true, an entity can only carry one tag from this classification at a time. Immutable after creation; ignored on update (returns a '_warning')."
-          },
-          "owners": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "reviewers": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "domains": {
-            "type": "array",
-            "description": "Fully qualified names of domains this classification belongs to. Each domain must already exist.",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "description"
-        ]
-      }
-    },
-    {
-      "name": "create_tag",
-      "title": "Create Tag",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Creates a new Tag inside a Classification in OpenMetadata. The tag FQN is 'Classification.TagName' (e.g. 'PII.Sensitive'). At least one of 'classification' or 'parent' MUST be provided. Provide 'classification' (the root classification name, which must already exist), and optionally 'parent' for a nested tag (the parent tag FQN, e.g. 'PII.PersonalData', which must already exist). If only 'parent' is given, the classification is derived from its root segment. If both are given, 'classification' must equal the root segment of 'parent'. Owner and reviewer names must already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the tag (the leaf segment, e.g. 'Sensitive'). Must be unique within its parent."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the tag in Markdown format."
-          },
-          "classification": {
-            "type": "string",
-            "description": "Name of the classification this tag belongs to (e.g. 'PII'). Must already exist. Optional if 'parent' is provided (derived from its root segment)."
-          },
-          "parent": {
-            "type": "string",
-            "description": "FQN of the parent tag for a nested tag (e.g. 'PII.PersonalData'). Must already exist. Omit for a top-level tag."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name for the tag."
-          },
-          "mutuallyExclusive": {
-            "type": "boolean",
-            "description": "If true, child tags under this tag are mutually exclusive on an entity."
-          },
-          "owners": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "reviewers": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "domains": {
-            "type": "array",
-            "description": "Fully qualified names of domains this tag belongs to. Each domain must already exist.",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "description"
-        ]
-      }
-    },
-    {
-      "name": "create_domain",
-      "title": "Create Domain",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Creates a new Domain in OpenMetadata. A Domain is a top-level governance grouping of data assets. To create a child domain, set 'parent' to the FQN of an existing parent domain (it must already exist). 'domainType' must be one of Source-aligned, Consumer-aligned, or Aggregate; it defaults to 'Aggregate' if omitted. 'experts' are OpenMetadata login names that must already exist. Owner names must also already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the domain. Becomes the root segment of the FQN for child domains. Must be unique."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the domain in Markdown format."
-          },
-          "domainType": {
-            "type": "string",
-            "description": "Type of the domain. Defaults to 'Aggregate' if omitted.",
-            "enum": [
-              "Source-aligned",
-              "Consumer-aligned",
-              "Aggregate"
-            ]
-          },
-          "parent": {
-            "type": "string",
-            "description": "FQN of an existing parent domain when creating a child domain. The parent must already exist. Omit for a top-level domain."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name for the domain."
-          },
-          "experts": {
-            "type": "array",
-            "description": "OpenMetadata login names of domain experts (e.g. 'john.doe'). Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "owners": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "tags": {
-            "type": "array",
-            "description": "Tag FQNs to apply to this domain (e.g. 'Tier.Tier1', 'PII.Sensitive').",
-            "items": {
-              "type": "string"
-            }
-          },
-          "extension": {
-            "type": "object",
-            "description": "Custom properties to set on the domain, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
-            "additionalProperties": true
-          }
-        },
-        "required": [
-          "name",
-          "description"
-        ]
-      }
-    },
-    {
-      "name": "create_data_product",
-      "title": "Create Data Product",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Creates a new Data Product in OpenMetadata. A Data Product groups data assets that deliver business value and must belong to at least one Domain. Provide 'domains' as a list of existing domain FQNs (required, at least one; each must already exist). 'experts' are OpenMetadata login names that must already exist. Owner and reviewer names must also already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the data product. Must be unique."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the data product in Markdown format."
-          },
-          "domains": {
-            "type": "array",
-            "description": "Fully qualified names of the domains this data product belongs to (e.g. 'Finance', 'Marketing'). Required, at least one; each domain must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "experts": {
-            "type": "array",
-            "description": "OpenMetadata login names of data product experts (e.g. 'john.doe'). Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name for the data product."
-          },
-          "owners": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "reviewers": {
-            "type": "array",
-            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "tags": {
-            "type": "array",
-            "description": "Tag FQNs to apply to this data product (e.g. 'Tier.Tier1', 'PII.Sensitive').",
-            "items": {
-              "type": "string"
-            }
-          },
-          "extension": {
-            "type": "object",
-            "description": "Custom properties to set on the data product, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
-            "additionalProperties": true
-          }
-        },
-        "required": [
-          "name",
-          "description",
-          "domains"
-        ]
-      }
-    },
-    {
       "name": "root_cause_analysis",
       "title": "Root Cause Analysis",
       "annotations": {
@@ -1353,94 +1021,6 @@
         "required": [
           "fqn",
           "entityType"
-        ]
-      }
-    },
-    {
-      "name": "create_context_memory",
-      "title": "Create Context Memory",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Stable, unique system name for the memory. Reusing an existing name updates that memory instead of creating a new one."
-          },
-          "question": {
-            "type": "string",
-            "description": "The canonical question or instruction this memory represents (e.g. 'Which warehouse should finance dashboards query?')."
-          },
-          "answer": {
-            "type": "string",
-            "description": "The canonical answer or guidance to retain (e.g. 'Always query the FINANCE_PROD warehouse for finance dashboards')."
-          },
-          "title": {
-            "type": "string",
-            "description": "Short human-readable title shown in the Context Center."
-          },
-          "summary": {
-            "type": "string",
-            "description": "Optional one-line summary of the memory."
-          },
-          "description": {
-            "type": "string",
-            "description": "Optional longer description in Markdown format."
-          },
-          "displayName": {
-            "type": "string",
-            "description": "Human-readable display name for the memory."
-          },
-          "memoryType": {
-            "type": "string",
-            "description": "Category of the memory. Defaults to 'Note' when omitted.",
-            "enum": [
-              "Preference",
-              "UseCase",
-              "Note",
-              "Runbook",
-              "Faq"
-            ]
-          },
-          "memoryScope": {
-            "type": "string",
-            "description": "Scope at which the memory applies. 'UserGlobal' applies broadly; 'EntityScoped' ties it to a specific entity.",
-            "enum": [
-              "UserGlobal",
-              "EntityScoped"
-            ]
-          },
-          "owners": {
-            "type": "array",
-            "description": "List of OpenMetadata usernames or team names to set as owners of this memory.",
-            "items": {
-              "type": "string"
-            }
-          },
-          "tags": {
-            "type": "array",
-            "description": "Tag FQNs to apply to this memory (e.g. 'Tier.Tier1', 'PII.Sensitive').",
-            "items": {
-              "type": "string"
-            }
-          },
-          "domains": {
-            "type": "array",
-            "description": "Fully qualified names of the domains this memory belongs to (e.g. 'Finance', 'Marketing').",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "question",
-          "answer"
         ]
       }
     }

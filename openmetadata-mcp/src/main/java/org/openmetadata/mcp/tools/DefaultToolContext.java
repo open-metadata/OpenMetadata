@@ -108,17 +108,11 @@ public class DefaultToolContext {
         case "get_company_context":
           result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
           break;
-        case "create_context_memory":
-          result =
-              new CreateContextMemoryTool().execute(authorizer, limits, securityContext, params);
+        case "create_entity":
+          result = new CreateEntityTool().execute(authorizer, limits, securityContext, params);
           break;
-        case "create_glossary":
-          tool = new GlossaryTool();
-          result = tool.execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary_term":
-          tool = new GlossaryTermTool();
-          result = tool.execute(authorizer, limits, securityContext, params);
+        case "describe_entity_type":
+          result = new DescribeEntityTypeTool().execute(authorizer, securityContext, params);
           break;
         case "patch_entity":
           tool = new PatchEntityTool();
@@ -139,22 +133,6 @@ public class DefaultToolContext {
           break;
         case "root_cause_analysis":
           result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
-          break;
-        case "create_metric":
-          result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_classification":
-          result =
-              new CreateClassificationTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_tag":
-          result = new CreateTagTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_domain":
-          result = new CreateDomainTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_data_product":
-          result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
           break;
         default:
           return new CallToolOutcome(
