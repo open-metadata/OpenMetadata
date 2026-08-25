@@ -46,3 +46,49 @@ test('suppressions baseline only ever shrinks', () => {
     `suppression total ${total} exceeds ceiling ${CEILING} — fix the violations rather than suppressing them`
   );
 });
+
+// The 18 guardrail rules are scoped to `**/playwright/**/*.{ts,tsx}` in
+// eslint.config.mjs, deliberately: the local plugin under `eslint-rules/` is
+// CommonJS `.js` and is not a Playwright test, so applying test rules to it is
+// meaningless. That scoping only holds as a guardrail while the test corpus
+// really is TypeScript-only — Playwright's default `testMatch` DOES collect
+// `*.spec.js`, so a JavaScript spec would run with none of the rules applied.
+// This test makes the TypeScript-only invariant explicit rather than assumed.
+test('the playwright corpus stays TypeScript-only', () => {
+  const ROOT = path.join(__dirname, '../..');
+  // eslint-rules/ is the CommonJS plugin itself; doc-generator/ is lint-ignored
+  // tooling. Neither is a test, and neither is collected by Playwright.
+  const EXEMPT = new Set([
+    'eslint-rules',
+    'doc-generator',
+    'output',
+    'test-data',
+  ]);
+
+  const offenders = [];
+  const walk = (dir, relative) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const rel = relative ? `${relative}/${entry.name}` : entry.name;
+
+      if (entry.isDirectory()) {
+        if (!EXEMPT.has(rel)) {
+          walk(path.join(dir, entry.name), rel);
+        }
+      } else if (/\.(js|jsx)$/.test(entry.name)) {
+        offenders.push(rel);
+      }
+    }
+  };
+
+  walk(ROOT, '');
+
+  assert.deepStrictEqual(
+    offenders,
+    [],
+    `JavaScript files found in the Playwright corpus: ${offenders.join(
+      ', '
+    )}. ` +
+      'Playwright collects *.spec.js but eslint.config.mjs scopes the guardrail ' +
+      'rules to .ts/.tsx, so these would run unlinted. Convert them to TypeScript.'
+  );
+});

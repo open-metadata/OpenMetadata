@@ -433,7 +433,7 @@ export default [
 
   // Playwright tests
   {
-    files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
+    files: ['**/playwright/**/*.{ts,tsx}'],
     plugins: {
       playwright,
       'om-playwright': omPlaywright,
@@ -523,7 +523,7 @@ export default [
 
   // Custom rules that only make sense on e2e spec files
   {
-    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    files: ['playwright/e2e/**/*.spec.{ts,tsx}'],
     plugins: {
       'om-playwright': omPlaywright,
     },
@@ -564,7 +564,7 @@ export default [
   // one (admin) perspective?" If yes, switch to the fixture. If no (you need
   // a second user), the warning is expected — leave it as-is.
   {
-    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    files: ['playwright/e2e/**/*.spec.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'warn',
@@ -594,7 +594,7 @@ export default [
       'src/setupTests.js',
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
-      'playwright/**/*.spec.{js,jsx,ts,tsx}',
+      'playwright/**/*.spec.{ts,tsx}',
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
