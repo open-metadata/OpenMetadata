@@ -14,7 +14,6 @@
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
-import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -68,6 +67,7 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
+import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
 interface ServicesProps {
