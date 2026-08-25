@@ -18,6 +18,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -66,6 +67,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
@@ -467,7 +469,15 @@ public class CreateTask implements TaskListener {
     String updatedBy =
         requestedUpdatedBy != null && !requestedUpdatedBy.isBlank()
             ? requestedUpdatedBy
-            : resolveUpdatedBy(entity, createdByRef);
+            : resolveRequester(delegateTask, resolvedWorkflowDefinitionId, entity, createdByRef);
+    // The requester (updatedBy) is the editor who caused this run. For a pending-change task the
+    // gate's revert leaves the entity's updatedBy on the previous editor, so createdBy resolved from
+    // it names the wrong user; align it with the requester when the workflow supplied no explicit
+    // creator (createdBy already reflects it for every other task type).
+    if (requestedCreatedBy == null
+        && GovernanceApprovalRegistry.isPendingChangeWorkflow(resolvedWorkflowDefinitionId)) {
+      createdByRef = resolveUserReferenceOrDefault(updatedBy, createdByRef);
+    }
 
     Task existingTask =
         findExistingTaskWithRetry(taskRepository, requestedTaskId, workflowManagedDraftTask);
@@ -483,7 +493,8 @@ public class CreateTask implements TaskListener {
                 entity,
                 taskCategory,
                 resolvedWorkflowDefinitionId,
-                workflowInstanceId)
+                workflowInstanceId,
+                updatedBy)
             : null;
     if (existingTask != null) {
       LOG.info(
@@ -561,7 +572,7 @@ public class CreateTask implements TaskListener {
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       updatedTask.setPayload(
-          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
+          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload(), updatedBy));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -652,7 +663,7 @@ public class CreateTask implements TaskListener {
     }
     task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
     task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
-    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
+    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload(), updatedBy));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -713,13 +724,26 @@ public class CreateTask implements TaskListener {
     // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
     if (taskCategory == TaskCategory.Approval) {
       try {
+        // Hook (pending-change) workflows keep one live approval per (entity, workflow, requester):
+        // a new edit supersedes only the same requester's prior task, so other requesters' tasks
+        // survive. Non-hook workflows keep the entity-level supersede (requesterToMatch = null).
+        // Hook (pending-change) workflows keep one live approval per (entity, workflow, requester):
+        // a new edit supersedes only the same requester's prior task, so other requesters' tasks
+        // survive. Non-hook workflows keep the entity-level supersede (requesterToMatch = null).
+        String requesterToMatch =
+            GovernanceApprovalRegistry.isPendingChangeWorkflow(currentWorkflowDefinitionId)
+                ? updatedBy
+                : null;
         taskRepository
             .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
             .stream()
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
-                        prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+                        prior,
+                        currentWorkflowDefinitionId,
+                        currentWorkflowInstanceId,
+                        requesterToMatch))
             .forEach(
                 prior ->
                     cancelAndTerminatePriorApproval(
@@ -745,10 +769,15 @@ public class CreateTask implements TaskListener {
       EntityInterface entity,
       TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
-      UUID currentWorkflowInstanceId) {
+      UUID currentWorkflowInstanceId,
+      String updatedBy) {
     Object priorPayload = null;
     if (taskCategory == TaskCategory.Approval && entity != null) {
       try {
+        String requesterToMatch =
+            GovernanceApprovalRegistry.isPendingChangeWorkflow(currentWorkflowDefinitionId)
+                ? updatedBy
+                : null;
         priorPayload =
             taskRepository
                 .listNonTerminalTasksByEntityAndCategory(
@@ -757,7 +786,10 @@ public class CreateTask implements TaskListener {
                 .filter(
                     prior ->
                         isSupersedablePriorApprovalTask(
-                            prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+                            prior,
+                            currentWorkflowDefinitionId,
+                            currentWorkflowInstanceId,
+                            requesterToMatch))
                 .map(Task::getPayload)
                 .filter(java.util.Objects::nonNull)
                 .findFirst()
@@ -773,14 +805,18 @@ public class CreateTask implements TaskListener {
   }
 
   static boolean isSupersedablePriorApprovalTask(
-      Task prior, UUID currentWorkflowDefinitionId, UUID currentWorkflowInstanceId) {
+      Task prior,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId,
+      String requesterToMatch) {
     return prior != null
         && currentWorkflowInstanceId != null
         && currentWorkflowDefinitionId != null
         && prior.getWorkflowInstanceId() != null
         && !isTerminalTaskStatus(prior.getStatus())
         && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
-        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId())
+        && (requesterToMatch == null || requesterToMatch.equals(prior.getUpdatedBy()));
   }
 
   private void cancelAndTerminatePriorApproval(
@@ -1024,11 +1060,11 @@ public class CreateTask implements TaskListener {
    * description.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface entity, Object payload) {
+      TaskEntityType taskType, EntityInterface entity, Object payload, String updatedBy) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }
-    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload);
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload, updatedBy);
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
@@ -1151,6 +1187,47 @@ public class CreateTask implements TaskListener {
       throw new IllegalArgumentException(
           "Invalid recognizer feedback task payload", invalidPayload);
     }
+  }
+
+  // For pending-change (hook) workflows the requester is the editor who caused this run - the value
+  // the trigger carries in the global updatedBy variable and the value the held change is keyed by -
+  // not the persisted entity's updatedBy, which the gate's revert resets to the previous editor.
+  // Falls back to the entity-derived value, leaving every other task type on its existing behavior.
+  // Resolve a user EntityReference by name, falling back to the already-resolved reference when the
+  // name is blank or the user cannot be looked up - so aligning createdBy with the requester never
+  // leaves the task without a creator.
+  EntityReference resolveUserReferenceOrDefault(String userName, EntityReference fallback) {
+    EntityReference ref = fallback;
+    if (userName != null && !userName.isBlank()) {
+      try {
+        ref = Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.debug("[CreateTask] Could not resolve user reference for '{}'; keeping creator", userName);
+      }
+    }
+    return ref;
+  }
+
+  String resolveRequester(
+      DelegateTask delegateTask,
+      UUID workflowDefinitionId,
+      EntityInterface entity,
+      EntityReference createdByRef) {
+    String requester = null;
+    if (GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowDefinitionId)) {
+      // Flowable stores process variables as untyped Object; the trigger sets the global updatedBy
+      // as a String (the editor who caused this run).
+      Object globalUpdatedBy =
+          new WorkflowVariableHandler(delegateTask)
+              .getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      if (globalUpdatedBy instanceof String editor && !editor.isBlank()) {
+        requester = editor;
+      }
+    }
+    if (requester == null) {
+      requester = resolveUpdatedBy(entity, createdByRef);
+    }
+    return requester;
   }
 
   private String resolveUpdatedBy(EntityInterface entity, EntityReference createdByRef) {

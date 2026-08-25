@@ -72,11 +72,18 @@ public final class WorkflowTriggerFilters {
    * filter is not excluded.
    */
   public static boolean matchesExclusionFilter(String filterLogic, EntityInterface entity) {
+    return matchesExclusionFilter(filterLogic, JsonUtils.getMap(entity));
+  }
+
+  /**
+   * Overload evaluating the exclusion filter against a pre-built entity map. The gate feeds the
+   * proposed entity (the edit applied), so the trigger's filter and the gate's filter judge the same
+   * state even when the edit is held off the persisted entity.
+   */
+  public static boolean matchesExclusionFilter(String filterLogic, Map<String, Object> entityMap) {
     boolean matches = false;
     if (filterLogic != null && !filterLogic.trim().isEmpty()) {
-      matches =
-          Boolean.TRUE.equals(
-              RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity)));
+      matches = Boolean.TRUE.equals(RuleEngine.getInstance().apply(filterLogic, entityMap));
     }
     return matches;
   }

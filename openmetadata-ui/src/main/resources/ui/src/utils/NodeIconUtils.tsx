@@ -66,6 +66,9 @@ export const getCanvasNodeIcon = (
     case NodeSubType.RollbackEntityTask:
       return <CanvasRevertIcon {...defaultProps} />;
 
+    case NodeSubType.ResolvePendingChangeTask:
+      return <CanvasActionIcon {...defaultProps} />;
+
     case NodeSubType.PolicyAgentTask:
       return <CanvasActionIcon {...defaultProps} />;
 
@@ -109,6 +112,9 @@ export const getNodeIcon = (
 
     case NodeSubType.RollbackEntityTask:
       return <RevertIcon {...defaultProps} />;
+
+    case NodeSubType.ResolvePendingChangeTask:
+      return <ActionIcon {...defaultProps} />;
 
     case NodeSubType.PolicyAgentTask:
       return <ActionIcon {...defaultProps} />;

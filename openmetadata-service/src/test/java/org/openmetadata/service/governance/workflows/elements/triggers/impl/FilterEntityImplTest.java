@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,311 +13,269 @@
 
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.engine.delegate.DelegateExecution;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
+/**
+ * Covers the {@code eventBasedEntity} trigger's decision to fire a workflow, focused on the
+ * approval-gated pending-change path.
+ *
+ * <p>The trigger evaluates exactly one edit: the held change carried on the signal the gate raises
+ * (the fields this edit held off the entity), or - for a normal change event - the entity's
+ * persisted change description. The requester's accumulated hold (prior edits still awaiting
+ * approval) must never be folded in, so an edit that touches only an excluded field does not
+ * re-fire while an unrelated hold is open. The exclusion JsonLogic runs against the proposed entity
+ * (the held change applied), matching the gate, which evaluates the filter before reverting.
+ */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class FilterEntityImplTest {
 
-  private FilterEntityImpl filterEntity;
-  private Method passesFieldBasedFilter;
-  private Method sanitizeFilterValue;
-  private Method extractFromFilterMap;
+  private static final String ENTITY_LINK = "<#E::glossary::DiagGlossary>";
+
+  @Mock private DelegateExecution execution;
+  @Mock private Expression excludedFieldsExpr;
+  @Mock private Expression includeFieldsExpr;
+  @Mock private Expression filterExpr;
+
+  private FilterEntityImpl delegate;
+  private MockedStatic<Entity> mockedEntity;
+  private MockedStatic<GovernanceApprovalRegistry> mockedRegistry;
+  private Map<String, Object> capturedVars;
 
   @BeforeEach
   void setUp() throws Exception {
-    filterEntity = new FilterEntityImpl();
-    passesFieldBasedFilter =
-        FilterEntityImpl.class.getDeclaredMethod(
-            "passesFieldBasedFilter", List.class, List.class, List.class);
-    passesFieldBasedFilter.setAccessible(true);
-    sanitizeFilterValue =
-        FilterEntityImpl.class.getDeclaredMethod("sanitizeFilterValue", String.class);
-    sanitizeFilterValue.setAccessible(true);
-    extractFromFilterMap =
-        FilterEntityImpl.class.getDeclaredMethod("extractFromFilterMap", Map.class, String.class);
-    extractFromFilterMap.setAccessible(true);
+    delegate = new FilterEntityImpl();
+    injectField(delegate, "excludedFieldsExpr", excludedFieldsExpr);
+    injectField(delegate, "includeFieldsExpr", includeFieldsExpr);
+    injectField(delegate, "filterExpr", filterExpr);
+
+    when(execution.getProcessDefinitionId()).thenReturn("PendingChangeApprovalWorkflow:1:1");
+    when(execution.getVariable("global_relatedEntity")).thenReturn(ENTITY_LINK);
+
+    mockedEntity = mockStatic(Entity.class);
+    mockedRegistry = mockStatic(GovernanceApprovalRegistry.class);
+    // Default: not a hook workflow, so the field/filter logic below is what the tests exercise.
+    // The hook-suppression case overrides this to true.
+    mockedRegistry
+        .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(anyString()))
+        .thenReturn(false);
+
+    capturedVars = new HashMap<>();
+    doAnswer(
+            invocation -> {
+              capturedVars.put(invocation.getArgument(0), invocation.getArgument(1));
+              return null;
+            })
+        .when(execution)
+        .setVariable(anyString(), any());
+  }
+
+  @AfterEach
+  void tearDown() {
+    mockedEntity.close();
+    mockedRegistry.close();
+  }
+
+  // ---- Event path: no held change on the signal, evaluate the persisted change description ----
+
+  @Test
+  void eventPath_excludedFieldOnly_doesNotFire() {
+    givenEntity(glossary().withChangeDescription(changeOf("description")));
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertFalse(
+        passesFilter(),
+        "A change to only an excluded field must not fire, even with a hold open elsewhere");
   }
 
   @Test
-  void testExistingFieldsAreRecognizedAsTriggerFields() throws Exception {
-    List<String> existingFields =
-        List.of(
-            "name",
-            "displayName",
-            "fullyQualifiedName",
-            "description",
-            "owners",
-            "reviewers",
-            "tags",
-            "certification",
-            "domains",
-            "dataProducts",
-            "extension",
-            "deleted",
-            "synonyms",
-            "relatedTerms",
-            "references",
-            "glossary",
-            "parent",
-            "children",
-            "experts");
+  void eventPath_nonExcludedField_fires() {
+    givenEntity(glossary().withChangeDescription(changeOf("tags")));
+    exclude("description");
 
-    for (String field : existingFields) {
-      assertTrue(
-          invokeFilter(List.of(fieldChange(field)), null, null),
-          "Existing field should trigger workflow: " + field);
-    }
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "A change to a non-excluded field must fire");
+  }
+
+  // ---- Gate path: held change carried on the signal is the single edit under review ----
+
+  @Test
+  void gatePath_heldGatedField_firesEvenWhenEntityHasNoPersistedChange() {
+    // The gate reverts the held field off the entity, so the persisted change description is null.
+    givenEntity(glossary().withChangeDescription(null));
+    heldChange(changeOf("tags"));
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "The held gated field must drive the trigger on the gate path");
   }
 
   @Test
-  void testNewCommonFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("style")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("lifeCycle")), null, null));
+  void gatePath_usesHeldChangeNotPersisted() {
+    // Held change is an excluded field; the entity's persisted change description carries a
+    // non-excluded field. If the trigger read the persisted change it would fire - it must not,
+    // because the edit under review (the held change) touched only an excluded field.
+    givenEntity(glossary().withChangeDescription(changeOf("tags")));
+    heldChange(changeOf("description"));
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertFalse(passesFilter(), "The held change, not the persisted one, decides the gate path");
   }
 
   @Test
-  void testNewDataContractFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("semantics")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("qualityExpectations")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("termsOfUse")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("security")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("testSuite")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("latestResult")), null, null));
+  void eventPath_hookWorkflow_noHeldChange_isSuppressed() {
+    // A hook workflow reviews held changes only. An entity-change event with nothing held (e.g. a
+    // description edit whose change description also carries the workflow's own entityStatus write)
+    // must not start it, even though entityStatus is not an excluded field. Suppressed before the
+    // field/filter evaluation, so no entity stub is needed.
+    mockedRegistry
+        .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(anyString()))
+        .thenReturn(true);
+
+    delegate.execute(execution);
+
+    assertFalse(
+        passesFilter(), "A hook workflow must not fire on a plain event with no held change");
+  }
+
+  // ---- Exclusion JsonLogic evaluated against the proposed (held-applied) entity ----
+
+  @Test
+  void jsonLogicFilter_evaluatesProposedEntity_notRevertedEntity() {
+    // Filter excludes the entity when its description equals SKIP. The gate reverted the held
+    // description off the entity (persisted value is 'kept'); the proposed value is 'SKIP'. The
+    // filter must see the proposed value and exclude, matching what the gate decided.
+    givenEntity(glossary().withDescription("kept"));
+    heldChange(changeOfField("description", "SKIP"));
+    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"SKIP\"]}"));
+
+    delegate.execute(execution);
+
+    assertFalse(
+        passesFilter(), "Exclusion JsonLogic must evaluate the proposed entity (held applied)");
   }
 
   @Test
-  void testNewDataProductFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("consumesFrom")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("providesTo")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("lifecycleStage")), null, null));
+  void jsonLogicFilter_eventPath_evaluatesPersistedEntity() {
+    givenEntity(glossary().withDescription("kept").withChangeDescription(changeOf("tags")));
+    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"SKIP\"]}"));
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "With no held change the persisted entity is not excluded");
   }
 
   @Test
-  void testInputOutputPortsAndGlossaryTermsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("inputPorts")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("outputPorts")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("glossaryTerms")), null, null));
+  void jsonLogicFilter_gatePath_excludedWhenDescriptionEqualsClaude() {
+    // Exclude filter: skip the workflow when the glossary description equals "claude". A held gated
+    // field would otherwise fire, but an excluded entity must not go through the workflow at all.
+    givenEntity(glossary().withDescription("claude"));
+    heldChange(changeOf("tags"));
+    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"claude\"]}"));
+
+    delegate.execute(execution);
+
+    assertFalse(
+        passesFilter(), "Exclude filter description==claude must stop the workflow despite the hold");
   }
 
   @Test
-  void testInputOutputPortsCanBeIncludedOrExcluded() throws Exception {
-    List<String> includePortFields = List.of("inputPorts", "outputPorts");
-    assertTrue(invokeFilter(List.of(fieldChange("inputPorts")), includePortFields, null));
-    assertTrue(invokeFilter(List.of(fieldChange("outputPorts")), includePortFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("description")), includePortFields, null));
+  void jsonLogicFilter_gatePath_firesWhenDescriptionDoesNotMatch() {
+    givenEntity(glossary().withDescription("something-else"));
+    heldChange(changeOf("tags"));
+    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"claude\"]}"));
 
-    List<String> excludePortFields = List.of("inputPorts", "outputPorts");
-    assertFalse(invokeFilter(List.of(fieldChange("inputPorts")), null, excludePortFields));
-    assertFalse(invokeFilter(List.of(fieldChange("outputPorts")), null, excludePortFields));
-    assertTrue(invokeFilter(List.of(fieldChange("description")), null, excludePortFields));
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "A non-matching entity is not excluded; the held change fires");
   }
 
-  @Test
-  void testUnknownFieldIsNotRecognizedAsTriggerField() throws Exception {
-    assertFalse(invokeFilter(List.of(fieldChange("someUnknownField")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("updatedAt")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("version")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("href")), null, null));
+  // ---- helpers ----
+
+  private void givenEntity(Glossary glossary) {
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntity(
+                    any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
+        .thenReturn(glossary);
   }
 
-  @Test
-  void testEntityStatusIsRecognizedAsTriggerField() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
+  private void heldChange(ChangeDescription change) {
+    when(execution.getVariable("global_pendingHeldChange"))
+        .thenReturn(JsonUtils.pojoToJson(change));
   }
 
-  @Test
-  void testEntityStatusCanBeExcludedPerWorkflow() throws Exception {
-    List<String> excludeStatus = List.of("entityStatus");
-    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, excludeStatus));
-    assertTrue(
-        invokeFilter(
-            List.of(fieldChange("entityStatus"), fieldChange("description")), null, excludeStatus));
+  private void exclude(String... fields) {
+    when(excludedFieldsExpr.getValue(execution)).thenReturn(List.of(fields));
   }
 
-  @Test
-  void testIncludeFilterAllowsOnlySpecifiedFields() throws Exception {
-    List<String> includeFields = List.of("sla", "schema");
-
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, null));
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("semantics")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("tags")), includeFields, null));
+  private void filter(Map<String, String> perEntityFilter) {
+    when(filterExpr.getValue(execution)).thenReturn(perEntityFilter);
   }
 
-  @Test
-  void testExcludeFilterBlocksSpecifiedFields() throws Exception {
-    List<String> excludeFields = List.of("sla", "latestResult");
-
-    assertFalse(invokeFilter(List.of(fieldChange("sla")), null, excludeFields));
-    assertFalse(invokeFilter(List.of(fieldChange("latestResult")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("semantics")), null, excludeFields));
+  private Glossary glossary() {
+    return new Glossary()
+        .withName("DiagGlossary")
+        .withFullyQualifiedName("DiagGlossary")
+        .withDescription("desc");
   }
 
-  @Test
-  void testIncludeFilterTakesPriorityOverExcludeFilter() throws Exception {
-    List<String> includeFields = List.of("sla");
-    List<String> excludeFields = List.of("sla");
-
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, excludeFields));
+  private ChangeDescription changeOf(String... fieldNames) {
+    List<FieldChange> updated =
+        List.of(fieldNames).stream().map(name -> new FieldChange().withName(name)).toList();
+    return new ChangeDescription().withFieldsUpdated(updated);
   }
 
-  @Test
-  void testMultipleChangedFieldsPassIfAnyMatchesTriggerFields() throws Exception {
-    List<FieldChange> changes = List.of(fieldChange("updatedAt"), fieldChange("schema"));
-
-    assertTrue(invokeFilter(changes, null, null));
+  private ChangeDescription changeOfField(String name, Object newValue) {
+    return new ChangeDescription()
+        .withFieldsUpdated(List.of(new FieldChange().withName(name).withNewValue(newValue)));
   }
 
-  @Test
-  void testEmptyChangedFieldsReturnsFalse() throws Exception {
-    assertFalse(invokeFilter(List.of(), null, null));
+  private boolean passesFilter() {
+    return Boolean.TRUE.equals(capturedVars.get(EventBasedEntityTrigger.PASSES_FILTER_VARIABLE));
   }
 
-  @Test
-  void testAllChangedFieldsNonTriggerReturnsFalse() throws Exception {
-    List<FieldChange> changes = List.of(fieldChange("updatedAt"), fieldChange("version"));
-
-    assertFalse(invokeFilter(changes, null, null));
-  }
-
-  @Test
-  void testNestedFieldMatchesParentTriggerField() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("sla.refreshFrequency")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("sla.maxLatency")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("semantics.0.ruleName")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("schema.0.dataType")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("security.dataClassification")), null, null));
-  }
-
-  @Test
-  void testNestedFieldDoesNotMatchSimilarPrefix() throws Exception {
-    assertFalse(invokeFilter(List.of(fieldChange("slaSpecial")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("schemaVersion")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("tagsExtra")), null, null));
-  }
-
-  @Test
-  void testNestedFieldIncludeFilter() throws Exception {
-    List<String> includeFields = List.of("sla");
-
-    assertTrue(invokeFilter(List.of(fieldChange("sla.refreshFrequency")), includeFields, null));
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("schema")), includeFields, null));
-  }
-
-  @Test
-  void testNestedFieldExcludeFilter() throws Exception {
-    List<String> excludeFields = List.of("sla");
-
-    assertFalse(invokeFilter(List.of(fieldChange("sla.refreshFrequency")), null, excludeFields));
-    assertFalse(invokeFilter(List.of(fieldChange("sla")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
-  }
-
-  // sanitizeFilterValue: guards against the historical UI bug where an incomplete
-  // filter tree was serialized as a JSON-encoded empty string \"\" and persisted
-  // per entity in the trigger config. Also handles \"{}\" and whitespace forms.
-
-  @Test
-  void testSanitizeFilterValueTreatsNullAsNoFilter() throws Exception {
-    assertNull(invokeSanitize(null));
-  }
-
-  @Test
-  void testSanitizeFilterValueTreatsEmptyStringAsNoFilter() throws Exception {
-    assertNull(invokeSanitize(""));
-    assertNull(invokeSanitize("   "));
-  }
-
-  @Test
-  void testSanitizeFilterValueTreatsJsonEncodedEmptyAsNoFilter() throws Exception {
-    assertNull(invokeSanitize("\"\""));
-    assertNull(invokeSanitize("  \"\"  "));
-  }
-
-  @Test
-  void testSanitizeFilterValueTreatsEmptyObjectAsNoFilter() throws Exception {
-    assertNull(invokeSanitize("{}"));
-    assertNull(invokeSanitize("  {}  "));
-  }
-
-  @Test
-  void testSanitizeFilterValuePreservesRealFilter() throws Exception {
-    String filter = "{\"==\":[{\"var\":\"name\"},\"foo\"]}";
-    assertEquals(filter, invokeSanitize(filter));
-  }
-
-  // extractFromFilterMap: entity-specific value wins over default; poisoned values
-  // are skipped instead of leaking into RuleEngine (which fails and would flip the
-  // exclusion filter's fail-open semantics into a hard reject).
-
-  @Test
-  void testExtractFromFilterMapPrefersEntitySpecificOverDefault() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "{\"==\":[1,1]}");
-    map.put("glossaryTerm", "{\"==\":[{\"var\":\"name\"},\"foo\"]}");
-    assertEquals("{\"==\":[{\"var\":\"name\"},\"foo\"]}", invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapFallsBackToDefault() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "{\"==\":[1,1]}");
-    assertEquals("{\"==\":[1,1]}", invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapPoisonedEntitySpecificFallsBackToDefault() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "{\"==\":[1,1]}");
-    map.put("glossaryTerm", "\"\"");
-    assertEquals("{\"==\":[1,1]}", invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapAllPoisonedReturnsNull() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "\"\"");
-    map.put("glossaryTerm", "\"\"");
-    assertNull(invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapEmptyMapReturnsNull() throws Exception {
-    assertNull(invokeExtract(new HashMap<>(), "glossaryTerm"));
-  }
-
-  private boolean invokeFilter(
-      List<FieldChange> changedFields, List<String> includeFields, List<String> excludeFields)
-      throws Exception {
-    return (boolean)
-        passesFieldBasedFilter.invoke(filterEntity, changedFields, includeFields, excludeFields);
-  }
-
-  private String invokeSanitize(String filter) throws Exception {
-    return (String) sanitizeFilterValue.invoke(null, filter);
-  }
-
-  private String invokeExtract(Map<String, String> map, String entityType) throws Exception {
-    return (String) extractFromFilterMap.invoke(filterEntity, map, entityType);
-  }
-
-  private FieldChange fieldChange(String name) {
-    FieldChange fc = new FieldChange();
-    fc.setName(name);
-    return fc;
+  private static void injectField(Object target, String fieldName, Object value) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
   }
 }

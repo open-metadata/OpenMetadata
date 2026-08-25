@@ -41,3 +41,14 @@ CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
 ON entity_relationship ((json->'pipeline'->>'id'), relation)
 WHERE (json->'pipeline'->>'id') IS NOT NULL;
+
+-- Approval-gated pending change hold (issue #4673). Holds an edit off the entity until its
+-- governance workflow commits or discards it. `json` is the ChangeDescription-shaped held diff,
+-- keyed by (entity_id, updated_by); cleaned up on commit/discard.
+CREATE TABLE IF NOT EXISTS pending_approval_change (
+    entity_id VARCHAR(36) NOT NULL,
+    updated_by VARCHAR(256) NOT NULL,
+    json JSONB NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (entity_id, updated_by)
+);

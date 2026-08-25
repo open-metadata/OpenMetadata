@@ -319,13 +319,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     let filterConfig = {};
 
     if (isEventBased) {
-      const eventFilters = serializeEventBasedFilters(
-        effectiveConfig.triggerFilter || '',
-        effectiveConfig.dataAssets
-      );
-      if (Object.keys(eventFilters).length > 0) {
-        filterConfig = { filter: eventFilters };
-      }
+      // Always set filter - even when empty - so clearing the exclude filter overwrites the stale
+      // value the effectiveConfig/backendConfig spread below carries over, instead of leaving the
+      // old filter in place. An empty object deserializes back to "no filter".
+      filterConfig = {
+        filter: serializeEventBasedFilters(
+          effectiveConfig.triggerFilter || '',
+          effectiveConfig.dataAssets
+        ),
+      };
     } else if (isPeriodicBatch) {
       const periodicFilters = serializePeriodicBatchFilters(
         effectiveConfig.dataAssetFilters

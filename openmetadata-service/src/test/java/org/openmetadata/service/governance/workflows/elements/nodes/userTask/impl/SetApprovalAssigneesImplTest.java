@@ -293,6 +293,32 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_leftEmptyForAutoApprove() {
+    // Event-driven approval (not workflow-managed): the only reviewer is the requester. The
+    // requester must be removed and NOT re-added, leaving the assignee list empty so the
+    // userApprovalTask auto-approves instead of assigning the change to its own author.
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertEquals(
+        "[]",
+        assigneesJson,
+        "Event-driven sole-requester must be removed and not re-added, leaving the list empty");
+    assertFalse(
+        (Boolean) capturedVars.get("hasAssignees"),
+        "Empty list on a non-workflow-managed task must auto-approve, never self-approve");
+  }
+
+  @Test
   void testTagReviewerResolutionLoadsClassificationForInheritedReviewers() {
     when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::tag::PII.Sensitive>");
     when(assigneesExpr.getValue(execution))

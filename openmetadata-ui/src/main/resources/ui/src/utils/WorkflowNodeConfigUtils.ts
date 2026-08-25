@@ -165,6 +165,13 @@ const addNodeSpecificConfig = (
     if (nodeData.config && Object.keys(nodeData.config).length > 0) {
       config.config = nodeData.config;
     }
+  } else if (subType === NodeSubType.ResolvePendingChangeTask) {
+    // resolvePendingChangeTask requires config.action (commit | discard | hold). Carry it through
+    // on save so the round-trip (load -> save without reopening the form) preserves it; otherwise
+    // the backend rejects the node with "config must not be null".
+    if (nodeData.config && Object.keys(nodeData.config).length > 0) {
+      config.config = nodeData.config;
+    }
   }
 };
 

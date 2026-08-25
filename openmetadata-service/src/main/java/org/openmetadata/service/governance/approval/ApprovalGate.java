@@ -15,6 +15,7 @@
 package org.openmetadata.service.governance.approval;
 
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.PENDING_HELD_CHANGE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -68,7 +69,12 @@ public final class ApprovalGate {
 
   private ApprovalGate() {}
 
-  private record HeldTrigger(String entityType, String entityFqn, String entityId, String user) {}
+  private record HeldTrigger(
+      String entityType,
+      String entityFqn,
+      String entityId,
+      String user,
+      ChangeDescription heldChange) {}
 
   /**
    * Runs {@code apply} - the write that commits an already-approved held change - with the gate
@@ -145,10 +151,14 @@ public final class ApprovalGate {
       if (!held.isEmpty()) {
         LOG.debug(
             "[ApprovalGate] {} held {} field(s) for {}", entityType, held.size(), original.getId());
-        recordHold(original, held);
+        ChangeDescription heldChange = recordHold(original, held, user);
         PENDING_TRIGGER.set(
             new HeldTrigger(
-                entityType, updated.getFullyQualifiedName(), original.getId().toString(), user));
+                entityType,
+                updated.getFullyQualifiedName(),
+                original.getId().toString(),
+                user,
+                heldChange));
       }
     }
   }
@@ -231,10 +241,14 @@ public final class ApprovalGate {
     }
   }
 
-  private static void recordHold(EntityInterface original, List<FieldChange> held) {
+  // Records this edit's held fields into the requester's accumulating store record and returns the
+  // single-edit change so the trigger raised below can review exactly this edit, not the accumulation.
+  private static ChangeDescription recordHold(
+      EntityInterface original, List<FieldChange> held, String user) {
     ChangeDescription pending =
         new ChangeDescription().withPreviousVersion(original.getVersion()).withFieldsUpdated(held);
-    PendingApprovalChangeStore.accumulate(original.getId(), pending);
+    PendingApprovalChangeStore.accumulate(original.getId(), user, pending);
+    return pending;
   }
 
   private static void triggerReviewWorkflow(HeldTrigger trigger) {
@@ -249,6 +263,9 @@ public final class ApprovalGate {
         getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE),
         trigger.entityId());
     variables.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), trigger.user());
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, PENDING_HELD_CHANGE_VARIABLE),
+        JsonUtils.pojoToJson(trigger.heldChange()));
     WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
   }
 }

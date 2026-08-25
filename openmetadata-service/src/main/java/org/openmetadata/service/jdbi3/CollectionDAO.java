@@ -267,6 +267,9 @@ public interface CollectionDAO {
   UserPreferencesDAO userPreferencesDAO();
 
   @CreateSqlObject
+  PendingApprovalChangeDAO pendingApprovalChangeDAO();
+
+  @CreateSqlObject
   TeamDAO teamDAO();
 
   @CreateSqlObject
@@ -1953,6 +1956,37 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM user_preferences WHERE userId = :userId")
     void deleteByUserId(@BindUUID("userId") UUID userId);
+  }
+
+  interface PendingApprovalChangeDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO pending_approval_change (entity_id, updated_by, json, updated_at) "
+                + "VALUES (:entityId, :updatedBy, :json, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE json = :json, updated_at = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO pending_approval_change (entity_id, updated_by, json, updated_at) "
+                + "VALUES (:entityId, :updatedBy, (:json :: jsonb), :updatedAt) "
+                + "ON CONFLICT (entity_id, updated_by) DO UPDATE SET json = (:json :: jsonb), updated_at = :updatedAt",
+        connectionType = POSTGRES)
+    void upsert(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("updatedBy") String updatedBy,
+        @Bind("json") String json,
+        @Bind("updatedAt") long updatedAt);
+
+    @SqlQuery(
+        "SELECT json FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy")
+    String find(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
+
+    @SqlUpdate(
+        "DELETE FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy")
+    void delete(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
+
+    @SqlUpdate("DELETE FROM pending_approval_change WHERE entity_id = :entityId")
+    void deleteAllForEntity(@BindUUID("entityId") UUID entityId);
   }
 
   interface EntityRelationshipDAO {

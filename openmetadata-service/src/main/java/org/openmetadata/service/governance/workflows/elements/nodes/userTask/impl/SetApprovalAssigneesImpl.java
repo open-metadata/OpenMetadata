@@ -156,19 +156,17 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: remove the requester from the assignees. Task-managed workflows
+      // Prevent self-approval: the requester is NEVER a task assignee. Task-managed workflows
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list. For
-      // non-workflow-managed tasks only, keep the requester when no one else is available so the
-      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead.
+      // workflow family — reading only one silently leaves the other's requester on the list.
+      // Removing the requester may leave the list empty, and that is intentional: an empty list
+      // lets the userApprovalTask auto-approve (event-driven) or fall through to the admin fallback
+      // below (workflow-managed). Re-adding the requester "to keep the task actionable" would
+      // silently reintroduce self-approval, so it is deliberately not done.
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
-      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
-      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
-      if (removedRequester && assigneeList.isEmpty() && !workflowManagedTask) {
-        assigneeList.addAll(preRemovalAssignees);
-      }
+      assigneeList.removeAll(requesterEntityLinks);
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured

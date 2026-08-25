@@ -51,6 +51,7 @@ export const CONNECTION_MODAL_RULES = {
   NEVER_SHOW_SOURCES: [
     NodeSubType.SetEntityAttributeTask,
     NodeSubType.RollbackEntityTask,
+    NodeSubType.ResolvePendingChangeTask,
   ],
 } as const;
 
@@ -84,6 +85,11 @@ export const NODE_TYPE_MAPPINGS = {
     type: NodeType.AutomatedTask,
     label: 'Revert Changes',
     displayLabel: 'Revert Changes',
+  },
+  [NodeSubType.ResolvePendingChangeTask]: {
+    type: NodeType.AutomatedTask,
+    label: 'Resolve Pending Change',
+    displayLabel: 'Resolve Change',
   },
   [NodeSubType.PolicyAgentTask]: {
     type: NodeType.AutomatedTask,

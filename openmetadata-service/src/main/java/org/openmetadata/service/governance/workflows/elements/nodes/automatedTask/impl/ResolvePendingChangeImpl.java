@@ -70,7 +70,7 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
 
       ResolvePendingChangeAction action =
           ResolvePendingChangeAction.fromValue((String) actionExpr.getValue(execution));
-      resolveHold(entityLink.getEntityType(), entity, action, resolveAuthor(varHandler));
+      resolveHold(entityLink.getEntityType(), entity, action, resolveRequester(varHandler));
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -80,16 +80,31 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
   }
 
   private void resolveHold(
-      String entityType, EntityInterface entity, ResolvePendingChangeAction action, String author) {
-    ChangeDescription held = PendingApprovalChangeStore.get(entity.getId());
+      String entityType,
+      EntityInterface entity,
+      ResolvePendingChangeAction action,
+      String requester) {
+    // The hold is keyed by the requester (the editor who made it). Without that key we cannot
+    // locate the correct hold, so we must not read/commit/delete under a wrong key - that would
+    // drop the user's held edit. Surface loudly and leave the hold untouched instead.
+    if (requester == null || requester.isBlank()) {
+      LOG.error(
+          "[ResolvePendingChange] no requester (global updatedBy) on the workflow; cannot resolve "
+              + "the held change for {} (action={})",
+          entity.getId(),
+          action);
+      return;
+    }
+    ChangeDescription held = PendingApprovalChangeStore.get(entity.getId(), requester);
     LOG.debug(
-        "[ResolvePendingChange] action={} entity={} hasHold={}",
+        "[ResolvePendingChange] action={} entity={} requester={} hasHold={}",
         action,
         entity.getId(),
+        requester,
         held != null);
     switch (action) {
-      case COMMIT -> commitHeldChange(entityType, entity, held, author);
-      case DISCARD -> PendingApprovalChangeStore.delete(entity.getId());
+      case COMMIT -> commitHeldChange(entityType, entity, held, requester);
+      case DISCARD -> PendingApprovalChangeStore.delete(entity.getId(), requester);
       case HOLD -> {
         // Leave the change on hold; the workflow is parking it (e.g. after 'In Review').
       }
@@ -97,11 +112,11 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
   }
 
   private void commitHeldChange(
-      String entityType, EntityInterface entity, ChangeDescription held, String author) {
+      String entityType, EntityInterface entity, ChangeDescription held, String requester) {
     if (held != null) {
-      applyHeldChange(entityType, entity, held, author);
+      applyHeldChange(entityType, entity, held, requester);
     }
-    PendingApprovalChangeStore.delete(entity.getId());
+    PendingApprovalChangeStore.delete(entity.getId(), requester);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
@@ -122,17 +137,14 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
   }
 
   // Flowable stores process variables as untyped Object; the pending-change trigger sets updatedBy
-  // (the editor who made the held change) as a String in the global namespace.
-  private String resolveAuthor(WorkflowVariableHandler varHandler) {
+  // (the editor who made the held change) as a String in the global namespace. That editor is the
+  // key the hold was stored under, so it is required to resolve the hold; returns null when absent.
+  private String resolveRequester(WorkflowVariableHandler varHandler) {
     Object updatedBy = varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
-    String author = GOVERNANCE_BOT;
+    String requester = null;
     if (updatedBy instanceof String editor && !editor.isBlank()) {
-      author = editor;
-    } else {
-      // Falling back to the bot means field-level bot-deny guards may strip held fields on commit.
-      // Log it so a regression (the trigger not propagating updatedBy) is not silent.
-      LOG.warn("[ResolvePendingChange] no updatedBy in workflow; applying held change as the bot");
+      requester = editor;
     }
-    return author;
+    return requester;
   }
 }

@@ -1,8 +1,10 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -43,7 +45,9 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
               varHandler.getNamespacedVariable(
                   inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
 
-      boolean result = checkChangeDescription(execution, entityLinkStr);
+      String updatedBy =
+          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      boolean result = checkChangeDescription(execution, entityLinkStr, updatedBy);
       varHandler.setNodeVariable(RESULT_VARIABLE, result);
     } catch (Exception exc) {
       LOG.error(
@@ -53,7 +57,8 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     }
   }
 
-  private boolean checkChangeDescription(DelegateExecution execution, String entityLinkStr) {
+  private boolean checkChangeDescription(
+      DelegateExecution execution, String entityLinkStr, String updatedBy) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
@@ -61,7 +66,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     // Evaluate the held pending change unioned with the entity's persisted change description, so
     // this node sees the proposed (not-yet-applied) change. No change at all -> create event ->
     // true.
-    ChangeDescription changeDescription = PendingApprovalChangeStore.effective(entity);
+    ChangeDescription changeDescription = PendingApprovalChangeStore.effective(entity, updatedBy);
     if (changeDescription == null) {
       LOG.debug("No changeDescription found (likely a create event), returning true");
       return true;

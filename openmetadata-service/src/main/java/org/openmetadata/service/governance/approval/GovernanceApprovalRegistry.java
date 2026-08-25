@@ -20,6 +20,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
@@ -71,6 +72,44 @@ public final class GovernanceApprovalRegistry {
 
   public static void invalidate() {
     RULES_BY_ENTITY_TYPE.invalidateAll();
+  }
+
+  /**
+   * True when the workflow carries a resolvePendingChangeTask hook (i.e. it holds approval-gated
+   * changes). Lets per-requester behavior such as task supersede apply only to hook workflows,
+   * leaving reactive workflows on their existing entity-level behavior.
+   */
+  public static boolean isPendingChangeWorkflow(UUID workflowDefinitionId) {
+    boolean result = false;
+    if (workflowDefinitionId != null) {
+      try {
+        WorkflowDefinition definition =
+            Entity.getEntity(
+                Entity.WORKFLOW_DEFINITION, workflowDefinitionId, "", Include.NON_DELETED);
+        result = hasPendingChangeHook(definition);
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not resolve workflow definition {} for pending-change check: {}",
+            workflowDefinitionId,
+            e.getMessage());
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Name overload of {@link #isPendingChangeWorkflow(UUID)} for callers that hold the workflow's
+   * name (e.g. resolved from a running process definition key) rather than its id. Returns false for
+   * an unknown name so a resolution miss leaves behavior unchanged.
+   */
+  public static boolean isPendingChangeWorkflow(String workflowName) {
+    boolean result = false;
+    if (workflowName != null && !workflowName.isBlank()) {
+      WorkflowDefinition definition =
+          Entity.findByNameOrNull(Entity.WORKFLOW_DEFINITION, workflowName, Include.NON_DELETED);
+      result = definition != null && hasPendingChangeHook(definition);
+    }
+    return result;
   }
 
   private static List<GatingRule> compute(String entityType) {

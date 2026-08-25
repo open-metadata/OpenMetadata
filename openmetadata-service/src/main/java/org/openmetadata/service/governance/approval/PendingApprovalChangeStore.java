@@ -25,54 +25,61 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO.PendingApprovalChangeDAO;
 
 /**
- * Per-entity store for an approval-gated change that is held out of the entity until the governing
- * workflow approves it. The held change is a {@link ChangeDescription}-shaped diff so the workflow's
- * "what changed" nodes (checkChangeDescription, the trigger field filter) can read it exactly as
- * they read a persisted change description. Backed by {@code entity_extension} (keyed by entity id),
- * so it never touches the entity row or its version history. Successive edits while a hold is open
- * accumulate into a single record via {@link #merge}.
+ * Per-(entity, requester) store for an approval-gated change held out of the entity until the
+ * governing workflow approves it. The held change is a {@link ChangeDescription}-shaped diff so the
+ * workflow's "what changed" nodes (checkChangeDescription, the trigger field filter) can read it
+ * exactly as they read a persisted change description. Backed by the {@code pending_approval_change}
+ * table, keyed by {@code (entity id, updatedBy)}, so each requester's edits form their own hold and
+ * never touch the entity row or its version history. Successive edits by the same requester while a
+ * hold is open accumulate into a single record via {@link #merge}.
  */
 public final class PendingApprovalChangeStore {
-  public static final String EXTENSION = "governance.pendingApprovalChange";
-  private static final String JSON_SCHEMA = "governancePendingApprovalChange";
 
   private PendingApprovalChangeStore() {}
 
-  public static ChangeDescription get(UUID entityId) {
-    String json = Entity.getCollectionDAO().entityExtensionDAO().getExtension(entityId, EXTENSION);
+  private static PendingApprovalChangeDAO dao() {
+    return Entity.getCollectionDAO().pendingApprovalChangeDAO();
+  }
+
+  public static ChangeDescription get(UUID entityId, String updatedBy) {
+    String json = dao().find(entityId, updatedBy);
     return CommonUtil.nullOrEmpty(json) ? null : JsonUtils.readValue(json, ChangeDescription.class);
   }
 
-  public static boolean exists(UUID entityId) {
-    return get(entityId) != null;
+  public static boolean exists(UUID entityId, String updatedBy) {
+    return get(entityId, updatedBy) != null;
   }
 
-  public static void put(UUID entityId, ChangeDescription pending) {
-    Entity.getCollectionDAO()
-        .entityExtensionDAO()
-        .insert(entityId, EXTENSION, JSON_SCHEMA, JsonUtils.pojoToJson(pending));
+  public static void put(UUID entityId, String updatedBy, ChangeDescription pending) {
+    dao().upsert(entityId, updatedBy, JsonUtils.pojoToJson(pending), System.currentTimeMillis());
   }
 
-  public static void accumulate(UUID entityId, ChangeDescription incoming) {
-    ChangeDescription merged = merge(get(entityId), incoming);
-    put(entityId, merged);
+  public static void accumulate(UUID entityId, String updatedBy, ChangeDescription incoming) {
+    ChangeDescription merged = merge(get(entityId, updatedBy), incoming);
+    put(entityId, updatedBy, merged);
   }
 
-  public static void delete(UUID entityId) {
-    Entity.getCollectionDAO().entityExtensionDAO().delete(entityId, EXTENSION);
+  public static void delete(UUID entityId, String updatedBy) {
+    dao().delete(entityId, updatedBy);
+  }
+
+  /** Remove every requester's hold for an entity; used when the entity itself is deleted. */
+  public static void deleteAllForEntity(UUID entityId) {
+    dao().deleteAllForEntity(entityId);
   }
 
   /**
    * The change description a workflow's "what changed" nodes should evaluate: the entity's persisted
-   * change description unioned with the held pending change (held field values win). Lets
-   * checkChangeDescription and the trigger's field filter see the proposed change even though it is
-   * not on the entity.
+   * change description unioned with the requester's held pending change (held field values win).
+   * Lets checkChangeDescription and the trigger's field filter see the proposed change even though
+   * it is not on the entity.
    */
-  public static ChangeDescription effective(EntityInterface entity) {
+  public static ChangeDescription effective(EntityInterface entity, String updatedBy) {
     ChangeDescription persisted = entity.getChangeDescription();
-    ChangeDescription held = get(entity.getId());
+    ChangeDescription held = get(entity.getId(), updatedBy);
     ChangeDescription result;
     if (held == null) {
       result = persisted;
