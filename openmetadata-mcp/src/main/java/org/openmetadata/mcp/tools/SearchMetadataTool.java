@@ -225,10 +225,12 @@ public class SearchMetadataTool implements McpTool {
 
       if (!queryNode.has("query")) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
-        queryWrapper.set("query", queryNode);
+        queryWrapper.set("query", excludeTypesFrom(queryNode, excludedTypes));
         queryFilter = JsonUtils.pojoToJson(queryWrapper);
       } else {
-        queryFilter = JsonUtils.pojoToJson(queryNode);
+        ObjectNode wrapped = (ObjectNode) queryNode;
+        wrapped.set("query", excludeTypesFrom(wrapped.get("query"), excludedTypes));
+        queryFilter = JsonUtils.pojoToJson(wrapped);
       }
       LOG.debug("Applied query filter to query: {}", queryFilter);
     }
@@ -297,13 +299,13 @@ public class SearchMetadataTool implements McpTool {
   }
 
   /**
-   * Removes hits whose entityType the caller excluded.
+   * Last-resort removal of excluded hits, for the path where no {@code queryFilter} was supplied and
+   * the exclusion could not be pushed into the query.
    *
-   * <p>{@code tableColumn} documents live inside the default {@code dataAsset} scope, so a sweep for
-   * certified assets came back with 244 hits whose first 30 were all columns inheriting their
-   * parent's badge — and the caller spent a whole call re-issuing the query with a hand-written
-   * {@code must_not}. Filtering here rather than threading another argument through
-   * {@code buildEnhancedSearchResponse}, which already carries seven.
+   * <p>Post-filtering alone is not sufficient and was the first thing tried: it strips columns from
+   * a page that has already been fetched, so a page that happened to be all columns came back
+   * <em>empty</em> — which reads as "no such assets exist" when hundreds do. The real exclusion
+   * happens in {@link #excludeTypesFrom} so the engine fills the page with eligible hits.
    */
   private static Map<String, Object> dropExcludedTypes(
       Map<String, Object> response, Set<String> excluded) {
@@ -606,6 +608,28 @@ public class SearchMetadataTool implements McpTool {
    * full column detail is what {@code get_entity_details} is for.
    */
   /** True when hit scores vary, i.e. something actually ranked them. */
+  /**
+   * Wraps a query so excluded entity types never match, letting the engine backfill the page.
+   *
+   * <p>{@code tableColumn} documents sit inside the default {@code dataAsset} scope, so a sweep for
+   * certified assets returned 244 hits whose first 30 were all columns inheriting their parent's
+   * badge, costing the caller a whole call to re-issue with a hand-written {@code must_not}.
+   */
+  private static JsonNode excludeTypesFrom(JsonNode query, Set<String> excluded) {
+    JsonNode result = query;
+    if (!excluded.isEmpty() && query != null) {
+      ObjectNode bool = JsonUtils.getObjectMapper().createObjectNode();
+      ObjectNode inner = bool.putObject("bool");
+      inner.set("must", query);
+      var mustNot = inner.putArray("must_not");
+      for (String type : excluded) {
+        mustNot.addObject().putObject("term").put("entityType", type);
+      }
+      result = bool;
+    }
+    return result;
+  }
+
   private static boolean scoresDiscriminate(List<?> hits) {
     Object first = null;
     boolean varies = false;
