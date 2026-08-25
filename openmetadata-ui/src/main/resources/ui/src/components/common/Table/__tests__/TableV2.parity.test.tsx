@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ComponentType } from 'react';
+import { useDragAndDrop } from 'react-aria-components';
 import TableV2 from '../TableV2';
 import { ParityAdapter, runTableParitySuite } from './tableParity.shared';
 
@@ -40,6 +41,10 @@ const coreAdapter: ParityAdapter = {
   clickNextPage: () => {
     fireEvent.click(screen.getByTestId('next'));
   },
+  isBordered: () =>
+    (document.querySelector('table') as HTMLElement).className.includes(
+      'border-secondary'
+    ),
   getTableLayout: () =>
     (document.querySelector('table') as HTMLElement).classList.contains(
       'tw:table-fixed'
@@ -327,5 +332,139 @@ describe('TableV2 — column layout opt-out', () => {
     renderMinimal({ resizableColumns: true, tableLayout: 'auto' });
 
     expect(layout()).toBe('fixed');
+  });
+});
+
+/**
+ * TableV2-only. Legacy resizing came from `react-antd-column-resize`, which
+ * sizes columns from measured widths — in jsdom every measurement is 0 and it
+ * renders no handle at all, so there is nothing on the legacy side to compare
+ * against. React Aria's resizer is declarative and does render.
+ *
+ * These also guard the packaging: the resizer reads state the table publishes
+ * through React Aria context, so a duplicated `react-aria-components` copy
+ * makes rendering throw "Wrap your <Table> in a <ResizableTableContainer>"
+ * with the container present in the tree.
+ */
+describe('TableV2 — column resizing', () => {
+  const renderResizable = (props: Record<string, unknown> = {}) =>
+    render(
+      <TableV2
+        resizableColumns
+        columns={[
+          { dataIndex: 'name', key: 'name', title: 'Name', width: 200 },
+          { dataIndex: 'count', key: 'count', title: 'Count', width: 200 },
+        ]}
+        dataSource={[{ count: 1, name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+        {...props}
+      />
+    );
+
+  const resizers = () =>
+    document.querySelectorAll('[class*="cursor-col-resize"]');
+
+  it('renders without the container error', () => {
+    expect(() => renderResizable()).not.toThrow();
+  });
+
+  it('gives every column a resize handle', () => {
+    renderResizable();
+
+    expect(resizers()).toHaveLength(2);
+  });
+
+  it('renders no handle when resizing is off', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(resizers()).toHaveLength(0);
+  });
+
+  it('keeps a fixed layout so a drag is not re-solved away', () => {
+    renderResizable();
+
+    expect(
+      (document.querySelector('table') as HTMLElement).classList.contains(
+        'tw:table-fixed'
+      )
+    ).toBe(true);
+  });
+});
+
+/**
+ * TableV2-only by design. Legacy row drag and drop was assembled per call site
+ * out of `components.body.row` and react-dnd; React Aria owns it here through
+ * `dragAndDropHooks`, so the two have no shared DOM to assert against. What
+ * matters is that the call site's own HTML5 drag handlers are dropped when
+ * React Aria is in charge — two drag implementations on one row fight — and
+ * kept when it is not.
+ */
+describe('TableV2 — row drag and drop', () => {
+  const bodyRow = () => screen.getAllByRole('row')[1] as HTMLElement;
+
+  const renderWithHooks = (onRow?: () => Record<string, unknown>) => {
+    const Harness = () => {
+      const { dragAndDropHooks } = useDragAndDrop({ getItems: () => [] });
+
+      return (
+        <TableV2
+          columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+          dataSource={[{ name: 'alpha' }]}
+          dragAndDropHooks={dragAndDropHooks}
+          pagination={false}
+          rowKey="name"
+          onRow={onRow}
+        />
+      );
+    };
+
+    return render(<Harness />);
+  };
+
+  it('makes rows draggable when dragAndDropHooks is supplied', () => {
+    renderWithHooks();
+
+    expect(bodyRow()).toHaveAttribute('draggable', 'true');
+  });
+
+  it('leaves rows undraggable without them', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(bodyRow()).not.toHaveAttribute('draggable', 'true');
+  });
+
+  it('does not honour native drag handlers passed through onRow', () => {
+    // React Aria's Row owns drag and drop; a call site that needs draggable
+    // rows supplies dragAndDropHooks rather than HTML5 handlers. Pinned so the
+    // limitation is discovered here rather than in the browser.
+    const onDragStart = jest.fn();
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+        onRow={() => ({ onDragStart })}
+      />
+    );
+
+    fireEvent.dragStart(bodyRow());
+
+    expect(onDragStart).not.toHaveBeenCalled();
   });
 });
