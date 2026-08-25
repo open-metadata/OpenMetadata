@@ -532,7 +532,16 @@ describe('DataProductsSection', () => {
   });
 
   describe('Fetch Options', () => {
-    it('calls fetch API with search and active domains', async () => {
+    it('scopes fetch to active domains when domain validation rule is enabled', async () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: true,
+        },
+        rules: [],
+        isLoading: false,
+      });
       const { fetchDataProductsElasticSearch } = jest.requireMock(
         '../../../rest/dataProductAPI'
       );
@@ -552,6 +561,68 @@ describe('DataProductsSection', () => {
           2
         );
       });
+    });
+
+    it('fetches across all domains when domain validation rule is disabled', async () => {
+      const { fetchDataProductsElasticSearch } = jest.requireMock(
+        '../../../rest/dataProductAPI'
+      );
+
+      render(<DataProductsSection {...defaultProps} />);
+
+      const editIcon = screen.getByTestId('edit-data-products');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
+      fireEvent.click(screen.getByTestId('dps-fetch'));
+
+      await waitFor(() => {
+        expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith('term', [], 2);
+      });
+    });
+  });
+
+  describe('Domain Requirement Gating', () => {
+    it('prompts to select a domain when no domains and rule is enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: true,
+        },
+        rules: [],
+        isLoading: false,
+      });
+
+      render(
+        <DataProductsSection
+          {...defaultProps}
+          activeDomains={[]}
+          dataProducts={[]}
+        />
+      );
+
+      expect(
+        screen.getByText('message.select-domain-to-add-data-product')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('edit-data-products')
+      ).not.toBeInTheDocument();
+    });
+
+    it('allows editing with no domains when rule is disabled', () => {
+      render(
+        <DataProductsSection
+          {...defaultProps}
+          activeDomains={[]}
+          dataProducts={[]}
+        />
+      );
+
+      expect(
+        screen.queryByText('message.select-domain-to-add-data-product')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('edit-data-products')).toBeInTheDocument();
     });
   });
 });

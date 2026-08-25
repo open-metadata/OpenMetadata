@@ -88,6 +88,9 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
               multiple={entityRules.canAddMultipleDataProducts}
+              requireDomainForDataProduct={
+                entityRules.requireDomainForDataProduct
+              }
               onSave={onDataProductUpdate}
             />
           </div>
