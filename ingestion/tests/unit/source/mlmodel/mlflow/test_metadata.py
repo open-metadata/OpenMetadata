@@ -547,3 +547,109 @@ def test_yield_mlmodel_carries_the_signature_onto_the_request(tmp_path):
     request = results[0].right
     assert [f.name.root for f in request.mlFeatures] == ["store_id", "week_of_year", "prior_sales"]
     assert request.name.root == MODEL_NAME
+
+
+# ---------------------------------------------------------------------------
+# Review follow-ups
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(["store_id", "week_of_year"], id="list-of-strings"),
+        pytest.param([{"type": "string"}, "loose-string"], id="mixed-entries"),
+        pytest.param(42, id="not-iterable"),
+        pytest.param({"name": "store_id"}, id="mapping-not-a-list"),
+    ],
+)
+def test_a_malformed_signature_costs_the_features_not_the_model(payload):
+    """
+    Raising here would escape yield_mlmodel; the topology runner logs it and drops the
+    entity without recording a failure, so the model would vanish from the run.
+    """
+    source = make_feature_source()
+    entry = {"run_id": RUN_ID, "signature": {"inputs": json.dumps(payload)}}
+
+    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+
+    assert features is None
+
+
+def test_one_bad_column_does_not_discard_the_good_ones():
+    source = make_feature_source()
+    columns = ["not-a-column", {"type": "string", "name": "store_id"}]
+    entry = {"run_id": RUN_ID, "signature": {"inputs": json.dumps(columns)}}
+
+    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+
+    assert [f.name.root for f in features] == ["store_id"]
+
+
+def test_an_invalid_feature_name_is_reported_as_a_warning():
+    """A name pydantic rejects must degrade to no features, not lose the model."""
+    source = make_feature_source()
+    columns = [{"type": "string", "name": "x" * 1024}]
+    entry = {"run_id": RUN_ID, "signature": {"inputs": json.dumps(columns)}}
+
+    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+
+    assert features is None
+    source.status.warning.assert_called_once()
+
+
+def make_deletion_source(truncated: bool) -> MlflowSource:
+    source = MlflowSource.__new__(MlflowSource)
+    source.status = MagicMock()
+    source.metadata = MagicMock()
+    source.context = MagicMock()
+    source.context.get.return_value = MagicMock(mlmodel_service="mlflow_svc")
+    source.mlmodel_source_state = set()
+    source.source_config = MagicMock(markDeletedMlModels=True)
+    source.listing_truncated = truncated
+
+    return source
+
+
+def test_a_truncated_listing_never_drives_deletions():
+    """
+    Every model past the page budget is absent from the source state, so reconciling
+    deletions off a partial listing would soft-delete perfectly good entities.
+    """
+    source = make_deletion_source(truncated=True)
+
+    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
+        assert list(source.mark_mlmodels_as_deleted()) == []
+
+    delete.assert_not_called()
+
+
+def test_a_complete_listing_still_reconciles_deletions():
+    source = make_deletion_source(truncated=False)
+
+    with patch(
+        "metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source",
+        return_value=iter([]),
+    ) as delete:
+        list(source.mark_mlmodels_as_deleted())
+
+    delete.assert_called_once()
+
+
+def test_exhausting_the_page_budget_flags_the_listing_as_truncated():
+    source = make_source(latest_versions=[make_version("1")])
+    source.client.search_registered_models.return_value = PagedList([named_model("a")], "always-more")
+
+    list(source.get_mlmodels())
+
+    assert source.listing_truncated is True
+    source.status.warning.assert_called_once()
+
+
+def test_a_complete_listing_leaves_the_flag_clear():
+    source = make_source(latest_versions=[make_version("1")])
+    source.client.search_registered_models.return_value = PagedList([named_model("a")], None)
+
+    list(source.get_mlmodels())
+
+    assert source.listing_truncated is False

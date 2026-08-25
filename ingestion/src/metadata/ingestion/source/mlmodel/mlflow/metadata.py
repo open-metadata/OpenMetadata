@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import Source as Workf
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Markdown, SourceUrl
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
@@ -55,6 +56,8 @@ LOG_MODEL_HISTORY_TAG = "mlflow.log-model.history"
 MLMODEL_METADATA_FILE = "MLmodel"
 LOGGED_MODEL_URI_PREFIX = "models:/"
 SIGNATURE_STRING_TYPE = "string"
+# Status key for conditions that concern the registry as a whole rather than one model.
+REGISTRY_STATUS_KEY = "MLflow registry"
 # MLflow renders a tqdm progress bar on every artifact fetch, which lands in the
 # middle of the ingestion logs. The signature file is a few hundred bytes, so the
 # bar carries no information worth the noise.
@@ -132,6 +135,10 @@ class MlflowSource(MlModelServiceSource):
 
             yield model, latest_version
 
+    # Set when the page budget runs out with models still pending. A run that could not
+    # see the whole registry must not drive deletions.
+    listing_truncated: bool = False
+
     def _iter_registered_models(self) -> Iterable[RegisteredModel]:
         """
         Walk every page of the registry listing.
@@ -155,10 +162,14 @@ class MlflowSource(MlModelServiceSource):
                 break
 
         if page_token:
-            logger.warning(
+            self.listing_truncated = True
+            reason = (
                 f"Stopped listing registered models after {MAX_MODEL_PAGES} pages with more still "
-                f"pending; {total} model(s) were listed. Narrow the run with `mlModelFilterPattern`."
+                f"pending; only {total} model(s) were listed. Narrow the run with "
+                "`mlModelFilterPattern`."
             )
+            logger.warning(reason)
+            self.status.warning(REGISTRY_STATUS_KEY, reason)
 
         self._log_model_total(total, pages)
 
@@ -247,6 +258,23 @@ class MlflowSource(MlModelServiceSource):
 
         return max(numbered, key=lambda pair: pair[0], default=(None, None))[1]
 
+    def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Reconcile deletions only when the whole registry was seen.
+
+        The base implementation deletes every model in OpenMetadata that this run did not
+        yield. Off a truncated listing that would soft-delete perfectly good models whose
+        only fault was sitting beyond the page budget, so skip the pass entirely.
+        """
+        if self.listing_truncated:
+            logger.warning(
+                "Skipping deleted-model reconciliation: the registry listing was truncated, so "
+                "models beyond the page budget would be wrongly marked as deleted."
+            )
+            return
+
+        yield from super().mark_mlmodels_as_deleted()
+
     def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
         logger.info("Setting algorithm with default value `mlmodel` for Mlflow")
         return "mlmodel"
@@ -333,7 +361,18 @@ class MlflowSource(MlModelServiceSource):
         if columns is None and version is not None:
             columns = self._signature_columns_from_artifacts(version, model_name)
 
-        return self._build_ml_features(columns)
+        # A signature this cannot be built from must cost the features, not the model.
+        # Raising here would escape yield_mlmodel into the topology runner, which logs
+        # and drops the entity without recording a failure -- the model would vanish
+        # from the run with nothing to show why.
+        try:
+            return self._build_ml_features(columns)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            reason = f"Cannot build ML features for {model_name} from its signature - {exc}"
+            logger.warning(reason)
+            self.status.warning(model_name, reason)
+            return None
 
     def _signature_columns_from_run_tags(self, data: RunData, run_id: str) -> list[dict] | None:
         """
@@ -440,7 +479,8 @@ class MlflowSource(MlModelServiceSource):
         Map signature columns onto ML features.
 
         Unnamed columns are skipped: tensor-based signatures have no column names and
-        cannot be represented as an MlFeature.
+        cannot be represented as an MlFeature. So is anything that is not a column
+        mapping at all, so one malformed entry does not cost the whole signature.
         """
         features = [
             MlFeature(
@@ -450,7 +490,7 @@ class MlflowSource(MlModelServiceSource):
                 ),
             )
             for column in columns or []
-            if column.get("name")
+            if isinstance(column, dict) and column.get("name")
         ]
 
         return features or None
