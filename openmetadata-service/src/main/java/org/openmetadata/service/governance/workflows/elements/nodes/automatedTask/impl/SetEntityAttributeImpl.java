@@ -58,13 +58,15 @@ public class SetEntityAttributeImpl implements JavaDelegate {
               .orElse(null);
       if (actualUser == null || actualUser.isEmpty()) {
         // The configured namespace had no acting user (e.g. an auto-approved user task was bypassed
-        // and set no updatedBy). Use the global editor (the requester) so the write is attributed to
+        // and set no updatedBy). Use the global editor (the requester) so the write is attributed
+        // to
         // a real user with governance-bot as impersonator.
         actualUser =
             (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
       }
 
-      // fieldValue==null clears the field. With an acting user, attribute the write to that user and
+      // fieldValue==null clears the field. With an acting user, attribute the write to that user
+      // and
       // mark governance-bot as impersonator; only when no user resolves at all does the write fall
       // to governance-bot directly.
       if (actualUser != null && !actualUser.isEmpty()) {

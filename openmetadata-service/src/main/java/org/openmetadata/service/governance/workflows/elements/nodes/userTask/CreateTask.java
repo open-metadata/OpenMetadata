@@ -471,7 +471,8 @@ public class CreateTask implements TaskListener {
             ? requestedUpdatedBy
             : resolveRequester(delegateTask, resolvedWorkflowDefinitionId, entity, createdByRef);
     // The requester (updatedBy) is the editor who caused this run. For a pending-change task the
-    // gate's revert leaves the entity's updatedBy on the previous editor, so createdBy resolved from
+    // gate's revert leaves the entity's updatedBy on the previous editor, so createdBy resolved
+    // from
     // it names the wrong user; align it with the requester when the workflow supplied no explicit
     // creator (createdBy already reflects it for every other task type).
     if (requestedCreatedBy == null
@@ -1190,7 +1191,8 @@ public class CreateTask implements TaskListener {
   }
 
   // For pending-change (hook) workflows the requester is the editor who caused this run - the value
-  // the trigger carries in the global updatedBy variable and the value the held change is keyed by -
+  // the trigger carries in the global updatedBy variable and the value the held change is keyed by
+  // -
   // not the persisted entity's updatedBy, which the gate's revert resets to the previous editor.
   // Falls back to the entity-derived value, leaving every other task type on its existing behavior.
   // Resolve a user EntityReference by name, falling back to the already-resolved reference when the
@@ -1202,7 +1204,8 @@ public class CreateTask implements TaskListener {
       try {
         ref = Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
       } catch (Exception e) {
-        LOG.debug("[CreateTask] Could not resolve user reference for '{}'; keeping creator", userName);
+        LOG.debug(
+            "[CreateTask] Could not resolve user reference for '{}'; keeping creator", userName);
       }
     }
     return ref;

@@ -87,7 +87,10 @@ class CheckChangeDescriptionTaskImplTest {
 
     mockedEntity = mockStatic(Entity.class);
     mockedEntity
-        .when(() -> Entity.getEntity(any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
+        .when(
+            () ->
+                Entity.getEntity(
+                    any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
         .thenReturn(new Glossary().withName("DiagGlossary").withFullyQualifiedName("DiagGlossary"));
     mockedStore = mockStatic(PendingApprovalChangeStore.class);
 

@@ -130,7 +130,9 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     ObjectNode node = (ObjectNode) JsonUtils.valueToTree(original);
     for (FieldChange fieldChange : CommonUtil.listOrEmpty(held.getFieldsUpdated())) {
       if (WorkflowTriggerFields.TAGS.value().equals(fieldChange.getName())) {
-        node.set(WorkflowTriggerFields.TAGS.value(), JsonUtils.valueToTree(resolveTags(original, fieldChange)));
+        node.set(
+            WorkflowTriggerFields.TAGS.value(),
+            JsonUtils.valueToTree(resolveTags(original, fieldChange)));
       } else {
         node.set(fieldChange.getName(), JsonUtils.valueToTree(fieldChange.getNewValue()));
       }
@@ -152,7 +154,8 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
   // mutually-exclusive pair at edit time before holding.
   private List<TagLabel> resolveTags(EntityInterface original, FieldChange heldTagsChange) {
     List<TagLabel> heldTags =
-        JsonUtils.convertValue(heldTagsChange.getNewValue(), new TypeReference<List<TagLabel>>() {});
+        JsonUtils.convertValue(
+            heldTagsChange.getNewValue(), new TypeReference<List<TagLabel>>() {});
     return TagLabelUtil.mergeTagsWithIncomingPrecedence(original.getTags(), heldTags);
   }
 

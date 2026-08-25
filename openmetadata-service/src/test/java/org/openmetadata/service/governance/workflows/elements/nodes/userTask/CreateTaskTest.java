@@ -780,7 +780,8 @@ class CreateTaskTest {
             .withWorkflowInstanceId(UUID.randomUUID());
 
     assertTrue(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID(), null));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
@@ -797,7 +798,8 @@ class CreateTaskTest {
         new Task().withId(UUID.randomUUID()).withWorkflowDefinitionId(workflowDefinitionId);
 
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID(), null));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
@@ -863,7 +865,8 @@ class CreateTaskTest {
             .withStatus(TaskEntityStatus.Cancelled);
 
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID(), null));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
@@ -877,7 +880,8 @@ class CreateTaskTest {
             .withStatus(TaskEntityStatus.Approved);
 
     assertTrue(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID(), null));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
@@ -1001,7 +1005,8 @@ class CreateTaskTest {
 
       EntityReference ref = new CreateTask().resolveUserReferenceOrDefault("karan", fallback);
 
-      assertEquals("karan", ref.getName(), "createdBy must resolve to the requester, not the fallback");
+      assertEquals(
+          "karan", ref.getName(), "createdBy must resolve to the requester, not the fallback");
     }
   }
 

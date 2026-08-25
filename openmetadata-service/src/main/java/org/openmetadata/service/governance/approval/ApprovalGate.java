@@ -111,7 +111,8 @@ public final class ApprovalGate {
   }
 
   // When a pending-change rule gates this entity's tags, validate the proposed tags for mutual
-  // exclusivity up front - the entity updater's own check runs against the reverted (empty) tags and
+  // exclusivity up front - the entity updater's own check runs against the reverted (empty) tags
+  // and
   // would miss a held conflict. Resolution errors fall through (the updater still validates a
   // non-held edit); only a genuine conflict throws, rejecting the edit.
   private static void rejectMutuallyExclusiveGatedTags(EntityInterface updated) {
@@ -121,9 +122,7 @@ public final class ApprovalGate {
       for (GatingRule rule : GovernanceApprovalRegistry.gatingRules(entityType)) {
         if (!WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
             && WorkflowTriggerFilters.fieldTriggers(
-                WorkflowTriggerFields.TAGS.value(),
-                rule.includedFields(),
-                rule.excludedFields())) {
+                WorkflowTriggerFields.TAGS.value(), rule.includedFields(), rule.excludedFields())) {
           tagsGated = true;
         }
       }
@@ -284,7 +283,8 @@ public final class ApprovalGate {
   }
 
   // Records this edit's held fields into the requester's accumulating store record and returns the
-  // single-edit change so the trigger raised below can review exactly this edit, not the accumulation.
+  // single-edit change so the trigger raised below can review exactly this edit, not the
+  // accumulation.
   private static ChangeDescription recordHold(
       EntityInterface original, List<FieldChange> held, String user) {
     ChangeDescription pending =

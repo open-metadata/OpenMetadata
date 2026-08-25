@@ -213,7 +213,8 @@ class FilterEntityImplTest {
     delegate.execute(execution);
 
     assertFalse(
-        passesFilter(), "Exclude filter description==claude must stop the workflow despite the hold");
+        passesFilter(),
+        "Exclude filter description==claude must stop the workflow despite the hold");
   }
 
   @Test

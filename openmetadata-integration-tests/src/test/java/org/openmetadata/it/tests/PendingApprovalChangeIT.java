@@ -187,7 +187,8 @@ public class PendingApprovalChangeIT {
 
   // Reviewers = USER1 (the approver). Owners let a non-admin editor (USER2) patch the glossary, so
   // the per-requester tests can drive two distinct editors, neither of whom is the reviewer.
-  private Glossary gatedGlossaryOwnedBy(TestNamespace ns, String displayName, EntityReference owner) {
+  private Glossary gatedGlossaryOwnedBy(
+      TestNamespace ns, String displayName, EntityReference owner) {
     CreateGlossary create =
         new CreateGlossary()
             .withName(ns.shortPrefix("pgl"))
@@ -227,10 +228,16 @@ public class PendingApprovalChangeIT {
     ns.trackRoot(Entity.CLASSIFICATION, classification);
     Tag alpha =
         tags.create(
-            new CreateTag().withName("Alpha").withClassification(classificationName).withDescription("a"));
+            new CreateTag()
+                .withName("Alpha")
+                .withClassification(classificationName)
+                .withDescription("a"));
     Tag beta =
         tags.create(
-            new CreateTag().withName("Beta").withClassification(classificationName).withDescription("b"));
+            new CreateTag()
+                .withName("Beta")
+                .withClassification(classificationName)
+                .withDescription("b"));
     return List.of(alpha.getFullyQualifiedName(), beta.getFullyQualifiedName());
   }
 
@@ -843,7 +850,8 @@ public class PendingApprovalChangeIT {
    * checkChangeDescription node must read the requester's held change (not the reverted entity) to
    * route, which is what these tests exercise.
    */
-  private void deployCheckChangeDescriptionHookWorkflow(TestNamespace ns, String rules, String filter) {
+  private void deployCheckChangeDescriptionHookWorkflow(
+      TestNamespace ns, String rules, String filter) {
     String name = "Wf" + ns.shortPrefix("ccdhook");
     String json =
         """
@@ -915,12 +923,15 @@ public class PendingApprovalChangeIT {
     // held change via effective() - the persisted description is still the approved value - and
     // route true because it contains "proposed".
     patchDescription(glossary.getId(), "proposed held value");
-    awaitHeldAt(glossary.getId(), APPROVED, "description held before checkChangeDescription routes");
+    awaitHeldAt(
+        glossary.getId(), APPROVED, "description held before checkChangeDescription routes");
 
     Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
     resolve(task.getId(), "approve", TaskResolutionType.Approved);
     awaitDescription(
-        glossary.getId(), "proposed held value", "held change applied after checkChangeDescription");
+        glossary.getId(),
+        "proposed held value",
+        "held change applied after checkChangeDescription");
   }
 
   @Test
@@ -932,13 +943,16 @@ public class PendingApprovalChangeIT {
         filterScopedTo(glossary.getFullyQualifiedName()));
 
     // Held description does not contain the rule token. checkChangeDescription evaluates the held
-    // content (a held-only change with null fieldsAdded/fieldsDeleted - must not NPE), routes false,
+    // content (a held-only change with null fieldsAdded/fieldsDeleted - must not NPE), routes
+    // false,
     // and the discard hook resolves the hold: no approval task, entity stays at the approved value.
     patchDescription(glossary.getId(), "unrelated proposal text");
-    awaitHeldAt(glossary.getId(), APPROVED, "description held before checkChangeDescription routes");
+    awaitHeldAt(
+        glossary.getId(), APPROVED, "description held before checkChangeDescription routes");
 
     assertNoOpenApprovalTask(glossary.getFullyQualifiedName());
-    assertEquals(APPROVED, descriptionOf(glossary.getId()), "non-matching held change is discarded");
+    assertEquals(
+        APPROVED, descriptionOf(glossary.getId()), "non-matching held change is discarded");
   }
 
   // ---- clearing a gated field is held, not written straight through --------------------------

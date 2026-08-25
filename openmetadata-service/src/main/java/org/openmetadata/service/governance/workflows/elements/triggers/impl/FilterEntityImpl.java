@@ -154,8 +154,7 @@ public class FilterEntityImpl implements JavaDelegate {
   // process is named "<Workflow>Trigger". An unresolved name yields false, so non-hook workflows
   // and any resolution miss keep their normal event-driven behavior.
   private boolean isPendingChangeWorkflow(DelegateExecution execution) {
-    String key =
-        WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    String key = WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String workflowName =
         key != null && key.endsWith("Trigger")
             ? TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(key)
@@ -190,8 +189,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
     // Gate path: the held change is exactly this edit's change. Event path: the entity's persisted
     // change description. A null change description means a Create event.
-    ChangeDescription change =
-        heldChange != null ? heldChange : entity.getChangeDescription();
+    ChangeDescription change = heldChange != null ? heldChange : entity.getChangeDescription();
 
     boolean fieldBasedFilter;
     if (change == null) {
