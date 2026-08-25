@@ -203,6 +203,15 @@ export const runTableParitySuite = (
       expect(render_).toHaveBeenCalledWith('bravo', PARITY_ROWS[2], 2);
     });
 
+    it('renders a real placeholder, not bare text, when there is no data', () => {
+      // AntD fell back to its own <Empty> illustration. A table that renders
+      // only the words "no data" reads as a broken row, not an empty state.
+      const { container } = renderTable({ dataSource: [] });
+      const body = container.querySelector('tbody') as HTMLElement;
+
+      expect(body.querySelector('svg')).toBeInTheDocument();
+    });
+
     it('shows locale.emptyText when there is no data', () => {
       renderTable({ dataSource: [], locale: { emptyText: 'nothing here' } });
 

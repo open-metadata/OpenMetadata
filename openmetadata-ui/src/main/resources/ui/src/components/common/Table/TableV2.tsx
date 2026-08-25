@@ -42,10 +42,11 @@
 import {
   Button,
   Dropdown,
+  EmptyPlaceholder,
   Table as UntitledTable,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight } from '@untitledui/icons';
+import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
 import type { ColumnsType } from 'antd/es/table/interface';
 import type {
   ColumnType,
@@ -1191,12 +1192,23 @@ const TableV2 = <T extends object>(
 
               <UntitledTable.Body
                 renderEmptyState={() =>
-                  isLoading ? null : (
-                    <div className="tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
-                      {(rest.locale?.emptyText as ReactNode) ??
-                        t('label.no-data')}
-                    </div>
-                  )
+                  isLoading
+                    ? null
+                    : // AntD fell back to its own <Empty> illustration, not bare
+                      // text, so a table with no rows read as an empty state
+                      // rather than a stray label. Call sites that pass
+                      // `locale.emptyText` still win — most hand in their own
+                      // ErrorPlaceHolder or FilterTablePlaceHolder.
+                      (rest.locale?.emptyText as ReactNode) ?? (
+                        <EmptyPlaceholder
+                          className="tw:py-8"
+                          icon={
+                            <SearchLg className="tw:text-fg-brand-primary" />
+                          }
+                          title={t('label.no-data')}
+                          variant="blank"
+                        />
+                      )
                 }>
                 {flatRows.flatMap((flatRow, flatIndex) => {
                   const { record, actualIndex, depth, hasChildren, rowKey } =
