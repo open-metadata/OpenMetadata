@@ -1166,7 +1166,7 @@ jobs:
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
   playwright-summary:
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    name: playwright-summary
     if: ${{ always() && !cancelled() }}
     needs:
       [
