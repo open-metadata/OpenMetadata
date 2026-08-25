@@ -82,6 +82,16 @@ import {
   shouldResetTestCaseLoading,
 } from '../TestSuiteDetailsPage.utils';
 
+const shouldResetBulkRefreshLoading = (
+  didStartVisibleFetch: boolean,
+  isCurrentTestSuite: () => boolean,
+  expectedGeneration: number,
+  currentGeneration: number
+) =>
+  !didStartVisibleFetch &&
+  isCurrentTestSuite() &&
+  expectedGeneration === currentGeneration;
+
 /**
  * Data + handlers for the (bundle) test suite details page. Shared by the
  * OSS renderer (TestSuiteDetailsPage) and the AskCollate AI renderer —
@@ -101,7 +111,10 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(true);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
+  const [testCaseSearchQuery, setTestCaseSearchQuery] = useState('');
   const testCaseRequestId = useRef(0);
+  const visibleTestCaseRequestGeneration = useRef(0);
+  const visibleTestCaseRequest = useRef<ListTestCaseParamsBySearch>();
   const testSuiteRequestId = useRef(0);
   const authoritativeTestCaseCount = useRef<{
     testSuiteFQN: string;
@@ -336,17 +349,67 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const fetchTestCases = useCallback(
     async (param?: ListTestCaseParamsBySearch) => {
-      await fetchTestCasesWithTotal(param);
+      const visibleRequest = {
+        q: testCaseSearchQuery || undefined,
+        ...param,
+      };
+      visibleTestCaseRequestGeneration.current += 1;
+      visibleTestCaseRequest.current = visibleRequest;
+      await fetchTestCasesWithTotal(visibleRequest);
     },
-    [fetchTestCasesWithTotal]
+    [fetchTestCasesWithTotal, testCaseSearchQuery]
+  );
+
+  const handleTestCaseSearch = useCallback(
+    async (query: string) => {
+      const normalizedQuery = query.trim();
+      visibleTestCaseRequestGeneration.current += 1;
+      visibleTestCaseRequest.current = {
+        offset: 0,
+        q: normalizedQuery || undefined,
+      };
+      setTestCaseSearchQuery(normalizedQuery);
+      handlePageChange(INITIAL_PAGING_VALUE);
+      await fetchTestCasesWithTotal(
+        visibleTestCaseRequest.current,
+        false,
+        false
+      );
+    },
+    [fetchTestCasesWithTotal, handlePageChange]
+  );
+
+  const fetchTestCasesWithTotalRef = useRef(fetchTestCasesWithTotal);
+
+  useLayoutEffect(() => {
+    fetchTestCasesWithTotalRef.current = fetchTestCasesWithTotal;
+  }, [fetchTestCasesWithTotal]);
+
+  const fetchIndexedTestCaseTotal = useCallback(
+    async (targetTestSuiteId: string) => {
+      const response = await getListTestCaseBySearch({
+        testSuiteId: targetTestSuiteId,
+        limit: 1,
+      });
+
+      return response.paging.total;
+    },
+    []
   );
 
   const refreshTestCasesUntilIndexed = useCallback(
     async (
       authoritativeTotal: number | undefined,
-      isCurrentTestSuite: () => boolean
+      isCurrentTestSuite: () => boolean,
+      targetTestSuiteId: string,
+      visibleRequestGeneration: number
     ) => {
+      if (!isCurrentTestSuite()) {
+        return;
+      }
+
       setIsTestCaseLoading(true);
+      let didStartVisibleFetch = false;
       try {
         for (
           let attempt = 0;
@@ -357,17 +420,18 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             return;
           }
 
-          const indexedTotal = await fetchTestCasesWithTotal(
-            undefined,
-            true,
-            attempt === 0
+          // Polling reads only the index total so it cannot supersede or
+          // commit over a search, sort, or paging request made meanwhile.
+          const indexedTotal = await fetchIndexedTestCaseTotal(
+            targetTestSuiteId
           );
 
-          if (
-            !isCurrentTestSuite() ||
-            isTestCaseListSynchronized(indexedTotal, authoritativeTotal)
-          ) {
+          if (!isCurrentTestSuite()) {
             return;
+          }
+
+          if (isTestCaseListSynchronized(indexedTotal, authoritativeTotal)) {
+            break;
           }
 
           if (attempt < TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS - 1) {
@@ -376,13 +440,29 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             );
           }
         }
-      } finally {
+
         if (isCurrentTestSuite()) {
+          didStartVisibleFetch = true;
+          await fetchTestCasesWithTotalRef.current(
+            visibleTestCaseRequest.current,
+            false,
+            false
+          );
+        }
+      } finally {
+        if (
+          shouldResetBulkRefreshLoading(
+            didStartVisibleFetch,
+            isCurrentTestSuite,
+            visibleRequestGeneration,
+            visibleTestCaseRequestGeneration.current
+          )
+        ) {
           setIsTestCaseLoading(false);
         }
       }
     },
-    [fetchTestCasesWithTotal]
+    [fetchIndexedTestCaseTotal]
   );
 
   const handleSortTestCase = useCallback(
@@ -456,8 +536,13 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         return;
       }
       const submittedTestSuiteFQN = testSuiteFQN;
+      const submittedVisibleRequestGeneration =
+        visibleTestCaseRequestGeneration.current;
       const isCurrentTestSuite = () =>
         submittedTestSuiteFQN === activeTestSuiteFQN.current;
+      const isCurrentVisibleRequest = () =>
+        submittedVisibleRequestGeneration ===
+        visibleTestCaseRequestGeneration.current;
 
       try {
         await addTestCasesToLogicalTestSuiteBulk(testSuiteId, payload);
@@ -480,15 +565,19 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             testSuiteFQN,
             total: authoritativeTotal,
           };
-          handlePagingChange((currentPaging) => ({
-            ...currentPaging,
-            total: authoritativeTotal,
-          }));
+          if (!testCaseSearchQuery && isCurrentVisibleRequest()) {
+            handlePagingChange((currentPaging) => ({
+              ...currentPaging,
+              total: authoritativeTotal,
+            }));
+          }
         }
 
         await refreshTestCasesUntilIndexed(
           authoritativeTotal,
-          isCurrentTestSuite
+          isCurrentTestSuite,
+          testSuiteId,
+          submittedVisibleRequestGeneration
         );
       } catch (error) {
         if (isCurrentTestSuite()) {
@@ -502,6 +591,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       fetchTestSuiteByName,
       refreshTestCasesUntilIndexed,
       handlePagingChange,
+      testCaseSearchQuery,
     ]
   );
 
@@ -620,7 +710,10 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     activeTestSuiteFQN.current = testSuiteFQN;
     testCaseRequestId.current += 1;
     testSuiteRequestId.current += 1;
+    visibleTestCaseRequestGeneration.current += 1;
+    visibleTestCaseRequest.current = undefined;
     authoritativeTestCaseCount.current = undefined;
+    setTestCaseSearchQuery('');
   }, [testSuiteFQN]);
 
   useEffect(() => {
@@ -659,6 +752,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     isLoading,
     isTestCaseLoading,
     testCaseResult,
+    testCaseSearchQuery,
     testSuitePermissions,
     permissions,
     extraDropdownContent,
@@ -675,6 +769,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     fetchTestCases,
+    handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
     onUpdateOwner,

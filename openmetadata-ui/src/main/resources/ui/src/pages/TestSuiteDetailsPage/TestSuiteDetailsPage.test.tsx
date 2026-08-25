@@ -303,12 +303,13 @@ jest.mock(
   '../../components/Database/Profiler/DataQualityTab/DataQualityTab',
   () => {
     return jest.fn().mockImplementation((props) => {
-      const { onTestUpdate } = props;
+      const { onTestUpdate, tableHeader } = props;
       mockDataQualityTab(props);
 
       return (
         <div>
           DataQualityTab.component
+          {tableHeader}
           <button
             data-testid="update-test-btn"
             onClick={() =>
@@ -583,6 +584,23 @@ describe('TestSuiteDetailsPage component', () => {
       expect(
         await screen.findByTestId('add-test-case-btn')
       ).toBeInTheDocument();
+    });
+
+    it('should search the suite test cases from the table header', async () => {
+      render(<TestSuiteDetailsPage />);
+
+      const searchInput = await screen.findByTestId(
+        'test-suite-test-case-search'
+      );
+      mockGetListTestCaseBySearch.mockClear();
+
+      fireEvent.change(searchInput, { target: { value: 'test_case_2' } });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({ offset: 0, q: 'test_case_2' })
+        );
+      });
     });
 
     it('should show loader while loading', async () => {

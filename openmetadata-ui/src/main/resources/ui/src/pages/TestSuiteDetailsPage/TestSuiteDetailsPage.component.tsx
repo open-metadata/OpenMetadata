@@ -16,6 +16,7 @@ import {
   Button,
   Dialog,
   DialogTrigger,
+  Input,
   Modal,
   ModalOverlay,
   Tooltip,
@@ -24,10 +25,11 @@ import {
 import { Copy01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useMemo } from 'react';
+import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
+import { useListSearchInput } from '../../components/common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import Description from '../../components/common/EntityDescription/Description';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -58,6 +60,7 @@ const breakableTooltipText = (text?: string) => (
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
+  const testCasePluralLabel = t('label.test-case-plural');
   const navigate = useNavigate();
   const {
     testSuite,
@@ -67,6 +70,7 @@ const TestSuiteDetailsPage = () => {
     isLoading,
     isTestCaseLoading,
     testCaseResult,
+    testCaseSearchQuery,
     testSuitePermissions,
     permissions,
     extraDropdownContent,
@@ -83,6 +87,7 @@ const TestSuiteDetailsPage = () => {
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
     fetchTestCases,
+    handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
     onUpdateOwner,
@@ -91,6 +96,27 @@ const TestSuiteDetailsPage = () => {
     handleDisplayNameChange,
     handleTestSuiteUpdate,
   } = useTestSuiteDetailsPage();
+
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: testCaseSearchQuery,
+    onSearchChange: handleTestCaseSearch,
+  });
+  // UI core and Untitled icons currently resolve React types from separate
+  // package trees even though their runtime component contract is compatible.
+  const searchInputIcon = searchInputProps.icon as ComponentProps<
+    typeof Input
+  >['icon'];
+  const testCaseSearchLabel = t('label.search-entity', {
+    entity: testCasePluralLabel,
+  });
+  const testCaseSearchInputProps = useMemo<ComponentProps<typeof Input>>(
+    () => ({
+      ...searchInputProps,
+      icon: searchInputIcon,
+      placeholder: testCaseSearchLabel,
+    }),
+    [searchInputIcon, searchInputProps, testCaseSearchLabel]
+  );
 
   const afterDeleteAction = () => {
     navigate(
@@ -146,7 +172,7 @@ const TestSuiteDetailsPage = () => {
           <TabsLabel
             count={pagingData.paging.total}
             id={EntityTabs.TEST_CASES}
-            name={t('label.test-case-plural')}
+            name={testCasePluralLabel}
           />
         ),
         children: (
@@ -157,10 +183,21 @@ const TestSuiteDetailsPage = () => {
                 afterDeleteAction={fetchTestCases}
                 breadcrumbData={incidentUrlState}
                 fetchTestCases={handleSortTestCase}
+                hasActiveFilters={Boolean(testCaseSearchQuery)}
                 isLoading={isLoading || isTestCaseLoading}
                 pagingData={pagingData}
                 removeFromTestSuite={removeFromTestSuite}
                 showPagination={showPagination}
+                tableHeader={
+                  <Box align="center" className="tw:w-full" justify="end">
+                    <Input
+                      aria-label={testCaseSearchLabel}
+                      className="tw:w-full tw:max-w-72"
+                      inputDataTestId="test-suite-test-case-search"
+                      {...testCaseSearchInputProps}
+                    />
+                  </Box>
+                }
                 testCases={testCaseResult}
                 onTestCaseResultUpdate={handleTestSuiteUpdate}
                 onTestUpdate={handleTestSuiteUpdate}
@@ -200,6 +237,10 @@ const TestSuiteDetailsPage = () => {
     pagingData,
     showPagination,
     testCaseResult,
+    testCaseSearchQuery,
+    testCaseSearchLabel,
+    testCasePluralLabel,
+    testCaseSearchInputProps,
     handleTestSuiteUpdate,
     ingestionPipelineCount,
     t,
@@ -333,7 +374,7 @@ const TestSuiteDetailsPage = () => {
                     data-testid="add-test-case-btn"
                     size="md">
                     {t('label.add-entity', {
-                      entity: t('label.test-case-plural'),
+                      entity: testCasePluralLabel,
                     })}
                   </Button>
                   <ModalOverlay>
@@ -341,7 +382,7 @@ const TestSuiteDetailsPage = () => {
                       <Dialog
                         showCloseButton
                         title={t('label.add-entity', {
-                          entity: t('label.test-case-plural'),
+                          entity: testCasePluralLabel,
                         })}
                         onClose={() => setIsTestCaseModalOpen(false)}>
                         <Dialog.Content>
