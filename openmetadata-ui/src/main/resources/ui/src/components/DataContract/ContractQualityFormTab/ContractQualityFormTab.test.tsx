@@ -63,13 +63,15 @@ jest.mock('../../common/Table/Table', () => {
     loading,
     rowSelection,
     rowKey,
-  }: any) {
+  }: // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
+  any) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Row Selection: {rowSelection ? 'enabled' : 'disabled'}</div>
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock */}
         {dataSource?.map((item: any) => (
           <div data-testid={`table-row-${item.id}`} key={item[rowKey]}>
             <button
@@ -159,8 +161,10 @@ const mockTestCases: TestCase[] = [
     fullyQualifiedName: 'test.case.1',
     updatedAt: 1640995200000,
     testCaseResult: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
       result: 'Success' as any,
       timestamp: 1640995200000,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     } as any,
   },
   {
@@ -170,10 +174,13 @@ const mockTestCases: TestCase[] = [
     fullyQualifiedName: 'test.case.2',
     updatedAt: 1640995200000,
     testCaseResult: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
       result: 'Failed' as any,
       timestamp: 1640995200000,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     } as any,
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
 ] as any;
 
 describe('ContractQualityFormTab', () => {

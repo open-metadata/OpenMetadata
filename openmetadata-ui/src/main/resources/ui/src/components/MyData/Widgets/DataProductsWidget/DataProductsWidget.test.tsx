@@ -97,6 +97,7 @@ const mockSearchResponse = {
   statusText: 'OK',
   headers: {},
   config: {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
 } as any;
 
 // Mock API functions

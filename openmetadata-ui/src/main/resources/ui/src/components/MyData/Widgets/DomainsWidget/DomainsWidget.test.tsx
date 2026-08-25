@@ -80,6 +80,7 @@ const mockSearchResponse = {
     total: { value: mockDomains.length },
   },
   aggregations: {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
 } as any;
 
 // Mock API functions

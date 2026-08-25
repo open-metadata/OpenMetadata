@@ -23,6 +23,7 @@ const mockOnCancel = jest.fn();
 const mockProps = {
   selectedData: {
     ...mockedGlossaryTerms[0],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     children: mockedGlossaryTerms[0].children?.map((child: any) => ({
       id: child.id,
       name: child.name,

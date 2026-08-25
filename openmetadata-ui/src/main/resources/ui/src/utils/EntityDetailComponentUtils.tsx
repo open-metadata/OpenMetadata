@@ -16,6 +16,7 @@ import Loader from '../components/common/Loader/Loader';
 import { EntityType } from '../enums/entity.enum';
 
 const lazyComponentMap: Partial<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- heterogeneous page-component registry
   Record<EntityType, LazyExoticComponent<ComponentType<any>>>
 > = {
   [EntityType.DATABASE]: lazy(
@@ -90,7 +91,7 @@ export function getEntityDetailComponent(entityType: string): FC | null {
     return null;
   }
 
-  const WrappedComponent: FC<any> = (props) => (
+  const WrappedComponent: FC = (props) => (
     <Suspense fallback={<Loader fullScreen />}>
       <LazyComponent {...props} />
     </Suspense>

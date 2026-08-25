@@ -61,6 +61,7 @@ jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
 
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   __esModule: true,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   default: ({ onUpdate, selectedDomain }: any) => (
     <button
       data-testid="domain-selectable-list"
@@ -100,6 +101,7 @@ const defaultProps = {
   entityId: 'test-id',
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
 const renderDomainLabel = (props: any = {}) =>
   render(
     <MemoryRouter>

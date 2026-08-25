@@ -194,7 +194,11 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — real types
+      // where available (generated/ entities, precise props, unknown+guards),
+      // documented disables for untyped third-party surfaces (e.g. the rapi-doc
+      // web component) and dynamic test fixtures. Promoted to error.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
       // for no longer reproduces — verified running against this config, where

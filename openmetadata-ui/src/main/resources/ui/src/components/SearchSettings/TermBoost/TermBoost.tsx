@@ -12,6 +12,7 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
@@ -109,10 +110,13 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     }
   };
 
-  const handleTagChange = (value: string, option: any) => {
+  const handleTagChange = (
+    value: string,
+    option: DefaultOptionType | DefaultOptionType[]
+  ) => {
     const updatedData = {
       ...termBoostData,
-      field: option.field,
+      field: (option as DefaultOptionType).field,
       value: value,
     };
 

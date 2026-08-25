@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ReactNode } from 'react';
 import { AuthProvider } from '../../generated/settings/settings';
 import * as securityConfigAPI from '../../rest/securityConfigAPI';
 import SettingsSso from './SettingsSso';
@@ -61,7 +62,11 @@ jest.mock('../../utils/SSOUtilClassBase', () => ({
 }));
 
 jest.mock('./ProviderSelector/ProviderSelector', () => {
-  return function ProviderSelector({ onProviderSelect }: any) {
+  return function ProviderSelector({
+    onProviderSelect,
+  }: {
+    onProviderSelect: (provider: AuthProvider) => void;
+  }) {
     return (
       <div data-testid="provider-selector">
         <button
@@ -80,7 +85,9 @@ jest.mock('./ProviderSelector/ProviderSelector', () => {
 });
 
 jest.mock('./SSOConfigurationForm/SSOConfigurationForm', () => {
-  return function SSOConfigurationForm(props: any) {
+  return function SSOConfigurationForm(props: {
+    onChangeProvider?: () => void;
+  }) {
     return (
       <div data-testid="sso-configuration-form">
         <button
@@ -121,7 +128,13 @@ jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
 });
 
 jest.mock('../PageLayoutV1/PageLayoutV1', () => {
-  return function PageLayoutV1({ children, className }: any) {
+  return function PageLayoutV1({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) {
     return (
       <div className={className} data-testid="page-layout-v1">
         {children}
@@ -159,6 +172,7 @@ describe('SettingsSso', () => {
     jest.clearAllMocks();
     mockGetSecurityConfiguration.mockResolvedValue({
       data: mockSecurityConfig,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
     } as any);
   });
 
@@ -211,6 +225,7 @@ describe('SettingsSso', () => {
     it('should handle SSO toggle', async () => {
       mockPatchSecurityConfiguration.mockResolvedValue({
         data: mockSecurityConfig,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
       } as any);
       renderComponent();
 
@@ -244,6 +259,7 @@ describe('SettingsSso', () => {
 
   describe('Provider Configuration', () => {
     it('should show provider selector when no configuration exists', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
       mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
       renderComponent();
 
@@ -337,6 +353,7 @@ describe('SettingsSso', () => {
 
   describe('Provider Selection', () => {
     it('should handle provider selection', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
       mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
       renderComponent();
 
@@ -398,6 +415,7 @@ describe('SettingsSso', () => {
 
   describe('Configuration Persistence', () => {
     it('should handle provider selection', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
       mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
       renderComponent();
 
@@ -416,6 +434,7 @@ describe('SettingsSso', () => {
     });
 
     it('should show configuration form when provider is in URL', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
       mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
       renderComponent(`provider=${AuthProvider.Okta}`);
 
@@ -494,6 +513,7 @@ describe('SettingsSso', () => {
             provider: AuthProvider.Azure,
           },
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
       } as any);
 
       renderComponent();

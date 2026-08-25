@@ -83,6 +83,7 @@ jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
     React.useEffect(() => {
       if (props.queryFilter === 'my-data') {
         searchQuery({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
           searchIndex: ['all'] as any,
           query: '*',
           filters: props.queryFilter,

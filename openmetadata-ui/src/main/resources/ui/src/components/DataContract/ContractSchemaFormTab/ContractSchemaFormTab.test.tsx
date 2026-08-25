@@ -70,7 +70,8 @@ jest.mock('../../common/Table/Table', () => {
     rowSelection,
     rowKey,
     pagination,
-  }: any) {
+  }: // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
+  any) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
@@ -78,6 +79,7 @@ jest.mock('../../common/Table/Table', () => {
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
         <div>Pagination: {pagination ? 'enabled' : 'disabled'}</div>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock */}
         {dataSource?.map((item: any) => (
           <div data-testid={`table-row-${item.name}`} key={item[rowKey]}>
             <span>{item.name}</span>
@@ -96,9 +98,11 @@ jest.mock('../../common/Table/Table', () => {
 });
 
 jest.mock('../../Database/TableTags/TableTags.component', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockTableTags({ tags }: any) {
     return (
       <div data-testid="table-tags">
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock */}
         {tags?.map((tag: any) => (
           <span data-testid={`tag-${tag.tagFQN}`} key={tag.tagFQN}>
             {tag.tagFQN}
@@ -133,26 +137,34 @@ jest.mock('react-i18next', () => ({
 const mockColumns: Column[] = [
   {
     name: 'id',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     dataType: 'BIGINT' as any,
     description: 'Primary key',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     tags: [{ tagFQN: 'PII.Sensitive' }] as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     constraint: 'PRIMARY_KEY' as any,
     fullyQualifiedName: 'service.database.schema.table.id',
   },
   {
     name: 'name',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     dataType: 'VARCHAR' as any,
     description: 'User name',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     tags: [{ tagFQN: 'PersonalData.Personal' }] as any,
     fullyQualifiedName: 'service.database.schema.table.name',
   },
   {
     name: 'email',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     dataType: 'VARCHAR' as any,
     description: 'User email',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     tags: [] as any,
     fullyQualifiedName: 'service.database.schema.table.email',
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
 ] as any;
 
 const mockOnChange = jest.fn();

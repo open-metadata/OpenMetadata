@@ -33,6 +33,7 @@ describe('CodeWidget', () => {
     disabled: false,
     name: '',
     options: {} as Partial<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
       Omit<TemplatesType<any, RJSFSchema, any>, 'ButtonTemplates'>
     >,
     onBlur: jest.fn(),

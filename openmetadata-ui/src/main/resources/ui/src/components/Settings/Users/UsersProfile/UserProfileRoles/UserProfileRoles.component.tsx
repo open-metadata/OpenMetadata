@@ -12,6 +12,7 @@
  */
 
 import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
+import { RefSelectProps } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -108,7 +109,7 @@ const UserProfileRoles = ({
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
 
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<RefSelectProps | null>(null);
 
   const handleRolesSave = async () => {
     setIsLoading(true);
@@ -288,7 +289,7 @@ const UserProfileRoles = ({
                     open={isDropdownOpen}
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
-                    ref={dropdownRef as any}
+                    ref={dropdownRef}
                     tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}

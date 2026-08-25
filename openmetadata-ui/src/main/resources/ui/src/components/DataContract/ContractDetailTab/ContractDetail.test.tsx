@@ -261,12 +261,14 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 
 jest.mock('../../AlertBar/AlertBar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockAlertBar({ message }: any) {
     return <div data-testid="alert-bar">{message}</div>;
   };
 });
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockErrorPlaceHolder({ type, children }: any) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
@@ -277,6 +279,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 });
 
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockContractExecutionChart({ contract }: any) {
     return (
       <div data-testid="contract-execution-chart">
@@ -291,6 +294,7 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
 });
 
 jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockContractSecurityCard({ security }: any) {
     return (
       <div data-testid="contract-security-card">
@@ -301,6 +305,7 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockContractViewSwitchTab({ handleModeChange }: any) {
     return (
       <div data-testid="contract-view-switch-tab">
@@ -350,6 +355,7 @@ jest.mock('../ODCSImportModal', () => {
 });
 
 jest.mock('../ContractYaml/ContractYaml.component', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockContractYaml({ contract }: any) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
@@ -382,11 +388,13 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
 });
 
 jest.mock('../../common/Table/Table', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
   return function MockTable({ dataSource, loading }: any) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Data Length: {dataSource?.length || 0}</div>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock */}
         {dataSource?.map((item: any) => (
           <div data-testid={`table-row-${item.id}`} key={item.id}>
             {item.name}

@@ -48,6 +48,7 @@ jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
   };
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
 const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<any>;
 
 const mockGetTitleByChartType = getTitleByChartType as jest.MockedFunction<
@@ -61,8 +62,9 @@ describe('PlatformInsightsWidget', () => {
   const mockServiceDetails = {
     id: 'test-service-id',
     name: 'test-service',
-    serviceType: 'Mysql' as any,
+    serviceType: 'Mysql',
     fullyQualifiedName: 'test-service-fqn',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
   } as any;
 
   const mockChartsData = [

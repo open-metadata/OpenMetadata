@@ -336,6 +336,7 @@ describe('useLineageStore', () => {
     };
 
     act(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
       result.current.setSelectedNode(selectedNode as any);
     });
 

@@ -106,6 +106,7 @@ jest.mock('@react-awesome-query-builder/antd', () => {
       sanitizeTree: jest.fn(() => ({ fixedTree: {} })),
       jsonLogicFormat: jest.fn(() => ({ logic: { test: 'logic' } })),
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     Builder: ({ onChange, ...props }: any) => (
       <div data-testid="query-builder" {...props}>
         <button
@@ -115,6 +116,7 @@ jest.mock('@react-awesome-query-builder/antd', () => {
         </button>
       </div>
     ),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
     Query: ({ onChange, renderBuilder, ...props }: any) => {
       const mockActions = { test: 'actions' };
 
@@ -123,7 +125,8 @@ jest.mock('@react-awesome-query-builder/antd', () => {
           {renderBuilder({
             ...props,
             actions: mockActions,
-            onChange: (tree: any, config: any) => onChange?.(tree, config),
+            onChange: (tree: unknown, config: unknown) =>
+              onChange?.(tree, config),
           })}
         </div>
       );
@@ -141,7 +144,9 @@ const mockSearchResponse = {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: any) => {
+  debounce: (
+    fn: ((...args: unknown[]) => unknown) & { cancel?: jest.Mock }
+  ) => {
     fn.cancel = jest.fn();
 
     return fn;
@@ -359,7 +364,7 @@ describe('QueryBuilderWidgetV1', () => {
     });
 
     it('should show loading skeleton while fetching count', async () => {
-      let resolveSearch: (value: any) => void;
+      let resolveSearch: (value: unknown) => void;
       const searchPromise = new Promise((resolve) => {
         resolveSearch = resolve;
       });

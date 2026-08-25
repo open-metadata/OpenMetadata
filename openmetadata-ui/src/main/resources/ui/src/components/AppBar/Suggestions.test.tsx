@@ -22,7 +22,8 @@ jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
     return options.filter(
-      (option: any) => option._source?.entityType === index
+      (option: { _source?: { entityType?: string } }) =>
+        option._source?.entityType === index
     );
   }),
   getGroupLabel: jest.fn((index) => `Group ${index}`),
@@ -157,6 +158,7 @@ describe('Suggestions Component', () => {
         isTourOpen: true,
         updateTourPage: jest.fn(),
         updateTourSearch: jest.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
       } as any);
 
       render(<Suggestions {...defaultProps} />);
