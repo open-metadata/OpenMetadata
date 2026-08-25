@@ -487,5 +487,20 @@ describe('SwTokenStorageUtils', () => {
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('app_state');
       expect(mockRemoveItem).not.toHaveBeenCalled();
     });
+
+    it('should still attempt to clear persisted tokens after the service worker was marked broken', async () => {
+      // #32063 review finding: tokens persisted before a transient SW failure
+      // must not survive logout — a reload resets the broken verdict and a
+      // recovered SW would restore the logged-out session from IndexedDB.
+      mockGetItem.mockRejectedValue(new Error('SW timeout'));
+      mockSetItem.mockRejectedValue(new Error('SW timeout'));
+      await setOidcToken('in-memory-oidc-token'); // marks the SW broken
+      mockRemoveItem.mockResolvedValue(null);
+
+      await clearOidcToken();
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(await getOidcToken()).toBe('');
+    });
   });
 });

@@ -114,13 +114,17 @@ const setAppState = async (state: AppState): Promise<void> => {
 const clearAppState = async (): Promise<void> => {
   inMemoryState = {};
   try {
-    if (isServiceWorkerAvailable() && !swStorageBroken) {
+    if (isServiceWorkerAvailable()) {
       try {
+        // Always attempt to clear persisted state on logout, even when the
+        // service worker was marked broken: tokens written before a transient
+        // failure must not survive logout, or a reload (which resets the
+        // verdict) could restore the logged-out session from IndexedDB.
         await swTokenStorage.removeItem(APP_STATE_KEY);
       } catch (error) {
         markSwStorageBroken(error);
       }
-    } else if (!swStorageBroken) {
+    } else {
       // Fallback for browsers that don't support SW/IndexedDB
       localStorage.removeItem(APP_STATE_KEY);
     }
