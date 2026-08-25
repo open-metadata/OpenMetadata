@@ -86,8 +86,12 @@ import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedPro
 import './activity-feed-tab.less';
 import {
   ActivityFeedLayoutType,
+  ActivityFeedTabLeftPanelProps,
+  ActivityFeedTabListProps,
   ActivityFeedTabProps,
+  ActivityFeedTabRightPanelProps,
   ActivityFeedTabs,
+  TaskFilterBarProps,
 } from './ActivityFeedTab.interface';
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
@@ -100,6 +104,308 @@ const TaskTabNew = withSuspenseFallback(
 const componentsVisibility = {
   showThreadIcon: false,
   showRepliesContainer: true,
+};
+
+/**
+ * The three task-count scopes: my own profile counts every task visible to me,
+ * another user's profile counts what is assigned to them, and an entity page
+ * counts what is about that entity.
+ */
+const getTaskCountParams = ({
+  isUserEntity,
+  isCurrentUserProfile,
+  fqn,
+  domain,
+}: {
+  isUserEntity: boolean;
+  isCurrentUserProfile: boolean;
+  fqn: string;
+  domain?: string;
+}) => {
+  if (!isUserEntity) {
+    return { aboutEntity: fqn, view: 'entity' as const, domain };
+  }
+
+  return isCurrentUserProfile
+    ? { view: 'visible' as const, domain }
+    : { assignee: fqn, domain };
+};
+
+/**
+ * The badge counts the tab needs, all independent of each other: an entity page
+ * counts its conversations and its activity stream, a user page counts the
+ * conversations they own or follow plus the ones mentioning them.
+ */
+const startFeedCountRequests = ({
+  isUserEntity,
+  entityType,
+  fqn,
+  userId,
+  domain,
+}: {
+  isUserEntity: boolean;
+  entityType: EntityType;
+  fqn: string;
+  userId?: string;
+  domain?: string;
+}) => ({
+  conversations: listConversations(
+    isUserEntity
+      ? {
+          entityLink: getEntityUserLink(fqn),
+          filterType: ConversationFilterType.OwnerOrFollows,
+          userId,
+          limit: 1,
+        }
+      : { entityLink: getEntityFeedLink(entityType, fqn), limit: 1 }
+  ),
+  mentions: isUserEntity
+    ? listConversations({
+        filterType: ConversationFilterType.Mentions,
+        userId,
+        limit: 1,
+      })
+    : undefined,
+  activity: isUserEntity
+    ? undefined
+    : getEntityActivityByFqn(entityType, fqn, {
+        days: 30,
+        limit: 0,
+        domain,
+      }),
+});
+
+const ActivityFeedTabLeftPanel = ({
+  activeTab,
+  countData,
+  isTaskActiveTab,
+  isUserEntity,
+  layoutType,
+  taskFilter,
+  onTabChange,
+}: ActivityFeedTabLeftPanelProps) => {
+  const { t } = useTranslation();
+
+  if (layoutType !== ActivityFeedLayoutType.THREE_PANEL) {
+    return null;
+  }
+
+  return (
+    <Menu
+      className="custom-menu p-t-sm"
+      data-testid="global-setting-left-panel"
+      items={[
+        {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                <AllActivityIcon
+                  style={COMMON_ICON_STYLES}
+                  {...ICON_DIMENSION}
+                />
+                <span>{t('label.all')}</span>
+              </Space>
+
+              <span data-testid="left-panel-all-count">
+                {!isUserEntity &&
+                  getCountBadge(
+                    (countData?.conversationCount ?? 0) +
+                      (countData?.activityCount ?? 0),
+                    '',
+                    activeTab === ActivityFeedTabs.ALL
+                  )}
+              </span>
+            </div>
+          ),
+          key: ActivityFeedTabs.ALL,
+        },
+        {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                <TaskListIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
+                <span>{t('label.task-plural')}</span>
+              </Space>
+              <span data-testid="left-panel-task-count">
+                {getCountBadge(
+                  taskFilter === TaskStatusGroup.Open
+                    ? countData?.openTaskCount
+                    : countData?.closedTaskCount,
+                  '',
+                  isTaskActiveTab
+                )}
+              </span>
+            </div>
+          ),
+          key: ActivityFeedTabs.TASKS,
+        },
+      ]}
+      mode="inline"
+      rootClassName="left-container"
+      selectedKeys={[
+        activeTab === ActivityFeedTabs.ALL
+          ? ActivityFeedTabs.ALL
+          : ActivityFeedTabs.TASKS,
+      ]}
+      onClick={(info) => onTabChange(info.key)}
+    />
+  );
+};
+
+const TaskFilterBar = ({
+  countData,
+  isMentionTabSelected,
+  isVisible,
+  taskFilter,
+  taskFilterOptions,
+  taskToggle,
+}: TaskFilterBarProps) => {
+  const { t } = useTranslation();
+
+  if (!isVisible) {
+    return null;
+  }
+
+  const filterLabel =
+    taskFilter === TaskStatusGroup.Open
+      ? `${t('label.open')} (${countData?.openTaskCount ?? 0})`
+      : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
+
+  return (
+    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
+      <Dropdown
+        disabled={isMentionTabSelected}
+        menu={{
+          items: taskFilterOptions,
+          selectedKeys: [taskFilter],
+        }}
+        overlayClassName="task-tab-custom-dropdown"
+        trigger={['click']}>
+        <Button
+          className={classNames('feed-filter-icon', {
+            'cursor-pointer': !isMentionTabSelected,
+            disabled: isMentionTabSelected,
+          })}
+          data-testid="user-profile-page-task-filter-icon">
+          <Space align="center" size={4}>
+            <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
+            <span className="text-xs font-medium" style={{ lineHeight: 1 }}>
+              {filterLabel}
+            </span>
+          </Space>
+        </Button>
+      </Dropdown>
+      {taskToggle}
+    </div>
+  );
+};
+
+/**
+ * The Tasks sub-tab renders the task list; All and Mentions render conversations,
+ * and only All also renders activity events. `isTaskListTab` is the single
+ * predicate the parent uses for both this switch and which fetcher runs.
+ */
+const ActivityFeedTabList = ({
+  activityEvents,
+  emptyPlaceholderText,
+  entityThread,
+  isActivityLoading,
+  isAllTab,
+  isFirstLoad,
+  isFullWidth,
+  isTaskListTab,
+  loading,
+  selectedActivity,
+  selectedTask,
+  selectedThread,
+  tasks,
+  onActivityClick,
+  onAfterClose,
+  onFeedClick,
+  onPanelResize,
+  onTaskClick,
+}: ActivityFeedTabListProps) => {
+  // The list is emptied while a first-page fetch is in flight, so the loader has
+  // to cover that window or the cleared list shows its empty placeholder.
+  const isReplacingList = isFirstLoad && loading;
+
+  if (isTaskListTab) {
+    return (
+      <TaskListV1
+        activeFeedId={selectedTask?.id}
+        emptyPlaceholderText={emptyPlaceholderText}
+        handlePanelResize={onPanelResize}
+        isFullWidth={isFullWidth}
+        isLoading={isReplacingList}
+        selectedTask={selectedTask}
+        taskList={tasks}
+        onAfterClose={onAfterClose}
+        onTaskClick={onTaskClick}
+      />
+    );
+  }
+
+  return (
+    <ActivityFeedListV1New
+      hidePopover
+      activeFeedId={selectedActivity?.id ?? selectedThread?.id}
+      activityList={isAllTab ? activityEvents : undefined}
+      componentsVisibility={componentsVisibility}
+      emptyPlaceholderText={emptyPlaceholderText}
+      feedList={entityThread}
+      handlePanelResize={onPanelResize}
+      isForFeedTab={false}
+      isFullWidth={isFullWidth}
+      isLoading={isReplacingList || (isAllTab && Boolean(isActivityLoading))}
+      selectedActivity={selectedActivity}
+      selectedThread={selectedThread}
+      showThread={false}
+      onActivityClick={onActivityClick}
+      onAfterClose={onAfterClose}
+      onFeedClick={onFeedClick}
+    />
+  );
+};
+
+const ActivityFeedTabRightPanel = ({
+  content,
+  hasSelection,
+  isFullWidth,
+  layoutType,
+  loader,
+  loading,
+  placeholder,
+}: ActivityFeedTabRightPanelProps) => {
+  const isThreePanel = layoutType === ActivityFeedLayoutType.THREE_PANEL;
+
+  return (
+    <>
+      {isThreePanel && (
+        <Divider className="feed-divider h-100 m-0" type="vertical" />
+      )}
+
+      <div
+        className={classNames('right-container', {
+          'hide-panel': isFullWidth,
+          'three-panel-layout': isThreePanel,
+        })}>
+        {loader}
+        {hasSelection && !loading
+          ? content
+          : !loading && (
+              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
+                <ErrorPlaceHolderNew
+                  icon={<NoConversationsIcon />}
+                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  <Typography.Paragraph className="placeholder-text">
+                    {placeholder}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolderNew>
+              </div>
+            )}
+      </div>
+    </>
+  );
 };
 
 export const ActivityFeedTab = ({
@@ -187,28 +493,36 @@ export const ActivityFeedTab = ({
     () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
   );
-  useEffect(() => {
-    setIsFirstLoad(true);
-  }, [subTab]);
 
-  const handleTabChange = (subTab: string) => {
-    setIsFirstLoad(true);
-    navigate(
-      entityUtilClassBase.getEntityLink(
-        entityType,
-        fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      ),
-      { replace: true }
-    );
-    setActiveThread();
-    setActiveTask();
-    setIsFullWidth(false);
-  };
+  // Only the Tasks sub-tab renders TaskListV1 off `tasks`; Mentions lists the
+  // conversations that mention the user. Keeping the render branch and the fetch
+  // branch on a single predicate is what stops them drifting apart again.
+  const isAllTab = useMemo(
+    () => activeTab === ActivityFeedTabs.ALL,
+    [activeTab]
+  );
+
+  const handleTabChange = useCallback(
+    (subTab: string) => {
+      setIsFirstLoad(true);
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          fqn,
+          EntityTabs.ACTIVITY_FEED,
+          subTab
+        ),
+        { replace: true }
+      );
+      setActiveThread();
+      setActiveTask();
+      setIsFullWidth(false);
+    },
+    [entityType, fqn, navigate, setActiveThread, setActiveTask]
+  );
 
   const placeholderText = useMemo(() => {
-    if (activeTab === ActivityFeedTabs.ALL) {
+    if (isAllTab) {
       return (
         <div className="d-flex flex-col gap-4">
           <Typography.Text className="placeholder-title">
@@ -248,14 +562,14 @@ export const ActivityFeedTab = ({
         </div>
       );
     }
-  }, [activeTab, taskFilter, t]);
+  }, [activeTab, isAllTab, taskFilter, t]);
 
   const handleFeedCount = useCallback(
     (data: FeedCounts) => {
       setCountData((prev) => ({ ...prev, data }));
       onUpdateFeedCount?.(data);
     },
-    [setCountData]
+    [onUpdateFeedCount]
   );
 
   const fetchFeedsCount = useCallback(async () => {
@@ -267,39 +581,25 @@ export const ActivityFeedTab = ({
         isUserEntity &&
         Boolean(fqn) &&
         [currentUser?.name, currentUser?.fullyQualifiedName].includes(fqn);
-      const taskCountParams = isUserEntity
-        ? isCurrentUserProfile
-          ? { view: 'visible' as const, domain }
-          : { assignee: fqn, domain }
-        : { aboutEntity: fqn, view: 'entity' as const, domain };
-      const conversationParams = isUserEntity
-        ? {
-            entityLink: getEntityUserLink(fqn),
-            filterType: ConversationFilterType.OwnerOrFollows,
-            userId,
-            limit: 1,
-          }
-        : { entityLink: getEntityFeedLink(entityType, fqn), limit: 1 };
-      const mentionRequest = isUserEntity
-        ? listConversations({
-            filterType: ConversationFilterType.Mentions,
-            userId,
-            limit: 1,
-          })
-        : Promise.resolve(undefined);
-      const activityRequest = isUserEntity
-        ? Promise.resolve(undefined)
-        : getEntityActivityByFqn(entityType, fqn, {
-            days: 30,
-            limit: 0,
-            domain,
-          });
+      const taskCountParams = getTaskCountParams({
+        isUserEntity,
+        isCurrentUserProfile,
+        fqn,
+        domain,
+      });
+      const countRequests = startFeedCountRequests({
+        isUserEntity,
+        entityType,
+        fqn,
+        userId,
+        domain,
+      });
       const [taskCounts, conversations, mentions, activity] = await Promise.all(
         [
           getTaskCounts(taskCountParams),
-          listConversations(conversationParams),
-          mentionRequest,
-          activityRequest,
+          countRequests.conversations,
+          countRequests.mentions,
+          countRequests.activity,
         ]
       );
       const mentionCount = mentions?.paging.total ?? 0;
@@ -332,9 +632,9 @@ export const ActivityFeedTab = ({
     fqn,
     entityType,
     isUserEntity,
+    userId,
     currentUser?.name,
     currentUser?.fullyQualifiedName,
-    currentUser?.id,
     handleFeedCount,
     t,
   ]);
@@ -355,7 +655,11 @@ export const ActivityFeedTab = ({
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
-      setIsFirstLoad(false);
+      // Only a "load more" page keeps the current list on screen. A first-page
+      // refetch replaces it, so the in-list loader has to be switched back ON —
+      // once pagination has cleared this flag, `isFirstLoad && loading` is false
+      // and the cleared list renders the empty placeholder next to the spinner.
+      setIsFirstLoad(!after);
       if (isTaskActiveTab) {
         getTaskData(feedFilter, after, entityType, fqn, taskFilter);
       } else {
@@ -375,6 +679,11 @@ export const ActivityFeedTab = ({
 
   useEffect(() => {
     if (fqn) {
+      // Every dep here identifies a different query, so this is always a
+      // first-page fetch that replaces the list — sub-tab (via feedFilter), task
+      // filter, entity or domain. The loader has to be on for the window where
+      // the provider has cleared the rows but the response has not landed.
+      setIsFirstLoad(true);
       if (isTaskActiveTab) {
         getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
       } else {
@@ -394,7 +703,7 @@ export const ActivityFeedTab = ({
 
   useEffect(() => {
     // Activity events only render on the ALL tab; skip the fetch on Tasks/Mentions.
-    if (isTaskActiveTab || isMentionTabSelected) {
+    if (!isAllTab) {
       return;
     }
     if (fqn && entityType && !isUserEntity) {
@@ -407,8 +716,7 @@ export const ActivityFeedTab = ({
     entityType,
     isUserEntity,
     userId,
-    isTaskActiveTab,
-    isMentionTabSelected,
+    isAllTab,
     fetchEntityActivity,
     fetchUserActivity,
   ]);
@@ -423,19 +731,21 @@ export const ActivityFeedTab = ({
       isTaskActiveTab
     ) {
       processedRefreshKeyRef.current = refreshKey;
-      getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+      // Goes through handleFeedFetchFromFeedList rather than calling getTaskData
+      // directly so this first-page refetch switches the in-list loader back on.
+      // Without it, a notification click that arrives after the user has
+      // paginated leaves isFirstLoad false while the provider empties the rows,
+      // so the list renders its "no tasks" placeholder beside the spinner.
+      handleFeedFetchFromFeedList();
       navigate('.', { replace: true, state: {} });
     }
   }, [
-    entityType,
-    feedFilter,
     fqn,
-    getTaskData,
+    handleFeedFetchFromFeedList,
     isTaskActiveTab,
     location.key,
     location.state,
     navigate,
-    taskFilter,
   ]);
 
   useEffect(() => {
@@ -499,15 +809,21 @@ export const ActivityFeedTab = ({
     [loading]
   );
 
-  const handleUpdateTaskFilter = (filter: TaskStatusGroup) => {
-    setTaskFilter(filter);
-    getTaskData(feedFilter, undefined, entityType, fqn, filter);
-  };
+  const hasRightPanelSelection = useMemo(
+    () => Boolean(selectedThread || selectedTask || selectedActivity),
+    [selectedThread, selectedTask, selectedActivity]
+  );
 
-  const handleAfterTaskClose = () => {
+  // The fetch effect above already refires on `taskFilter`; calling getTaskData
+  // here as well fired two identical requests per filter click.
+  const handleUpdateTaskFilter = useCallback((filter: TaskStatusGroup) => {
+    setTaskFilter(filter);
+  }, []);
+
+  const handleAfterTaskClose = useCallback(() => {
     handleFeedFetchFromFeedList();
     fetchFeedsCount();
-  };
+  }, [handleFeedFetchFromFeedList, fetchFeedsCount]);
   const taskFilterOptions = useMemo(
     () => [
       {
@@ -594,7 +910,7 @@ export const ActivityFeedTab = ({
         },
       },
     ],
-    [taskFilter, handleUpdateTaskFilter, setActiveTask, countData]
+    [taskFilter, handleUpdateTaskFilter, setActiveTask, countData, t]
   );
 
   const TaskToggle = useCallback(() => {
@@ -604,7 +920,7 @@ export const ActivityFeedTab = ({
         options={[
           {
             label: (
-              <span className="toggle-item">
+              <span className="toggle-item" data-testid="my-tasks-toggle">
                 <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
                 {t('label.my-task-plural')}
               </span>
@@ -613,7 +929,7 @@ export const ActivityFeedTab = ({
           },
           {
             label: (
-              <span className="toggle-item">
+              <span className="toggle-item" data-testid="mentions-toggle">
                 <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
                 {t('label.mention-plural')}
               </span>
@@ -625,11 +941,24 @@ export const ActivityFeedTab = ({
         onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
       />
     );
-  }, [t, handleTabChange]);
+  }, [t, activeTab, handleTabChange]);
 
-  const handlePanelResize = (isFullWidth: boolean) => {
+  const handlePanelResize = useCallback((isFullWidth: boolean) => {
     setIsFullWidth(isFullWidth);
-  };
+  }, []);
+
+  // The infinite-scroll observer only belongs in the tree once the list the
+  // active sub-tab renders has rows to page past — activity events count towards
+  // that on the All tab, which is the only tab that renders them.
+  const hasListRows = useMemo(() => {
+    if (isTaskActiveTab) {
+      return !isEmpty(tasks);
+    }
+
+    return isAllTab
+      ? !isEmpty(activityEvents) || !isEmpty(entityThread)
+      : !isEmpty(entityThread);
+  }, [isTaskActiveTab, isAllTab, tasks, activityEvents, entityThread]);
 
   const getRightPanelContent = () => {
     if (isTaskActiveTab && selectedTask) {
@@ -719,7 +1048,7 @@ export const ActivityFeedTab = ({
         </Typography.Text>
       </div>
     );
-  }, [activeTab, selectedThread]);
+  }, [activeTab, t]);
 
   return (
     <div
@@ -727,69 +1056,15 @@ export const ActivityFeedTab = ({
         'two-panel-layout-container':
           layoutType === ActivityFeedLayoutType.TWO_PANEL,
       })}>
-      {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
-        <Menu
-          className="custom-menu p-t-sm"
-          data-testid="global-setting-left-panel"
-          items={[
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <Space align="center" size="small">
-                    <AllActivityIcon
-                      style={COMMON_ICON_STYLES}
-                      {...ICON_DIMENSION}
-                    />
-                    <span>{t('label.all')}</span>
-                  </Space>
-
-                  <span data-testid="left-panel-all-count">
-                    {!isUserEntity &&
-                      getCountBadge(
-                        (countData?.data?.conversationCount ?? 0) +
-                          (countData?.data?.activityCount ?? 0),
-                        '',
-                        activeTab === ActivityFeedTabs.ALL
-                      )}
-                  </span>
-                </div>
-              ),
-              key: ActivityFeedTabs.ALL,
-            },
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <Space align="center" size="small">
-                    <TaskListIcon
-                      style={COMMON_ICON_STYLES}
-                      {...ICON_DIMENSION}
-                    />
-                    <span>{t('label.task-plural')}</span>
-                  </Space>
-                  <span data-testid="left-panel-task-count">
-                    {getCountBadge(
-                      taskFilter === TaskStatusGroup.Open
-                        ? countData?.data?.openTaskCount
-                        : countData?.data?.closedTaskCount,
-                      '',
-                      isTaskActiveTab
-                    )}
-                  </span>
-                </div>
-              ),
-              key: ActivityFeedTabs.TASKS,
-            },
-          ]}
-          mode="inline"
-          rootClassName="left-container"
-          selectedKeys={[
-            activeTab === ActivityFeedTabs.ALL
-              ? ActivityFeedTabs.ALL
-              : ActivityFeedTabs.TASKS,
-          ]}
-          onClick={(info) => handleTabChange(info.key)}
-        />
-      )}
+      <ActivityFeedTabLeftPanel
+        activeTab={activeTab}
+        countData={countData.data}
+        isTaskActiveTab={isTaskActiveTab}
+        isUserEntity={isUserEntity}
+        layoutType={layoutType}
+        taskFilter={taskFilter}
+        onTabChange={handleTabChange}
+      />
       <div
         className={classNames('center-container', {
           'full-width': isFullWidth,
@@ -797,121 +1072,55 @@ export const ActivityFeedTab = ({
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
         id="center-container">
-        {(isTaskActiveTab || isMentionTabSelected) && (
-          <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
-            <Dropdown
-              disabled={isMentionTabSelected}
-              menu={{
-                items: taskFilterOptions,
-                selectedKeys: [taskFilter],
-              }}
-              overlayClassName="task-tab-custom-dropdown"
-              trigger={['click']}>
-              <Button
-                className={classNames('feed-filter-icon', {
-                  'cursor-pointer': !isMentionTabSelected,
-                  disabled: isMentionTabSelected,
-                })}
-                data-testid="user-profile-page-task-filter-icon">
-                <Space align="center" size={4}>
-                  <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
-                  <span
-                    className="text-xs font-medium"
-                    style={{ lineHeight: 1 }}>
-                    {taskFilter === TaskStatusGroup.Open
-                      ? `${t('label.open')} (${
-                          countData?.data?.openTaskCount ?? 0
-                        })`
-                      : `${t('label.closed')} (${
-                          countData?.data?.closedTaskCount ?? 0
-                        })`}
-                  </span>
-                </Space>
-              </Button>
-            </Dropdown>
-            {TaskToggle()}
-          </div>
-        )}
-        {isTaskActiveTab ? (
-          <TaskListV1
-            activeFeedId={selectedTask?.id}
-            emptyPlaceholderText={placeholderText}
-            handlePanelResize={handlePanelResize}
-            isFullWidth={isFullWidth}
-            isLoading={isFirstLoad && loading}
-            selectedTask={selectedTask}
-            taskList={tasks}
-            onAfterClose={handleAfterTaskClose}
-            onTaskClick={handleTaskClick}
-          />
-        ) : (
-          <ActivityFeedListV1New
-            hidePopover
-            activeFeedId={selectedActivity?.id ?? selectedThread?.id}
-            activityList={
-              activeTab === ActivityFeedTabs.ALL ? activityEvents : undefined
-            }
-            componentsVisibility={componentsVisibility}
-            emptyPlaceholderText={placeholderText}
-            feedList={entityThread}
-            handlePanelResize={handlePanelResize}
-            isForFeedTab={false}
-            isFullWidth={isFullWidth}
-            isLoading={
-              (isFirstLoad && loading) ||
-              (activeTab === ActivityFeedTabs.ALL &&
-                (isActivityLoading ?? false))
-            }
-            selectedActivity={selectedActivity}
-            selectedThread={selectedThread}
-            showThread={false}
-            onActivityClick={handleActivityClick}
-            onAfterClose={handleAfterTaskClose}
-            onFeedClick={handleFeedClick}
-          />
-        )}
+        <TaskFilterBar
+          countData={countData.data}
+          isMentionTabSelected={isMentionTabSelected}
+          isVisible={isTaskActiveTab || isMentionTabSelected}
+          taskFilter={taskFilter}
+          taskFilterOptions={taskFilterOptions}
+          taskToggle={TaskToggle()}
+        />
+        <ActivityFeedTabList
+          activityEvents={activityEvents}
+          emptyPlaceholderText={placeholderText}
+          entityThread={entityThread}
+          isActivityLoading={isActivityLoading}
+          isAllTab={isAllTab}
+          isFirstLoad={isFirstLoad}
+          isFullWidth={isFullWidth}
+          isTaskListTab={isTaskActiveTab}
+          loading={loading}
+          selectedActivity={selectedActivity}
+          selectedTask={selectedTask}
+          selectedThread={selectedThread}
+          tasks={tasks}
+          onActivityClick={handleActivityClick}
+          onAfterClose={handleAfterTaskClose}
+          onFeedClick={handleFeedClick}
+          onPanelResize={handlePanelResize}
+          onTaskClick={handleTaskClick}
+        />
         {!isFirstLoad && loader}
-        {!(isTaskActiveTab
-          ? isEmpty(tasks)
-          : activeTab === ActivityFeedTabs.ALL
-          ? isEmpty(activityEvents) && isEmpty(entityThread)
-          : isEmpty(entityThread)) &&
-          !loading && (
-            <div
-              className="w-full"
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}
-              style={{ height: '2px' }}
-            />
-          )}
+        {hasListRows && !loading && (
+          <div
+            className="w-full"
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+            style={{ height: '2px' }}
+          />
+        )}
       </div>
 
-      {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
-        <Divider className="feed-divider h-100 m-0" type="vertical" />
-      )}
-
-      <div
-        className={classNames('right-container', {
-          'hide-panel': isFullWidth,
-          'three-panel-layout':
-            layoutType === ActivityFeedLayoutType.THREE_PANEL,
-        })}>
-        {loader}
-        {(selectedThread || selectedTask || selectedActivity) && !loading
-          ? getRightPanelContent()
-          : !loading && (
-              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph className="placeholder-text">
-                    {getRightPanelPlaceholder}
-                  </Typography.Paragraph>
-                </ErrorPlaceHolderNew>
-              </div>
-            )}
-      </div>
+      <ActivityFeedTabRightPanel
+        content={getRightPanelContent()}
+        hasSelection={hasRightPanelSelection}
+        isFullWidth={isFullWidth}
+        layoutType={layoutType}
+        loader={loader}
+        loading={loading}
+        placeholder={getRightPanelPlaceholder}
+      />
     </div>
   );
 };

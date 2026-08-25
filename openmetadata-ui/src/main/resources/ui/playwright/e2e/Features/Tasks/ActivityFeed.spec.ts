@@ -493,11 +493,11 @@ test.describe('Activity Feed - Entity Page', () => {
     await openResponse;
     await waitForPageLoaded(page);
 
-    await taskFilterButton.click();
-    await expect(
-      page.locator('.task-filter-container').getByText(/mention/i)
-    ).toBeVisible();
+    await expect(page.getByTestId('mentions-toggle')).toBeVisible();
 
+    // Mentions renders the conversations that mention the user, so it has to
+    // query the conversation feed with the MENTIONS filter — not the task list,
+    // whose rows the mentions list never reads.
     const mentionsResponse = page.waitForResponse((response) => {
       if (
         response.request().method() !== 'GET' ||
@@ -511,10 +511,7 @@ test.describe('Activity Feed - Entity Page', () => {
       return requestUrl.searchParams.get('filterType') === 'MENTIONS';
     });
 
-    await page
-      .locator('.task-filter-container')
-      .getByText(/mention/i)
-      .click();
+    await page.getByTestId('mentions-toggle').click();
     await mentionsResponse;
     await waitForPageLoaded(page);
   });

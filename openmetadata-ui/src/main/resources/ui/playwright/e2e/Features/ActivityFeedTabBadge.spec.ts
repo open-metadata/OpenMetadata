@@ -14,6 +14,7 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
@@ -75,7 +76,23 @@ async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('open-tasks').click();
   await tasksListResponse;
 }
-test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
+const waitForMentionedConversationResponse = (
+  page: import('@playwright/test').Page
+) =>
+  page.waitForResponse((response) => {
+    if (
+      response.request().method() !== 'GET' ||
+      !response.url().includes('/api/v1/conversations')
+    ) {
+      return false;
+    }
+
+    return (
+      new URL(response.url()).searchParams.get('filterType') === 'MENTIONS'
+    );
+  });
+
+test.describe('ActivityFeedTab — task filter badge, placeholder and mentions', () => {
   const table = new TableClass();
   const assigneeUser = new UserClass();
 
@@ -226,6 +243,78 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
         .toBe(0);
     } finally {
       await countedTable.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Mentions sub-tab lists only the conversations that mention the user', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+
+    // Own table: the assertions below are exact card counts and chromium runs
+    // fullyParallel, so sharing the describe-level table would make them depend
+    // on test order.
+    const mentionTable = new TableClass();
+
+    try {
+      await mentionTable.create(apiContext);
+
+      const fqn = mentionTable.entityResponseData?.fullyQualifiedName as string;
+      const assignee = assigneeUser.responseData.name;
+
+      // A task about the entity: it must stay out of the Mentions list, which
+      // reads conversations, not tasks.
+      await createOpenTask(apiContext, fqn, assignee);
+      await createConversationThread(
+        apiContext,
+        mentionTable,
+        'A conversation nobody is mentioned in'
+      );
+      await createConversationThread(
+        apiContext,
+        mentionTable,
+        'Please take a look <#E::user::admin>'
+      );
+
+      await mentionTable.visitEntityPage(page);
+      await navigateToTasksPanel(page);
+
+      // My Tasks lists the tasks about the entity.
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+
+      const mentionsResponse = waitForMentionedConversationResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsResponse;
+
+      // The list has to actually switch — only the conversation that mentions
+      // the logged-in user renders, and no task card survives the switch.
+      await expect(page.getByTestId('feed-card-v2-sidebar')).toHaveCount(1);
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(0);
+      await expect(
+        page.getByTestId('no-data-placeholder-container')
+      ).toHaveCount(0);
+
+      // Switching back restores the task list — guards the paging-cursor reset.
+      const myTasksResponse = waitForTaskListResponse(page);
+      await page.getByTestId('my-tasks-toggle').click();
+      await myTasksResponse;
+
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+
+      // Landing on the mentions URL directly used to show the empty placeholder.
+      const mentionsAgain = waitForMentionedConversationResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsAgain;
+
+      await page.reload();
+      await waitForPageLoaded(page);
+
+      await expect(page.getByTestId('feed-card-v2-sidebar')).toHaveCount(1);
+    } finally {
+      await mentionTable.delete(apiContext);
       await afterAction();
     }
   });

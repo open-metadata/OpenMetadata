@@ -1286,6 +1286,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setChangeDescription(original.getChangeDescription());
   }
 
+  protected T restorePatchSecrets(T original, T updated) {
+    return updated;
+  }
+
   /**
    * This function updates the Elasticsearch indexes wherever the specific entity is present.
    * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
@@ -4365,6 +4369,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
     }
+    try (var ignored = phase("patchRestoreSecrets")) {
+      updated = restorePatchSecrets(original, updated);
+    }
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -6996,8 +7003,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Delete the Task 2.0 feed artifacts (tasks and announcements) that are about this entity.
    *
-   * <p>{@link FeedRepository#deleteByAbout} only clears the pre-2.0 {@code thread_entity} table and
-   * no-ops once legacy thread storage is unavailable. Tasks and announcements moved to their own
+   * <p>The legacy feed cleanup only cleared the pre-2.0 {@code thread_entity} table, which no longer
+   * exists now that conversations own their storage. Tasks and announcements moved to their own
    * tables in Task 2.0, so a hard delete left them behind as orphans whose {@code about} no longer
    * resolves. Both are reached through {@code entity --MENTIONED_IN--> artifact}, so they must be
    * collected here, before the entity's own relationship rows are removed.
