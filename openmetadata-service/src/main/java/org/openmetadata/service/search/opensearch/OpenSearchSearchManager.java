@@ -1637,15 +1637,18 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   private static SearchException buildSearchException(OpenSearchException e) {
     String detail = e.getMessage();
+    Response.Status status = Response.Status.INTERNAL_SERVER_ERROR;
     ErrorCause error = e.error();
     if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
+      List<String> rootCauseTypes = error.rootCause().stream().map(ErrorCause::type).toList();
       String rootCauses =
           error.rootCause().stream()
               .map(c -> c.type() + ": " + c.reason())
               .collect(Collectors.joining("; "));
       detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+      status = SearchException.statusForRootCauseTypes(rootCauseTypes);
     }
-    return new SearchException(String.format("Search failed due to %s", detail));
+    return new SearchException(status, String.format("Search failed due to %s", detail));
   }
 
   private List<?> buildSearchHierarchy(

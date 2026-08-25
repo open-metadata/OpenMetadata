@@ -10,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -1984,5 +1986,76 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     String[] lines = response.body().split("\n");
     assertEquals(1, lines.length, "Export beyond results should only contain header");
+  }
+
+  // ===================================================================
+  // SEARCH QUERY ERROR CLASSIFICATION TESTS (client input -> 400)
+  // ===================================================================
+
+  private HttpResponse<String> httpGetSearchQuery(String query, String index, int from)
+      throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    String path =
+        String.format(
+            "/v1/search/query?q=%s&index=%s&from=%d&size=15",
+            URLEncoder.encode(query, StandardCharsets.UTF_8), index, from);
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void testMalformedBooleanQueryReturns400(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetSearchQuery("*a AND OR b*", "domain_search_index", 0);
+
+    assertEquals(
+        400,
+        response.statusCode(),
+        "An unparseable boolean query is client input and must return 400, not 500");
+  }
+
+  @Test
+  void testUnparseableOperatorQueryReturns400(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetSearchQuery("*a~~b*", "table_search_index", 0);
+
+    assertEquals(
+        400,
+        response.statusCode(),
+        "An unparseable operator sequence is client input and must return 400");
+  }
+
+  @Test
+  void testResultWindowTooLargeReturns400(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetSearchQuery("*", "table_search_index", 9995);
+
+    assertEquals(
+        400,
+        response.statusCode(),
+        "An out-of-range result window is client input and must return 400");
+  }
+
+  @Test
+  void testUnknownIndexReturns400(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetSearchQuery("*", "nope_search_index", 0);
+
+    assertEquals(
+        400, response.statusCode(), "An unknown index is client input and must return 400");
+  }
+
+  @Test
+  void testValidQueryStillReturns200(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetSearchQuery("*", "table_search_index", 0);
+
+    assertEquals(
+        200, response.statusCode(), "A well-formed query must remain unaffected by classification");
   }
 }
