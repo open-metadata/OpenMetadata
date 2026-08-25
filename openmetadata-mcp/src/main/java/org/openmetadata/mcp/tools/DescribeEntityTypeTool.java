@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.mcp.tools.CreatableEntityRegistry.CreatableType;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -44,6 +45,9 @@ public class DescribeEntityTypeTool implements McpTool {
           "extension");
 
   private static final Set<String> SHARED = Set.copyOf(SHARED_FIELDS);
+
+  /** Settable on the request class, but decided by the server rather than the caller. */
+  private static final Set<String> SERVER_OWNED = Set.of("provider", "fullyQualifiedName");
 
   @Override
   public Map<String, Object> execute(
@@ -108,13 +112,48 @@ public class DescribeEntityTypeTool implements McpTool {
    * so the caller is never told to put a shared field in {@code attributes}.
    */
   private static List<BeanPropertyDefinition> properties(CreatableType<?, ?> type) {
+    return bindable(type).stream()
+        .filter(property -> !SHARED.contains(property.getName()))
+        .sorted((left, right) -> left.getName().compareTo(right.getName()))
+        .toList();
+  }
+
+  /** The names this type can actually be given a value for, shared parameters included. */
+  static Set<String> bindableNames(CreatableType<?, ?> type) {
+    Set<String> names = new LinkedHashSet<>();
+    bindable(type).forEach(property -> names.add(property.getName()));
+    return names;
+  }
+
+  /**
+   * The properties the request class itself declares.
+   *
+   * <p>{@link org.openmetadata.schema.CreateEntity} carries defaults that Jackson introspects as
+   * properties of every implementor, and neither kind can hold a value: a getter with no setter
+   * ({@code lifeCycle}) makes the bind fail outright, and a {@code default} no-op setter ({@code
+   * tags}, {@code domains}, {@code reviewers}, {@code dataProducts}) accepts the value and discards
+   * it. Advertising either is worse than omitting it - the first makes {@code describe_entity_type}
+   * recommend a field {@code create_entity} then rejects, the second reports success on a write
+   * that did not happen.
+   *
+   * <p>{@code provider} and {@code fullyQualifiedName} are real and settable but not the caller's
+   * to set: the mappers overwrite the name, and {@code provider: system} produces an entity nobody
+   * can ever delete. REST accepts both, so this is deliberately narrower than parity - an LLM
+   * should not be handed them in a list of things to fill in.
+   */
+  private static List<BeanPropertyDefinition> bindable(CreatableType<?, ?> type) {
     ObjectMapper mapper = JsonUtils.getObjectMapper();
     JavaType javaType = mapper.constructType(type.requestClass());
     BeanDescription description = mapper.getSerializationConfig().introspect(javaType);
     return description.findProperties().stream()
-        .filter(property -> !SHARED.contains(property.getName()))
-        .sorted((left, right) -> left.getName().compareTo(right.getName()))
+        .filter(property -> !SERVER_OWNED.contains(property.getName()))
+        .filter(DescribeEntityTypeTool::declaredByRequestClass)
         .toList();
+  }
+
+  private static boolean declaredByRequestClass(BeanPropertyDefinition property) {
+    AnnotatedMember mutator = property.getMutator();
+    return mutator != null && !CreateEntity.class.equals(mutator.getDeclaringClass());
   }
 
   /**

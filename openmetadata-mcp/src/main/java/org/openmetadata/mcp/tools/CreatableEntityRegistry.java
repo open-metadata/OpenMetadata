@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.resources.context.ContextMemoryMapper;
@@ -54,7 +56,8 @@ public final class CreatableEntityRegistry {
       Class<C> requestClass,
       EntityMapper<E, C> mapper,
       List<String> required,
-      Consumer<C> preparer) {
+      Consumer<C> preparer,
+      PostPersist<C> postPersist) {
 
     /**
      * The one unchecked cast in the generic create path. It holds because {@link #TYPES} pairs each
@@ -67,6 +70,29 @@ public final class CreatableEntityRegistry {
       preparer.accept(typed);
       return mapper.createToEntity(typed, updatedBy);
     }
+
+    /** Same cast, same guarantee - see {@link #toEntity}. */
+    @SuppressWarnings("unchecked")
+    public void afterPersist(
+        CreateEntity request,
+        EntityInterface saved,
+        EventType changeType,
+        Map<String, Object> result) {
+      postPersist.accept((C) request, saved, changeType, result);
+    }
+  }
+
+  /**
+   * A note the caller can only be given once the write has happened - whether the entity was
+   * created or updated, and what the store actually kept.
+   *
+   * <p>Exists for fields a repository ignores on update. Dropping the caller's value in silence is
+   * the failure this tool set is trying to stamp out, so the one type that has such a field says so
+   * in its response.
+   */
+  @FunctionalInterface
+  public interface PostPersist<C extends CreateEntity> {
+    void accept(C request, EntityInterface saved, EventType changeType, Map<String, Object> result);
   }
 
   private static final String DESCRIPTION = "description";
@@ -83,61 +109,75 @@ public final class CreatableEntityRegistry {
         CreateGlossary.class,
         new GlossaryMapper(),
         List.of(DESCRIPTION),
-        noPreparation());
+        noPreparation(),
+        noNote());
     put(
         types,
         Entity.GLOSSARY_TERM,
         CreateGlossaryTerm.class,
         new GlossaryTermMapper(),
         List.of(DESCRIPTION, "glossary"),
-        noPreparation());
+        noPreparation(),
+        noNote());
     put(
         types,
         Entity.CLASSIFICATION,
         CreateClassification.class,
         new ClassificationMapper(),
         List.of(DESCRIPTION),
-        CreatePreparers::classification);
+        CreatePreparers::classification,
+        CreatePreparers::classificationNote);
     put(
         types,
         Entity.TAG,
         CreateTag.class,
         new TagMapper(),
         List.of(DESCRIPTION),
-        CreatePreparers::tag);
+        CreatePreparers::tag,
+        noNote());
     put(
         types,
         Entity.DOMAIN,
         CreateDomain.class,
         new DomainMapper(),
         List.of(DESCRIPTION),
-        CreatePreparers::domain);
+        CreatePreparers::domain,
+        noNote());
     put(
         types,
         Entity.DATA_PRODUCT,
         CreateDataProduct.class,
         new DataProductMapper(),
         List.of(DESCRIPTION, "domains"),
-        CreatePreparers::dataProduct);
+        CreatePreparers::dataProduct,
+        noNote());
     put(
         types,
         Entity.METRIC,
         CreateMetric.class,
         new MetricMapper(),
         List.of("metricExpression"),
-        noPreparation());
+        CreatePreparers::metric,
+        noNote());
     put(
         types,
         Entity.CONTEXT_MEMORY,
         CreateContextMemory.class,
         new ContextMemoryMapper(),
         List.of("question", "answer"),
-        noPreparation());
-    return Map.copyOf(types);
+        CreatePreparers::contextMemory,
+        noNote());
+    // Not Map.copyOf: its iteration order is unspecified, and this order is what the
+    // caller sees in the list of valid types when they get one wrong.
+    return Collections.unmodifiableMap(types);
   }
 
   private static <C extends CreateEntity> Consumer<C> noPreparation() {
     return request -> {};
+  }
+
+  private static <C extends CreateEntity> PostPersist<C> noNote() {
+    return (request, saved, changeType, result) -> {};
   }
 
   private static <E extends EntityInterface, C extends CreateEntity> void put(
@@ -146,9 +186,11 @@ public final class CreatableEntityRegistry {
       Class<C> requestClass,
       EntityMapper<E, C> mapper,
       List<String> required,
-      Consumer<C> preparer) {
+      Consumer<C> preparer,
+      PostPersist<C> postPersist) {
     types.put(
-        entityType, new CreatableType<>(entityType, requestClass, mapper, required, preparer));
+        entityType,
+        new CreatableType<>(entityType, requestClass, mapper, required, preparer, postPersist));
   }
 
   /** The advertised types, in the order {@code tools.json} lists them. */

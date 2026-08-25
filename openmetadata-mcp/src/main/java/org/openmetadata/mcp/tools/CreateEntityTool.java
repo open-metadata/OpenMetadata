@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.tools.CreatableEntityRegistry.CreatableType;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -33,16 +32,19 @@ import org.openmetadata.service.util.RestUtil;
  * limits, authorize CREATE, prepare, authorize the overwrite, {@code createOrUpdate} - and differed
  * only in the request class and mapper. Those live in {@link CreatableEntityRegistry} now.
  *
- * <p>Collapsing them fixed three inconsistencies rather than just preserving eight behaviours:
- * every type now accepts {@code extension} and resolves {@code reviewers} (three did not), and an
- * owner that resolves to nothing fails the call instead of being dropped - the old shared helper
- * returned only what it could resolve, so one misspelled name created an unowned entity and
- * reported success.
+ * <p>Collapsing them fixed inconsistencies rather than just preserving eight behaviours: an owner
+ * or reviewer that resolves to nothing now fails the call instead of being dropped - the shared
+ * helper the old tools used returned only what it could resolve, so one misspelled name created
+ * an unowned entity and reported success. A shared parameter the type has no field for is
+ * refused by name rather than silently discarded.
  */
-@Slf4j
 public class CreateEntityTool implements McpTool {
 
   private static final Set<String> SHARED = Set.copyOf(DescribeEntityTypeTool.SHARED_FIELDS);
+  private static final String NAME = "name";
+  private static final String DESCRIPTION = "description";
+  private static final String EXTENSION = "extension";
+  private static final String ATTRIBUTES = "attributes";
 
   @Override
   public Map<String, Object> execute(
@@ -54,10 +56,17 @@ public class CreateEntityTool implements McpTool {
         CreatableEntityRegistry.require(
             CommonUtils.requireNonBlank(params.get("entityType"), "entityType"));
     String userName = CommonUtils.principal(securityContext);
-    EntityInterface entity = type.toEntity(buildRequest(type, params), userName);
+    CreateEntity request = buildRequest(type, params);
+    EntityInterface entity = type.toEntity(request, userName);
 
     authorizeCreate(authorizer, limits, securityContext, type.entityType(), entity);
-    return persist(authorizer, securityContext, type.entityType(), entity, userName);
+    RestUtil.PutResponse<EntityInterface> response =
+        persist(authorizer, securityContext, type.entityType(), entity, userName);
+
+    Map<String, Object> result =
+        McpResponseUtils.compact(response.getEntity(), response.getChangeType());
+    type.afterPersist(request, response.getEntity(), response.getChangeType(), result);
+    return result;
   }
 
   /**
@@ -78,7 +87,7 @@ public class CreateEntityTool implements McpTool {
     authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
-  private static Map<String, Object> persist(
+  private static RestUtil.PutResponse<EntityInterface> persist(
       Authorizer authorizer,
       CatalogSecurityContext securityContext,
       String entityType,
@@ -90,7 +99,7 @@ public class CreateEntityTool implements McpTool {
     RestUtil.PutResponse<EntityInterface> response =
         repository.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
-    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
+    return response;
   }
 
   /**
@@ -105,18 +114,49 @@ public class CreateEntityTool implements McpTool {
 
   /** Shared parameters plus the type's own attributes, bound to its generated request class. */
   private static CreateEntity buildRequest(CreatableType<?, ?> type, Map<String, Object> params) {
+    Set<String> bindable = DescribeEntityTypeTool.bindableNames(type);
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", CommonUtils.requireNonBlank(params.get("name"), "name"));
-    putIfPresent(payload, "description", CommonUtils.optString(params, "description"));
-    putIfPresent(payload, "displayName", CommonUtils.optString(params, "displayName"));
-    putIfPresent(payload, "owners", owners(params, "owners"));
-    putIfPresent(payload, "reviewers", owners(params, "reviewers"));
-    putIfPresent(payload, "tags", tags(params));
-    putIfPresent(payload, "domains", domains(params));
-    putIfPresent(payload, "extension", CommonUtils.extension(params));
-    payload.putAll(attributes(type, params));
+    payload.put(NAME, CommonUtils.requireNonBlank(params.get(NAME), NAME));
+    put(payload, type, bindable, DESCRIPTION, CommonUtils.optString(params, DESCRIPTION));
+    put(payload, type, bindable, "displayName", CommonUtils.optString(params, "displayName"));
+    put(payload, type, bindable, "owners", owners(params, "owners"));
+    put(payload, type, bindable, "reviewers", owners(params, "reviewers"));
+    put(payload, type, bindable, "tags", tags(params));
+    put(payload, type, bindable, "domains", domains(params));
+    put(payload, type, bindable, EXTENSION, CommonUtils.extension(params));
+    payload.putAll(attributes(type, bindable, params));
     requireFields(type, payload);
     return convert(type, payload);
+  }
+
+  /**
+   * Adds a shared parameter, refusing it when this type has no such field.
+   *
+   * <p>Not every type accepts every shared parameter - a classification has no {@code extension},
+   * a domain no {@code reviewers}. Passing them through anyway ended one of two ways, both bad:
+   * the value vanished into a {@code default} no-op setter on {@code CreateEntity} and the call
+   * reported success, or the bind failed with a message naming a Java class.
+   */
+  private static void put(
+      Map<String, Object> payload,
+      CreatableType<?, ?> type,
+      Set<String> bindable,
+      String field,
+      Object value) {
+    if (value != null && !bindable.contains(field)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Parameter '%s' is not supported for entityType '%s'. Nothing was created."
+                  + " Supported for this type: %s.",
+              field, type.entityType(), supportedShared(bindable)));
+    }
+    if (value != null) {
+      payload.put(field, value);
+    }
+  }
+
+  private static List<String> supportedShared(Set<String> bindable) {
+    return DescribeEntityTypeTool.SHARED_FIELDS.stream().filter(bindable::contains).toList();
   }
 
   /**
@@ -182,10 +222,11 @@ public class CreateEntityTool implements McpTool {
    * than the valid alternatives, which is not something a caller can act on in one retry.
    */
   private static Map<String, Object> attributes(
-      CreatableType<?, ?> type, Map<String, Object> params) {
-    Map<String, Object> attributes = asMap(params.get("attributes"));
+      CreatableType<?, ?> type, Set<String> bindable, Map<String, Object> params) {
+    Map<String, Object> attributes = asMap(params.get(ATTRIBUTES));
     rejectShadowed(attributes);
-    Set<String> accepted = DescribeEntityTypeTool.attributeNames(type);
+    Set<String> accepted =
+        bindable.stream().filter(name -> !SHARED.contains(name)).collect(Collectors.toSet());
     List<String> unknown =
         attributes.keySet().stream().filter(key -> !accepted.contains(key)).sorted().toList();
     if (!unknown.isEmpty()) {
@@ -220,7 +261,9 @@ public class CreateEntityTool implements McpTool {
       attributes = (Map<String, Object>) raw;
     } else {
       throw new IllegalArgumentException(
-          "Parameter 'attributes' must be an object mapping field names to values. Received: "
+          "Parameter '"
+              + ATTRIBUTES
+              + "' must be an object mapping field names to values. Received: "
               + raw);
     }
     return attributes;
