@@ -244,6 +244,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )
       ),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
