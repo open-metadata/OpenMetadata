@@ -326,6 +326,30 @@ const getRowInteractionProps = (
  */
 const COLUMN_ID_PREFIX = 'col:';
 
+/**
+ * Unique React Aria row ids, and a map back to the call site's own row keys.
+ *
+ * `rowKey` is not guaranteed unique — ListViewTab keys rows by
+ * `name-status-key` and its executions repeat — and AntD renders duplicates
+ * anyway (with a console warning). React Aria treats the id as the collection
+ * key and keeps only the first, silently dropping rows. Suffixing repeats keeps
+ * every row while `data-row-key` still carries the original.
+ */
+const getRowIds = (rowKeys: string[]) => {
+  const seen = new Map<string, number>();
+  const ids = rowKeys.map((key) => {
+    const count = seen.get(key) ?? 0;
+    seen.set(key, count + 1);
+
+    return count === 0 ? key : `${key}-${count}`;
+  });
+
+  return {
+    ids,
+    keyById: new Map(ids.map((id, idx) => [id, rowKeys[idx]])),
+  };
+};
+
 const getColumnKeys = <T,>(columns: ColumnsType<T>): string[] =>
   columns.map((col, idx) =>
     String(col.key ?? (col as ColumnType<T>).dataIndex ?? idx)
@@ -644,6 +668,60 @@ const TableV2 = <T extends object>(
     [expandedKeys, rest.expandable]
   );
 
+  // ─── Flat rows (tree data flattened with depth tracking) ──────────────────
+
+  const flatRows = useMemo<FlatRow<T>[]>(() => {
+    if (!rest.expandable) {
+      return pagedDataSource.map((record, idx) => {
+        const actualIndex = clientPagination
+          ? (internalCurrentPage - 1) * clientPagination.pageSize + idx
+          : idx;
+
+        return {
+          record,
+          depth: 0,
+          actualIndex,
+          hasChildren: false,
+          rowKey: getRowKey(record, actualIndex),
+        };
+      });
+    }
+
+    const rows = flattenTreeRows(
+      pagedDataSource,
+      getRowKey,
+      expandedKeys,
+      rest.expandable.rowExpandable as ((r: T) => boolean) | undefined
+    );
+
+    // With `expandedRowRender` the detail panel is the child, so a row is
+    // expandable even though it carries no `children` array — which is all
+    // `flattenTreeRows` looks at.
+    if (!rest.expandable.expandedRowRender) {
+      return rows;
+    }
+    const rowExpandable = rest.expandable.rowExpandable as
+      | ((r: T) => boolean)
+      | undefined;
+
+    return rows.map((row) => ({
+      ...row,
+      hasChildren: rowExpandable ? rowExpandable(row.record) : true,
+    }));
+  }, [
+    pagedDataSource,
+    rest.expandable,
+    expandedKeys,
+    getRowKey,
+    internalCurrentPage,
+    clientPagination,
+  ]);
+
+  const { ids: rowIds, keyById: rowKeyById } = useMemo(
+    () => getRowIds(flatRows.map((row) => row.rowKey)),
+    [flatRows]
+  );
+
   // ─── Row selection ────────────────────────────────────────────────────────
 
   // AntD default rowSelection.type is 'checkbox', which maps to 'multiple'.
@@ -684,7 +762,7 @@ const TableV2 = <T extends object>(
       const selectedKeys =
         keys === 'all'
           ? dataSource.map((r, i) => getRowKey(r, i))
-          : [...keys].map(String);
+          : [...keys].map((key) => rowKeyById.get(String(key)) ?? String(key));
       const selectedRows = dataSource.filter((r, i) =>
         selectedKeys.includes(getRowKey(r, i))
       );
@@ -693,7 +771,7 @@ const TableV2 = <T extends object>(
         type: selectionMode === 'single' ? 'single' : 'multiple',
       });
     },
-    [rest.rowSelection, filteredDataSource, getRowKey, selectionMode]
+    [rest.rowSelection, filteredDataSource, getRowKey, selectionMode, rowKeyById]
   );
 
   // ─── Column resize (via React Aria ColumnResizer) ──────────────────────────
@@ -827,55 +905,6 @@ const TableV2 = <T extends object>(
     };
   }, [clientPagination, handlePageSizeChange]);
 
-
-  // ─── Flat rows (tree data flattened with depth tracking) ──────────────────
-
-  const flatRows = useMemo<FlatRow<T>[]>(() => {
-    if (!rest.expandable) {
-      return pagedDataSource.map((record, idx) => {
-        const actualIndex = clientPagination
-          ? (internalCurrentPage - 1) * clientPagination.pageSize + idx
-          : idx;
-
-        return {
-          record,
-          depth: 0,
-          actualIndex,
-          hasChildren: false,
-          rowKey: getRowKey(record, actualIndex),
-        };
-      });
-    }
-
-    const rows = flattenTreeRows(
-      pagedDataSource,
-      getRowKey,
-      expandedKeys,
-      rest.expandable.rowExpandable as ((r: T) => boolean) | undefined
-    );
-
-    // With `expandedRowRender` the detail panel is the child, so a row is
-    // expandable even though it carries no `children` array — which is all
-    // `flattenTreeRows` looks at.
-    if (!rest.expandable.expandedRowRender) {
-      return rows;
-    }
-    const rowExpandable = rest.expandable.rowExpandable as
-      | ((r: T) => boolean)
-      | undefined;
-
-    return rows.map((row) => ({
-      ...row,
-      hasChildren: rowExpandable ? rowExpandable(row.record) : true,
-    }));
-  }, [
-    pagedDataSource,
-    rest.expandable,
-    expandedKeys,
-    getRowKey,
-    internalCurrentPage,
-    clientPagination,
-  ]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -1013,7 +1042,14 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
-              onRowAction={rest.onRowAction}
+              onRowAction={
+                rest.onRowAction
+                  ? (key) =>
+                      rest.onRowAction?.(
+                        rowKeyById.get(String(key)) ?? String(key)
+                      )
+                  : undefined
+              }
               onSelectionChange={handleSelectionChange}
               onSortChange={handleSortChange}>
               <UntitledTable.Header className="tw:px-2">
@@ -1128,7 +1164,7 @@ const TableV2 = <T extends object>(
                     </div>
                   )
                 }>
-                {flatRows.flatMap((flatRow) => {
+                {flatRows.flatMap((flatRow, flatIndex) => {
                   const { record, actualIndex, depth, hasChildren, rowKey } =
                     flatRow;
                   // AntD types `onRow`'s return as HTMLAttributes<any>, while
@@ -1154,8 +1190,8 @@ const TableV2 = <T extends object>(
                       )}
                       data-level={depth}
                       data-row-key={rowKey}
-                      id={rowKey}
-                      key={rowKey}
+                      id={rowIds[flatIndex]}
+                      key={rowIds[flatIndex]}
                       {...getRowInteractionProps(
                         rowHandlers,
                         Boolean(dragAndDropHooks)

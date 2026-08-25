@@ -101,11 +101,12 @@ describe('ContractSchemaTable', () => {
   it('should render schema table with pagination', () => {
     render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
 
-    expect(screen.getByTitle('Previous Page')).toBeInTheDocument();
-    expect(screen.getByTitle('Next Page')).toBeInTheDocument();
-    // Pagination items
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // The pager is the shared NextPrevious component, not AntD's numbered
+    // pagination, so there are prev/next controls and a page indicator rather
+    // than a link per page.
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    expect(screen.getByTestId('previous')).toBeInTheDocument();
+    expect(screen.getByTestId('next')).toBeInTheDocument();
   });
 
   it('should render SchemaTable Status badge', () => {

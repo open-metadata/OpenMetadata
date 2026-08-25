@@ -464,6 +464,23 @@ export const runTableParitySuite = (
     });
   });
 
+  describe(`${suiteName} — duplicate row keys`, () => {
+    // A rowKey built from fields that repeat (ListViewTab keys executions by
+    // name-status-key) yields duplicates. AntD renders every row; React Aria
+    // used to keep only the first.
+    it('renders every row even when their keys collide', () => {
+      renderTable({
+        dataSource: [
+          { count: 1, name: 'dup' },
+          { count: 2, name: 'dup' },
+          { count: 3, name: 'other' },
+        ],
+      });
+
+      expect(screen.getAllByRole('row')).toHaveLength(4);
+    });
+  });
+
   describe(`${suiteName} — container`, () => {
     it('applies containerClassName to the outer container', () => {
       const { container } = renderTable({ containerClassName: 'outer-marker' });
