@@ -153,11 +153,13 @@ describe('ProviderSelector', () => {
     it('should call onProviderSelect when Google is selected and configure is clicked', async () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
+      const googleCard = screen
+        .getByText('Google')
+        .closest('.provider-item') as HTMLElement;
 
       expect(googleCard).toBeInTheDocument();
 
-      fireEvent.click(googleCard!);
+      fireEvent.click(googleCard);
 
       expect(googleCard).toHaveClass('selected');
 
@@ -179,11 +181,11 @@ describe('ProviderSelector', () => {
 
       const customOidcCard = screen
         .getByText('Custom-OIDC')
-        .closest('.provider-item');
+        .closest('.provider-item') as HTMLElement;
 
       expect(customOidcCard).toBeInTheDocument();
 
-      fireEvent.click(customOidcCard!);
+      fireEvent.click(customOidcCard);
 
       const configureButton = screen.getByRole('button', {
         name: /label.configure/i,
@@ -198,11 +200,13 @@ describe('ProviderSelector', () => {
     it('should call onProviderSelect when SAML is selected and configure is clicked', async () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const samlCard = screen.getByText('SAML').closest('.provider-item');
+      const samlCard = screen
+        .getByText('SAML')
+        .closest('.provider-item') as HTMLElement;
 
       expect(samlCard).toBeInTheDocument();
 
-      fireEvent.click(samlCard!);
+      fireEvent.click(samlCard);
 
       const configureButton = screen.getByRole('button', {
         name: /label.configure/i,
@@ -217,8 +221,10 @@ describe('ProviderSelector', () => {
     it('should only call onProviderSelect once per configure click', async () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
-      fireEvent.click(googleCard!);
+      const googleCard = screen
+        .getByText('Google')
+        .closest('.provider-item') as HTMLElement;
+      fireEvent.click(googleCard);
 
       const configureButton = screen.getByRole('button', {
         name: /label.configure/i,
@@ -235,8 +241,10 @@ describe('ProviderSelector', () => {
     it('should highlight selected provider', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
-      fireEvent.click(googleCard!);
+      const googleCard = screen
+        .getByText('Google')
+        .closest('.provider-item') as HTMLElement;
+      fireEvent.click(googleCard);
 
       expect(googleCard).toHaveClass('selected');
     });
@@ -244,14 +252,18 @@ describe('ProviderSelector', () => {
     it('should allow changing selection', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
-      const oktaCard = screen.getByText('Okta').closest('.provider-item');
+      const googleCard = screen
+        .getByText('Google')
+        .closest('.provider-item') as HTMLElement;
+      const oktaCard = screen
+        .getByText('Okta')
+        .closest('.provider-item') as HTMLElement;
 
-      fireEvent.click(googleCard!);
+      fireEvent.click(googleCard);
 
       expect(googleCard).toHaveClass('selected');
 
-      fireEvent.click(oktaCard!);
+      fireEvent.click(oktaCard);
 
       expect(oktaCard).toHaveClass('selected');
 

@@ -33,6 +33,7 @@ import { TaskStatusGroup } from '../rest/tasksAPI';
 
 const LOADING_LABEL = 'label.loading';
 const CHILDREN_LABEL = 'label.children';
+const ACTIVITY_ID = 'activity-123';
 
 export const DummyChildrenComponent = () => {
   const { t } = useTranslation();
@@ -122,6 +123,43 @@ export const DummyChildrenMentionsComponent = () => {
   }, [getFeedData]);
 
   return <p>{t(CHILDREN_LABEL)}</p>;
+};
+
+/**
+ * Exposes the task list and the paging cursor so a test can observe what the
+ * provider holds *between* a filter switch and the response landing.
+ */
+export const DummyTaskListStateComponent = () => {
+  const { getTaskData, tasks, entityPaging } = useActivityFeedProvider();
+
+  const fetchTasks = (statusGroup: TaskStatusGroup) => {
+    getTaskData(
+      FeedFilter.OWNER_OR_FOLLOWS,
+      undefined,
+      EntityType.TABLE,
+      'db.schema.tbl',
+      statusGroup
+    );
+  };
+
+  return (
+    <div>
+      <button
+        aria-label="fetch open tasks"
+        data-testid="fetch-open"
+        onClick={() => fetchTasks(TaskStatusGroup.Open)}
+      />
+      <button
+        aria-label="fetch closed tasks"
+        data-testid="fetch-closed"
+        onClick={() => fetchTasks(TaskStatusGroup.Closed)}
+      />
+      <span data-testid="task-ids">
+        {tasks.map((task) => task.id).join(',')}
+      </span>
+      <span data-testid="paging-after">{entityPaging.after ?? 'none'}</span>
+    </div>
+  );
 };
 
 export const DummyChildrenDeletePostComponent = () => {
@@ -252,7 +290,7 @@ export const DummyActivityReactionComponent = () => {
 
   const handleAddReaction = () => {
     updateActivityReaction(
-      'activity-123',
+      ACTIVITY_ID,
       ReactionType.ThumbsUp,
       ReactionOperation.ADD
     );
@@ -260,7 +298,7 @@ export const DummyActivityReactionComponent = () => {
 
   const handleRemoveReaction = () => {
     updateActivityReaction(
-      'activity-123',
+      ACTIVITY_ID,
       ReactionType.ThumbsUp,
       ReactionOperation.REMOVE
     );
@@ -303,7 +341,7 @@ export const DummyActivityReactionSyncComponent = () => {
         data-testid="react"
         onClick={() =>
           updateActivityReaction(
-            'activity-123',
+            ACTIVITY_ID,
             ReactionType.ThumbsUp,
             ReactionOperation.ADD
           )
