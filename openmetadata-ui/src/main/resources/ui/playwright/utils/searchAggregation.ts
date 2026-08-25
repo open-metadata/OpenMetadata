@@ -27,6 +27,7 @@ export type AggregationWait = {
   deleted?: boolean;
 };
 
+const KEYWORD_SUFFIX = /\.keyword$/;
 const WRAPPED_SEARCH_TEXT = /^\.\*(.*)\.\*$/;
 
 // The API escapes ES reserved characters, so `service-name` arrives as
@@ -34,6 +35,13 @@ const WRAPPED_SEARCH_TEXT = /^\.\*(.*)\.\*$/;
 // sides) keeps `foo\bar` distinguishable from `foobar`.
 const unescapeReserved = (text: string): string =>
   text.replace(/\\(.)/g, '$1').toLowerCase();
+
+// Specs name a field either way — `entityType` in one, the `entityType.keyword`
+// sub-field the request carries in another — and both mean the same field, so
+// the suffix is not a discriminator.
+const isSameField = (requested: string | null, expected: string): boolean =>
+  requested?.replace(KEYWORD_SUFFIX, '') ===
+  expected.replace(KEYWORD_SUFFIX, '');
 
 const matches = (response: Response, wait: AggregationWait): boolean => {
   const url = new URL(response.url());
@@ -44,7 +52,7 @@ const matches = (response: Response, wait: AggregationWait): boolean => {
 
   const params = url.searchParams;
 
-  if (wait.field && params.get('field') !== wait.field) {
+  if (wait.field && !isSameField(params.get('field'), wait.field)) {
     return false;
   }
 
