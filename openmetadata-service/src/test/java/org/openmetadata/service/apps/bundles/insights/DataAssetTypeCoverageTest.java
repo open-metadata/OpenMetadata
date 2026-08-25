@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.DataAssetType;
@@ -39,15 +40,25 @@ class DataAssetTypeCoverageTest {
   private static final String INDEX_MAPPING_PATH = "/elasticsearch/indexMapping.json";
   private static final String COMMON_KEY = "common";
 
+  private static SearchRepository previousSearchRepository;
+
   @BeforeAll
   static void giveTheRepositoryASearchClient() {
     // DataInsightSystemChartRepository resolves a SearchClient in its static initializer, so the
     // class cannot load without one and the order assertion below would error rather than fail.
-    if (Entity.getSearchRepository() == null) {
+    previousSearchRepository = Entity.getSearchRepository();
+    if (previousSearchRepository == null) {
       SearchRepository searchRepository = mock(SearchRepository.class);
       when(searchRepository.getSearchClient()).thenReturn(mock(SearchClient.class));
       Entity.setSearchRepository(searchRepository);
     }
+  }
+
+  @AfterAll
+  static void restoreTheSearchRepository() {
+    // Entity holds it in a static field and surefire reuses one JVM across every test class, so
+    // leaving the mock behind would let a later test silently observe it.
+    Entity.setSearchRepository(previousSearchRepository);
   }
 
   @Test
