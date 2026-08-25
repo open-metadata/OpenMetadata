@@ -67,6 +67,19 @@ describe('Table selection', () => {
     expect(document.querySelector('thead input[type="checkbox"]')).toBeNull();
   });
 
+  it('names the single-selection control so it does not just announce "checkbox"', () => {
+    renderTable({ selectionBehavior: 'toggle', selectionMode: 'single' });
+
+    // React Aria's selection slot only accepts a checkbox, so the control looks
+    // like a radio but announces as a checkbox. The label carries the "one row"
+    // affordance the role cannot.
+    const labels = screen
+      .getAllByRole('checkbox')
+      .map((box) => box.getAttribute('aria-label'));
+
+    expect(labels).toEqual(ROWS.map(() => 'Select one row'));
+  });
+
   it('selects one row at a time in single-selection mode', async () => {
     renderTable({ selectionBehavior: 'toggle', selectionMode: 'single' });
     const rows = screen.getAllByRole('row').slice(1);

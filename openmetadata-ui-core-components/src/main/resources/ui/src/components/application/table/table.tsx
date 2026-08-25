@@ -356,6 +356,7 @@ const TableRow = <T extends object>({
 }: TableRowProps<T>) => {
   const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
   const { selectionBehavior, selectionMode } = useTableOptions();
+  const { t } = useCoreTranslation();
 
   return (
     <AriaRow
@@ -389,14 +390,17 @@ const TableRow = <T extends object>({
               // through the `selection` slot, so the visual is swapped rather
               // than the behaviour.
               //
-              // Known limitation: the slot only accepts a checkbox, so this
-              // announces as "checkbox" while looking like a radio. React Aria
-              // has no radio-based table selection — a radiogroup here would
-              // mean re-implementing selection, focus and keyboard handling
-              // outside the table's own state. `aria-label` names the row so
-              // the announcement is at least specific about what is being
-              // picked.
+              // Known limitation: the `selection` slot only accepts a
+              // checkbox, so this announces as "checkbox" while looking like a
+              // radio. ARIA does not allow role="radio" on an
+              // input[type=checkbox], and React Aria has no radio-based table
+              // selection, so the honest options are a checkbox that announces
+              // wrongly or re-implementing selection, focus and keyboard
+              // handling outside the table's own state. The label at least says
+              // only one row can be picked, so the announcement is not
+              // misleading about the affordance.
               <AriaCheckbox
+                aria-label={t('label.select-only-one-row', 'Select one row')}
                 className="tw:flex tw:items-center tw:outline-hidden"
                 slot="selection">
                 {({ isSelected, isDisabled, isFocusVisible }) => (
