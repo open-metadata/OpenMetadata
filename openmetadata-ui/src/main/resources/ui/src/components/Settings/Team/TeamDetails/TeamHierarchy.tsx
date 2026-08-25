@@ -12,8 +12,6 @@
  */
 
 import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
-import { ColumnsType, TableProps } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -34,6 +32,11 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../common/Table/Table';
+import {
+  ColumnsType,
+  ExpandableConfig,
+  TableProps,
+} from '../../../common/Table/Table.interface';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCell';
