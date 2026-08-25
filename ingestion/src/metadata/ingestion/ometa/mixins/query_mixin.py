@@ -31,7 +31,7 @@ from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableUsageCount import QueryCostWrapper
 from metadata.ingestion.lineage.masker import mask_query
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import model_str
 
 
@@ -48,15 +48,28 @@ class OMetaQueryMixin:
         result = hashlib.md5(query.encode())
         return str(result.hexdigest())
 
+    def _qualified_query_fqn(self, service_name: str, query_hash: str) -> str:
+        """Server Query FQN is service.hash, not the bare SQL checksum."""
+        return f"{model_str(service_name)}.{query_hash}"
+
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
         if query.query.root is None:
             return None
-        query_hash = self._get_query_hash(query=query.query.root)
-        query_entity = self.get_by_name(entity=Query, fqn=query_hash)
+        fqn = self._qualified_query_fqn(query.service, self._get_query_hash(query=query.query.root))
+        query_entity = self.get_by_name(entity=Query, fqn=fqn)
         if query_entity is None:
-            resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
-            if resp and resp.get("id"):
-                query_entity = Query(**resp)
+            try:
+                resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
+                if resp and resp.get("id"):
+                    query_entity = Query(**resp)
+            except APIError as err:
+                # Concurrent create: look up the FQN we just raced on, then still
+                # attach usage/users/usedBy. Do not reuse __get_query_by_hash — it
+                # caches misses.
+                if err.status_code == 409:
+                    query_entity = self.get_by_name(entity=Query, fqn=fqn)
+                else:
+                    raise
         return query_entity
 
     def ingest_entity_queries_data(self, entity: Union[Table, Dashboard], queries: List[CreateQueryRequest]) -> None:  # noqa: UP006, UP007
@@ -119,7 +132,7 @@ class OMetaQueryMixin:
 
     @lru_cache(maxsize=5000)  # noqa: B019
     def __get_query_by_hash(self, query_hash: str, service_name: str) -> Optional[Query]:  # noqa: UP045
-        return self.get_by_name(entity=Query, fqn=f"{service_name}.{query_hash}")
+        return self.get_by_name(entity=Query, fqn=self._qualified_query_fqn(service_name, query_hash))
 
     def publish_query_cost(self, query_cost_data: QueryCostWrapper, service_name: str):
         """
