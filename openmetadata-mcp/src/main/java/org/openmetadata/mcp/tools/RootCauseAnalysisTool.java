@@ -167,16 +167,24 @@ public class RootCauseAnalysisTool implements McpTool {
     Set<?> rawEdges = asSet(upstreamLineageData.get("edges"));
     List<Map<String, Object>> allNodes = slimUpstreamNodes(asSet(upstreamLineageData.get("nodes")));
     List<Map<String, Object>> nodes = new ArrayList<>();
-    boolean rootFails = false;
+    Map<String, Object> rootNode = null;
     for (Map<String, Object> node : allNodes) {
       if (request.fqn().equals(node.get("fullyQualifiedName"))) {
-        rootFails = true;
+        rootNode = node;
       } else {
         nodes.add(node);
       }
     }
+    boolean rootFails = rootNode != null;
 
     upstreamAnalysis.put(ROOT_HAS_FAILING_TESTS, rootFails);
+    // Knowing THAT the root is failing without knowing WHICH tests failed sent a caller straight
+    // to a second search for the literal first clause of the question they asked. The failing
+    // results are already resolved for upstream nodes by the same helper - the root was simply
+    // excluded from it.
+    if (rootFails) {
+      upstreamAnalysis.put("rootFailingTests", addTestCaseResultForTestSuite(rootNode));
+    }
     upstreamAnalysis.put("failingUpstreamNodesCount", nodes.size());
     if (!nodes.isEmpty()) {
       nodes.forEach(node -> node.put("failingTestCases", addTestCaseResultForTestSuite(node)));

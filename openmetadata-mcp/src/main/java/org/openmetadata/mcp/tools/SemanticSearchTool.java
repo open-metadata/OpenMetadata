@@ -107,7 +107,11 @@ public class SemanticSearchTool implements McpTool {
       return buildResponse(query, response, size, from);
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
-      return errorResponse("Semantic search failed: " + McpResponseTrim.safeMessage(e));
+      return errorResponse(
+          "Semantic search failed: "
+              + McpResponseTrim.summarizeFailure(e, true)
+              + " Semantic search depends on an embedding backend; when it is unavailable, use"
+              + " search_metadata with a queryFilter instead of retrying this tool.");
     }
   }
 
