@@ -40,6 +40,12 @@ const coreAdapter: ParityAdapter = {
   clickNextPage: () => {
     fireEvent.click(screen.getByTestId('next'));
   },
+  getTableLayout: () =>
+    (document.querySelector('table') as HTMLElement).classList.contains(
+      'tw:table-fixed'
+    )
+      ? 'fixed'
+      : 'auto',
   getIndentPx: (label) => {
     const row = screen
       .getAllByRole('row')
@@ -169,33 +175,34 @@ describe('TableV2 — disabled rows on a later page', () => {
   });
 });
 
+/** A one-column, one-row table — enough to read a layout decision off the DOM. */
+const renderMinimal = (props: Record<string, unknown>) =>
+  render(
+    <TableV2
+      columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+      dataSource={[{ name: 'alpha' }]}
+      pagination={false}
+      rowKey="name"
+      {...props}
+    />
+  );
+
 /**
  * TableV2-only: legacy AntD fixes its header by rendering a separate header
  * table rather than by sticking it, so there is no shared class to assert.
  */
 describe('TableV2 — sticky header opt-in', () => {
-  const renderWith = (props: Record<string, unknown>) =>
-    render(
-      <TableV2
-        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
-        dataSource={[{ name: 'alpha' }]}
-        pagination={false}
-        rowKey="name"
-        {...props}
-      />
-    );
-
   const stuck = () =>
     Boolean(document.querySelector('thead')?.className.match(/sticky/));
 
   it('sticks when scroll.y gives the body its own scroller', () => {
-    renderWith({ scroll: { y: 200 } });
+    renderMinimal({ scroll: { y: 200 } });
 
     expect(stuck()).toBe(true);
   });
 
   it('sticks when the call site asks with `sticky`', () => {
-    renderWith({ sticky: true });
+    renderMinimal({ sticky: true });
 
     expect(stuck()).toBe(true);
   });
@@ -291,5 +298,34 @@ describe('TableV2 — ellipsis columns', () => {
 
     expect(valueDiv().className).toContain('tw:flex-1');
     expect(valueDiv().className).toContain('tw:min-w-0');
+  });
+});
+
+/**
+ * Divergence by design. The legacy wrapper hardcoded `tableLayout="fixed"`
+ * *after* its prop spread, so a call site could not ask for anything else.
+ * TableV2 keeps fixed as the default — that is what every table it inherits
+ * was laid out with — but lets the tables that came straight from AntD, and
+ * were sized by their content, say so.
+ */
+describe('TableV2 — column layout opt-out', () => {
+  const layout = () =>
+    (document.querySelector('table') as HTMLElement).classList.contains(
+      'tw:table-fixed'
+    )
+      ? 'fixed'
+      : 'auto';
+
+  it('sizes columns by content when the call site asks for auto', () => {
+    renderMinimal({ tableLayout: 'auto' });
+
+    expect(layout()).toBe('auto');
+  });
+
+  it('keeps fixed for resizable columns even when auto is requested', () => {
+    // An auto table re-solves its own widths, which swallows the drag.
+    renderMinimal({ resizableColumns: true, tableLayout: 'auto' });
+
+    expect(layout()).toBe('fixed');
   });
 });
