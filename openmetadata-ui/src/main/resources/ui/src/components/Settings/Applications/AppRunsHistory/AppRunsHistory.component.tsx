@@ -12,7 +12,6 @@
  */
 import validator from '@rjsf/validator-ajv8';
 import { Button, Modal, Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -62,6 +61,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';

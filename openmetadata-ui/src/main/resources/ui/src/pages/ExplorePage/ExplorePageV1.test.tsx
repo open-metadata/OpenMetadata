@@ -143,7 +143,7 @@ describe('ExplorePageV1', () => {
     };
 
     act(() => {
-      capturedCallback!(testFilter);
+      capturedCallback?.(testFilter);
     });
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);
@@ -185,7 +185,7 @@ describe('ExplorePageV1', () => {
     await screen.findByText('ExploreV1');
 
     act(() => {
-      capturedCallback!({ query: { bool: { must: [] } } });
+      capturedCallback?.({ query: { bool: { must: [] } } });
     });
 
     expect(mockNavigate.mock.calls[0][0].pathname).toEqual(

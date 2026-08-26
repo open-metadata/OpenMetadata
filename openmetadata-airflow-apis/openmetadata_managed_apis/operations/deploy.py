@@ -149,7 +149,6 @@ class DagDeployer:
         with settings.Session() as session:
             try:
                 dag_bag = get_dagbag()
-                logger.info("dagbag size {}".format(dag_bag.size()))  # noqa: UP032
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))  # noqa: UP032
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
