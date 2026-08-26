@@ -249,7 +249,7 @@ const AuthSelectField = (props: FieldProps) => {
                   )
                 }
                 data-testid={`auth-method-${index}`}
-                key={index}
+                key={optTitle}
                 value={String(index)}>
                 {({ isSelected }) => (
                   <>

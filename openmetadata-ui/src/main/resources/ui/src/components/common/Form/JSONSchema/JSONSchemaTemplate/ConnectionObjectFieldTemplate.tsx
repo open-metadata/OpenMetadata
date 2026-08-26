@@ -349,7 +349,7 @@ const SectionFields = ({
         group.type === 'grid' ? (
           <div
             className="connection-section-field-grid tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(3,minmax(0,1fr))]"
-            key={`grid-${groupIndex}`}>
+            key={`grid-${group.properties[0]?.content.key}`}>
             {group.properties.map((element, index) =>
               renderProperty(element, index)
             )}
@@ -383,10 +383,8 @@ const HiddenFields = ({
 }) =>
   properties.length > 0 ? (
     <>
-      {properties.map((element, index) => (
-        <div
-          className="property-wrapper tw:hidden"
-          key={`${element.content.key}-${index}`}>
+      {properties.map((element) => (
+        <div className="property-wrapper tw:hidden" key={element.content.key}>
           {element.content}
         </div>
       ))}

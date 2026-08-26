@@ -65,7 +65,7 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
           : LINK_ONTOLOGY_COLOR;
 
         return (
-          <div key={`${step}-${index}`}>
+          <div key={step}>
             <div className="tw:flex tw:items-center tw:gap-2.5">
               <span
                 className="tw:size-2 tw:flex-none tw:rounded-full"

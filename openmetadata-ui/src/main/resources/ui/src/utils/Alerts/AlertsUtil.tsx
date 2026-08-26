@@ -1302,6 +1302,7 @@ export const getAlertExtraInfo = (
     return (
       <>
         {new Array(3).fill(null).map((_, id) => (
+          // eslint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no stable identity
           <Fragment key={id}>
             <Divider className="self-center" type="vertical" />
             <Skeleton.Button active className="extra-info-skeleton" />

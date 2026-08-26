@@ -211,6 +211,7 @@ export const VersionHistoryDrawer = ({
                   <Box
                     align="start"
                     gap={2}
+                    // eslint-disable-next-line react/no-array-index-key -- change list, i18n key may repeat
                     key={`${change.key}-${changeIndex}`}>
                     <span className="tw:mt-1.5 tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-quaternary" />
                     <Typography

@@ -37,6 +37,7 @@ import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
+import { getSanitizeContent } from './sanitize.utils';
 import searchClassBase from './SearchClassBase';
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
@@ -140,8 +141,11 @@ export const generateSearchDropdownLabel = (
             className="dropdown-option-label"
             title={option.label}>
             <span
+              // eslint-disable-next-line react/no-danger -- sanitized via getSanitizeContent (DOMPurify)
               dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
+                __html: getSanitizeContent(
+                  getSearchLabel(option.label, searchKey)
+                ),
               }}
             />
           </Typography.Text>

@@ -78,7 +78,7 @@ function RecentItem({
         </div>
         <Box align="center" gap={1}>
           {item.meta.map((metaItem, index) => (
-            <Fragment key={`${index}-${metaItem}`}>
+            <Fragment key={metaItem}>
               <div className="tw:max-w-20">
                 <Typography
                   ellipsis

@@ -152,6 +152,7 @@ const ArchiveView: FC<ArchiveViewProps> = ({
     return (
       <Card className="tw:flex tw:flex-col">
         {Array.from({ length: 8 }).map((_, idx) => (
+          // eslint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no stable identity
           <ArchiveRowSkeleton key={idx} />
         ))}
       </Card>

@@ -143,6 +143,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
             <Panel
               data-testid="skeleton-loading-panel"
               header={<Skeleton active paragraph={false} />}
+              // eslint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no stable identity
               key={index}
             />
           ))}

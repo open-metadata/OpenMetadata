@@ -26,6 +26,17 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">
+    {t('label.plus-count-more', {
+      count,
+    })}
+  </span>
+);
+
 const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
   (
     {
@@ -118,13 +129,9 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           getPopupContainer={(trigger) => trigger.parentElement}
           loading={isLoading}
           maxTagCount={maxValueCount}
-          maxTagPlaceholder={(omittedValues) => (
-            <span className="max-tag-text">
-              {t('label.plus-count-more', {
-                count: omittedValues.length,
-              })}
-            </span>
-          )}
+          maxTagPlaceholder={(omittedValues) =>
+            renderMaxTagPlaceholder(omittedValues.length, t)
+          }
           open={open}
           placeholder={placeholder}
           placement="bottomLeft"

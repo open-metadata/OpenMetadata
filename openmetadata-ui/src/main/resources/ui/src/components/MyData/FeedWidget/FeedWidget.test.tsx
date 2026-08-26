@@ -103,7 +103,7 @@ jest.mock(
           Update
         </button>
         {activityList.map((item: ActivityEvent, index: number) => (
-          <div data-testid={`activity-item-${index}`} key={index}>
+          <div data-testid={`activity-item-${index}`} key={item.id}>
             {item.summary}
           </div>
         ))}

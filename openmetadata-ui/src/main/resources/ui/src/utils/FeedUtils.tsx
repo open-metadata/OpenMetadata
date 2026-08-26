@@ -182,7 +182,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
 
     return entityFields.map((field, i) => {
       return (
-        <span key={`field-${i}`}>
+        <span key={`field-${field}`}>
           {t(`label.${field}`, { defaultValue: field })}
           {i < entityFields.length - 1 ? separator : null}
         </span>

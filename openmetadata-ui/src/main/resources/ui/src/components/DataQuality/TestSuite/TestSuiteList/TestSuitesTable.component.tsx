@@ -230,6 +230,7 @@ export const TestSuitesTable = ({
                     className="tw:mb-2"
                     data-testid="test-suite-loading-row"
                     height={40}
+                    // eslint-disable-next-line react/no-array-index-key -- skeleton placeholders
                     key={index}
                     width="100%"
                   />

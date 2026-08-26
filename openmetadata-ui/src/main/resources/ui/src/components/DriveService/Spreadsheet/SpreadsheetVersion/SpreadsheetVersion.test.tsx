@@ -68,7 +68,7 @@ jest.mock('../../../common/Table/Table', () =>
   jest.fn(({ dataSource }) => (
     <div data-testid="spreadsheet-children-table">
       {dataSource?.map((worksheet: { name: string }, index: number) => (
-        <div data-testid={`worksheet-row-${index}`} key={index}>
+        <div data-testid={`worksheet-row-${index}`} key={worksheet.name}>
           {worksheet.name}
         </div>
       ))}

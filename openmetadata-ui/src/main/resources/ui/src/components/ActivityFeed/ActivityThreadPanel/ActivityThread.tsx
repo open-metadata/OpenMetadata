@@ -98,13 +98,13 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               )}
             </Divider>
 
-            {threadData?.posts?.map((reply, key) => (
+            {threadData?.posts?.map((reply) => (
               <ActivityFeedCard
                 isEntityFeed
                 className="m-b-sm"
                 feed={reply}
                 feedType={threadData.type || ThreadType.Conversation}
-                key={key}
+                key={reply.id}
                 task={threadData}
                 threadId={threadData.id}
                 updateThreadHandler={updateThreadHandler}

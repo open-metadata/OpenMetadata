@@ -55,11 +55,11 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
     <div className={className}>
       {relativeDays.map((d, i) => {
         return (
-          <div data-testid={`thread${i}`} key={i}>
+          <div data-testid={`thread${i}`} key={d}>
             <FeedListSeparator relativeDay={d} />
             {updatedThreads
               .filter((f) => f.relativeDay === d)
-              .map((thread, index) => {
+              .map((thread) => {
                 const mainFeed = {
                   message: thread.message,
                   postTs: thread.threadTs,
@@ -79,10 +79,10 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 const lastPost = thread?.posts?.[postLength - 1];
 
                 return (
-                  <Fragment key={index}>
+                  <Fragment key={thread.id}>
                     <Card
                       className="ant-card-feed"
-                      key={`${index} - card`}
+                      key={`${thread.id}-card`}
                       style={{
                         marginTop: '20px',
                         border: `1px solid ${GLOBAL_BORDER}`,

@@ -840,6 +840,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     <Skeleton
                       className="tw:mb-2"
                       height={40}
+                      // eslint-disable-next-line react/no-array-index-key -- skeleton placeholders
                       key={i}
                       width="100%"
                     />
