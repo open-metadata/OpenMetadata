@@ -10,12 +10,14 @@
 #  limitations under the License.
 """Unit tests for Druid connection handling.
 
-The Druid dialect (pydruid) is an optional extra that may be absent from the
-unit-test environment, so URL parity is asserted via the connector's
-get_connection_url rather than by instantiating an engine.
+URL parity is asserted through the connector's get_connection_url rather than by
+instantiating an engine, which would need a reachable broker. Dialect resolution is
+checked on its own: pydruid is in the `all` / `all-dev-env` extras that both the CI
+unit lane and `make install_dev_env` install, so that check runs unconditionally.
 """
 
 import pytest
+from sqlalchemy.engine.url import make_url
 
 from metadata.generated.schema.entity.services.connections.database.druidConnection import (
     DruidConnection as DruidConnectionConfig,
@@ -72,8 +74,5 @@ def test_every_scheme_maps_to_an_installed_dialect(scheme):
     pydruid registers druid, druid.http and druid.https as entry points; this pins the
     enum to what is actually installed instead of to a hardcoded list.
     """
-    pytest.importorskip("pydruid")
-    from sqlalchemy.engine.url import make_url
-
     connection = DruidConnectionConfig(scheme=scheme, hostPort="localhost:8082")
     assert make_url(DruidConnection.get_connection_url(connection)).get_dialect() is not None

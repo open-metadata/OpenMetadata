@@ -52,7 +52,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 DRUID_IMAGE = "apache/druid:30.0.0"
-ZOOKEEPER_IMAGE = "zookeeper:3.9"
+ZOOKEEPER_IMAGE = "zookeeper:3.9.5"
 BROKER_PLAINTEXT_PORT = 8082
 BROKER_TLS_PORT = 8282
 KEYSTORE_ALIAS = "druid"
