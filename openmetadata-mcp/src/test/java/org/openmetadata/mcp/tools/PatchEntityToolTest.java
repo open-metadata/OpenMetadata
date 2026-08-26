@@ -17,6 +17,8 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
@@ -169,6 +171,29 @@ class PatchEntityToolTest {
               McpChangeEventUtil.publishChangeEvent(
                   eq(mockEntity), eq(EventType.ENTITY_UPDATED), eq("alice")));
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"foo\":\"bar\"}]",
+        "[{\"op\":\"bogus\",\"path\":\"/x\",\"value\":1}]",
+        "[{\"op\":\"replace\"}]",
+        "[\"not-an-object\"]"
+      })
+  void execute_validJsonButInvalidPatch_isAlsoTheCallersProblem(String badPatch) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put("fqn", "db.schema.test_table");
+    params.put("patch", badPatch);
+
+    // Json.createPatch does not validate operations - it builds happily and only fails on apply(),
+    // inside the repository. There an unknown op is a JsonException and a bare object is a raw
+    // NullPointerException; the dispatcher reads neither as the caller's fault and returns 500
+    // with "retrying will not help", for a document the model wrote and could fix.
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not a valid JSONPatch document");
   }
 
   @Test

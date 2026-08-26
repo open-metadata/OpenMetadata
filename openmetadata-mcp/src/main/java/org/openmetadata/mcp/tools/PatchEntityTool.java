@@ -6,6 +6,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import java.io.StringReader;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class PatchEntityTool implements McpTool {
     requireTarget(entityType, fqn);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
+    requireApplicable(jsonPatch, entityType, fqn);
 
     // The permission comes from the patch itself: the operations it carries decide which
     // MetadataOperations are checked, exactly as the REST resource does it.
@@ -93,6 +95,37 @@ public class PatchEntityTool implements McpTool {
    * dispatcher classifies an unrecognised exception as a server fault and tells the model its
    * arguments were fine and not to retry - for a document the model wrote and could correct.
    */
+  /**
+   * Rejects a document that is valid JSON but not a valid patch, before it reaches the repository.
+   *
+   * <p>{@code Json.createPatch} builds the patch without checking the operations - an unknown
+   * {@code op}, a missing {@code path}, or an array of non-objects all construct happily and only
+   * fail when the patch is applied, deep inside {@code repository.patch}. There they surface as a
+   * {@code JsonException}, or for a bare {@code [{"foo":"bar"}]} a raw {@code
+   * NullPointerException}, and the dispatcher classifies neither as the caller's fault: the model
+   * is told its arguments were fine and not to retry, for a document it wrote and could correct.
+   *
+   * <p>Applying it to an empty object forces that validation. The result is discarded; only whether
+   * it threw matters. A patch that legitimately fails against an empty object - a {@code test}, or
+   * a {@code remove} of a path that must already exist - is not a malformed document, so anything
+   * other than a shape error is left to be judged against the real entity.
+   */
+  private static void requireApplicable(JsonPatch jsonPatch, String entityType, String fqn) {
+    try {
+      jsonPatch.apply(JsonValue.EMPTY_JSON_OBJECT);
+    } catch (JsonException | NullPointerException e) {
+      throw new IllegalArgumentException(
+          "Parameter 'patch' is not a valid JSONPatch document: "
+              + e.getMessage()
+              + ". Every operation needs an 'op' (add, remove, replace, move, copy, test) and a"
+              + " 'path', plus a 'value' where the op takes one.",
+          e);
+    } catch (RuntimeException e) {
+      LOG.debug(
+          "Patch for {} {} did not apply to an empty object: {}", entityType, fqn, e.getMessage());
+    }
+  }
+
   private static JsonArray readOperations(String rawPatch) {
     try {
       return Json.createReader(new StringReader(rawPatch)).readArray();
