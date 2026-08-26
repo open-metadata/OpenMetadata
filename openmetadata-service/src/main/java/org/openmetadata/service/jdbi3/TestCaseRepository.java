@@ -158,7 +158,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
-  private final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
+  // Must be static: the base EntityRepository constructor publishes `this` into the global
+  // repository map (Entity.registerEntity) before this subclass field initializer runs, so an
+  // instance field is unsafely published and can be observed null by other threads. That surfaced
+  // as an intermittent NPE in clearParentCache() (invoked per-request by
+  // ImpersonationCleanupFilter),
+  // failing unrelated requests with a 500. A static ThreadLocal is initialized at class load and
+  // safely published. Matches the 2.0/main declaration.
+  private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
 
   @Override
   public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {
