@@ -16,6 +16,7 @@ import { MetricClass } from '../support/entity/MetricClass';
 import { clickOutside, descriptionBox, uuid } from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 import { CODE_EDITOR_CONTENT } from './codeEditor';
+import { typeInCodeEditor } from './codeEditor';
 
 export const updateMetricType = async (page: Page, metric: string) => {
   await page.click(`[data-testid="edit-metric-type-button"]`);
@@ -118,8 +119,7 @@ export const updateExpression = async (
   await page.locator('[id="root\\/language"]').fill(language);
   await page.getByTitle(`${language}`, { exact: true }).click();
 
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(code);
+  await typeInCodeEditor(page, page, code);
 
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
@@ -288,8 +288,7 @@ export const addMetric = async (page: Page) => {
   );
 
   // Enter the code
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(metricData.metricExpression.code);
+  await typeInCodeEditor(page, page, metricData.metricExpression.code);
 
   const postPromise = page.waitForResponse(
     (response) => response.request().method() === 'POST'

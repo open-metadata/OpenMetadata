@@ -25,6 +25,7 @@ import {
   updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
+import { typeInCodeEditor } from '../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -120,8 +121,7 @@ test.describe(
 
         await clickOutside(page);
 
-        await page.locator("pre[role='presentation']").last().click();
-        await page.keyboard.type('SELECT SUM(amount) FROM sales');
+        await typeInCodeEditor(page, page, 'SELECT SUM(amount) FROM sales');
 
         // Save the metric
         const postPromise = page.waitForResponse(

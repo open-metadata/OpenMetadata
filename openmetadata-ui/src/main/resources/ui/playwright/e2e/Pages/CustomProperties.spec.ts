@@ -116,7 +116,7 @@ import {
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
-import { CODE_EDITOR_SCROLLER } from '../../utils/codeEditor';
+import { CODE_EDITOR_SCROLLER, typeInCodeEditor } from '../../utils/codeEditor';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -569,10 +569,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(editButton).toBeEnabled();
           await editButton.click();
 
-          await page.locator("pre[role='presentation']").last().click();
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
-          await page.keyboard.type(value + '\n' + value);
+          await typeInCodeEditor(page, container, value + '\n' + value);
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`

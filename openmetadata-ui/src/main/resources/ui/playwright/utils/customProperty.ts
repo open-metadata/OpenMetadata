@@ -37,6 +37,7 @@ import {
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
 import { CODE_EDITOR, CODE_EDITOR_CONTENT } from './codeEditor';
+import { typeInCodeEditor } from './codeEditor';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -178,8 +179,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await container.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -1467,8 +1467,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;

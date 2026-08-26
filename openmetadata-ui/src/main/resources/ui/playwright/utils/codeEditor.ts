@@ -40,6 +40,23 @@ export const getCodeEditorText = async (scope: Page | Locator) =>
   (await resolveContent(scope).innerText()).trim();
 
 /**
+ * Focus a code editor and type at the end of its content.
+ *
+ * Replaces the CodeMirror 5 idiom of clicking the last `pre[role="presentation"]`
+ * line to put the caret at the end: CodeMirror 6 renders one contenteditable for
+ * the whole document, so the caret is moved explicitly instead.
+ */
+export const typeInCodeEditor = async (
+  page: Page,
+  scope: Page | Locator,
+  text: string
+) => {
+  await clickCodeEditor(scope);
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.type(text);
+};
+
+/**
  * Replace an editor's content.
  *
  * `insertText` is used instead of `type` because it bypasses keydown, so the
