@@ -114,6 +114,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1124,7 +1125,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           (TestCaseResolutionStatusRepository)
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
       AsyncService.getInstance()
-          .execute(
+          .executeDatabaseTask(
+              DatabaseOperation.TEST_CASE_CLEANUP,
+              "resolution-status:" + children.size(),
               () -> {
                 for (CollectionDAO.EntityRelationshipRecord child : children) {
                   try {
@@ -1141,19 +1144,31 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected void entitySpecificCleanup(TestCase entityInterface) {
-    deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
+    deleteAllTestCaseResults(List.of(entityInterface.getFullyQualifiedName()));
   }
 
-  private void deleteAllTestCaseResults(String fqn) {
+  @Override
+  protected void bulkEntitySpecificCleanup(List<TestCase> testCases, String deletedBy) {
+    deleteAllTestCaseResults(
+        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList());
+  }
+
+  private void deleteAllTestCaseResults(List<String> testCaseFQNs) {
+    if (testCaseFQNs.isEmpty()) {
+      return;
+    }
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     AsyncService.getInstance()
-        .execute(
+        .executeDatabaseTask(
+            DatabaseOperation.TEST_CASE_CLEANUP,
+            "test-results:" + testCaseFQNs.size(),
             () -> {
               try {
-                testCaseResultRepository.deleteAllTestCaseResults(fqn);
+                testCaseResultRepository.deleteAllTestCaseResults(testCaseFQNs);
               } catch (RuntimeException e) {
-                LOG.error("Error deleting test case results for test case {}", fqn, e);
+                LOG.error(
+                    "Error deleting test case results for {} test cases", testCaseFQNs.size(), e);
               }
             });
   }

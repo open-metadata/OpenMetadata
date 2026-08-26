@@ -768,10 +768,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
             <Dropdown.Root>
               <Button
-                className="tw:p-0"
+                hideFocusOutline
                 color="tertiary"
                 iconTrailing={<ChevronDown size={14} />}
-                size="sm">
+                size="xs">
                 {t('label.tool-plural')}
               </Button>
               <Dropdown.Popover>
@@ -866,10 +866,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
+          // Ant Card owns the title padding, so the spacing belongs on its header rather than the inner row.
+          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
+          titleClassName: 'tw:capitalize tw:font-medium',
+          titleContainerClassName: 'tw:items-center',
+          titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{

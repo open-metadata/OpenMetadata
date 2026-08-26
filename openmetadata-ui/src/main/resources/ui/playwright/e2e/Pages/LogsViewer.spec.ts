@@ -108,6 +108,10 @@ test.describe(
         await expect(page.getByTestId('log-viewer-jump-to-end')).toBeVisible();
         await expect(page.getByTestId('log-viewer-close')).toBeVisible();
 
+        // Following the tail only means anything while a run streams, so a
+        // finished run must not offer the toggle at all.
+        await expect(page.getByTestId('log-viewer-follow')).toBeHidden();
+
         // The URL must NOT change — the logs viewer is now an in-place modal.
         expect(page.url()).not.toContain('/logs');
       });

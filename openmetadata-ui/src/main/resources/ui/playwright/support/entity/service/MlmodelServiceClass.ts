@@ -13,6 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -41,14 +46,12 @@ export class MlmodelServiceClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/mlmodelServices',
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await serviceResponse.json();
+    const service = await createOrFetch(apiContext, {
+      label: 'MlmodelServiceClass.create',
+      createPath: '/api/v1/services/mlmodelServices',
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 
@@ -56,17 +59,19 @@ export class MlmodelServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/services/mlmodelServices/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/services/mlmodelServices/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(serviceResponse, 'MlmodelServiceClass.patch');
 
     this.entityResponseData = service;
 

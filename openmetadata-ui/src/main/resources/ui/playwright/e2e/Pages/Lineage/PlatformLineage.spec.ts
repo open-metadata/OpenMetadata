@@ -43,11 +43,13 @@ test.beforeAll(async ({ browser }) => {
     patchData: [
       {
         op: 'add',
-        value: {
-          type: 'domain',
-          id: EntityDataClass.domain1.responseData.id,
-        },
-        path: '/domains/0',
+        value: [
+          {
+            type: 'domain',
+            id: EntityDataClass.domain1.responseData.id,
+          },
+        ],
+        path: '/domains',
       },
     ],
   });

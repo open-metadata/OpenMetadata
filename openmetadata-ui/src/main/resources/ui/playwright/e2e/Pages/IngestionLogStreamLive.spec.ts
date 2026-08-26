@@ -290,13 +290,22 @@ test.describe(
         ).toBeGreaterThan(0);
 
         // The server reads the run's log every 2s (LogStreamSettings.pollSeconds),
-        // so a still-running agent must push more lines within a few ticks. A
-        // stream that connects but delivers nothing fails here.
+        // but the connector does not write at a steady rate: it logs a burst, then
+        // goes quiet for however long its next phase takes. The longest gap is
+        // between the connection test and the first topic being ingested, where the
+        // Kafka consumer joins its group and blocks on an empty poll — nothing is
+        // logged for the whole of it. A measured CI run sat silent for 29.8s there
+        // and this assertion, then budgeted 30s, gave up 0.2s before the next burst
+        // landed. The window has to clear that gap with margin rather than race it;
+        // `test.slow()` above leaves ample room (the whole test ran in 33s).
+        //
+        // A stream that connects but delivers nothing still fails here — 90s of
+        // silence is not something a healthy run produces.
         await expect
           .poll(() => getLogViewerLineCount(page), {
             message:
               'the log viewer should keep receiving lines while the run is live',
-            timeout: 30_000,
+            timeout: 90_000,
             intervals: [2_000],
           })
           .toBeGreaterThan(initialLineCount);

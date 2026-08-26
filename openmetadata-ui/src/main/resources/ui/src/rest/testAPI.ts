@@ -71,7 +71,10 @@ export type ListTestCaseParams = ListParams & {
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'testCaseStatus'
+> & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;
@@ -86,6 +89,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -146,10 +150,20 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 export const getListTestCaseBySearch = async (
   params?: ListTestCaseParamsBySearch
 ) => {
+  // The search endpoint accepts comma-separated statuses, while Axios' default
+  // array format uses brackets that the JAX-RS query parameter does not bind.
+  const serializedParams = Array.isArray(params?.testCaseStatus)
+    ? {
+        ...params,
+        testCaseStatus: params.testCaseStatus.length
+          ? params.testCaseStatus.join(',')
+          : undefined,
+      }
+    : params;
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     `${testCaseUrl}/search/list`,
     {
-      params,
+      params: serializedParams,
     }
   );
 

@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -79,6 +78,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -802,9 +802,14 @@ public class CreateTask implements TaskListener {
     // transaction before this dispatch. The worker reads the prior task straight from the database
     // (not the entity cache) to observe that committed status, and only terminates the process when
     // the task is actually terminal — so a still-live approval is never orphaned.
-    CompletableFuture.runAsync(
-            () -> terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId),
-            AsyncService.getInstance().getExecutorService())
+    AsyncService.getInstance()
+        .submitDatabaseTask(
+            DatabaseOperation.WORKFLOW_TASK,
+            priorInstanceId.toString(),
+            () -> {
+              terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId);
+              return null;
+            })
         .exceptionally(
             ex -> {
               LOG.error(

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { descriptionBox, removeLandingBanner } from './common';
+import { descriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -149,7 +149,6 @@ export const addMentionCommentInFeed = async (
     const fetchFeedResponse = page.waitForResponse(
       '/api/v1/feed?type=Conversation*'
     );
-    await removeLandingBanner(page);
     await fetchFeedResponse;
   }
 

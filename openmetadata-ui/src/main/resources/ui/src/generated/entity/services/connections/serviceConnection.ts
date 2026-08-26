@@ -2258,6 +2258,10 @@ export interface Connection {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -4792,6 +4796,7 @@ export enum AirflowConnectionScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",

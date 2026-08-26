@@ -16,12 +16,14 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.IndexManagementClient;
 import org.openmetadata.service.search.SearchRepository;
 
 /**
@@ -97,13 +99,18 @@ public class SearchIndexMetrics {
 
   public void refreshStats() {
     try {
-      int totalIndices = countTotalIndices();
-      int rebuildIndices = countRebuildIndices();
-      int orphanedIndices = countOrphanedIndices();
+      // Keep this refresh bounded. Per-index existence and alias probes amplify a saturated
+      // connection pool, while one inventory provides every name and alias needed below.
+      List<IndexManagementClient.IndexStats> indexStats =
+          searchRepository.getSearchClient().getAllIndexStats();
+      int totalIndices = indexStats.size();
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      int rebuildIndices = cleaner.countRebuildIndices(indexStats);
+      int orphanedIndices = cleaner.countOrphanedIndices(indexStats);
 
       Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
       int expectedIndices = indexMap.size();
-      int missingIndices = countMissingIndices(indexMap);
+      int missingIndices = countMissingIndices(indexMap, indexStats);
 
       SearchIndexClusterValidator validator = new SearchIndexClusterValidator();
       SearchIndexClusterValidator.ClusterCapacity capacity =
@@ -141,20 +148,20 @@ public class SearchIndexMetrics {
     return cachedStats.get();
   }
 
-  private int countTotalIndices() {
-    try {
-      Set<String> indices = searchRepository.getSearchClient().listIndicesByPrefix("");
-      return indices.size();
-    } catch (Exception e) {
-      LOG.warn("Failed to count total indices: {}", e.getMessage());
-      return 0;
+  private int countMissingIndices(
+      Map<String, IndexMapping> indexMap, List<IndexManagementClient.IndexStats> indexStats) {
+    Set<String> availableNames = new HashSet<>();
+    for (IndexManagementClient.IndexStats stats : indexStats) {
+      availableNames.add(stats.name());
+      if (stats.aliases() != null) {
+        availableNames.addAll(stats.aliases());
+      }
     }
-  }
 
-  private int countMissingIndices(Map<String, IndexMapping> indexMap) {
     List<String> missingNames = new ArrayList<>();
     for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
-      if (!searchRepository.indexExists(entry.getValue())) {
+      String expectedIndexName = entry.getValue().getIndexName(searchRepository.getClusterAlias());
+      if (!availableNames.contains(expectedIndexName)) {
         missingNames.add(entry.getKey());
       }
     }
@@ -162,25 +169,5 @@ public class SearchIndexMetrics {
       LOG.warn("Missing search indices (expected but not found): {}", missingNames);
     }
     return missingNames.size();
-  }
-
-  private int countRebuildIndices() {
-    try {
-      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
-      return cleaner.countRebuildIndices(searchRepository.getSearchClient());
-    } catch (Exception e) {
-      LOG.warn("Failed to count rebuild indices: {}", e.getMessage());
-      return 0;
-    }
-  }
-
-  private int countOrphanedIndices() {
-    try {
-      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
-      return cleaner.countOrphanedIndices(searchRepository.getSearchClient());
-    } catch (Exception e) {
-      LOG.warn("Failed to count orphaned indices: {}", e.getMessage());
-      return 0;
-    }
   }
 }

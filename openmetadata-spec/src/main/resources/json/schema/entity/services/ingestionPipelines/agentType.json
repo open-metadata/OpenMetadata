@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/agentType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentType",
+  "description": "Coarse grouping of Ingestion Pipelines. Used as a list filter so that clients do not have to enumerate the `pipelineType` values that make up an agent group.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.AgentType",
+  "enum": ["metadata", "application"],
+  "javaEnums": [{ "name": "METADATA" }, { "name": "APPLICATION" }]
+}

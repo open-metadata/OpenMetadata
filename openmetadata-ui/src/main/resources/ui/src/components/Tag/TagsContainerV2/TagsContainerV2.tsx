@@ -502,6 +502,7 @@ const TagsContainerV2 = ({
         {/* Since WidgetCard is another component without onClick, wrapping the content in a
             div to stop propagation */}
         <div
+          role="presentation"
           onClick={(e) => {
             e.stopPropagation();
           }}>
@@ -519,6 +520,7 @@ const TagsContainerV2 = ({
       // still keep their clicks to themselves, but the padding and the gaps between chips no
       // longer swallow them. On a clickable row or card those dead spots made the whole tags
       // column look unclickable.
+      role="presentation"
       onClick={stopPropagationIfInteractive}>
       {suggestionDataRender ?? (
         <>
