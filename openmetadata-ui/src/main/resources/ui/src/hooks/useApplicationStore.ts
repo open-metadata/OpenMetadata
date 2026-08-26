@@ -21,9 +21,29 @@ import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
+import {
+  clearPersonaSession,
+  readPersonaSession,
+  writePersonaSession,
+} from '../utils/PersonaSessionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 import { useDomainStore } from './useDomainStore';
+
+const resolvePersonaFromSession = (user: User): EntityReference | undefined => {
+  const storedId = readPersonaSession();
+  if (!storedId) {
+    return undefined;
+  }
+  const { defaultPersona, personas = [], inheritedPersonas = [] } = user;
+  const allPersonas = [
+    ...personas,
+    ...inheritedPersonas,
+    ...(defaultPersona ? [defaultPersona] : []),
+  ];
+
+  return allPersonas.find((p) => p.id === storedId);
+};
 
 const syncDomainStoreForUser = (user?: User) => {
   const domainStore = useDomainStore.getState();
@@ -108,6 +128,11 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
 
   setSelectedPersona: (persona: EntityReference | undefined) => {
+    if (persona?.id) {
+      writePersonaSession(persona.id);
+    } else {
+      clearPersonaSession();
+    }
     set({ selectedPersona: persona });
   },
 
@@ -115,14 +140,10 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ applicationConfig: config, theme: config.customTheme });
   },
   setCurrentUser: (user) => {
-    const { defaultPersona } = user;
-
-    // Update the current user
     set({
       currentUser: user,
-      selectedPersona: defaultPersona,
+      selectedPersona: resolvePersonaFromSession(user) ?? user.defaultPersona,
     });
-
     syncDomainStoreForUser(user);
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
@@ -153,21 +174,22 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
 
   updateCurrentUser: (user) => {
-    const { personas, defaultPersona } = user;
     const { selectedPersona } = get();
-    // Update selected Persona to fetch the customized pages
-    if (defaultPersona) {
-      set({ selectedPersona: defaultPersona });
-    }
-    // Update selected Persona if Persona is not in the list of personas
-    if (
-      selectedPersona &&
-      !personas?.find((p) => p.id === selectedPersona.id)
-    ) {
-      set({ selectedPersona: undefined });
-    }
+    const { defaultPersona, personas = [], inheritedPersonas = [] } = user;
+    const allPersonas = [
+      ...personas,
+      ...inheritedPersonas,
+      ...(defaultPersona ? [defaultPersona] : []),
+    ];
+    const isSelectedStillValid =
+      selectedPersona && allPersonas.some((p) => p.id === selectedPersona.id);
 
-    set({ currentUser: user });
+    set({
+      currentUser: user,
+      selectedPersona:
+        resolvePersonaFromSession(user) ??
+        (isSelectedStillValid ? selectedPersona : defaultPersona),
+    });
 
     syncDomainStoreForUser(user);
   },
