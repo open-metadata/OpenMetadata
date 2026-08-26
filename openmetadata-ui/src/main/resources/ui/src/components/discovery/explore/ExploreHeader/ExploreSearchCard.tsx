@@ -214,10 +214,11 @@ export const ExploreSearchCard = () => {
   }, [debouncedSuggestionSearch, navigate]);
 
   // Keep the inset on the shared wrapper so the search and quick filters stay
-  // aligned while the control column remains narrower than its available space.
+  // aligned. The 896px cap minus 48px per side leaves the requested 800px
+  // usable width without introducing another arbitrary outer width.
   const searchActions = (
     <Box
-      className="tw:mx-auto tw:flex tw:w-full tw:max-w-5xl tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-3 tw:px-8"
+      className="tw:mx-auto tw:flex tw:w-full tw:max-w-4xl tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-3 tw:px-12"
       data-testid="explore-search-actions"
       direction="col">
       <ExploreSearchInput

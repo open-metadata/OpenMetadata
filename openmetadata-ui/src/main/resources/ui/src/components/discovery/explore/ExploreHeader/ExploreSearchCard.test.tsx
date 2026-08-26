@@ -339,9 +339,9 @@ describe('ExploreSearchCard', () => {
       'tw:w-full',
       'tw:min-w-0',
       'tw:flex-1',
-      'tw:max-w-5xl',
+      'tw:max-w-4xl',
       'tw:mx-auto',
-      'tw:px-8'
+      'tw:px-12'
     );
     expect(screen.getByTestId('explore-search-form')).toHaveClass('tw:w-full');
   });
