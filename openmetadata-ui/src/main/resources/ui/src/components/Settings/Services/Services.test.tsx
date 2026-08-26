@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
 import React, { ReactNode } from 'react';
 import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -23,6 +22,7 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { ListView } from '../../common/ListView/ListView.component';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import Services from './Services';
 
 let isDescription = true;
@@ -202,10 +202,12 @@ jest.mock('../../common/ListView/ListView.component', () => ({
       }) => (
         <div data-testid="mocked-list-view">
           <button
+            aria-label="trigger search"
             data-testid="trigger-search"
             onClick={() => searchProps.onSearch('no-such-service')}
           />
           <button
+            aria-label="trigger deleted switch"
             data-testid="trigger-deleted-switch"
             onClick={handleDeletedSwitchChange}
           />

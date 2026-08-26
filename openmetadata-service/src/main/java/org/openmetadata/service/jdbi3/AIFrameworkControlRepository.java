@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -19,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIFrameworkControlResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository
@@ -37,6 +40,12 @@ public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkCo
   }
 
   @Override
+  public void setFullyQualifiedName(AIFrameworkControl control) {
+    control.setFullyQualifiedName(
+        FullyQualifiedName.add(control.getFramework().getFullyQualifiedName(), control.getName()));
+  }
+
+  @Override
   public void setFields(
       AIFrameworkControl control, Fields fields, RelationIncludes relationIncludes) {}
 
@@ -44,7 +53,15 @@ public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkCo
   public void clearFields(AIFrameworkControl control, Fields fields) {}
 
   @Override
-  public void prepare(AIFrameworkControl control, boolean update) {}
+  public void restorePatchAttributes(AIFrameworkControl original, AIFrameworkControl updated) {
+    super.restorePatchAttributes(original, updated);
+    updated.withFramework(original.getFramework());
+  }
+
+  @Override
+  public void prepare(AIFrameworkControl control, boolean update) {
+    control.setFramework(Entity.getEntityReference(control.getFramework(), NON_DELETED));
+  }
 
   @Override
   public void storeEntity(AIFrameworkControl control, boolean update) {

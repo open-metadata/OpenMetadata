@@ -15,7 +15,8 @@ import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
+import { createAdminApiContext } from '../utils/admin';
+import { redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
 
 export interface GraphTermRef {
@@ -159,31 +160,46 @@ export function buildMalformedRdfGraphJson(
   };
 }
 
-export async function createApiContext(browser: Browser) {
-  const page = await browser.newPage({
-    storageState: 'playwright/.auth/admin.json',
-  });
-  await redirectToHomePage(page);
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
+// Creates a fresh admin API context for suite-level setup and teardown.
+// Using createAdminApiContext (instead of a full browser page) avoids opening
+// an extra WebSocket-connected admin session, which would cause the backend's
+// entity-deleted broadcasts to appear as toasts on every other parallel worker's
+// admin page. Each suite gets its own owned context; afterAction disposes it —
+// the worker-shared context is never touched.
+export async function createApiContext(_browser: Browser) {
+  const { apiContext, afterAction } = await createAdminApiContext();
 
-  return { page, apiContext };
+  return { apiContext, afterAction };
 }
 
 export async function disposeApiContext(
-  page: Page,
+  afterActionOrPage: (() => Promise<void>) | Page,
   apiContext: APIRequestContext
 ) {
-  await apiContext.dispose();
-  await page.close();
+  if (typeof afterActionOrPage === 'function') {
+    // afterAction from createAdminApiContext already disposes apiContext and the
+    // login context — do not call apiContext.dispose() separately here.
+    await afterActionOrPage();
+  } else {
+    await apiContext.dispose();
+    await afterActionOrPage.close();
+  }
+}
+
+export function defined<T>(val: T | undefined, name: string): T {
+  if (val === undefined) {
+    throw new Error(`${name} is undefined — beforeEach may not have completed`);
+  }
+
+  return val;
 }
 
 export async function deleteEntities(
   apiContext: APIRequestContext,
-  ...entities: Array<Glossary | GlossaryTerm>
+  ...entities: Array<Glossary | GlossaryTerm | undefined>
 ) {
   for (const entity of entities) {
-    if (entity.responseData?.id) {
+    if (entity?.responseData?.id) {
       await entity.delete(apiContext);
     }
   }

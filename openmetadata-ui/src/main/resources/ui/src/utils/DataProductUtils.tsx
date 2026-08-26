@@ -26,6 +26,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { Icon as ImageIcon } from '../components/common/Icon/Icon';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -46,7 +47,6 @@ import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -141,20 +141,16 @@ export interface DataProductDetailPageTabProps {
  * @param iconURL - Optional icon URL
  * @returns JSX element representing the icon
  */
-export const getDataProductIconByUrl = (iconURL?: string) => {
-  const iconElement = renderIcon(iconURL, {
-    size: 24,
-    className: 'tw:h-6 tw:w-6 tw:text-quaternary',
-  });
-
-  if (iconElement) {
-    return iconElement;
-  }
-
-  return (
-    <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
-  );
-};
+export const getDataProductIconByUrl = (iconURL?: string) => (
+  <ImageIcon
+    className="tw:h-6 tw:w-6 tw:text-quaternary"
+    fallback={
+      <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
+    }
+    iconValue={iconURL}
+    size={24}
+  />
+);
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i === DetailPageWidgetKeys.DOMAIN) {

@@ -86,6 +86,30 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   }
 
   /**
+   * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
+   * indexes, so without this a caller can read documents they are denied on the corresponding
+   * listing. A {@code null} or exempt subject (admin, bot, access control disabled) is left
+   * unfiltered.
+   */
+  private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
+    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      return query;
+    }
+    OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+    if (rbacQueryBuilder == null) {
+      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
+      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
+      return Query.of(qb -> qb.matchNone(m -> m));
+    }
+    Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
+    if (query == null) {
+      return rbacQuery;
+    }
+    final Query existingQuery = query;
+    return Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+  }
+
+  /**
    * ANDs the org-wide-only ContextMemory filter into an aggregation query run without an
    * identifiable subject. Such a query cannot tell whose restricted memory a document is and must
    * fail closed: only memories everyone may read are aggregated. Non-memory documents are
@@ -357,27 +381,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      // Apply RBAC conditions
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-          if (parsedQuery != null) {
-            final Query existingQuery = parsedQuery;
-            parsedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-          } else {
-            parsedQuery = rbacQuery;
-          }
-        }
-      }
+      parsedQuery = applyRbacQuery(parsedQuery, subjectContext);
 
       searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
@@ -411,6 +415,17 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
+      throws IOException {
+    return aggregate(query, index, searchAggregation, filter, null);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
@@ -463,7 +478,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
                 ? Query.of(q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)))
                 : Query.of(q -> q.bool(b -> b.filter(finalFilterQuery)));
       }
-      searchRequestBuilder.query(restrictToOrgWideMemories(combinedQuery));
+      searchRequestBuilder.query(
+          restrictToOrgWideMemories(applyRbacQuery(combinedQuery, subjectContext)));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);

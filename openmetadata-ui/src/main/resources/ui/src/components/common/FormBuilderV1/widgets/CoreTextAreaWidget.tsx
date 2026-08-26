@@ -37,6 +37,7 @@ const CoreTextAreaWidget = ({
 
   return (
     <TextArea
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is schema-driven per RJSF widget contract
       autoFocus={autofocus}
       hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}

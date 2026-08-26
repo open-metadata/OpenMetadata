@@ -14,10 +14,13 @@ Test Glue using the topology
 """
 
 import json
+import logging
 from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
+
+import pytest
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -34,9 +37,16 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.glue.metadata import GlueSource
 from metadata.ingestion.source.database.glue.models import (
+    Column as GlueColumn,
+)
+from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
     GlueSchema,
+    GlueTable,
+    SerializationDetails,
+    StorageDetails,
     TablePage,
+    TableParameters,
 )
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -288,3 +298,114 @@ class GlueUnitTest(TestCase):
         self.assertTrue(is_iceberg_1)
         self.assertFalse(is_iceberg_2)
         self.assertFalse(is_iceberg_3)
+
+
+class TestGlueColumnDeduplication:
+    """Glue may return a partition key in StorageDescriptor.Columns as well as in PartitionKeys.
+
+    Emitting it twice makes the server reject the whole table with
+    400 'Column name <name> is repeated', so the table is never ingested.
+    """
+
+    @pytest.fixture
+    def source(self):
+        with patch.object(GlueSource, "test_connection", return_value=False):
+            workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+            glue_source = GlueSource.create(
+                mock_glue_config["source"],
+                workflow_config.workflowConfig.openMetadataServerConfig,
+            )
+        # The topology context is process wide, so a leftover Glue table_data here would be
+        # picked up by the next connector's tests. Restore whatever was there afterwards.
+        context = glue_source.context.get().__dict__
+        original_context = context.copy()
+        context["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        context["database"] = MOCK_DATABASE.name.root
+        context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        yield glue_source
+        context.clear()
+        context.update(original_context)
+
+    @staticmethod
+    def _glue_table(columns, partition_keys, is_iceberg=False) -> GlueTable:
+        return GlueTable(
+            Name="sample_partitioned_table",
+            TableType="EXTERNAL_TABLE",
+            Parameters=TableParameters(table_type="ICEBERG") if is_iceberg else None,
+            StorageDescriptor=StorageDetails(
+                Columns=[GlueColumn(Name=name, Type="string") for name in columns],
+                Location="s3://sample-bucket/sample_partitioned_table/",
+                SerdeInfo=SerializationDetails(
+                    SerializationLibrary="org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+                ),
+            ),
+            PartitionKeys=[GlueColumn(Name=name, Type="string") for name in partition_keys],
+        )
+
+    @staticmethod
+    def _column_names(source, table):
+        source.context.get().__dict__["table_data"] = table
+        return [column.name.root for column in source.get_columns(table.StorageDescriptor)]
+
+    @staticmethod
+    def _get_table_response(columns, partition_keys) -> dict:
+        return {
+            "Table": {
+                "StorageDescriptor": {
+                    "Columns": [{"Name": name, "Type": "string", "Parameters": {}} for name in columns]
+                },
+                "PartitionKeys": [{"Name": name, "Type": "string", "Parameters": {}} for name in partition_keys],
+            }
+        }
+
+    @pytest.mark.parametrize(
+        "columns,partition_keys,expected",
+        [
+            (["event_id", "load_date"], ["load_date"], ["event_id", "load_date"]),
+            (["event_id"], ["load_date"], ["event_id", "load_date"]),
+            (["event_id", "DT"], ["dt"], ["event_id", "DT", "dt"]),
+        ],
+        # case_distinct_kept guards the dedup key itself: comparison stays case sensitive so a
+        # future case-insensitive tweak cannot silently merge two columns. Glue lowercases column
+        # names on write, so this shape is defensive rather than something Glue can hand us.
+        ids=["partition_key_repeated", "partition_key_only", "case_distinct_kept"],
+    )
+    def test_standard_path_emits_each_column_once(self, source, columns, partition_keys, expected):
+        assert self._column_names(source, self._glue_table(columns, partition_keys)) == expected
+
+    def test_iceberg_path_drops_partition_field_repeated_in_columns(self, source):
+        table = self._glue_table(["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True)
+
+        with patch.object(source, "glue") as glue_client:
+            glue_client.get_table.return_value = self._get_table_response(["event_id", "bucket_key"], ["bucket_key"])
+            names = self._column_names(source, table)
+
+        assert names == ["event_id", "bucket_key"]
+
+    def test_iceberg_fallback_path_drops_duplicate_when_get_table_fails(self, source):
+        """A GetTable failure falls back to the standard path, which must dedupe too."""
+        table = self._glue_table(["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True)
+
+        with patch.object(source, "glue") as glue_client:
+            glue_client.get_table.side_effect = RuntimeError("AccessDeniedException")
+            names = self._column_names(source, table)
+
+        assert names == ["event_id", "bucket_key"]
+
+    def test_columns_colliding_after_truncation_are_deduplicated(self, source):
+        """Emitted names are truncated to 256 chars, so two longer Glue names can collide there
+        and hit the same server-side validation."""
+        prefix = "a" * 256
+        table = self._glue_table([f"{prefix}_first", f"{prefix}_second"], [])
+
+        assert self._column_names(source, table) == [prefix]
+
+    def test_repeated_partition_key_is_not_reported_as_a_warning(self, source, caplog):
+        """Glue repeating a partition key is routine and needs no operator action. Warnings from
+        the source are counted into the workflow summary, so this must stay at debug."""
+        table = self._glue_table(["event_id", "load_date"], ["load_date"])
+
+        with caplog.at_level(logging.WARNING):
+            assert self._column_names(source, table) == ["event_id", "load_date"]
+
+        assert caplog.records == []

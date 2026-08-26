@@ -11,70 +11,26 @@
  *  limitations under the License.
  */
 
-import { Carousel, Typography } from 'antd';
-import { uniqueId } from 'lodash';
-import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const carouselContent = loginClassBase.getLoginCarouselContent();
   const loginVideo = loginClassBase.getLoginVideo();
-  const { t } = useTranslation();
 
-  const prefersReducedMotion = useMemo(
-    () =>
-      typeof window !== 'undefined' &&
-      Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches),
-    []
-  );
-
-  if (loginVideo) {
-    return (
-      <video
-        aria-hidden
-        muted
-        playsInline
-        autoPlay={!prefersReducedMotion}
-        className="tw:absolute tw:inset-0 tw:h-full tw:w-full tw:object-cover"
-        data-testid="login-video"
-        loop={!prefersReducedMotion}
-        src={loginVideo}
-      />
-    );
+  if (!loginVideo) {
+    return null;
   }
 
   return (
-    <Carousel
-      autoplay
-      dots
-      autoplaySpeed={5000}
-      beforeChange={(_, next) => setCurrentIndex(next)}
-      className="login-carousel"
-      data-testid="carousel-container"
-      easing="ease-in-out"
-      effect="fade">
-      {carouselContent.map((data, idx) => (
-        <div
-          className="slider-container"
-          data-testid="slider-container"
-          key={uniqueId() + '-' + currentIndex + '-' + idx}>
-          <div className="text-container d-flex flex-col gap-4">
-            <Typography.Title className="carousel-header display-md" level={1}>
-              {t(`label.${data.title}`)}
-            </Typography.Title>
-            <p
-              className="carousal-description text-md p-x-lg"
-              data-testid="carousel-slide-description">
-              {t(`message.${data.descriptionKey}`)}
-            </p>
-          </div>
-
-          <img alt="slider" className="main-image" src={data.image} />
-        </div>
-      ))}
-    </Carousel>
+    <video
+      aria-hidden
+      autoPlay
+      loop
+      muted
+      playsInline
+      className="tw:absolute tw:inset-0 tw:h-full tw:w-full"
+      data-testid="login-video"
+      src={loginVideo}
+    />
   );
 };
 

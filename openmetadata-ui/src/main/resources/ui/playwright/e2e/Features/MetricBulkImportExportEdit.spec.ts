@@ -183,6 +183,10 @@ let viewOnlyRole: RolesClass;
 let metricEditorUser: UserClass;
 let metricEditorPolicy: PolicyClass;
 let metricEditorRole: RolesClass;
+// Dedicated admin user for export/import tests so that completed background
+// jobs accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let metricExportUser: UserClass;
 let metricTypeId: string | undefined;
 let metricCustomPropertyName: string;
 
@@ -973,6 +977,9 @@ test.describe(
           },
         ],
       });
+
+      metricExportUser = new UserClass(undefined, true);
+      await metricExportUser.create(apiContext);
     });
 
     test.afterAll(async () => {
@@ -984,6 +991,7 @@ test.describe(
         metricEditorUser?.delete(apiContext),
         metricEditorRole?.delete(apiContext),
         metricEditorPolicy?.delete(apiContext),
+        metricExportUser?.delete(apiContext),
       ]);
       await cleanupFixtures();
       await cleanupMetricCustomProperty();
@@ -991,84 +999,94 @@ test.describe(
     });
 
     test('Admin starts exactly one async export job from the metrics listing', async ({
-      page,
+      browser,
     }) => {
-      await redirectToHomePage(page);
-      await waitForMetricsPage(page);
-      await filterMetrics(page, fixtures.prefix);
-      await openMetricActions(page);
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
+        await redirectToHomePage(page);
+        await waitForMetricsPage(page);
+        await filterMetrics(page, fixtures.prefix);
+        await openMetricActions(page);
 
-      let exportRequestCount = 0;
-      page.on('request', (request) => {
-        if (request.url().includes('/api/v1/metrics/name/*/exportAsync')) {
-          exportRequestCount += 1;
-        }
-      });
+        let exportRequestCount = 0;
+        page.on('request', (request) => {
+          if (request.url().includes('/api/v1/metrics/name/*/exportAsync')) {
+            exportRequestCount += 1;
+          }
+        });
 
-      const exportResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/metrics/name/*/exportAsync') &&
-          response.request().method() === 'GET'
-      );
+        const exportResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/metrics/name/*/exportAsync') &&
+            response.request().method() === 'GET'
+        );
 
-      await clickMetricAction(page, 'Export');
-      const response = await exportResponse;
-      expect(response.ok()).toBeTruthy();
-      // Verify exactly one export request was fired (no duplicate calls).
-      await expect.poll(() => exportRequestCount).toBe(1);
-      await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
-        timeout: 30000,
-      });
-      await page.locator('.csv-jobs-tray-launcher').click();
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
-      // Verify the export job appears in the tray. Parallel workers share the
-      // admin identity and may have their own active jobs; checking an exact
-      // count is fragile. Instead, assert that a tray item carrying the export
-      // label is visible — the exportRequestCount check above already guarantees
-      // exactly one export request was sent.
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
-      ).toBeVisible();
+        await clickMetricAction(page, 'Export');
+        const response = await exportResponse;
+        expect(response.status()).toBe(202);
+        // Verify exactly one export request was fired (no duplicate calls).
+        await expect.poll(() => exportRequestCount).toBe(1);
+        await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
+          timeout: 30000,
+        });
+        await page.locator('.csv-jobs-tray-launcher').click();
+        await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
+        // Verify the export job appears in the tray. Each test uses a dedicated
+        // user session so only this test's own job is visible — checking the
+        // label is sufficient.
+        await expect(
+          page
+            .locator('.csv-jobs-tray-item')
+            .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
+        ).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
     test('Admin imports a metric CSV through preview and async apply', async ({
-      page,
+      browser,
     }) => {
       test.slow();
-      const importedMetricName = `${fixtures.prefix}_imported`;
-      fixtures.metrics.push({
-        id: '',
-        name: importedMetricName,
-        fullyQualifiedName: importedMetricName,
-      });
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
+        const importedMetricName = `${fixtures.prefix}_imported`;
+        fixtures.metrics.push({
+          id: '',
+          name: importedMetricName,
+          fullyQualifiedName: importedMetricName,
+        });
 
-      await redirectToHomePage(page);
-      await waitForMetricsPage(page);
-      await openMetricActions(page);
-      await clickMetricAction(page, 'Import');
-      await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
+        await redirectToHomePage(page);
+        await waitForMetricsPage(page);
+        await openMetricActions(page);
+        await clickMetricAction(page, 'Import');
+        await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
 
-      const csvPath = createMetricCsvFile(importedMetricName);
-      await uploadMetricCsvAndWaitForPreview(page, csvPath);
-      await expect(
-        page.getByRole('gridcell', { exact: true, name: importedMetricName })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: /Start Import/i })
-      ).toBeVisible();
+        const csvPath = createMetricCsvFile(importedMetricName);
+        await uploadMetricCsvAndWaitForPreview(page, csvPath);
+        await expect(
+          page.getByRole('gridcell', { exact: true, name: importedMetricName })
+        ).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: /Start Import/i })
+        ).toBeVisible();
 
-      const applyResponse = waitForMetricImportResponse(page, false);
-      await page.getByRole('button', { name: /Start Import/i }).click();
-      await applyResponse;
-      await expectMetricImportStatus(page, {
-        processed: '1',
-        passed: '1',
-        failed: '0',
-      });
+        const applyResponse = waitForMetricImportResponse(page, false);
+        await page.getByRole('button', { name: /Start Import/i }).click();
+        await applyResponse;
+        await expectMetricImportStatus(page, {
+          processed: '1',
+          passed: '1',
+          failed: '0',
+        });
 
-      await expectImportedMetricComplexFields(importedMetricName);
+        await expectImportedMetricComplexFields(importedMetricName);
+      } finally {
+        await page.close();
+      }
     });
 
     test('Admin sees metric CSV validation failures for missing names and invalid references', async ({
@@ -1096,68 +1114,74 @@ test.describe(
     });
 
     test('Admin imports a CSV update for an existing metric', async ({
-      page,
+      browser,
     }) => {
       test.slow();
-      const existingMetricName = fixtures.metrics[1].name;
-      const updatedDisplayName = `${fixtures.prefix} Import Updated`;
-      const csv = createCsv([
-        [
-          existingMetricName,
-          updatedDisplayName,
-          'Metric updated from Playwright CSV',
-          'COUNT',
-          'COUNT',
-          '',
-          'MONTH',
-          'SQL',
-          'COUNT(order_id)',
-          fixtures.metrics[0].fullyQualifiedName,
-          fixtures.secondTag.fullyQualifiedName,
-          fixtures.nestedGlossaryTerm.fullyQualifiedName,
-          'Tier.Tier3',
-          `user:${fixtures.owner.name}`,
-          `team:${fixtures.reviewer.name}`,
-          fixtures.domain.fullyQualifiedName,
-          fixtures.dataProduct.fullyQualifiedName,
-          'Approved',
-          `${metricCustomPropertyName}:updated custom value`,
-        ],
-      ]);
-      const csvPath = test
-        .info()
-        .outputPath(`${existingMetricName}-update.csv`);
-      fs.writeFileSync(csvPath, csv);
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
+        const existingMetricName = fixtures.metrics[1].name;
+        const updatedDisplayName = `${fixtures.prefix} Import Updated`;
+        const csv = createCsv([
+          [
+            existingMetricName,
+            updatedDisplayName,
+            'Metric updated from Playwright CSV',
+            'COUNT',
+            'COUNT',
+            '',
+            'MONTH',
+            'SQL',
+            'COUNT(order_id)',
+            fixtures.metrics[0].fullyQualifiedName,
+            fixtures.secondTag.fullyQualifiedName,
+            fixtures.nestedGlossaryTerm.fullyQualifiedName,
+            'Tier.Tier3',
+            `user:${fixtures.owner.name}`,
+            `team:${fixtures.reviewer.name}`,
+            fixtures.domain.fullyQualifiedName,
+            fixtures.dataProduct.fullyQualifiedName,
+            'Approved',
+            `${metricCustomPropertyName}:updated custom value`,
+          ],
+        ]);
+        const csvPath = test
+          .info()
+          .outputPath(`${existingMetricName}-update.csv`);
+        fs.writeFileSync(csvPath, csv);
 
-      await redirectToHomePage(page);
-      await waitForMetricsPage(page);
-      await openMetricActions(page);
-      await clickMetricAction(page, 'Import');
-      await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
+        await redirectToHomePage(page);
+        await waitForMetricsPage(page);
+        await openMetricActions(page);
+        await clickMetricAction(page, 'Import');
+        await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
 
-      await uploadMetricCsvAndWaitForPreview(page, csvPath);
-      await expect(page.getByText(updatedDisplayName)).toBeVisible();
+        await uploadMetricCsvAndWaitForPreview(page, csvPath);
+        await expect(page.getByText(updatedDisplayName)).toBeVisible();
 
-      const applyResponse = waitForMetricImportResponse(page, false);
-      await page.getByRole('button', { name: /Start Import/i }).click();
-      const response = await applyResponse;
-      expect(response.ok()).toBeTruthy();
-      await expectMetricImportStatus(page, {
-        processed: '1',
-        passed: '1',
-        failed: '0',
-      });
+        const applyResponse = waitForMetricImportResponse(page, false);
+        await page.getByRole('button', { name: /Start Import/i }).click();
+        const response = await applyResponse;
+        expect(response.status()).toBe(200);
+        await expectMetricImportStatus(page, {
+          processed: '1',
+          passed: '1',
+          failed: '0',
+        });
 
-      const updatedMetric = await parseResponse<MetricResponse>(
-        await apiContext.get(
-          `/api/v1/metrics/name/${existingMetricName}?fields=extension&include=all`
-        ),
-        'fetch CSV-updated metric'
-      );
-      expect(updatedMetric.displayName).toBe(updatedDisplayName);
-      expect(updatedMetric.extension).toMatchObject({
-        [metricCustomPropertyName]: 'updated custom value',
-      });
+        const updatedMetric = await parseResponse<MetricResponse>(
+          await apiContext.get(
+            `/api/v1/metrics/name/${existingMetricName}?fields=extension&include=all`
+          ),
+          'fetch CSV-updated metric'
+        );
+        expect(updatedMetric.displayName).toBe(updatedDisplayName);
+        expect(updatedMetric.extension).toMatchObject({
+          [metricCustomPropertyName]: 'updated custom value',
+        });
+      } finally {
+        await page.close();
+      }
     });
 
     test('Admin bulk edits filtered metrics from the listing API without export jobs', async ({
@@ -1198,7 +1222,7 @@ test.describe(
       const updateResponse = waitForMetricImportResponse(page, false);
       await page.getByRole('button', { name: 'Update' }).click();
       const response = await updateResponse;
-      expect(response.ok()).toBeTruthy();
+      expect(response.status()).toBe(200);
       await page.waitForURL(/\/metrics/, { timeout: 90000 });
 
       const updatedMetric = await parseResponse<MetricResponse>(

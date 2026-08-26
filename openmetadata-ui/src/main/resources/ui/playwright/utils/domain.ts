@@ -63,29 +63,24 @@ const waitForSearchDebounce = async (page: Page) => {
   }
 };
 
-const clickAvailableWidgetAction = async (
-  addBtn: Locator,
-  editBtn: Locator
-) => {
-  await addBtn.or(editBtn).first().waitFor({ state: 'visible' });
-
-  if (await addBtn.isVisible()) {
-    await addBtn.click();
-
-    return;
-  }
-
-  await editBtn.click();
-};
+// A widget shows the add button when the value is unset and the edit button
+// once it is assigned. The caller knows which state the entity is in, so it
+// passes `isUpdate` and we open the exact button — click() auto-waits for it,
+// so there is no need to probe which of the two is currently rendered.
+const openWidgetEditor = (
+  page: Page,
+  addTestId: string,
+  editTestId: string,
+  isUpdate: boolean
+) => page.getByTestId(isUpdate ? editTestId : addTestId).click();
 
 export const addTierWidget = async (
   page: Page,
   tier: string,
-  endpoint: string
+  endpoint: string,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-tier');
-  const editBtn = page.getByTestId('edit-tier');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(page, 'add-tier', 'edit-tier', isUpdate);
 
   await waitForAllLoadersToDisappear(page);
 
@@ -116,11 +111,15 @@ export const addTierWidget = async (
 export const addCertificationWidget = async (
   page: Page,
   certification: TagClass,
-  endpoint: string
+  endpoint: string,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-certification');
-  const editBtn = page.getByTestId('edit-certification');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(
+    page,
+    'add-certification',
+    'edit-certification',
+    isUpdate
+  );
 
   await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
@@ -248,12 +247,10 @@ export const removeCertificationFromWidget = async (
 export const assignDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false
+  multiSelect = false,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
   await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
@@ -296,10 +293,8 @@ export const removeDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  // Removing implies a domain is already assigned, so the widget shows edit.
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
   await page
@@ -1398,11 +1393,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1412,11 +1409,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: subDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: subDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1511,11 +1510,13 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1676,6 +1677,20 @@ export const navigateToPortsTab = async (page: Page) => {
 
   const portsTab = page.getByTestId('input_output_ports');
   await portsTab.waitFor({ state: 'visible' });
+
+  // Already on the ports tab: clicking the active tab is a no-op that fires no
+  // /portsView request — waiting on that response would hang until the test
+  // timeout. The selected tab exposes `aria-selected` via its `role="tab"`.
+  const isActive = await page
+    .getByRole('tab', { selected: true })
+    .getByTestId('input_output_ports')
+    .isVisible();
+
+  if (isActive) {
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
 
   const portsViewResponse = page.waitForResponse((response) =>
     response.url().includes('/portsView')
@@ -2091,11 +2106,13 @@ export const assignDomainToEntity = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });

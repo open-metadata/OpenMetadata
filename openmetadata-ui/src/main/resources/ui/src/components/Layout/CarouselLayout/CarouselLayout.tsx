@@ -50,7 +50,7 @@ export const CarouselLayout = ({
   );
 
   return (
-    <Layout>
+    <Layout className="tw:bg-primary">
       <DocumentTitle title={pageTitle} />
       <Content className="p-md">
         <Row data-testid="signin-page" gutter={[48, 0]} wrap={false}>
