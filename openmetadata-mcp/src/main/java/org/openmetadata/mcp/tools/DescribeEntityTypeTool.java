@@ -12,23 +12,22 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.mcp.tools.CreatableEntityRegistry.CreatableType;
-import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /**
- * The type-specific half of {@code create_entity}'s contract, read from the generated request class
- * itself so it cannot drift from what the create path accepts.
+ * The type-specific half of {@code create_entity}'s contract, read from the entity class registered
+ * by its repository so it cannot drift from what the create path accepts.
  *
  * <p>This is what makes one create tool cheaper than eight: the fields only one type uses no longer
  * have to sit in every client's tool list on every request, and are fetched only by a caller that
  * is actually creating that type.
  *
- * <p>No authorization: this returns the shape of a public API request class, the same schema shipped
- * in the product's JSON schemas. It reads no entity and reveals no instance data.
+ * <p>No authorization: this returns the shape of a public entity schema. It reads no entity and
+ * reveals no instance data.
  */
 public class DescribeEntityTypeTool implements McpTool {
 
@@ -46,26 +45,39 @@ public class DescribeEntityTypeTool implements McpTool {
 
   private static final Set<String> SHARED = Set.copyOf(SHARED_FIELDS);
 
-  /** Settable on the request class, but decided by the server rather than the caller. */
-  private static final Set<String> SERVER_OWNED = Set.of("provider", "fullyQualifiedName");
+  /** Entity fields decided by the persistence lifecycle rather than the caller. */
+  private static final Set<String> SERVER_OWNED =
+      Set.of(
+          "id",
+          "fullyQualifiedName",
+          "version",
+          "updatedAt",
+          "updatedBy",
+          "impersonatedBy",
+          "href",
+          "changeDescription",
+          "incrementalChangeDescription",
+          "deleted",
+          "provider",
+          "entityReference");
 
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     String requested = CommonUtils.requireNonBlank(params.get("entityType"), "entityType");
-    CreatableType<?, ?> type = CreatableEntityRegistry.require(requested);
+    EntityCreationSpec type = EntityCreationSpec.resolve(requested);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("entityType", type.entityType());
     result.put("sharedParameters", sharedFor(type));
     // Beyond 'name', which every type requires. Some of these are shared parameters and some are
     // attributes, so the caller is told the set rather than left to infer it from the two lists.
-    result.put("alsoRequired", type.required());
+    result.put("alsoRequired", requiredFields(type));
     result.put("attributes", describe(type));
     return result;
   }
 
   /** The attribute names this type accepts, for validating a caller's {@code attributes} map. */
-  static Set<String> attributeNames(CreatableType<?, ?> type) {
+  static Set<String> attributeNames(EntityCreationSpec type) {
     Set<String> names = new LinkedHashSet<>();
     properties(type).forEach(property -> names.add(property.getName()));
     return names;
@@ -75,7 +87,7 @@ public class DescribeEntityTypeTool implements McpTool {
    * The values {@code field} accepts, or empty when it is not an enum. Lets a rejected value be
    * explained with the alternatives instead of the binding library's own wording.
    */
-  static List<String> allowedValuesOf(CreatableType<?, ?> type, String field) {
+  static List<String> allowedValuesOf(EntityCreationSpec type, String field) {
     return properties(type).stream()
         .filter(property -> property.getName().equals(field))
         .findFirst()
@@ -83,7 +95,7 @@ public class DescribeEntityTypeTool implements McpTool {
         .orElseGet(List::of);
   }
 
-  private static List<Map<String, Object>> describe(CreatableType<?, ?> type) {
+  private static List<Map<String, Object>> describe(EntityCreationSpec type) {
     List<Map<String, Object>> attributes = new ArrayList<>();
     properties(type).forEach(property -> attributes.add(describeOne(property)));
     return attributes;
@@ -111,7 +123,7 @@ public class DescribeEntityTypeTool implements McpTool {
    * Every writable property except the ones {@code create_entity} already exposes at the top level,
    * so the caller is never told to put a shared field in {@code attributes}.
    */
-  private static List<BeanPropertyDefinition> properties(CreatableType<?, ?> type) {
+  private static List<BeanPropertyDefinition> properties(EntityCreationSpec type) {
     return bindable(type).stream()
         .filter(property -> !SHARED.contains(property.getName()))
         .sorted((left, right) -> left.getName().compareTo(right.getName()))
@@ -123,51 +135,47 @@ public class DescribeEntityTypeTool implements McpTool {
    * type made a caller assemble a request from the advertised schema that {@code create_entity}
    * then rejected - a classification takes neither {@code tags} nor {@code extension}.
    */
-  static List<String> sharedFor(CreatableType<?, ?> type) {
+  static List<String> sharedFor(EntityCreationSpec type) {
     Set<String> bindable = bindableNames(type);
     return SHARED_FIELDS.stream().filter(bindable::contains).toList();
   }
 
   /** The names this type can actually be given a value for, shared parameters included. */
-  static Set<String> bindableNames(CreatableType<?, ?> type) {
+  static Set<String> bindableNames(EntityCreationSpec type) {
     Set<String> names = new LinkedHashSet<>();
     bindable(type).forEach(property -> names.add(property.getName()));
     return names;
   }
 
-  /**
-   * The properties the request class itself declares.
-   *
-   * <p>{@link org.openmetadata.schema.CreateEntity} carries defaults that Jackson introspects as
-   * properties of every implementor, and neither kind can hold a value: a getter with no setter
-   * ({@code lifeCycle}) makes the bind fail outright, and a {@code default} no-op setter ({@code
-   * tags}, {@code domains}, {@code reviewers}, {@code dataProducts}) accepts the value and discards
-   * it. Advertising either is worse than omitting it - the first makes {@code describe_entity_type}
-   * recommend a field {@code create_entity} then rejects, the second reports success on a write
-   * that did not happen.
-   *
-   * <p>{@code provider} and {@code fullyQualifiedName} are real and settable but not the caller's
-   * to set: the mappers overwrite the name, and {@code provider: system} produces an entity nobody
-   * can ever delete. REST accepts both, so this is deliberately narrower than parity - an LLM
-   * should not be handed them in a list of things to fill in.
-   */
-  private static List<BeanPropertyDefinition> bindable(CreatableType<?, ?> type) {
-    ObjectMapper mapper = JsonUtils.getObjectMapper();
-    JavaType javaType = mapper.constructType(type.requestClass());
-    BeanDescription description = mapper.getSerializationConfig().introspect(javaType);
-    return description.findProperties().stream()
-        .filter(property -> !SERVER_OWNED.contains(property.getName()))
-        .filter(DescribeEntityTypeTool::declaredByRequestClass)
+  /** Required caller-owned fields beyond {@code name}. */
+  static List<String> requiredFields(EntityCreationSpec type) {
+    return bindable(type).stream()
+        .filter(DescribeEntityTypeTool::isRequired)
+        .map(BeanPropertyDefinition::getName)
+        .filter(name -> !"name".equals(name))
+        .filter(name -> !type.hasMcpDefault(name))
+        .sorted()
         .toList();
   }
 
-  private static boolean declaredByRequestClass(BeanPropertyDefinition property) {
-    AnnotatedMember mutator = property.getMutator();
-    return mutator != null && !CreateEntity.class.equals(mutator.getDeclaringClass());
+  /**
+   * The writable entity properties after removing fields owned by the repository lifecycle.
+   */
+  private static List<BeanPropertyDefinition> bindable(EntityCreationSpec type) {
+    ObjectMapper mapper = JsonUtils.getObjectMapper();
+    JavaType javaType = mapper.constructType(type.entityClass());
+    BeanDescription description = mapper.getSerializationConfig().introspect(javaType);
+    return description.findProperties().stream()
+        .filter(property -> !SERVER_OWNED.contains(property.getName()))
+        .filter(property -> !type.isMcpOwned(property.getName()))
+        .filter(property -> property.getMutator() != null)
+        .filter(
+            property -> !EntityInterface.class.equals(property.getMutator().getDeclaringClass()))
+        .toList();
   }
 
   /**
-   * Generated request classes carry {@code @NotNull} rather than {@code @JsonProperty(required)},
+   * Generated entity classes carry {@code @NotNull} rather than {@code @JsonProperty(required)},
    * so both are consulted - reading only Jackson's flag reports every field as optional.
    */
   private static boolean isRequired(BeanPropertyDefinition property) {

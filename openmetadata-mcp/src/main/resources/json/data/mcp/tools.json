@@ -473,23 +473,13 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Create one governance or knowledge entity: glossary, glossaryTerm, classification, tag, domain, dataProduct, metric or contextMemory. Fields every type shares are top-level parameters; fields only one type accepts go in 'attributes'. When a type's requirements are not already known, call describe_entity_type first - it returns that type's attributes with their allowed values and which are required. An unknown attribute is rejected with the accepted names for that type and nothing is created, so one retry is enough. An owner or reviewer name that matches no user or team is also rejected rather than dropped. Creating with a name that is already taken UPDATES that entity in place and needs edit rights on it as well as create rights. To create a test case use create_test_case; for lineage use create_lineage. Writes take effect immediately - confirm the target with the user before calling.",
+      "description": "Create an entity through the repository registered for its entityType. Fields every type shares are top-level parameters; fields specific to the entity go in 'attributes'. Call describe_entity_type first when the requirements are not known. Reference-valued attributes use EntityReference objects containing the target type and id; find those entities first rather than guessing ids. Unknown entity types and attributes are rejected before anything is written. Creating with a name that is already taken UPDATES that entity in place and needs edit rights as well as create rights. To create a test case use create_test_case; for lineage use create_lineage. Writes take effect immediately - confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "enum": [
-              "glossary",
-              "glossaryTerm",
-              "classification",
-              "tag",
-              "domain",
-              "dataProduct",
-              "metric",
-              "contextMemory"
-            ],
-            "description": "Type of entity to create."
+            "description": "Registered entity type to create, e.g. 'glossary', 'glossaryTerm', 'domain', 'metric', 'team' or 'chart'."
           },
           "name": {
             "type": "string",
@@ -537,7 +527,7 @@
           },
           "attributes": {
             "type": "object",
-            "description": "Fields specific to this entityType, e.g. {'glossary': 'Finance'} for a glossaryTerm, {'classification': 'PII'} for a tag, or {'domainType': 'Aggregate'} for a domain. Names match the entity's own schema: a glossary term's parent is 'parent' (not 'parentTerm'), and a metric's expression is the object 'metricExpression': {'language': ..., 'code': ...}. Get the exact schema from describe_entity_type."
+            "description": "Fields specific to this entityType. Values match the entity schema returned by describe_entity_type. EntityReference fields use objects such as {'type': 'glossary', 'id': '<uuid>'}; arrays of references use arrays of those objects."
           }
         },
         "required": [
@@ -561,17 +551,7 @@
         "properties": {
           "entityType": {
             "type": "string",
-            "enum": [
-              "glossary",
-              "glossaryTerm",
-              "classification",
-              "tag",
-              "domain",
-              "dataProduct",
-              "metric",
-              "contextMemory"
-            ],
-            "description": "Type whose attribute schema to return."
+            "description": "Registered entity type whose create attributes to return."
           }
         },
         "required": [
