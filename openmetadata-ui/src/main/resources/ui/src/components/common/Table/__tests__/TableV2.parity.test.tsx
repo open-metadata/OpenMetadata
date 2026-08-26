@@ -41,6 +41,12 @@ const coreAdapter: ParityAdapter = {
   clickNextPage: () => {
     fireEvent.click(screen.getByTestId('next'));
   },
+  getTextAlign: (el) =>
+    el.className.includes('tw:text-right')
+      ? 'right'
+      : el.className.includes('tw:text-center')
+      ? 'center'
+      : '',
   isBordered: () =>
     (document.querySelector('table') as HTMLElement).className.includes(
       'border-secondary'

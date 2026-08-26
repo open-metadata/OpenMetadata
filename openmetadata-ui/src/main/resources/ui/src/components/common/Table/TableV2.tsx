@@ -334,6 +334,20 @@ const BORDERED_CLASSES = [
   'tw:[&_td]:border-r tw:[&_td]:border-secondary tw:[&_td:last-child]:border-r-0',
 ].join(' ');
 
+/**
+ * AntD aligns a column's header and its cells together from `align`. Nothing
+ * read it here, so a column asking to be right-aligned got right-aligned cells
+ * only where the call site had also styled them by hand — leaving the header
+ * on the other side of the table from its values.
+ */
+const ALIGN_CLASS: Record<string, string> = {
+  center: 'tw:text-center',
+  right: 'tw:text-right',
+};
+
+const getAlignClass = (align?: string) =>
+  align ? ALIGN_CLASS[align] : undefined;
+
 const COLUMN_ID_PREFIX = 'col:';
 
 /**
@@ -1171,7 +1185,10 @@ const TableV2 = <T extends object>(
                   return (
                     <UntitledTable.Head
                       allowsSorting={!!colType.sorter}
-                      className="tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary"
+                      className={classNames(
+                        'tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary',
+                        getAlignClass(colType.align)
+                      )}
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
@@ -1340,6 +1357,7 @@ const TableV2 = <T extends object>(
                               colType.ellipsis && 'tw:overflow-hidden',
                               rest.cellClassName ??
                                 'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top',
+                              getAlignClass(colType.align),
                               'tw:group-data-[dragging]:opacity-40',
                               'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
                               'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
