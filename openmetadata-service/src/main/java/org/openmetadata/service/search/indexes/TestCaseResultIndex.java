@@ -95,6 +95,9 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
       Map<String, Object> testDefinitionMap = JsonUtils.getMap(testDefinition);
       // Dimension filters and aggregations read the denormalized test definition, so the dimension
       // set on the test case — a custom one or an override of the definition default — wins here.
+      // The dimension is resolved when the result document is indexed and changing it on the test
+      // case does not rewrite the documents of results already indexed: historical results keep the
+      // dimension they were recorded under. That is intentional for this iteration.
       if (!nullOrEmpty(testCase.getDataQualityDimension())) {
         testDefinitionMap.put("dataQualityDimension", testCase.getDataQualityDimension());
       }
