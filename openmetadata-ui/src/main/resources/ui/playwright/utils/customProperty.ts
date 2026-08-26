@@ -36,8 +36,11 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
-import { CODE_EDITOR, CODE_EDITOR_CONTENT } from './codeEditor';
-import { typeInCodeEditor } from './codeEditor';
+import {
+  CODE_EDITOR,
+  CODE_EDITOR_CONTENT,
+  typeInCodeEditor,
+} from './codeEditor';
 
 export enum CustomPropertyType {
   STRING = 'String',
