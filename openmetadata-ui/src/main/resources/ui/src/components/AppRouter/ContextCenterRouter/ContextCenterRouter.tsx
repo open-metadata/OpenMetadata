@@ -74,12 +74,12 @@ const ContextCenterRouter = () => {
   return (
     <Routes>
       <Route
-        element={<Navigate replace to={ROUTES.CONTEXT_CENTER_DASHBOARD} />}
+        element={<Navigate replace to={ROUTES.CONTEXT_CENTER_OVERVIEW} />}
         path="/"
       />
       <Route
         element={<ContextCenterDashboardPage />}
-        path={ROUTES.CONTEXT_CENTER_DASHBOARD.replace(
+        path={ROUTES.CONTEXT_CENTER_OVERVIEW.replace(
           ROUTES.CONTEXT_CENTER,
           ''
         )}
