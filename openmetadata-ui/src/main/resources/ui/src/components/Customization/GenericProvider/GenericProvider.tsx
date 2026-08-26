@@ -71,6 +71,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   customizedPage,
   muiTags = false,
   columnFqn,
+  activeTab,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -82,10 +83,19 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const location = useLocation();
   const navigate = useNavigate();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: routeTab } = useRequiredParams<{ tab: EntityTabs }>();
+  // `routeTab` is undefined on an entity's landing URL (no `:tab` segment) and always
+  // undefined in the domain tree view, so it cannot be the sole source of truth for the
+  // layout -- falling back to the first customized tab renders another tab's widgets.
+  const currentTab = activeTab ?? routeTab;
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
-    getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
+    getLayoutFromCustomizedPage(
+      pageType,
+      currentTab,
+      customizedPage,
+      isVersionView
+    )
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
@@ -177,9 +187,14 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   useEffect(() => {
     setLayout(
-      getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
+      getLayoutFromCustomizedPage(
+        pageType,
+        currentTab,
+        customizedPage,
+        isVersionView
+      )
     );
-  }, [customizedPage, tab, pageType, isVersionView]);
+  }, [customizedPage, currentTab, pageType, isVersionView]);
 
   const onThreadPanelClose = useCallback(() => {
     setThreadLink('');
@@ -239,7 +254,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
       // Update URL to include column FQN if the column has a fullyQualifiedName
       if (columnFqn && data.fullyQualifiedName) {
-        const newPath = getEntityDetailsPath(type, columnFqn, tab);
+        const newPath = getEntityDetailsPath(type, columnFqn, routeTab);
 
         // Only navigate if the path is different from current path to avoid loops
         if (location.pathname !== newPath) {
@@ -250,7 +265,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [
       data?.fullyQualifiedName,
       type,
-      tab,
+      routeTab,
       navigate,
       location.pathname,
       selectedColumn?.fullyQualifiedName,
@@ -262,7 +277,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
     // Update URL to remove column FQN
     if (data?.fullyQualifiedName) {
-      const newPath = getEntityDetailsPath(type, data.fullyQualifiedName, tab);
+      const newPath = getEntityDetailsPath(
+        type,
+        data.fullyQualifiedName,
+        routeTab
+      );
       navigate(newPath, { replace: true });
     } else if (location.hash) {
       // Fallback: just remove hash if no FQN available
@@ -271,7 +290,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         { replace: true }
       );
     }
-  }, [data?.fullyQualifiedName, type, tab, location, navigate]);
+  }, [data?.fullyQualifiedName, type, routeTab, location, navigate]);
 
   // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(
@@ -397,7 +416,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   useEffect(() => {
     // on unmount remove filterKeys
     return () => setFilteredKeys([]);
-  }, [tab]);
+  }, [currentTab]);
 
   const values = useMemo(
     () => ({

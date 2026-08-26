@@ -305,6 +305,56 @@ describe('MyDataPage component', () => {
     ).toBeInTheDocument();
   });
 
+  it('MyDataPage should render a customized layout after a null legacy page', async () => {
+    (getDocumentByFQN as jest.Mock).mockResolvedValueOnce({
+      ...mockDocumentData,
+      data: {
+        pages: [null, ...mockDocumentData.data.pages],
+      },
+    });
+
+    render(<MyDataPage />);
+
+    expect(
+      await screen.findByText('KnowledgePanel.ActivityFeed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['not an array', { invalid: true }],
+  ])(
+    'MyDataPage should use the default layout when the customized layout is %s',
+    async (_description, invalidLayout) => {
+      const landingPage =
+        invalidLayout === undefined
+          ? { pageType: PageType.LandingPage }
+          : { pageType: PageType.LandingPage, layout: invalidLayout };
+
+      (getDocumentByFQN as jest.Mock).mockResolvedValueOnce({
+        ...mockDocumentData,
+        data: { pages: [landingPage] },
+      });
+
+      render(<MyDataPage />);
+
+      expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
+      expect(
+        await screen.findByText('KnowledgePanel.TotalAssets')
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText('KnowledgePanel.MyData')
+      ).toBeInTheDocument();
+    }
+  );
+
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
     mockSelectedPersona = null;
     render(<MyDataPage />);

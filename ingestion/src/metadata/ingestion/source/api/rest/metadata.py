@@ -284,13 +284,18 @@ class RestSource(ApiServiceSource):
         """fetch request schema - supports both OpenAPI 3.0 and Swagger 2.0"""
         try:
             # Try OpenAPI 3.0 format first (requestBody)
-            schema_ref = (
+            schema = (
                 info.get("requestBody", {})
                 .get("content", {})
                 .get("application/json", {})
                 .get("schema", {})
-                .get("$ref")
             )
+            schema_ref = schema.get("$ref")
+            if (
+                not schema_ref
+                and self._parse_openapi_type(schema.get("type")) == DataTypeTopic.ARRAY
+            ):
+                schema_ref = schema.get("items", {}).get("$ref")
 
             if schema_ref:
                 return APISchema(schemaFields=self.process_schema_fields(schema_ref))
@@ -299,7 +304,14 @@ class RestSource(ApiServiceSource):
             parameters = info.get("parameters", [])
             for param in parameters:
                 if param.get("in") == "body" and "schema" in param:
-                    schema_ref = param["schema"].get("$ref")
+                    schema = param["schema"]
+                    schema_ref = schema.get("$ref")
+                    if (
+                        not schema_ref
+                        and self._parse_openapi_type(schema.get("type"))
+                        == DataTypeTopic.ARRAY
+                    ):
+                        schema_ref = schema.get("items", {}).get("$ref")
                     if schema_ref:
                         return APISchema(
                             schemaFields=self.process_schema_fields(schema_ref)
@@ -356,11 +368,22 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error resolving parameter reference: {err}")
             return None
 
-    def _parse_openapi_type(self, openapi_type: Optional[str]) -> DataTypeTopic:
+    def _parse_openapi_type(self, openapi_type: Optional[object]) -> DataTypeTopic:
         """
         Parse OpenAPI type string to DataTypeTopic enum.
         Shared type conversion logic used across the codebase.
         """
+        if isinstance(openapi_type, list):
+            non_null_types = [
+                item
+                for item in openapi_type
+                if isinstance(item, str) and item.lower() != "null"
+            ]
+            openapi_type = non_null_types[0] if len(non_null_types) == 1 else None
+
+        if not isinstance(openapi_type, str):
+            return DataTypeTopic.UNKNOWN
+
         if not openapi_type:
             return DataTypeTopic.UNKNOWN
 
@@ -504,6 +527,18 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error while parsing response schema: {err}")
         return None
 
+    def _resolve_schema_ref(self, schema_ref: str) -> Optional[dict]:
+        schema_name = schema_ref.rsplit("/", maxsplit=1)[-1]
+        if self.json_response.get("components"):
+            return (
+                self.json_response.get("components", {})
+                .get("schemas", {})
+                .get(schema_name)
+            )
+        if self.json_response.get("definitions"):
+            return self.json_response.get("definitions", {}).get(schema_name)
+        return None
+
     def process_schema_fields(
         self, schema_ref: str, parent_refs: Optional[List[str]] = None
     ) -> Optional[List[FieldModel]]:
@@ -512,20 +547,7 @@ class RestSource(ApiServiceSource):
                 parent_refs = []
             schema_name = schema_ref.split("/")[-1]
 
-            # Support both OpenAPI 3.0 (components.schemas) and Swagger 2.0 (definitions)
-            schema_fields = None
-            if self.json_response.get("components"):
-                # OpenAPI 3.0: components.schemas.{SchemaName}
-                schema_fields = (
-                    self.json_response.get("components", {})
-                    .get("schemas", {})
-                    .get(schema_name)
-                )
-            elif self.json_response.get("definitions"):
-                # Swagger 2.0: definitions.{SchemaName}
-                schema_fields = self.json_response.get("definitions", {}).get(
-                    schema_name
-                )
+            schema_fields = self._resolve_schema_ref(schema_ref)
 
             if not schema_fields:
                 logger.warning(
@@ -534,6 +556,16 @@ class RestSource(ApiServiceSource):
                 return None
 
             parent_refs.append(schema_ref)
+            if (
+                self._parse_openapi_type(schema_fields.get("type"))
+                == DataTypeTopic.ARRAY
+            ):
+                items_ref = schema_fields.get("items", {}).get("$ref")
+                if items_ref and items_ref not in parent_refs:
+                    fetched_fields = self.process_schema_fields(items_ref, parent_refs)
+                    parent_refs.pop()
+                    return fetched_fields
+
             fetched_fields = []
             for key, val in schema_fields.get("properties", {}).items():
                 dtype = val.get("type")
@@ -606,7 +638,8 @@ class RestSource(ApiServiceSource):
                 parent_refs.pop()
             return fetched_fields
         except Exception as err:
-            logger.warning(f"Error while processing schema fields: {err}")
+            warning = f"Error while processing schema fields: {err}"
+            logger.warning(warning)
             if parent_refs and (schema_ref in parent_refs):
                 parent_refs.pop()
                 logger.debug(
