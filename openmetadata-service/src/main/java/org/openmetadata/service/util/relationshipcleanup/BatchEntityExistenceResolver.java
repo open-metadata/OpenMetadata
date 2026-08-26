@@ -60,7 +60,8 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
   /**
    * Resolves the existence of both endpoints of every relationship in the batch using one bulk
    * query per entity type. Endpoints already cached and entity types without a regular repository
-   * (time series, threads) are skipped here and resolved lazily by {@link #exists(UUID, String)}.
+   * (time series, conversations, threads) are skipped here and resolved lazily by {@link
+   * #exists(UUID, String)}.
    */
   public void prefetch(List<CollectionDAO.EntityRelationshipObject> batch) {
     Map<String, Set<UUID>> idsByType = collectRegularEntityIds(batch);
@@ -142,9 +143,26 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
       result = existsInEntityRepository(entityId, entityType);
     } else if (entityTimeSeriesRepositories.containsKey(entityType)) {
       result = existsInTimeSeriesRepository(entityId, entityType);
+    } else if (Entity.CONVERSATION.equals(entityType)) {
+      result = existsInConversationRepository(entityId);
     } else if (Entity.THREAD.equals(entityType)) {
       result = false;
     } else {
+      result = true;
+    }
+    return result;
+  }
+
+  private boolean existsInConversationRepository(UUID entityId) {
+    boolean result;
+    try {
+      result = Entity.getConversationRepository().exists(entityId);
+    } catch (Exception ex) {
+      LOG.debug(
+          "Entity {}:{} existence check failed: {}",
+          Entity.CONVERSATION,
+          entityId,
+          ex.getMessage());
       result = true;
     }
     return result;

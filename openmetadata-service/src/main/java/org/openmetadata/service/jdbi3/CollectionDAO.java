@@ -3192,6 +3192,9 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM conversation_entity WHERE id = :id")
     String findById(@Bind("id") String id);
 
+    @SqlQuery("SELECT EXISTS (SELECT 1 FROM conversation_entity WHERE id = :id)")
+    boolean exists(@Bind("id") String id);
+
     @SqlQuery("SELECT json FROM conversation_entity WHERE id = :id FOR UPDATE")
     String findByIdForUpdate(@Bind("id") String id);
 

@@ -205,6 +205,10 @@ public class ConversationRepository {
     return withHref(uriInfo, conversation);
   }
 
+  public boolean exists(UUID conversationId) {
+    return conversationDAO.exists(conversationId.toString());
+  }
+
   public Conversation patch(
       UriInfo uriInfo,
       SecurityContext securityContext,
