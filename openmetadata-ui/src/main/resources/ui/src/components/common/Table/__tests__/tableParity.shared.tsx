@@ -492,6 +492,29 @@ export const runTableParitySuite = (
     });
   });
 
+  describe(`${suiteName} — table title`, () => {
+    it('renders the title slot above the table', () => {
+      renderTable({ title: () => <button>Delete all</button> });
+
+      expect(
+        screen.getByRole('button', { name: 'Delete all' })
+      ).toBeInTheDocument();
+    });
+
+    it('hands the title the rows currently on screen', () => {
+      const title = jest.fn().mockReturnValue(null);
+      renderTable({ title });
+
+      expect(title).toHaveBeenCalledWith(PARITY_ROWS);
+    });
+
+    it('renders nothing extra without a title', () => {
+      renderTable({});
+
+      expect(screen.queryByRole('button', { name: 'Delete all' })).toBeNull();
+    });
+  });
+
   describe(`${suiteName} — bordered`, () => {
     it('draws the grid when bordered is set', () => {
       renderTable({ bordered: true });

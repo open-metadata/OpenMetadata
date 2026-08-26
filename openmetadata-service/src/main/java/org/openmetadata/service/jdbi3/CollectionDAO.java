@@ -1823,6 +1823,19 @@ public interface CollectionDAO {
     default void deleteAllBatch(List<String> ids) {
       EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
     }
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>) AND jsonSchema = :jsonSchema")
+    void deleteByJsonSchemaBatchInternal(
+        @BindList("ids") List<String> ids, @Bind("jsonSchema") String jsonSchema);
+
+    /**
+     * Batch-delete only the rows of a given jsonSchema for the ids -- one statement per chunk. Used
+     * to clear an entity's own custom-property rows ("customFieldSchema") without touching its
+     * columnExtension or version rows the way deleteAllBatch() would.
+     */
+    default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
+      EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
+    }
   }
 
   class EntityVersionPair {
