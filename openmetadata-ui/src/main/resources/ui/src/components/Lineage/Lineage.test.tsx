@@ -449,7 +449,10 @@ describe('Lineage Component', () => {
       fireEvent(reactFlow, dragOverEvent);
 
       expect(preventDefaultSpy).toHaveBeenCalled();
-      expect((dragOverEvent as any).dataTransfer.dropEffect).toBe('move');
+      expect(
+        (dragOverEvent as unknown as { dataTransfer: { dropEffect: string } })
+          .dataTransfer.dropEffect
+      ).toBe('move');
     });
 
     it('should handle node drop event', () => {
