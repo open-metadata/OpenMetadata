@@ -34,7 +34,7 @@
 
   &.lineage-path-highlight > .lineage-scene-layer-node {
     border-color: @primary-color;
-    box-shadow: 0 0 0 1px @primary-color, 0 2px 8px rgba(16, 24, 40, 0.12);
+    box-shadow: 0 0 0 1px @primary-color, 0 2px 8px var(--om-legacy-color-16-24-40-0-12);
   }
 }
 
@@ -45,8 +45,8 @@
   border: 1px solid @lineage-border;
   border-radius: var(--om-radius-10);
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease,
-    opacity 0.15s ease;
+  transition: border-color var(--om-duration-150) ease, box-shadow var(--om-duration-150) ease,
+    opacity var(--om-duration-150) ease;
 
   &.lineage-path-highlight {
     border-color: @primary-color;
@@ -56,14 +56,14 @@
   &.lineage-scene-layer-node {
     min-height: 66px;
     border-color: @grey-200;
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     background: @white;
-    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+    box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
 
     &.lineage-path-highlight,
     &.custom-node-header-active {
       border-color: @primary-color;
-      box-shadow: 0 0 0 1px @primary-color, 0 2px 8px rgba(16, 24, 40, 0.12);
+      box-shadow: 0 0 0 1px @primary-color, 0 2px 8px var(--om-legacy-color-16-24-40-0-12);
     }
 
     .lineage-node-content {
@@ -75,7 +75,7 @@
         width: 22px;
         height: 22px;
         border: none;
-        border-radius: 6px;
+        border-radius: var(--om-radius-md);
         background: @primary-1;
         box-shadow: none;
         transform: translateY(-50%);
@@ -88,14 +88,14 @@
       }
 
       .label-container {
-        border-radius: 12px;
+        border-radius: var(--om-radius-xl);
       }
     }
 
     .custom-node-label-container {
       .entity-label-container {
         min-height: 64px;
-        padding: 10px 46px 10px 14px;
+        padding: var(--om-space-10) var(--om-space-46) var(--om-space-10) var(--om-space-14);
 
         .entity-service-icon {
           display: inline-flex;
@@ -103,7 +103,7 @@
           justify-content: center;
           width: 22px;
           height: 22px;
-          margin-right: 10px;
+          margin-right: var(--om-space-10);
 
           svg,
           img {
@@ -117,8 +117,8 @@
           width: auto !important;
           max-width: 170px;
           color: @grey-900;
-          font-size: 14px;
-          font-weight: 600;
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-semibold);
           line-height: 18px;
         }
 
@@ -127,7 +127,7 @@
 
           .lineage-breadcrumb-item {
             max-width: 72px;
-            font-size: 11.5px;
+            font-size: var(--om-font-size-11_5);
             line-height: 16px;
           }
         }
@@ -135,7 +135,7 @@
         .lineage-service-subtitle {
           display: block;
           color: @grey-600;
-          font-size: 11.5px;
+          font-size: var(--om-font-size-11_5);
           line-height: 16px;
         }
       }
@@ -186,7 +186,7 @@
       position: absolute;
       top: 6px;
       right: 6px;
-      z-index: 2;
+      z-index: var(--om-z-2);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -194,13 +194,13 @@
       height: 24px;
       padding: 0;
       border: 1px solid @grey-200;
-      border-radius: 6px;
+      border-radius: var(--om-radius-md);
       background: @primary-1;
       color: @primary-color;
       cursor: pointer;
       opacity: 0;
       box-shadow: @box-shadow-base;
-      transition: opacity 0.15s ease, background-color 0.15s ease;
+      transition: opacity var(--om-duration-150) ease, background-color var(--om-duration-150) ease;
 
       svg {
         width: 14px;

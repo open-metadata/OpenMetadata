@@ -112,6 +112,85 @@ class GetLineageToolTest {
   }
 
   @Test
+  void omitsSqlByDefaultButFlagsThatItExists() {
+    String sql = "SELECT a, b FROM upstream_table";
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(
+                singleUpstreamEdge(sql, List.of()), new GetLineageTool.EdgeOptions(false, false)));
+    Map<String, Object> edge = firstUpstreamEdge(response);
+
+    assertNull(edge.get("sqlQuery"), "SQL must be omitted unless includeSql is set");
+    assertEquals(
+        Boolean.TRUE,
+        edge.get("hasSql"),
+        "an edge whose SQL was withheld must say so, or the caller cannot know to ask for it");
+  }
+
+  @Test
+  void returnsSqlWhenExplicitlyRequested() {
+    String sql = "SELECT a, b FROM upstream_table";
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(
+                singleUpstreamEdge(sql, List.of()), new GetLineageTool.EdgeOptions(false, true)));
+    Map<String, Object> edge = firstUpstreamEdge(response);
+
+    assertEquals(sql, edge.get("sqlQuery"), "opting in must return the SQL in full");
+    assertEquals(Boolean.TRUE, edge.get("hasSql"));
+  }
+
+  @Test
+  void edgeWithoutSqlCarriesNoHasSqlFlag() {
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(
+                singleUpstreamEdge(null, List.of()), new GetLineageTool.EdgeOptions(false, false)));
+    Map<String, Object> edge = firstUpstreamEdge(response);
+
+    assertNull(edge.get("sqlQuery"));
+    assertNull(edge.get("hasSql"), "absent SQL must not be advertised as withheld");
+  }
+
+  @Test
+  void withholdingSqlIsWhereTheSavingComesFrom() {
+    // A live 18-edge graph measured 33,038 tokens, 93.8% of it sqlQuery. Guard the property that
+    // makes that saving real: the default response must be a small fraction of the opted-in one.
+    String sql = "SELECT col FROM t WHERE x = 1 -- padding padding padding\n".repeat(40);
+    int withSql =
+        McpResponseTrim.serializedLength(
+            GetLineageTool.enforceSizeBudget(
+                GetLineageTool.toSlim(
+                    singleUpstreamEdge(sql, List.of()),
+                    new GetLineageTool.EdgeOptions(false, true))));
+    int withoutSql =
+        McpResponseTrim.serializedLength(
+            GetLineageTool.enforceSizeBudget(
+                GetLineageTool.toSlim(
+                    singleUpstreamEdge(sql, List.of()),
+                    new GetLineageTool.EdgeOptions(false, false))));
+
+    assertTrue(
+        withoutSql * 5 < withSql,
+        "default response must be under a fifth of the SQL-bearing one, got "
+            + withoutSql
+            + " vs "
+            + withSql);
+  }
+
+  @Test
+  void depthZeroIsHonouredNotClampedToOne() {
+    assertEquals(
+        0,
+        GetLineageTool.clampDepthForTest(0),
+        "downstreamDepth=0 means 'omit this direction'; clamping it to 1 returns edges the caller "
+            + "explicitly asked to skip");
+    assertEquals(1, GetLineageTool.clampDepthForTest(1));
+    assertEquals(10, GetLineageTool.clampDepthForTest(99), "depth stays capped at MAX_DEPTH");
+    assertEquals(0, GetLineageTool.clampDepthForTest(-5), "a negative depth means none, not all");
+  }
+
+  @Test
   void includesColumnLineageWhenRequested() {
     ColumnLineage column =
         new ColumnLineage()
@@ -296,5 +375,19 @@ class GetLineageToolTest {
               .withToColumn("db.public.orders.derived_column_with_a_long_name_" + i));
     }
     return columns;
+  }
+
+  @Test
+  void lineageAlwaysStatesWhetherTheGraphIsComplete() {
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), false));
+
+    assertEquals(
+        Boolean.FALSE,
+        response.get("edgesTruncated"),
+        "a complete graph must say so - silence is what forced a caller to probe with extra calls");
+    assertEquals(1, response.get("totalEdges"));
+    assertEquals(1, response.get("returnedEdges"));
   }
 }

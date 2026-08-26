@@ -2093,6 +2093,7 @@ const LineageMapCanvas = ({
       className="lineage-map-canvas tw:relative tw:h-full tw:min-h-[640px] tw:w-full tw:overflow-hidden tw:bg-primary"
       data-testid="lineage-map-canvas"
       ref={wrapperRef}
+      role="presentation"
       onMouseLeave={handleCanvasMouseLeave}
       onMouseMove={handleCanvasMouseMove}>
       {loading && (
