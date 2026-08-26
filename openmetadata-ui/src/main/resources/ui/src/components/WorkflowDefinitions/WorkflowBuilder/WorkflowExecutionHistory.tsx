@@ -250,7 +250,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
           }}
           pagination={false}
           rowKey={(record) => record.id ?? ''}
-          size="small"
+          size="middle"
           // No column here carries a width, so a fixed layout would split the
           // table into equal shares and hold it to its container — leaving the
           // card short and wrapping the timestamps. Auto sizes each column to
