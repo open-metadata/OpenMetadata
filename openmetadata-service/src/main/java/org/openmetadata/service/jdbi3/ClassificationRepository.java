@@ -345,8 +345,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
               ? FullyQualifiedName.build(classification.getFullyQualifiedName(), csvRecord.get(1))
               : FullyQualifiedName.add(parentFqn, csvRecord.get(1));
       Tag existingTag =
-          ((TagRepository) Entity.getEntityRepository(TAG))
-              .findByNameOrNull(tagFqn, Include.NON_DELETED);
+          ((TagRepository) Entity.getEntityRepository(TAG)).findByNameOrNull(tagFqn, Include.ALL);
       Tag tag =
           new Tag()
               .withClassification(classification.getEntityReference())
