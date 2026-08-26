@@ -143,7 +143,10 @@ class TestSqlDltParsing:
     def test_single_line_create_materialized_view(self):
         deps = _deps_by_name(SQL_SINGLE_LINE_CREATE)
         assert "orders_enriched" in deps
-        assert set(deps["orders_enriched"].depends_on) == {"orders_staged", "order_totals"}
+        assert set(deps["orders_enriched"].depends_on) == {
+            "orders_staged",
+            "order_totals",
+        }
 
     def test_create_or_refresh_with_qualified_upstreams(self):
         deps = _deps_by_name(SQL_QUALIFIED_UPSTREAMS)
@@ -286,12 +289,30 @@ class TestSqlDltPipelineLineage:
 
     def test_all_expected_edges_are_produced(self):
         assert self._edges() == {
-            (f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.orders_staged", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.orders_enriched"),
-            (f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_totals", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.orders_enriched"),
-            (f"{DB_SERVICE}.raw_catalog.raw_schema.orders_raw", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.customer_orders"),
-            (f"{DB_SERVICE}.raw_catalog.raw_schema.customers_raw", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.customer_orders"),
-            (f"{DB_SERVICE}.raw_catalog.raw_schema.events_raw", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_summary"),
-            (f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_totals", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_summary"),
+            (
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.orders_staged",
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.orders_enriched",
+            ),
+            (
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_totals",
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.orders_enriched",
+            ),
+            (
+                f"{DB_SERVICE}.raw_catalog.raw_schema.orders_raw",
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.customer_orders",
+            ),
+            (
+                f"{DB_SERVICE}.raw_catalog.raw_schema.customers_raw",
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.customer_orders",
+            ),
+            (
+                f"{DB_SERVICE}.raw_catalog.raw_schema.events_raw",
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_summary",
+            ),
+            (
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_totals",
+                f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_summary",
+            ),
         }
 
 
@@ -422,7 +443,13 @@ class TestGlobNormalisation:
     """`spec.libraries` glob patterns must reduce to a directory the caller can expand."""
 
     def test_recursive_and_extension_patterns_reduce_to_a_directory(self):
-        for pattern in ("/tx/**", "/tx/*.sql", "/tx/**/*.sql", "/tx/**/*.py", "/tx/staging*"):
+        for pattern in (
+            "/tx/**",
+            "/tx/*.sql",
+            "/tx/**/*.sql",
+            "/tx/**/*.py",
+            "/tx/staging*",
+        ):
             assert glob_base_directory(pattern) == "/tx/", pattern
 
     def test_a_concrete_path_is_left_alone(self):
@@ -544,7 +571,11 @@ class TestGlobExpansion:
         assert self._expand("/tx/*.sql") == ["/tx/a.sql"]
 
     def test_double_star_takes_the_whole_tree(self):
-        assert self._expand("/tx/**") == ["/tx/a.sql", "/tx/notes.py", "/tx/archive/old_v1.sql"]
+        assert self._expand("/tx/**") == [
+            "/tx/a.sql",
+            "/tx/notes.py",
+            "/tx/archive/old_v1.sql",
+        ]
 
     def test_directory_segment_wildcard_descends(self):
         assert self._expand("/tx/arch*/*.sql") == ["/tx/archive/old_v1.sql"]
@@ -618,16 +649,33 @@ class TestLibraryListIsHomogeneous:
         with patch.object(DatabrickspipelineSource, "_expand_workspace_directory", record):
             pipeline_entity = MagicMock()
             pipeline_entity.id.root = uuid.uuid4()
-            list(source._yield_kafka_lineage(DataBrickPipelineDetails(pipeline_id="p", name="demo"), pipeline_entity))
+            list(
+                source._yield_kafka_lineage(
+                    DataBrickPipelineDetails(pipeline_id="p", name="demo"),
+                    pipeline_entity,
+                )
+            )
         return seen
 
     def test_configuration_source_path_is_modelled(self):
         """A pipeline with no libraries falls back to spec.configuration.source_path."""
-        seen = self._libraries_for({"catalog": CATALOG, "schema": SCHEMA, "configuration": {"source_path": "/src/"}})
+        seen = self._libraries_for(
+            {
+                "catalog": CATALOG,
+                "schema": SCHEMA,
+                "configuration": {"source_path": "/src/"},
+            }
+        )
         assert seen and all(isinstance(library, DLTLibrarySource) for library in seen)
 
     def test_development_source_path_is_modelled(self):
-        seen = self._libraries_for({"catalog": CATALOG, "schema": SCHEMA, "development": {"source_path": "/dev/"}})
+        seen = self._libraries_for(
+            {
+                "catalog": CATALOG,
+                "schema": SCHEMA,
+                "development": {"source_path": "/dev/"},
+            }
+        )
         assert seen and all(isinstance(library, DLTLibrarySource) for library in seen)
 
     def test_every_library_shape_yields_the_model(self):
@@ -752,7 +800,14 @@ class TestLibraryShapeMatrix:
         ]
 
     def test_mixed_entries_are_all_collected(self):
-        assert self._select({"libraries": [{"notebook": {"path": "/nb"}}, {"glob": {"include": "/tx/*.sql"}}]}) == [
+        assert self._select(
+            {
+                "libraries": [
+                    {"notebook": {"path": "/nb"}},
+                    {"glob": {"include": "/tx/*.sql"}},
+                ]
+            }
+        ) == [
             "/nb",
             "/tx/a.sql",
         ]
@@ -802,3 +857,71 @@ class TestUnknownDirectoryness:
 
     def test_a_slash_terminated_include_is_known_to_be_a_directory(self):
         assert get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/"}}]})[0].is_directory is True
+
+
+class TestLegacyAndModifierCreateForms:
+    """DLT spellings the query parser does not recognise on its own.
+
+    `LIVE TABLE` and `STREAMING LIVE TABLE` are the pre-2022 names and are still
+    accepted by Databricks today, and `PRIVATE` is a modifier on the modern names.
+    sqlglot falls back to a bare Command for all of them and reports no tables, so
+    without a rewrite the dataset is dropped with no error and no warning. Verified
+    against a real workspace: these three forms produced zero lineage edges while
+    every other construct produced the expected ones.
+    """
+
+    def _only(self, sql):
+        found = extract_dlt_table_dependencies(sql)
+        assert len(found) == 1, f"expected one dataset from {sql!r}, got {found}"
+        return found[0]
+
+    def test_legacy_live_table_is_read_as_a_batch_dataset(self):
+        dependency = self._only("CREATE LIVE TABLE d AS SELECT id FROM src_d")
+        assert dependency.table_name == "d"
+        assert dependency.depends_on == ["src_d"]
+
+    def test_legacy_streaming_live_table_is_read(self):
+        dependency = self._only("CREATE STREAMING LIVE TABLE e AS SELECT id FROM src_e")
+        assert dependency.table_name == "e"
+        assert dependency.depends_on == ["src_e"]
+
+    def test_refreshable_legacy_live_table_is_read(self):
+        dependency = self._only("CREATE OR REFRESH LIVE TABLE f AS SELECT id FROM src_f")
+        assert dependency.table_name == "f"
+        assert dependency.depends_on == ["src_f"]
+
+    def test_refreshable_legacy_streaming_live_table_is_read(self):
+        dependency = self._only("CREATE OR REFRESH STREAMING LIVE TABLE g AS SELECT id FROM src_g")
+        assert dependency.table_name == "g"
+        assert dependency.depends_on == ["src_g"]
+
+    def test_private_materialized_view_is_read(self):
+        dependency = self._only("CREATE PRIVATE MATERIALIZED VIEW h AS SELECT id FROM src_h")
+        assert dependency.table_name == "h"
+        assert dependency.depends_on == ["src_h"]
+
+    def test_refreshable_private_materialized_view_is_read(self):
+        dependency = self._only("CREATE OR REFRESH PRIVATE MATERIALIZED VIEW i AS SELECT id FROM src_i")
+        assert dependency.table_name == "i"
+        assert dependency.depends_on == ["src_i"]
+
+    def test_private_streaming_table_is_read(self):
+        dependency = self._only("CREATE PRIVATE STREAMING TABLE j AS SELECT id FROM src_j")
+        assert dependency.table_name == "j"
+        assert dependency.depends_on == ["src_j"]
+
+    def test_a_private_legacy_live_table_is_read(self):
+        """Both rewrites have to apply to the same statement."""
+        dependency = self._only("CREATE PRIVATE LIVE TABLE k AS SELECT id FROM src_k")
+        assert dependency.table_name == "k"
+        assert dependency.depends_on == ["src_k"]
+
+    def test_a_dataset_whose_name_contains_live_is_untouched(self):
+        """The rewrite is anchored to the CREATE clause, so a name is never rewritten."""
+        dependency = self._only("CREATE OR REFRESH MATERIALIZED VIEW live_table_stats AS SELECT id FROM my_live_table")
+        assert dependency.table_name == "live_table_stats"
+        assert dependency.depends_on == ["my_live_table"]
+
+    def test_the_legacy_forms_still_carry_the_live_prefix_rules(self):
+        dependency = self._only("CREATE LIVE TABLE m AS SELECT id FROM LIVE.sibling")
+        assert dependency.depends_on == ["sibling"]

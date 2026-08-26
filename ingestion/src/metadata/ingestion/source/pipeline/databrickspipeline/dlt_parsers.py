@@ -101,6 +101,23 @@ SQL_STREAM_WRAPPER_PATTERN = re.compile(r"\bSTREAM\s*\(\s*([A-Za-z0-9_.`\"]+)\s*
 # namespace, not a schema, so it must be dropped rather than resolved as one.
 SQL_LIVE_PREFIX_PATTERN = re.compile(r"^live\.", re.IGNORECASE)
 
+# Spellings DLT accepts that the query parser does not. `PRIVATE` is a modifier on the
+# modern names, and `LIVE TABLE` / `STREAMING LIVE TABLE` are the original names that
+# Databricks still honours. The parser falls back to a bare command for each and then
+# reports no tables at all, so the dataset would be dropped with neither an error nor a
+# warning. Rewriting to the modern equivalent is what lets the statement parse. Each is
+# anchored to the CREATE clause, so a dataset whose own name contains "live" is never
+# rewritten.
+SQL_PRIVATE_MODIFIER_PATTERN = re.compile(
+    r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)PRIVATE\s+", re.IGNORECASE
+)
+SQL_LEGACY_STREAMING_TABLE_PATTERN = re.compile(
+    r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)STREAMING\s+LIVE\s+TABLE\b", re.IGNORECASE
+)
+SQL_LEGACY_LIVE_TABLE_PATTERN = re.compile(
+    r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)LIVE\s+TABLE\b", re.IGNORECASE
+)
+
 # Table-valued functions a query parser surfaces as if they were tables. These are
 # only dropped when the statement actually invokes them, so a dataset legitimately
 # named `range` or `stream` still resolves.
@@ -143,6 +160,18 @@ class SqlDltParser:
         return name
 
     @staticmethod
+    def _modernise(statement: str) -> str:
+        """Rewrite the spellings the query parser cannot read into ones it can.
+
+        `PRIVATE` is stripped first so it does not block the legacy rewrites behind it,
+        and `STREAMING LIVE TABLE` is matched before `LIVE TABLE` so the streaming form
+        is not mistaken for the batch one.
+        """
+        statement = SQL_PRIVATE_MODIFIER_PATTERN.sub(r"\1", statement)
+        statement = SQL_LEGACY_STREAMING_TABLE_PATTERN.sub(r"\1STREAMING TABLE", statement)
+        return SQL_LEGACY_LIVE_TABLE_PATTERN.sub(r"\1MATERIALIZED VIEW", statement)
+
+    @staticmethod
     def extract(source_code: str) -> List[DLTTableDependency]:  # noqa: UP006
         # Imported here so pipelines that never use SQL do not pay the import cost
         # of the lineage stack.
@@ -157,6 +186,7 @@ class SqlDltParser:
             if not statement or not SqlDltParser.handles(statement):
                 continue
             try:
+                statement = SqlDltParser._modernise(statement)
                 statement = SQL_STREAM_WRAPPER_PATTERN.sub(r"\1", statement)
                 parser = LineageParser(statement, Dialect.DATABRICKS)
                 # LineageParser exposes these through the third-party cached_property,
