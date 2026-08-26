@@ -876,6 +876,28 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.testSuite).toBeUndefined();
   });
 
+  it('should clear stale test cases when a new search fails', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValueOnce(
+      new Error('search failed')
+    );
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('missing_test_case');
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalled();
+    });
+
+    expect(result.current.testCaseResult).toEqual([]);
+  });
+
   it('should update a test case in place via handleTestSuiteUpdate', async () => {
     const { result } = renderTestSuiteDetailsHook();
 
