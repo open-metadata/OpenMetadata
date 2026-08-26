@@ -208,7 +208,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       <Modal>
         <Dialog showCloseButton width={500} onClose={handleClose}>
           <Dialog.Header title={t('label.upload-document-plural')} />
-          <Dialog.Content className="tw:pb-6 tw:overflow-x-visible">
+          <Dialog.Content className="tw:pb-6">
             <FileUpload.Root>
               <FileUploadDropZone
                 allowsMultiple
