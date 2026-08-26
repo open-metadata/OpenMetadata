@@ -365,7 +365,9 @@ class RestSource(ApiServiceSource):
 
             param_schema = param.get("schema", {})
             param_type = param.get("type") or param_schema.get("type")
-            param_format = param.get("format") or param_schema.get("format")
+            param_format = param.get("format") or (
+                param_schema.get("format") if isinstance(param_schema, dict) else None
+            )
             data_type = self._parse_openapi_type(param_type, param_format)
 
             # Handle array items
@@ -441,6 +443,8 @@ class RestSource(ApiServiceSource):
                         children = self.process_schema_fields(prop_ref, parent_refs)
                     else:
                         logger.debug(f"Skipping object fields inside schema: {prop_ref} to avoid infinite recursion")
+                elif prop_def.get("properties"):
+                    children = self._process_schema_properties(prop_def["properties"], parent_refs)
 
             description = prop_def.get("description")
             description_obj = Markdown(root=description) if description is not None else None

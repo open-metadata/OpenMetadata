@@ -794,6 +794,21 @@ class TestRest:
         assert result.description.root == "Page number"
         assert result.children is None
 
+    @pytest.mark.parametrize("schema", [None, "invalid"])
+    def test_convert_parameter_to_field_uses_top_level_type_with_non_object_schema(self, schema):
+        param = {
+            "in": "query",
+            "name": "page",
+            "type": "integer",
+            "schema": schema,
+        }
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.name.root == "page"
+        assert result.dataType == DataTypeTopic.INT
+
     def test_convert_parameter_to_field_openapi_3(self):
         """Test converting OpenAPI 3.0 parameter to FieldModel"""
         param = {
@@ -1222,6 +1237,33 @@ class TestRest:
         assert result is not None
         assert len(result.schemaFields) == 1
         assert result.schemaFields[0].dataType == DataTypeTopic.UNKNOWN
+
+    def test_process_inline_schema_expands_untyped_object_properties(self):
+        properties = {
+            "metadata": {
+                "description": "Nested metadata",
+                "properties": {
+                    "identifier": {
+                        "type": "integer",
+                        "description": "Metadata identifier",
+                    }
+                },
+            }
+        }
+
+        result = self.rest_source._process_inline_schema(properties)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        metadata_field = result.schemaFields[0]
+        assert metadata_field.dataType == DataTypeTopic.UNKNOWN
+        assert metadata_field.dataTypeDisplay == "OBJECT"
+        assert metadata_field.description == Markdown(root="Nested metadata")
+        assert metadata_field.children is not None
+        assert len(metadata_field.children) == 1
+        assert metadata_field.children[0].name.root == "identifier"
+        assert metadata_field.children[0].dataType == DataTypeTopic.INT
+        assert metadata_field.children[0].description == Markdown(root="Metadata identifier")
 
     def test_schema_helpers_handle_invalid_input(self):
         assert self.rest_source._process_array_items({}, []) is None
