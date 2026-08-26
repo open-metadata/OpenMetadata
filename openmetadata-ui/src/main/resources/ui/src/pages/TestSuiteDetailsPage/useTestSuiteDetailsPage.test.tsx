@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
@@ -49,17 +52,25 @@ const mockGetEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => Promise.resolve(mockPermissions));
 let mockTestSuiteFQN = 'bundle_suite_fqn';
+let queryClient: QueryClient;
+
+const Wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
+const renderTestSuiteDetailsHook = () =>
+  renderHook(() => useTestSuiteDetailsPage(), { wrapper: Wrapper });
 
 const runTimeoutsImmediately = () => {
-  const originalSetTimeout = window.setTimeout;
+  const originalSetTimeout = window.setTimeout.bind(window);
 
   return jest
-    .spyOn(window, 'setTimeout')
+    .spyOn(global, 'setTimeout')
     .mockImplementation((callback, delay, ...args) => {
       if (delay === 500 && typeof callback === 'function') {
         callback();
 
-        return 0;
+        return originalSetTimeout(() => undefined, 0);
       }
 
       return originalSetTimeout(callback, delay, ...args);
@@ -124,6 +135,16 @@ jest.mock('../../utils/ToastUtils', () => ({
 describe('useTestSuiteDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          refetchOnWindowFocus: false,
+          gcTime: Infinity,
+        },
+        mutations: { retry: false },
+      },
+    });
     mockTestSuiteFQN = 'bundle_suite_fqn';
     (getTestSuiteByName as jest.Mock).mockResolvedValue(mockTestSuite);
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
@@ -139,7 +160,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should fetch permissions, the suite and its test cases on mount', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -151,7 +172,8 @@ describe('useTestSuiteDetailsPage', () => {
     );
     expect(getTestSuiteByName).toHaveBeenCalledWith(
       'bundle_suite_fqn',
-      expect.objectContaining({ include: 'all' })
+      expect.objectContaining({ include: 'all' }),
+      expect.objectContaining({ signal: expect.anything() })
     );
 
     await waitFor(() => {
@@ -162,7 +184,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should search the current suite from the first page', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -177,18 +199,20 @@ describe('useTestSuiteDetailsPage', () => {
 
     expect(result.current.testCaseSearchQuery).toBe('tc_9');
     expect(result.current.pagingData.currentPage).toBe(1);
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
     expect(getListTestCaseBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
         offset: 0,
         q: 'tc_9',
         testSuiteId: 'suite-id',
-      })
+      }),
+      expect.objectContaining({ signal: expect.anything() })
     );
     expect(getIngestionPipelines).not.toHaveBeenCalled();
   });
 
   it('should preserve search input whitespace while normalizing the request', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -202,12 +226,13 @@ describe('useTestSuiteDetailsPage', () => {
 
     expect(result.current.testCaseSearchQuery).toBe('tc_9 ');
     expect(getListTestCaseBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ q: 'tc_9' })
+      expect.objectContaining({ q: 'tc_9' }),
+      expect.any(Object)
     );
   });
 
   it('should preserve the search query when changing pages', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -227,13 +252,14 @@ describe('useTestSuiteDetailsPage', () => {
         expect.objectContaining({
           offset: result.current.pagingData.pageSize,
           q: 'tc_9',
-        })
+        }),
+        expect.any(Object)
       );
     });
   });
 
   it('should preserve the search query when sorting', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -245,16 +271,20 @@ describe('useTestSuiteDetailsPage', () => {
     (getListTestCaseBySearch as jest.Mock).mockClear();
 
     await act(async () => {
-      await result.current.handleSortTestCase();
+      await result.current.handleSortTestCase({
+        sortField: 'name',
+        sortType: SORT_ORDER.DESC,
+      });
     });
 
     expect(getListTestCaseBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ q: 'tc_9' })
+      expect.objectContaining({ q: 'tc_9', sortType: 'desc' }),
+      expect.any(Object)
     );
   });
 
   it('should clear the search and reload the first page', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -272,12 +302,13 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.testCaseSearchQuery).toBe('');
     expect(result.current.pagingData.currentPage).toBe(1);
     expect(getListTestCaseBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ offset: 0, q: undefined })
+      expect.objectContaining({ offset: 0, q: undefined }),
+      expect.any(Object)
     );
   });
 
   it('should clear the search when navigating to another suite', async () => {
-    const { result, rerender } = renderHook(() => useTestSuiteDetailsPage());
+    const { result, rerender } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -294,7 +325,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should default to the test cases tab and switch tabs', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     expect(result.current.activeTab).toBe(EntityTabs.TEST_CASES);
 
@@ -306,7 +337,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should derive permission flags from the entity permissions', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.permissions.hasViewPermission).toBe(true);
@@ -324,7 +355,7 @@ describe('useTestSuiteDetailsPage', () => {
       ViewBasic: false,
     });
 
-    renderHook(() => useTestSuiteDetailsPage());
+    renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
@@ -334,7 +365,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should patch the suite on owner update', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -353,7 +384,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should normalize single domain updates into an array patch', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -375,7 +406,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should skip description update when unchanged', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -389,7 +420,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should retry stale rows until the authoritative count is indexed', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -483,7 +514,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should stop retrying stale rows after five attempts', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -514,7 +545,9 @@ describe('useTestSuiteDetailsPage', () => {
         });
       });
 
-      expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
+      expect(
+        setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 500)
+      ).toHaveLength(4);
     } finally {
       setTimeoutSpy.mockRestore();
     }
@@ -525,7 +558,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should use the suite relationship count for whitespace-only search after bulk add', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.pagingData.paging.total).toBe(1);
@@ -635,7 +668,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should preserve a filtered search total after bulk add', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -687,12 +720,13 @@ describe('useTestSuiteDetailsPage', () => {
     ]);
     expect(getListTestCaseBySearch).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ q: 'tc_9' })
+      expect.objectContaining({ q: 'tc_9' }),
+      expect.any(Object)
     );
   });
 
   it('should refresh the latest query after bulk indexing completes', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -750,7 +784,9 @@ describe('useTestSuiteDetailsPage', () => {
       await result.current.handleTestCaseSearch('new_query');
     });
 
-    expect(result.current.testCaseResult).toEqual([]);
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toEqual([]);
+    });
 
     await act(async () => {
       resolveBulkRefresh({
@@ -788,7 +824,7 @@ describe('useTestSuiteDetailsPage', () => {
       })
     );
 
-    const { result, rerender } = renderHook(() => useTestSuiteDetailsPage());
+    const { result, rerender } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite?.fullyQualifiedName).toBe(
@@ -831,7 +867,7 @@ describe('useTestSuiteDetailsPage', () => {
   it('should surface suite fetch errors via toast', async () => {
     (getTestSuiteByName as jest.Mock).mockRejectedValueOnce(new Error('boom'));
 
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalled();
@@ -841,7 +877,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should update a test case in place via handleTestSuiteUpdate', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testCaseResult).toHaveLength(1);
@@ -854,6 +890,8 @@ describe('useTestSuiteDetailsPage', () => {
       } as never);
     });
 
-    expect(result.current.testCaseResult[0].name).toBe('tc_1_renamed');
+    await waitFor(() => {
+      expect(result.current.testCaseResult[0].name).toBe('tc_1_renamed');
+    });
   });
 });
