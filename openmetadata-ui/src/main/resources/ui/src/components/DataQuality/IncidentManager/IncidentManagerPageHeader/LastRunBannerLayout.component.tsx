@@ -35,7 +35,7 @@ const LastRunBannerLayout = ({
         <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-start tw:gap-4">
           <FeaturedIcon
             outlined
-            aria-hidden="true"
+            bgColor="white"
             className="tw:self-start"
             color={config.iconColor}
             data-testid="test-case-last-run-icon"
