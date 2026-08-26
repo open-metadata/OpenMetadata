@@ -37,7 +37,12 @@ jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
     getQueryActions,
     value,
     readonly,
-  }: any) {
+  }: {
+    onChange?: (value: string, tree: JsonTree) => void;
+    getQueryActions?: (actions: Actions) => void;
+    value?: string;
+    readonly?: boolean;
+  }) {
     return (
       <div data-testid="query-builder-widget">
         <span>Query Builder Widget</span>
@@ -107,7 +112,7 @@ const mockInitialValues: Partial<DataContract> = {
       enabled: true,
       jsonTree: '{"type": "group"}',
     },
-  ] as any,
+  ] as unknown as DataContract['semantics'],
 };
 
 describe('ContractSemanticFormTab', () => {

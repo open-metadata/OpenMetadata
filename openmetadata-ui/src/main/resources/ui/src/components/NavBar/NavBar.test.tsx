@@ -26,10 +26,10 @@ const mockSetItem = jest.fn();
 
 jest.mock('cookie-storage', () => ({
   CookieStorage: class {
-    getItem(...args: any[]) {
+    getItem(...args: unknown[]) {
       return mockGetItem(...args);
     }
-    setItem(...args: any[]) {
+    setItem(...args: unknown[]) {
       return mockSetItem(...args);
     }
     constructor() {
