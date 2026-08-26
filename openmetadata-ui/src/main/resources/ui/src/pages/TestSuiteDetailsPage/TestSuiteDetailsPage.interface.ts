@@ -52,7 +52,7 @@ export interface UseTestSuiteDetailsPageResult {
   canAddMultipleUserOwners: boolean;
   canAddMultipleTeamOwner: boolean;
   fetchTestCases: (param?: ListTestCaseParamsBySearch) => Promise<void>;
-  handleTestCaseSearch: (query: string) => Promise<void>;
+  handleTestCaseSearch: (query: string) => void;
   handleSortTestCase: (apiParams?: ListTestCaseParamsBySearch) => Promise<void>;
   handleAddTestCaseSubmit: (payload: {
     selectAll: boolean;

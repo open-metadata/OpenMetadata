@@ -107,8 +107,8 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const [activeTab, setActiveTab] = useState<string>(EntityTabs.TEST_CASES);
   const { showModal } = useEntityExportModalProvider();
 
-  // Keep the raw value for the controlled input while using a normalized value
-  // in the query key and API request.
+  // Keep the raw value for the controlled input and normalize it only when
+  // deriving the query key and API request.
   const [testCaseSearchQuery, setTestCaseSearchQuery] = useState('');
   const [testCaseRequestParams, setTestCaseRequestParams] =
     useState<ListTestCaseParamsBySearch>({
@@ -180,22 +180,25 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     { limit: 1000 }
   );
 
-  const { testSuiteDescription, testSuiteId, testOwners } = useMemo(() => {
-    return {
-      testOwners: testSuite?.owners,
-      testSuiteId: testSuite?.id ?? '',
-      testSuiteDescription: testSuite?.description ?? '',
-    };
-  }, [testSuite]);
+  const testOwners = testSuite?.owners;
+  const testSuiteId = testSuite?.id ?? '';
+  const testSuiteDescription = testSuite?.description ?? '';
+  const normalizedTestCaseSearchQuery = testCaseSearchQuery.trim() || undefined;
 
   const testCaseQueryParams = useMemo<ListTestCaseParamsBySearch>(
     () => ({
       fields: TEST_SUITE_TEST_CASE_FIELDS,
       testSuiteId,
       ...testCaseRequestParams,
+      q: normalizedTestCaseSearchQuery,
       limit: pageSize,
     }),
-    [testSuiteId, testCaseRequestParams, pageSize]
+    [
+      testSuiteId,
+      testCaseRequestParams,
+      normalizedTestCaseSearchQuery,
+      pageSize,
+    ]
   );
   const testCaseQueryKey = useMemo(
     () => testSuiteTestCasesQueryKey(testSuiteId, testCaseQueryParams),
@@ -220,9 +223,10 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       enabled: Boolean(testSuiteId),
     });
 
-  const isUnfilteredTestCaseList = isUnfilteredTestCaseRequest(
-    testCaseRequestParams
-  );
+  const isUnfilteredTestCaseList = isUnfilteredTestCaseRequest({
+    ...testCaseRequestParams,
+    q: normalizedTestCaseSearchQuery,
+  });
   const testCasePaging = useMemo(() => {
     const responsePaging = testCaseResponse?.paging ?? { total: 0 };
     const shouldUseAuthoritativeTotal =
@@ -386,12 +390,15 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   );
 
   const handleTestCaseSearch = useCallback(
-    async (query: string) => {
+    (query: string) => {
       setTestCaseSearchQuery(query);
       handlePageChange(INITIAL_PAGING_VALUE);
-      await fetchTestCases({ offset: 0, q: query.trim() || undefined });
+      setTestCaseRequestParams((current) => ({
+        ...current,
+        offset: 0,
+      }));
     },
-    [fetchTestCases, handlePageChange]
+    [handlePageChange]
   );
 
   const fetchIndexedTestCaseTotal = useCallback(
