@@ -522,15 +522,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           setAuthoritativeTestCaseCount(authoritativeTotal);
         }
 
-        // The bulk add already succeeded and the modal is already closed;
-        // a failure polling the search index must not surface as an "add
-        // failed" toast. refreshTestCasesUntilIndexed's own finally clears
-        // isSynchronizingTestCases regardless of outcome.
         await refreshTestCasesUntilIndexed(
           authoritativeTotal,
           isCurrentTestSuite,
           testSuiteId
-        ).catch(() => undefined);
+        );
       } catch (error) {
         if (isCurrentTestSuite()) {
           showErrorToast(error as AxiosError);
