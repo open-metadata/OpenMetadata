@@ -110,6 +110,10 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
     );
   }
 
+  if (!selectedThread) {
+    return null;
+  }
+
   return (
     <Drawer
       className={classNames('activity-feed-drawer', className)}
@@ -119,7 +123,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         <FeedPanelHeader
           className="p-x-md"
           entityLink={selectedThread?.about ?? ''}
-          feed={selectedThread!}
+          feed={selectedThread}
           threadType={selectedThread?.type ?? ThreadType.Conversation}
           onCancel={hideDrawer}
         />
@@ -132,7 +136,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             isForFeedTab
             isOpenInDrawer
             showThread
-            feed={selectedThread!}
+            feed={selectedThread}
           />
         </Col>
       </Row>

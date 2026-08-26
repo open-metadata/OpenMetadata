@@ -1391,7 +1391,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Failed,
             },
           }}
@@ -1421,7 +1423,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Aborted,
             },
           }}
