@@ -32,6 +32,13 @@ class QueryStoreState(IntEnum):
     ERROR = 3
 
 
+# sys.database_query_store_options.readonly_reason value that means the database is
+# a readable Availability Group secondary (SQL Server < 2025).  On such a replica the
+# Query Store contains the *primary*'s captured workload, not this node's, so we must
+# fall back to the plan-cache DMVs to see the secondary's actual query traffic.
+QUERY_STORE_READONLY_REASON_AG_SECONDARY = 8
+
+
 class MssqlStoredProcedure(BaseModel):
     """MSSQL stored procedure list query results"""
 

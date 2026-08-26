@@ -12,11 +12,11 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
-from typing import Optional  # noqa: I001
+import traceback
+from typing import Optional
 
-from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
 from sqlalchemy.dialects.mssql.base import (
     MSBinary,
@@ -35,7 +35,10 @@ from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 
-from metadata.ingestion.source.database.mssql.models import QueryStoreState
+from metadata.ingestion.source.database.mssql.models import (
+    QUERY_STORE_READONLY_REASON_AG_SECONDARY,
+    QueryStoreState,
+)
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
@@ -54,9 +57,7 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -70,9 +71,7 @@ def db_plus_owner_listing(fn):
     def wrap(dialect, connection, schema=None, **kw):
         schema = f"[{schema}]" if schema and "." in schema else schema
         dbname, owner = _owner_plus_db(dialect, schema)
-        return _switch_db(
-            dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw
-        )
+        return _switch_db(dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw)
 
     return update_wrapper(wrap, fn)
 
@@ -114,9 +113,7 @@ def get_identity_values(coltype, identity_start, identity_increment):
 
 @reflection.cache
 @db_plus_owner
-def get_columns(
-    self, connection, tablename, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
+def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
     """
     This function overrides to add support for column comments
     """
@@ -174,8 +171,7 @@ def get_columns(
             computed_cols,
             onclause=sql.and_(
                 computed_cols.c.object_id == func.object_id(full_name),
-                computed_cols.c.name
-                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                computed_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
@@ -183,8 +179,7 @@ def get_columns(
             identity_cols,
             onclause=sql.and_(
                 identity_cols.c.object_id == func.object_id(full_name),
-                identity_cols.c.name
-                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                identity_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
@@ -283,9 +278,7 @@ def get_columns(
                     scale = numericscale
 
             coltype = coltype(**kwargs)
-        raw_data_type = get_display_datatype(
-            type_, char_len=charlen, precision=precision, scale=scale
-        )
+        raw_data_type = get_display_datatype(type_, char_len=charlen, precision=precision, scale=scale)
         cdict = {
             "name": name,
             "type": coltype,
@@ -303,9 +296,7 @@ def get_columns(
             }
 
         if is_identity is not None:
-            cdict["identity"] = get_identity_values(
-                coltype, identity_start, identity_increment
-            )
+            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
 
         cols.append(cdict)
     return cols
@@ -313,9 +304,7 @@ def get_columns(
 
 @reflection.cache
 @db_plus_owner
-def get_view_definition(
-    self, connection, viewname, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, viewname, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     return get_view_definition_wrapper(
         self,
         connection,
@@ -327,9 +316,7 @@ def get_view_definition(
 
 @reflection.cache
 @db_plus_owner
-def get_pk_constraint(
-    self, connection, tablename, dbname, owner=None, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_pk_constraint(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument
     """
     This function overrides to get pk constraint
     """
@@ -371,9 +358,7 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 @db_plus_owner
-def get_foreign_keys(
-    self, connection, tablename, dbname, owner=None, schema=None, **kw
-):  # pylint: disable=unused-argument, too-many-locals
+def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument, too-many-locals
     """
     This function overrides to get foreign key constraint
     """
@@ -460,9 +445,7 @@ def get_foreign_keys(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_table_names(
-    self, connection, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -480,9 +463,7 @@ def get_table_names(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_view_names(
-    self, connection, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -511,13 +492,6 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
     return  # noqa: RET502
 
 
-# sys.database_query_store_options.readonly_reason value that means the database is
-# a readable Availability Group secondary (SQL Server < 2025).  On such a replica the
-# Query Store contains the *primary*'s captured workload, not this node's, so we must
-# fall back to the plan-cache DMVs to see the secondary's actual query traffic.
-_QS_READONLY_REASON_AG_SECONDARY = 8
-
-
 def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
     """Return True if Query Store holds this database's own workload history.
 
@@ -534,14 +508,10 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
             with engine.connect() as conn:
                 row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
             if row is not None:
-                actual_state, readonly_reason = row[0], row[1]
-                is_ag_secondary = bool(
-                    (readonly_reason or 0) & _QS_READONLY_REASON_AG_SECONDARY
-                )
+                actual_state, readonly_reason = row.actual_state, row.readonly_reason
+                is_ag_secondary = bool((readonly_reason or 0) & QUERY_STORE_READONLY_REASON_AG_SECONDARY)
                 enabled = (
-                    actual_state
-                    in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
-                    and not is_ag_secondary
+                    actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE) and not is_ag_secondary
                 )
                 if is_ag_secondary:
                     logger.info(
@@ -550,9 +520,9 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                         "Store contains the primary's workload. Falling back to plan-cache DMVs."
                     )
         except Exception as exc:
-            logger.debug(
+            logger.debug(traceback.format_exc())
+            logger.warning(
                 "Query Store availability probe failed, using plan-cache DMVs: %s",
                 exc,
-                exc_info=True,
             )
     return enabled
