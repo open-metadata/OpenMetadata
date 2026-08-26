@@ -122,6 +122,11 @@ export const useCodeMirrorEditor = ({
     const nextValue = getSchemaEditorValue(value, autoFormat);
 
     if (nextValue === lastSyncedRef.current) {
+      // The parent is back on the value the editor is already synced with, so a
+      // deferred update from an intermediate value is obsolete: applying it on
+      // blur would put the editor out of sync with the parent.
+      pendingExternalRef.current = null;
+
       return;
     }
 

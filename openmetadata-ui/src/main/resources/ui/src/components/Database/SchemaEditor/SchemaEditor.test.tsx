@@ -220,6 +220,20 @@ describe('SchemaEditor component test', () => {
       expect(getEditorValue()).toBe('select 1');
     });
 
+    it('should drop a deferred update the parent has already reverted', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
+
+      // Focused with no local edit: the parent moves away and straight back.
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+      rerender(<SchemaEditor {...mockProps} value="select 1" />);
+      fireEvent.blur(input);
+
+      // Blur must not resurrect the intermediate value the parent left behind.
+      expect(getEditorValue()).toBe('select 1');
+    });
+
     it('should apply a reset that arrives mid-edit once the editor blurs', () => {
       const { rerender } = render(<SchemaEditor {...mockProps} />);
       const input = screen.getByTestId('code-mirror-editor-input');
