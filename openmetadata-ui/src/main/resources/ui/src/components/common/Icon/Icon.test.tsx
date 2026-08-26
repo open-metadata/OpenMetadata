@@ -233,5 +233,28 @@ describe('Icon', () => {
 
       expect(container).toBeEmptyDOMElement();
     });
+
+    it('should show the image immediately when it is already cached (complete before onLoad fires)', () => {
+      Object.defineProperty(HTMLImageElement.prototype, 'complete', {
+        configurable: true,
+        get: () => true,
+      });
+      Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+        configurable: true,
+        get: () => 1,
+      });
+
+      const { container, getByTestId } = render(
+        <Icon iconValue="http://example.com/cached.png" />
+      );
+
+      expect(getByTestId('icon-image')).not.toHaveStyle({ display: 'none' });
+      expect(
+        container.querySelector('[aria-hidden="true"]')
+      ).not.toBeInTheDocument();
+
+      Reflect.deleteProperty(HTMLImageElement.prototype, 'complete');
+      Reflect.deleteProperty(HTMLImageElement.prototype, 'naturalWidth');
+    });
   });
 });
