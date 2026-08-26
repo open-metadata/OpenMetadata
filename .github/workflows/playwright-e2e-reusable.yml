@@ -707,8 +707,11 @@ jobs:
               history_args+=(--history "$history_file")
             fi
           done < <(find "$RUNNER_TEMP/playwright-history" -name 'playwright-timing-history.json' -type f 2>/dev/null | sort)
-          if [[ ${#history_args[@]} -eq 0 ]]; then
-            history_args=(--history .github/playwright/timing-baseline.json)
+          # No baseline fallback here: build_playwright_shards.py folds
+          # timing-baseline.json in itself, below anything passed via --history.
+          echo "history sources: ${#history_args[@]} artifact(s) + the checked-in baseline"
+          if [[ ${#history_args[@]} -gt 0 ]]; then
+            printf '  %s\n' "${history_args[@]}"
           fi
 
           python3 .github/scripts/build_playwright_shards.py \
