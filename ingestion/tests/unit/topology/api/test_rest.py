@@ -25,6 +25,9 @@ from pydantic_core import Url
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
+from metadata.generated.schema.api.data.createAPIEndpoint import (
+    CreateAPIEndpointRequest,
+)
 from metadata.generated.schema.entity.services.apiService import (
     ApiConnection,
     ApiService,
@@ -44,6 +47,12 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.sink.metadata_rest import (
+    MetadataRestSink,
+    MetadataRestSinkConfig,
+)
 from metadata.ingestion.source.api.rest.metadata import RestSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.ingestion.source.api.rest.parser import (
@@ -473,6 +482,49 @@ MOCK_RESPONSE_INLINE_OBJECT_ARRAY = {
 }
 
 
+# Canned OpenAPI document fed to the source instead of fetching the live petstore
+# URL declared in mock_rest_config, so the collection/endpoint ordering tests stay
+# hermetic and deterministic (no network).
+MOCK_OPENAPI_SCHEMA = {
+    "tags": [
+        {"name": "pet", "description": "Everything about your Pets"},
+        {"name": "store", "description": "Access to Petstore orders"},
+        {"name": "user", "description": "Operations about user"},
+    ],
+    "paths": {
+        "/pet/findByStatus": {
+            "get": {"tags": ["pet"], "operationId": "findPetsByStatus"}
+        },
+        "/store/order": {"post": {"tags": ["store"], "operationId": "placeOrder"}},
+        "/user/login": {"get": {"tags": ["user"], "operationId": "loginUser"}},
+    },
+}
+
+# Enough tags x paths to overflow MetadataRestSinkConfig.bulk_sink_batch_size (100)
+# several times, which is what separates the reporter's full document from the
+# reduced one that never reproduced the bug.
+LARGE_SCHEMA_COLLECTIONS = 8
+LARGE_SCHEMA_PATHS_PER_COLLECTION = 30
+
+
+def build_large_openapi_schema() -> dict:
+    return {
+        "tags": [
+            {"name": f"collection_{index}"} for index in range(LARGE_SCHEMA_COLLECTIONS)
+        ],
+        "paths": {
+            f"/collection_{collection}/resource_{path}": {
+                "get": {
+                    "tags": [f"collection_{collection}"],
+                    "operationId": f"getCollection{collection}Resource{path}",
+                }
+            }
+            for collection in range(LARGE_SCHEMA_COLLECTIONS)
+            for path in range(LARGE_SCHEMA_PATHS_PER_COLLECTION)
+        },
+    }
+
+
 class RESTTest(TestCase):
     @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
     def __init__(self, methodName, test_connection) -> None:
@@ -486,6 +538,31 @@ class RESTTest(TestCase):
         self.rest_source.context.get().__dict__[
             "api_service"
         ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+    def _hermetic_source(self, config=None, schema=None):
+        """Build a RestSource that reads a canned document instead of the live URL.
+
+        ``RestSource._get_openapi_schema`` uses a dict connection as the already
+        parsed document, so assigning one keeps these tests off the network. The
+        OM client is stubbed too: driving the topology makes the runner look each
+        entity up on the server before sinking it.
+        """
+        with patch(
+            "metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection",
+            return_value=None,
+        ):
+            source = RestSource.create(
+                (config or mock_rest_config)["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.return_value = None
+        source.metadata.config.forceEntityOverwriting = False
+        source.connection = deepcopy(MOCK_OPENAPI_SCHEMA) if schema is None else schema
+        source.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+        return source
 
     def test_get_api_collections(self):
         """test get api collections"""
@@ -519,11 +596,19 @@ class RESTTest(TestCase):
             "new",
         }
 
+    def test_get_api_collections_on_unparseable_schema(self):
+        """An unparseable document yields nothing instead of raising.
+
+        Uses its own source: get_api_collections is memoized, so a source that has
+        already derived its collections replays them rather than re-parsing.
+        """
+        source = self._hermetic_source(schema=object())
+
         with patch(
             "metadata.ingestion.source.api.rest.metadata.parse_openapi_schema",
             side_effect=RuntimeError("invalid schema"),
         ):
-            assert list(self.rest_source.get_api_collections()) == []
+            assert list(source.get_api_collections()) == []
 
     def test_yield_api_collection(self):
         """test yield api collections"""
@@ -545,6 +630,168 @@ class RESTTest(TestCase):
         assert len(result) == 1
         assert result[0].left is not None
         assert "invalid collection" in result[0].left.error
+
+    def test_api_collections_flush_before_api_endpoints(self):
+        """Every collection, then a Barrier, then the endpoints (issue #30598)."""
+        source = self._hermetic_source()
+        records = list(
+            source.process_nodes(
+                [source.topology.api_collection, source.topology.api_endpoint]
+            )
+        )
+
+        right_types = [type(record.right) for record in records if record.right]
+        barrier_index = right_types.index(Barrier)
+        collection_count = len(
+            [entry for entry in right_types if entry is CreateAPICollectionRequest]
+        )
+
+        assert all(record.left is None for record in records)
+        assert (
+            collection_count == len(MOCK_COLLECTIONS) + 1
+        )  # + the "default" collection
+        assert (
+            right_types[:barrier_index]
+            == [CreateAPICollectionRequest] * collection_count
+        )
+        assert set(right_types[barrier_index + 1 :]) == {CreateAPIEndpointRequest}
+
+    def test_large_document_never_sends_an_endpoint_before_its_collection(self):
+        """Drive the topology through the real bulk sink and replay the PUTs.
+
+        A document large enough to flush the sink's bulk buffer several times must
+        still have every apiCollection committed before any apiEndpoint that
+        references it, otherwise the server rejects the endpoint with
+        ``apiCollection instance for <fqn> not found`` (issue #30598).
+        """
+        put_calls = []
+
+        def capture_put(url, json=None, **kwargs):
+            put_calls.append((url, json or []))
+            return {
+                "status": "success",
+                "numberOfRowsProcessed": len(json or []),
+                "numberOfRowsFailed": 0,
+                "successRequest": [],
+                "failedRequest": [],
+            }
+
+        with patch.object(OpenMetadata, "validate_versions", return_value=None):
+            metadata = OpenMetadata(self.config.workflowConfig.openMetadataServerConfig)
+            source = self._hermetic_source(schema=build_large_openapi_schema())
+            sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+            with patch.object(metadata.client, "put", side_effect=capture_put):
+                for record in source.process_nodes(
+                    [source.topology.api_collection, source.topology.api_endpoint]
+                ):
+                    if record.right is not None:
+                        sink._run(record.right)
+                sink.close()
+
+        created_collections = set()
+        orphan_endpoints = []
+        for url, payloads in put_calls:
+            if "/apiCollections/bulk" in url:
+                created_collections.update(
+                    f"{payload['service']}.{payload['name']}" for payload in payloads
+                )
+            elif "/apiEndpoints/bulk" in url:
+                orphan_endpoints.extend(
+                    payload["name"]
+                    for payload in payloads
+                    if payload["apiCollection"] not in created_collections
+                )
+
+        put_sequence = [
+            "C" if "/apiCollections/bulk" in url else "E" for url, _ in put_calls
+        ]
+        assert orphan_endpoints == []
+        # Collections are fully persisted first, then endpoints - not interleaved
+        # ("C E C E ..."), which is what leaves an endpoint depending on a collection
+        # that shares its bulk batch.
+        assert put_sequence == ["C"] + ["E"] * (len(put_sequence) - 1)
+        # More than one endpoint flush: the buffer really did drain mid-run, which is
+        # the condition the reporter's large document hit and a small one never does.
+        assert put_sequence.count("E") > 1
+
+    def test_endpoint_urls_survive_the_second_producer_pass(self):
+        """The endpoint node replays the collections the collection node enriched.
+
+        ``yield_api_collection`` resolves ``collection.url`` in place; if the endpoint
+        node re-derived fresh RESTCollection objects it would see ``url=None`` and
+        silently fall back to the raw openAPISchemaURL for every endpointURL.
+        """
+        source = self._hermetic_source()
+        records = list(
+            source.process_nodes(
+                [source.topology.api_collection, source.topology.api_endpoint]
+            )
+        )
+
+        endpoint_urls = {
+            record.right.name.root: str(record.right.endpointURL)
+            for record in records
+            if isinstance(record.right, CreateAPIEndpointRequest)
+        }
+
+        assert endpoint_urls == {
+            "/pet/findByStatus/get": "https://petstore3.swagger.io/#/pet/findPetsByStatus",
+            "/store/order/post": "https://petstore3.swagger.io/#/store/placeOrder",
+            "/user/login/get": "https://petstore3.swagger.io/#/user/loginUser",
+        }
+
+    def test_get_api_collections_derives_once(self):
+        """Both nodes produce from get_api_collections; the document is parsed once
+        and a filtered collection is reported once, not per node."""
+        exclude_config = deepcopy(mock_rest_config)
+        exclude_config["source"]["sourceConfig"]["config"][
+            "apiCollectionFilterPattern"
+        ] = {"excludes": ["store"]}
+        source = self._hermetic_source(config=exclude_config)
+
+        with patch.object(
+            RestSource, "_derive_collections", wraps=source._derive_collections
+        ) as derive:
+            first_pass = list(source.get_api_collections())
+            second_pass = list(source.get_api_collections())
+
+        assert derive.call_count == 1
+        assert first_pass == second_pass
+        assert [collection.name.root for collection in first_pass] == [
+            "pet",
+            "user",
+            "default",
+        ]
+        assert source.status.filtered == [{"store": "Collection filtered out"}]
+
+    def test_one_malformed_tag_does_not_drop_the_document(self):
+        """A tag the connector cannot turn into a collection is reported and skipped.
+
+        Regression for issue #30598: the whole derivation used to sit inside a single
+        try/except, so the first unparseable tag stopped the generator and the service
+        was left with few or no collections.
+        """
+        bad_tags = [
+            ("name-over-entity-name-max-length", {"name": "x" * 300}, 1),
+            (
+                "non-string-description",
+                {"name": "bad", "description": {"nested": "object"}},
+                1,
+            ),
+            ("tag-entry-is-a-string-not-an-object", "bad", 0),
+        ]
+        for case_id, bad_tag, expected_failures in bad_tags:
+            with self.subTest(case_id):
+                schema = deepcopy(MOCK_OPENAPI_SCHEMA)
+                schema["tags"].insert(1, bad_tag)
+                source = self._hermetic_source(schema=schema)
+
+                collection_names = [
+                    collection.name.root for collection in source.get_api_collections()
+                ]
+
+                assert {"pet", "store", "user"}.issubset(set(collection_names))
+                assert len(source.status.failures) == expected_failures
 
     def test_all_collections(self):
         with patch.object(
