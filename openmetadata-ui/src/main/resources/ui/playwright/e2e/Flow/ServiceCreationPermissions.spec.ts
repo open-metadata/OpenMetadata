@@ -355,9 +355,9 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
-      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
 
       await testConnectionIfRequired(page);
       await page.getByTestId('next-button').click();
