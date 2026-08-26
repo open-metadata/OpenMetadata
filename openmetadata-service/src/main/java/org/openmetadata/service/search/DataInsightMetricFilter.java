@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -41,8 +42,10 @@ public final class DataInsightMetricFilter {
     try {
       JsonNode queryNode = MAPPER.readTree(filter).get(QUERY_KEY);
       return queryNode == null ? null : queryNode.toString();
-    } catch (Exception e) {
+    } catch (JsonProcessingException e) {
       // Warn without the throwable: these endpoints are polled, and the fallback is well defined.
+      // Only a parse failure falls back; anything else is a bug and must not be downgraded into a
+      // silently unfiltered chart.
       LOG.warn("Ignoring a Data Insight metric filter that will not parse: {}", e.getMessage());
       return null;
     }
