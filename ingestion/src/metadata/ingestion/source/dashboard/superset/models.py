@@ -89,6 +89,7 @@ class DSColumns(BaseModel):
     id: Optional[int] = None  # noqa: UP045
     type: Optional[str] = None  # noqa: UP045
     description: Optional[str] = None  # noqa: UP045
+    expression: Optional[str] = None  # noqa: UP045
 
 
 class DSDatabase(BaseModel):
@@ -169,3 +170,4 @@ class FetchColumn(BaseModel):
     table_id: Optional[int] = None  # noqa: UP045
     table_name: Optional[str] = None  # noqa: UP045
     description: Optional[str] = None  # noqa: UP045
+    expression: Optional[str] = None  # noqa: UP045

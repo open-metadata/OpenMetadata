@@ -391,22 +391,27 @@ class SupersetSourceMixin(DashboardServiceSource):
         datasource_columns = []
         for field in data_source or []:
             try:
-                if field.type:
-                    field.type = self._clearn_column_datatype(field.type)
-                    col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                        field.type
-                    )
-                    parsed_fields = Column(
-                        dataTypeDisplay=field.type,
-                        dataType=col_parse["dataType"],
-                        arrayDataType=self.parse_array_data_type(col_parse),
-                        children=self.parse_row_data_type(col_parse),
-                        name=ColumnName(truncate_column_name(field.column_name or str(field.id))),
-                        displayName=field.column_name,
-                        description=field.description,
-                        dataLength=int(col_parse.get("dataLength", 0)),
-                    )
-                    datasource_columns.append(parsed_fields)
+                # Calculated columns commonly have no `type` in Superset (it's optional
+                # there); fall back to UNKNOWN instead of dropping the column entirely.
+                field.type = self._clearn_column_datatype(field.type) if field.type else "UNKNOWN"
+                col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                    field.type
+                )
+                description = field.description or ""
+                if field.expression:
+                    formula_text = f"**Formula:** `{field.expression}`"
+                    description = f"{description}\n\n{formula_text}" if description else formula_text
+                parsed_fields = Column(
+                    dataTypeDisplay=field.type,
+                    dataType=col_parse["dataType"],
+                    arrayDataType=self.parse_array_data_type(col_parse),
+                    children=self.parse_row_data_type(col_parse),
+                    name=ColumnName(truncate_column_name(field.column_name or str(field.id))),
+                    displayName=field.column_name,
+                    description=description or None,
+                    dataLength=int(col_parse.get("dataLength", 0)),
+                )
+                datasource_columns.append(parsed_fields)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to yield datamodel column: {exc}")
