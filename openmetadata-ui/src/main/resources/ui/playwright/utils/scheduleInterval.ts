@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 
 /**
- * Helpers for the ScheduleIntervalV1 scheduler used by the Add / Edit Ingestion
+ * Helpers for the ScheduleInterval scheduler used by the Add / Edit Ingestion
  * wizard. The scheduler is built on react-aria components, so selects are
  * opened through their trigger button and options are picked by role.
  */

@@ -11,40 +11,8 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
-import { CronOption } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
-import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
-import { getHourOptions, getMinuteOptions } from './CronExpressionUtils';
 import i18n from './i18next/LocalUtil';
-
-const getOptionComponent = () => {
-  const optionRenderer = (o: CronOption) => {
-    return { label: o.label, value: o.value };
-  };
-
-  return optionRenderer;
-};
-
-export const getHourMinuteSelect = ({
-  cronType,
-  disabled = false,
-}: {
-  cronType: CronTypes.MINUTE | CronTypes.HOUR;
-  disabled?: boolean;
-}) => (
-  <Select
-    className="w-full"
-    data-testid={`${cronType}-options`}
-    disabled={disabled}
-    id={`${cronType}-select`}
-    options={
-      cronType === CronTypes.MINUTE
-        ? getMinuteOptions().map(getOptionComponent())
-        : getHourOptions().map(getOptionComponent())
-    }
-  />
-);
 
 export const getRaiseOnErrorFormField = (
   onFocus?: (fieldName: string) => void

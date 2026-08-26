@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,112 +11,319 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
-  Col,
-  Form,
-  FormProps,
+  Grid,
   Input,
-  Radio,
-  Row,
   Select,
-  Space,
+  TimePicker,
+  TimePickerValue,
   Typography,
-} from 'antd';
-import classNames from 'classnames';
+} from '@openmetadata/ui-core-components';
+import { Clock } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import {
-  ForwardedRef,
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
+import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
   DAY_IN_MONTH_OPTIONS,
+  DAY_OF_MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
   DAY_OPTIONS,
+  HOUR_PATTERN,
+  MINUTE_PATTERN,
+  MONTH_PATTERN,
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
-import { LOADING_STATE } from '../../../../../enums/common.enum';
+import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import {
-  CronTypes,
-  SchedularOptions,
-} from '../../../../../enums/Schedular.enum';
-import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../../../interface/FormUtils.interface';
-import {
-  cronValidator,
   getCron,
   getDefaultScheduleValue,
   getStateValue,
   getUpdatedStateFromFormState,
 } from '../../../../../utils/CronExpressionUtils';
-import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
-import { getHourMinuteSelect } from '../../../../../utils/SchedularUtils';
+import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import './schedule-interval.less';
-import {
-  ScheduleIntervalHandle,
-  ScheduleIntervalProps,
-  StateValue,
-  WorkflowExtraConfig,
-} from './ScheduleInterval.interface';
+import { StateValue } from './ScheduleInterval.types';
+import ScheduleSelectionCards from './ScheduleSelectionCards';
 
-function ScheduleIntervalInner<T>(
-  {
-    disabled,
-    includePeriodOptions,
-    onBack,
-    onDeploy,
-    initialData,
-    status,
-    children,
-    debugLog = {
-      allow: false,
-      initialValue: false,
-    },
-    isEditMode = false,
-    buttonProps,
-    defaultSchedule,
-    topChildren,
-    showActionButtons = true,
-    schedularOptions,
-  }: ScheduleIntervalProps<T>,
-  ref: ForwardedRef<ScheduleIntervalHandle>
-) {
+export interface ScheduleIntervalProps {
+  value?: string;
+  onChange?: (value: string | undefined) => void;
+  disabled?: boolean;
+  includePeriodOptions?: string[];
+  defaultSchedule?: string;
+  entity?: string;
+  /**
+   * Notifies the owner of the submit action whether the scheduler currently
+   * holds a usable value. A custom cron that is empty or malformed is reported
+   * as invalid so the form can block submission - an empty schedule is only
+   * valid through the On Demand card.
+   */
+  onValidityChange?: (isValid: boolean) => void;
+}
+
+const PERIOD_CUSTOM = 'custom';
+
+const CRON_FIELD_PATTERNS = [
+  MINUTE_PATTERN,
+  HOUR_PATTERN,
+  DAY_OF_MONTH_PATTERN,
+  MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
+];
+
+const validateCronExpression = (cron: string): string | undefined => {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) {
+    return 'message.cron-invalid-field-count';
+  }
+
+  const fieldErrorKeys = [
+    'message.cron-invalid-minute-field',
+    'message.cron-invalid-hour-field',
+    'message.cron-invalid-day-of-month-field',
+    'message.cron-invalid-month-field',
+    'message.cron-invalid-day-of-week-field',
+  ];
+
+  for (let i = 0; i < parts.length; i++) {
+    if (!CRON_FIELD_PATTERNS[i].test(parts[i])) {
+      return fieldErrorKeys[i];
+    }
+  }
+
+  return undefined;
+};
+
+const FREQUENCY_LABEL_KEYS: Record<string, string> = {
+  hour: 'label.hourly',
+  day: 'label.daily',
+  week: 'label.weekly',
+  month: 'label.monthly',
+  custom: 'label.custom',
+};
+
+const SELECTED_FREQUENCY_CLASS =
+  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:after:outline-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
+
+const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
+  value,
+  onChange,
+  disabled,
+  includePeriodOptions,
+  defaultSchedule,
+  entity,
+  onValidityChange,
+}) => {
   const { t } = useTranslation();
-  // Since includePeriodOptions can limit the schedule options
-  // we need to get the default schedule which is suitable for includePeriodOptions
+  // Schedule options for SelectionCardGroup
+  const SCHEDULE_OPTIONS: SelectionOption[] = [
+    {
+      value: SchedularOptions.SCHEDULE,
+      label: t('label.schedule'),
+      description: t('message.schedule-entity-description', {
+        entity: entity ?? t('label.ingestion'),
+      }),
+      icon: <ClockIcon />,
+    },
+    {
+      value: SchedularOptions.ON_DEMAND,
+      label: t('label.on-demand'),
+      description: t('message.on-demand-entity-description', {
+        entity: entity ?? t('label.ingestion'),
+      }),
+      icon: <PlayIcon />,
+    },
+  ];
+
+  // Determine initial state based on value
+  const initialSelectedSchedular = isEmpty(value)
+    ? SchedularOptions.ON_DEMAND
+    : SchedularOptions.SCHEDULE;
+
   const initialDefaultSchedule = getDefaultScheduleValue({
     defaultSchedule,
     includePeriodOptions,
     allowNoSchedule: true,
   });
-  const initialCron = isEditMode
-    ? initialData?.cron
-    : initialData?.cron ?? initialDefaultSchedule;
-  const initialValues = {
-    ...initialData,
-    ...getStateValue(initialCron, initialDefaultSchedule),
-  };
-  const [state, setState] = useState<StateValue>(initialValues);
+
+  const initialCron = value ?? initialDefaultSchedule;
+  const initialStateValue = getStateValue(initialCron, initialDefaultSchedule);
+
   const [selectedSchedular, setSelectedSchedular] = useState<SchedularOptions>(
-    isEmpty(initialCron)
-      ? SchedularOptions.ON_DEMAND
-      : SchedularOptions.SCHEDULE
+    initialSelectedSchedular
   );
-  const [form] = Form.useForm<StateValue>();
-  // Exposes submit to the parent card footer, which triggers the form when showActionButtons is false.
-  useImperativeHandle(ref, () => ({ submit: () => form.submit() }), [form]);
+  const [state, setState] = useState<StateValue>(initialStateValue);
+
   const { cron: cronString, selectedPeriod, dow, dom } = state;
+
+  // Holds the cron this component last emitted, so the sync effect below can
+  // tell an external value change from an echo of its own onChange. Without it,
+  // a partially typed custom cron (not emitted while invalid) or a typed cron
+  // matching a known period would re-derive the state and pull the user out of
+  // the custom field. Normalized because consumers store a cleared cron as an
+  // empty string but hand it back as undefined.
+  const lastEmittedValueRef = useRef(value || undefined);
+
+  const emitChange = useCallback(
+    (cron?: string) => {
+      lastEmittedValueRef.current = cron || undefined;
+      onChange?.(cron);
+    },
+    [onChange]
+  );
+
+  const {
+    showTimePicker,
+    showMinuteOnly,
+    showWeekSelect,
+    showMonthSelect,
+    showCustomInput,
+  } = useMemo(() => {
+    const isHourSelected = selectedPeriod === 'hour';
+    const isDaySelected = selectedPeriod === 'day';
+    const isWeekSelected = selectedPeriod === 'week';
+    const isMonthSelected = selectedPeriod === 'month';
+    const isCustomSelected = selectedPeriod === PERIOD_CUSTOM;
+
+    return {
+      showTimePicker: isDaySelected || isWeekSelected || isMonthSelected,
+      showMinuteOnly: isHourSelected,
+      showWeekSelect: isWeekSelected,
+      showMonthSelect: isMonthSelected,
+      showCustomInput: isCustomSelected,
+    };
+  }, [selectedPeriod]);
+
+  const [customCronError, setCustomCronError] = useState<string>('');
+
+  const handleSelectedSchedular = useCallback(
+    (schedularValue: SchedularOptions) => {
+      setSelectedSchedular(schedularValue);
+      setCustomCronError('');
+
+      if (schedularValue === SchedularOptions.ON_DEMAND) {
+        setState((prev) => ({ ...prev, cron: undefined }));
+        emitChange(undefined);
+      } else {
+        // When switching to schedule, use default schedule
+        const nonEmptyScheduleValue = getDefaultScheduleValue({
+          includePeriodOptions,
+          defaultSchedule,
+        });
+        const newState = getStateValue(nonEmptyScheduleValue);
+        setState(newState);
+        emitChange(newState.cron);
+      }
+    },
+    [includePeriodOptions, defaultSchedule, emitChange]
+  );
+
+  const handleStateChange = useCallback(
+    (newStatePartial: Partial<StateValue>) => {
+      const newState = getUpdatedStateFromFormState(
+        state,
+        newStatePartial as StateValue
+      );
+      const cronExp = getCron(newState);
+      const updatedState = { ...newState, cron: cronExp };
+      setState(updatedState);
+      // A stale error from a previous custom expression must not survive a
+      // frequency switch - the new frequency always produces a valid cron.
+      setCustomCronError('');
+      emitChange(cronExp);
+    },
+    [state, emitChange]
+  );
+
+  const handleCustomCronChange = useCallback(
+    (cronValue: string) => {
+      setState((prev) => ({ ...prev, cron: cronValue }));
+
+      // An empty custom expression is not a schedule. Clearing the field is a
+      // validation error rather than a silent fallback to on demand, which is
+      // reachable only through the On Demand card.
+      if (!cronValue) {
+        setCustomCronError(
+          t('label.field-required', { field: t('label.cron') })
+        );
+        emitChange('');
+
+        return;
+      }
+
+      const errorKey = validateCronExpression(cronValue);
+      setCustomCronError(errorKey ? t(errorKey) : '');
+
+      if (!errorKey) {
+        emitChange(cronValue);
+      }
+    },
+    [emitChange, t]
+  );
+
+  // Only the custom expression can be left in an unusable state; every other
+  // frequency derives a valid cron on its own.
+  const isCustomCronInvalid = showCustomInput && Boolean(customCronError);
+
+  useEffect(() => {
+    onValidityChange?.(!isCustomCronInvalid);
+  }, [isCustomCronInvalid, onValidityChange]);
+
+  const frequencyOptions = useMemo(() => {
+    const options = includePeriodOptions
+      ? PERIOD_OPTIONS.filter((option) =>
+          includePeriodOptions.includes(option.value)
+        )
+      : PERIOD_OPTIONS;
+
+    return options.map((option) => ({
+      id: option.value,
+      label: t(FREQUENCY_LABEL_KEYS[option.value] ?? option.label),
+    }));
+  }, [includePeriodOptions, t]);
+
+  const dayOptions = useMemo(
+    () =>
+      DAY_OPTIONS.map((option) => ({
+        id: option.value,
+        label: option.label,
+      })),
+    []
+  );
+
+  const dateOptions = useMemo(
+    () =>
+      DAY_IN_MONTH_OPTIONS.map((option) => ({
+        id: option.value,
+        label: option.label,
+      })),
+    []
+  );
+
+  const minuteOptions = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, i) => ({
+        id: i.toString(),
+        label: i.toString().padStart(2, '0'),
+      })),
+    []
+  );
+
+  const timeValue = useMemo<TimePickerValue>(() => {
+    const hour = Number(state.hour);
+    const minute = Number(state.min);
+
+    return {
+      hour: isNaN(hour) ? 0 : hour,
+      minute: isNaN(minute) ? 0 : minute,
+    };
+  }, [state.hour, state.min]);
+
   const [cronHumanText, setCronHumanText] = useState<string>('');
 
   useEffect(() => {
@@ -144,326 +351,225 @@ function ScheduleIntervalInner<T>(
     };
   }, [cronString]);
 
-  const {
-    showMinuteSelect,
-    showHourSelect,
-    showWeekSelect,
-    showMonthSelect,
-    minuteCol,
-    hourCol,
-    weekCol,
-    monthCol,
-  } = useMemo(() => {
-    const isHourSelected = selectedPeriod === 'hour';
-    const isDaySelected = selectedPeriod === 'day';
-    const isWeekSelected = selectedPeriod === 'week';
-    const isMonthSelected = selectedPeriod === 'month';
-    const showMinuteSelect =
-      isHourSelected || isDaySelected || isWeekSelected || isMonthSelected;
-    const showHourSelect = isDaySelected || isWeekSelected || isMonthSelected;
-    const showWeekSelect = isWeekSelected;
-    const showMonthSelect = isMonthSelected;
-    const minuteCol = isHourSelected ? 12 : 6;
+  const cronExpressionCard = useMemo(() => {
+    const cronStringValue = cronString
+      ? t('label.entity-scheduled-to-run-value', {
+          entity: entity ?? t('label.ingestion'),
+          value: cronHumanText,
+        })
+      : t('message.pipeline-will-trigger-manually');
 
-    return {
-      showMinuteSelect,
-      showHourSelect,
-      showWeekSelect,
-      showMonthSelect,
-      minuteCol: showMinuteSelect ? minuteCol : 0,
-      hourCol: showHourSelect ? 6 : 0,
-      weekCol: showWeekSelect ? 24 : 0,
-      monthCol: showMonthSelect ? 24 : 0,
-    };
-  }, [selectedPeriod]);
+    return (
+      <Card className="cron-expression-card tw:bg-secondary" size="sm">
+        <Clock className="cron-expression-card-icon" />
+        <Typography className="expression-text" size="text-sm">
+          {cronStringValue}
+        </Typography>
+      </Card>
+    );
+  }, [cronString, cronHumanText, entity, t]);
 
-  const handleSelectedSchedular = useCallback(
-    (value: SchedularOptions) => {
-      setSelectedSchedular(value);
-      // Since the initialDefaultSchedule can be empty
-      // we need to get the default schedule which will be non empty
-      const nonEmptyScheduleValue = getDefaultScheduleValue({
-        includePeriodOptions,
-        defaultSchedule,
-      }); // Get the default schedule based on the includePeriodOptions
+  // Update internal state when the value changes outside of this component.
+  // Comparing against the last emitted cron rather than the current state keeps
+  // the user's in-progress edits (typed custom crons above all) intact.
+  useEffect(() => {
+    const normalizedValue = value || undefined;
 
-      let newState = getStateValue(initialData?.cron ?? nonEmptyScheduleValue);
-      if (value === SchedularOptions.ON_DEMAND) {
-        newState = {
-          ...newState,
-          cron: undefined,
-        };
-      }
-      setState(newState);
-      form.setFieldsValue(newState);
-    },
-    [includePeriodOptions, defaultSchedule, initialData?.cron]
-  );
+    if (normalizedValue === lastEmittedValueRef.current) {
+      return;
+    }
 
-  const formFields: FieldProp[] = useMemo(
-    () => [
-      {
-        name: 'enableDebugLog',
-        label: t('label.enable-debug-log'),
-        type: FieldTypes.SWITCH,
-        required: false,
-        props: {
-          'data-testid': 'enable-debug-log',
-        },
-        formItemProps: {
-          initialValue: debugLog.initialValue,
-        },
-        id: 'root/enableDebugLog',
-        formItemLayout: FormItemLayout.HORIZONTAL,
-      },
-    ],
-    [debugLog]
-  );
+    lastEmittedValueRef.current = normalizedValue;
 
-  const handleFormSubmit: FormProps['onFinish'] = useCallback(
-    (data: WorkflowExtraConfig & T) => {
-      // Remove cron if it is empty
-      onDeploy?.(data);
-    },
-    [onDeploy]
-  );
-
-  const handleValuesChange = (values: StateValue & WorkflowExtraConfig & T) => {
-    const newState = getUpdatedStateFromFormState(state, values);
-    const cronExp = getCron(newState);
-    const updatedState = { ...newState, cron: cronExp };
-    form.setFieldsValue(updatedState);
-    setState(updatedState);
-  };
-
-  const filteredPeriodOptions = useMemo(() => {
-    const options = includePeriodOptions
-      ? PERIOD_OPTIONS.filter((option) =>
-          includePeriodOptions.includes(option.value)
-        )
-      : PERIOD_OPTIONS;
-
-    return options.map((option) => ({
-      ...option,
-      label: t(option.label),
-    }));
-  }, [includePeriodOptions, t]);
+    if (isEmpty(value)) {
+      setSelectedSchedular(SchedularOptions.ON_DEMAND);
+      setState((prev) => ({ ...prev, cron: undefined }));
+    } else {
+      setSelectedSchedular(SchedularOptions.SCHEDULE);
+      setState(getStateValue(value, initialDefaultSchedule));
+    }
+  }, [value, initialDefaultSchedule]);
 
   return (
-    <Form
-      className="schedule-interval"
-      data-testid="schedule-intervel-container"
-      form={form}
-      initialValues={initialValues}
-      layout="vertical"
-      name="schedular-form"
-      onFinish={handleFormSubmit}
-      onValuesChange={handleValuesChange}>
-      <Row gutter={[16, 16]}>
-        {topChildren}
-        <Col span={24}>
-          <Radio.Group
-            className="schedular-card-container"
-            data-testid="schedular-card-container"
-            value={selectedSchedular}>
-            {schedularOptions.map(({ description, title, value }) => (
-              <Card
-                className={classNames('schedular-card', {
-                  active: value === selectedSchedular,
-                })}
-                key={value}
-                onClick={() => handleSelectedSchedular(value)}>
-                <Radio value={value}>
-                  <Space direction="vertical" size={6}>
-                    <Typography.Text className="font-medium text-md">
-                      {title}
-                    </Typography.Text>
-                    <Typography.Text className="text-grey-muted">
-                      {description}
-                    </Typography.Text>
-                  </Space>
-                </Radio>
-              </Card>
-            ))}
-          </Radio.Group>
-        </Col>
-
+    <div className="schedule-interval">
+      <Grid gap="4">
+        <Grid.Item span={24}>
+          <ScheduleSelectionCards
+            disabled={disabled}
+            options={SCHEDULE_OPTIONS}
+            value={selectedSchedular}
+            onChange={(value) =>
+              handleSelectedSchedular(value as SchedularOptions)
+            }
+          />
+        </Grid.Item>
         {selectedSchedular === SchedularOptions.SCHEDULE && (
-          <Col span={24}>
-            <Row data-testid="cron-container" gutter={[16, 16]}>
-              <Col data-testid="time-dropdown-container" span={12}>
-                <Form.Item
-                  label={`${t('label.every')}:`}
-                  labelCol={{ span: 24 }}
-                  name="selectedPeriod">
-                  <Select
-                    className="w-full"
-                    data-testid="cron-type"
-                    disabled={disabled}
-                    id="cronType"
-                    options={filteredPeriodOptions.map(({ label, value }) => ({
-                      label,
-                      value,
-                    }))}
-                  />
-                </Form.Item>
-              </Col>
+          <Grid.Item span={24}>
+            <div
+              className="schedule-interval-fields"
+              data-testid="cron-container">
+              <div
+                className="frequency-field"
+                data-testid="frequency-container">
+                {/* eslint-disable-next-line jsx-a11y/label-has-for -- button group, not a single control */}
+                <label>{t('label.frequency')}</label>
+                <div className="frequency-button-group m-t-xs">
+                  {frequencyOptions.map((option) => (
+                    <Button
+                      className={
+                        selectedPeriod === option.id
+                          ? SELECTED_FREQUENCY_CLASS
+                          : undefined
+                      }
+                      color="secondary"
+                      data-testid={`frequency-${option.id}`}
+                      isDisabled={disabled}
+                      key={option.id}
+                      size="sm"
+                      onPress={() =>
+                        handleStateChange({ selectedPeriod: option.id })
+                      }>
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-              <Col span={hourCol}>
-                <Form.Item
-                  data-testid="hour-option"
-                  hidden={!showHourSelect}
-                  label={`${t('label.hour')}:`}
-                  labelCol={{ span: 24 }}
-                  name="hour">
-                  {getHourMinuteSelect({
-                    cronType: CronTypes.HOUR,
-                    disabled,
-                  })}
-                </Form.Item>
-              </Col>
-              <Col span={minuteCol}>
-                <Form.Item
-                  data-testid="minute-option"
-                  hidden={!showMinuteSelect}
-                  label={`${t('label.minute')}:`}
-                  labelCol={{ span: 24 }}
-                  name="min">
-                  {getHourMinuteSelect({
-                    cronType: CronTypes.MINUTE,
-                    disabled,
-                  })}
-                </Form.Item>
-              </Col>
-              <Col span={weekCol}>
-                <Form.Item
-                  data-testid="week-segment-day-option-container"
-                  hidden={!showWeekSelect}
-                  label={`${t('label.day')}:`}
-                  labelCol={{ span: 24 }}
-                  name="dow">
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="d-flex gap-2"
-                    value={dow}>
-                    {DAY_OPTIONS.map(({ label, value: optionValue }) => (
-                      <Radio.Button
-                        className="week-selector-buttons"
-                        data-value={optionValue}
-                        disabled={disabled}
-                        key={`${label}-${optionValue}`}
-                        value={optionValue}>
-                        {label[0]}
-                      </Radio.Button>
-                    ))}
-                  </Radio.Group>
-                </Form.Item>
-              </Col>
+              <Grid gap="4">
+                {showWeekSelect && (
+                  <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
+                    <label>{t('label.day')}</label>
+                    <Select
+                      aria-label={t('label.day')}
+                      className="w-full m-t-xs"
+                      data-testid="day-options"
+                      isDisabled={disabled}
+                      items={dayOptions}
+                      selectedKey={dow ?? null}
+                      onSelectionChange={(key: Key | null) =>
+                        key !== null && handleStateChange({ dow: String(key) })
+                      }>
+                      {(item) => (
+                        <Select.Item
+                          id={item.id}
+                          key={item.id}
+                          textValue={item.label}>
+                          {item.label}
+                        </Select.Item>
+                      )}
+                    </Select>
+                  </Grid.Item>
+                )}
 
-              <Col span={monthCol}>
-                <Form.Item
-                  data-testid="month-segment-day-option-container"
-                  hidden={!showMonthSelect}
-                  label={`${t('label.date')}:`}
-                  labelCol={{ span: 24 }}
-                  name="dom">
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="d-flex flex-wrap gap-2"
-                    value={dom}>
-                    {DAY_IN_MONTH_OPTIONS.map(
-                      ({ label, value: optionValue }) => (
-                        <Radio.Button
-                          className="week-selector-buttons"
-                          data-value={optionValue}
-                          disabled={disabled}
-                          key={`day-${label}-${optionValue}`}
-                          value={optionValue}>
-                          {label}
-                        </Radio.Button>
-                      )
+                {showMonthSelect && (
+                  <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
+                    <label>{t('label.date')}</label>
+                    <Select
+                      aria-label={t('label.date')}
+                      className="w-full m-t-xs"
+                      data-testid="date-options"
+                      isDisabled={disabled}
+                      items={dateOptions}
+                      selectedKey={dom ?? null}
+                      onSelectionChange={(key: Key | null) =>
+                        key !== null && handleStateChange({ dom: String(key) })
+                      }>
+                      {(item) => (
+                        <Select.Item
+                          id={item.id}
+                          key={item.id}
+                          textValue={item.label}>
+                          {item.label}
+                        </Select.Item>
+                      )}
+                    </Select>
+                  </Grid.Item>
+                )}
+
+                {showTimePicker && (
+                  <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- TimePicker below has its own aria-label */}
+                    <label>{t('label.time')}</label>
+                    <TimePicker
+                      aria-label={t('label.time')}
+                      className="m-t-xs"
+                      data-testid="time-picker"
+                      isDisabled={disabled}
+                      value={timeValue}
+                      onChange={(time: TimePickerValue | null) => {
+                        if (time !== null) {
+                          handleStateChange({
+                            hour: String(time.hour),
+                            min: String(time.minute),
+                          });
+                        }
+                      }}
+                    />
+                  </Grid.Item>
+                )}
+
+                {showMinuteOnly && (
+                  <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
+                    <label>{t('label.minute')}</label>
+                    <Select
+                      aria-label={t('label.minute')}
+                      className="w-full m-t-xs"
+                      data-testid="minute-options"
+                      isDisabled={disabled}
+                      items={minuteOptions}
+                      selectedKey={
+                        state.min === undefined ? null : String(state.min)
+                      }
+                      onSelectionChange={(key: Key | null) =>
+                        key !== null && handleStateChange({ min: String(key) })
+                      }>
+                      {(item) => (
+                        <Select.Item
+                          id={item.id}
+                          key={item.id}
+                          textValue={item.label}>
+                          {item.label}
+                        </Select.Item>
+                      )}
+                    </Select>
+                  </Grid.Item>
+                )}
+
+                {showCustomInput && (
+                  <Grid.Item span={24}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Input below has its own aria-label */}
+                    <label>{t('label.cron')}</label>
+                    <Input
+                      aria-label={t('label.cron')}
+                      className="m-t-xs"
+                      data-testid="custom-cron-input"
+                      isDisabled={disabled}
+                      placeholder="0 0 * * *"
+                      value={cronString ?? ''}
+                      onChange={handleCustomCronChange}
+                    />
+                    {customCronError && (
+                      <Typography
+                        className="tw:text-fg-error-primary tw:mt-1"
+                        data-testid="custom-cron-error"
+                        size="text-xs">
+                        {customCronError}
+                      </Typography>
                     )}
-                  </Radio.Group>
-                </Form.Item>
-              </Col>
-
-              <Col span={selectedPeriod === 'custom' ? 12 : 0}>
-                <Form.Item
-                  hidden={selectedPeriod !== 'custom'}
-                  label={`${t('label.cron')}:`}
-                  labelCol={{ span: 24 }}
-                  name="cron"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('label.field-required', {
-                        field: t('label.cron'),
-                      }),
-                    },
-                    {
-                      validator: cronValidator,
-                    },
-                  ]}>
-                  <Input />
-                </Form.Item>
-              </Col>
-
-              {cronString && <Col span={24}>{cronHumanText}</Col>}
-
-              {isEmpty(cronString) && (
-                <Col span={24}>
-                  <p data-testid="manual-segment-container">
-                    {t('message.pipeline-will-trigger-manually')}
-                  </p>
-                </Col>
-              )}
-            </Row>
-          </Col>
+                  </Grid.Item>
+                )}
+              </Grid>
+            </div>
+          </Grid.Item>
         )}
 
-        {debugLog.allow && (
-          <Col span={24}>{generateFormFields(formFields)}</Col>
-        )}
-
-        {children}
-
-        {showActionButtons && (
-          <Col className="d-flex justify-end" span={24}>
-            <Button
-              className="m-r-xs"
-              data-testid="back-button"
-              type="link"
-              onClick={onBack}>
-              <span>{buttonProps?.cancelText ?? t('label.back')}</span>
-            </Button>
-
-            {status === 'success' ? (
-              <Button
-                disabled
-                className="w-16 opacity-100 p-x-md p-y-xxs"
-                type="primary">
-                <CheckOutlined />
-              </Button>
-            ) : (
-              <Button
-                className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-                data-testid="deploy-button"
-                htmlType="submit"
-                loading={status === LOADING_STATE.WAITING}
-                type="primary">
-                {buttonProps?.okText ?? t('label.create')}
-              </Button>
-            )}
-          </Col>
-        )}
-      </Row>
-    </Form>
+        <Grid.Item span={24}>{cronExpressionCard}</Grid.Item>
+      </Grid>
+    </div>
   );
-}
-
-// forwardRef cast preserves the generic type parameter <T> on the public API.
-const ScheduleInterval = forwardRef(ScheduleIntervalInner) as <T>(
-  props: ScheduleIntervalProps<T> & React.RefAttributes<ScheduleIntervalHandle>
-) => React.ReactElement | null;
+};
 
 export default ScheduleInterval;

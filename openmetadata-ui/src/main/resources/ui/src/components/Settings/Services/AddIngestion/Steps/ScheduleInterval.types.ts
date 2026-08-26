@@ -11,40 +11,9 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
-import { ReactNode } from 'react';
-import { SchedularOptions } from '../../../../../enums/Schedular.enum';
-
 export interface ScheduleIntervalHandle {
   submit: () => void;
 }
-
-export type ScheduleIntervalProps<T> = {
-  status: LoadingState;
-  initialData?: WorkflowExtraConfig & T;
-  defaultSchedule?: string;
-  includePeriodOptions?: string[];
-  children?: ReactNode;
-  disabled?: boolean;
-  isEditMode?: boolean;
-  onBack?: () => void;
-  onDeploy?: (values: WorkflowExtraConfig & T) => void;
-  buttonProps?: {
-    okText?: string;
-    cancelText?: string;
-  };
-  debugLog?: {
-    allow?: boolean;
-    initialValue?: boolean;
-  };
-  topChildren?: ReactNode;
-  showActionButtons?: boolean;
-  schedularOptions: {
-    title: string;
-    description: string;
-    value: SchedularOptions;
-  }[];
-};
 
 export interface WorkflowExtraConfig {
   cron?: string;
@@ -69,9 +38,4 @@ export interface StateValue {
   dow: string;
   dom: string;
   cron?: string;
-}
-
-export interface CronOption {
-  label: string;
-  value: string;
 }

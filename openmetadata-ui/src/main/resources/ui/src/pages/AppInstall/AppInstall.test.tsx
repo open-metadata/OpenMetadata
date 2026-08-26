@@ -47,11 +47,10 @@ jest.mock('react-router-dom', () => ({
 jest.mock(
   '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
-    jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+    jest.fn().mockImplementation(({ onChange }) => (
       <div>
         ScheduleInterval
-        <button onClick={onDeploy}>Submit ScheduleInterval</button>
-        <button onClick={onBack}>Cancel ScheduleInterval</button>
+        <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
       </div>
     ))
 );
@@ -134,7 +133,7 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../rest/applicationAPI', () => ({
-  installApplication: jest.fn(() => mockInstallApplication()),
+  installApplication: jest.fn((...args) => mockInstallApplication(...args)),
 }));
 
 jest.mock('../../rest/applicationMarketPlaceAPI', () => ({
@@ -190,12 +189,17 @@ describe('AppInstall component', () => {
     expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
     expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
 
-    // ScheduleInterval
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
+    fireEvent.click(screen.getByTestId('deploy-button'));
 
     expect(mockInstallApplication).toHaveBeenCalled();
+    expect(mockInstallApplication).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appSchedule: expect.objectContaining({
+          cronExpression: '0 12 * * *',
+        }),
+      })
+    );
 
     await waitFor(() =>
       expect(mockShowSuccessToast).toHaveBeenCalledWith(
@@ -204,9 +208,7 @@ describe('AppInstall component', () => {
     );
 
     // change ActiveServiceStep to 1
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByTestId('back-button'));
 
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
 
@@ -239,9 +241,7 @@ describe('AppInstall component', () => {
     expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
 
     // change ActiveServiceStep to 2
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByTestId('back-button'));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel FormBuilder' }));
 
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
@@ -299,9 +299,7 @@ describe('AppInstall component', () => {
     expect(await screen.findByText('ScheduleInterval')).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
-      );
+      userEvent.click(screen.getByTestId('deploy-button'));
     });
 
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR));
