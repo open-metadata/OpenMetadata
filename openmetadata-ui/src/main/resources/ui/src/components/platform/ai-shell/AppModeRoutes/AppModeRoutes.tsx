@@ -13,11 +13,11 @@
 
 import { lazy, useMemo } from 'react';
 import { Route } from 'react-router-dom';
-import Loader from '../../../common/Loader/Loader';
 import { ROUTES } from '../../../../constants/constants';
-import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
+import Loader from '../../../common/Loader/Loader';
+import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
 import { AppShell } from '../AppShell';
 import KeepAliveRoutes, {
