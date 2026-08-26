@@ -32,7 +32,12 @@
       "import": "./dist/locale/index.es.js",
       "require": "./dist/locale/index.cjs.js"
     },
-    "./globals.css": "./src/styles/globals.css"
+    "./globals.css": "./src/styles/globals.css",
+    "./icons": {
+      "types": "./dist/types/src/icons/index.d.ts",
+      "import": "./dist/icons/index.es.js",
+      "require": "./dist/icons/index.cjs.js"
+    }
   },
   "files": [
     "dist",
@@ -61,8 +66,8 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "prepublishOnly": "yarn clean && yarn build",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "storybook": "yarn icons:generate && storybook dev -p 6006",
+    "build-storybook": "yarn icons:generate && storybook build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
@@ -72,6 +77,7 @@
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
     "pretty:check": "prettier --check src/",
     "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh",
+    "icons:generate": "node scripts/generate-icons.mjs",
     "i18n": "sync-i18n --files 'src/locale/languages/*.json' --primary en-us --space 2 --fn",
     "check-i18n": "yarn i18n --check",
     "check-i18n-keys": "node scripts/i18n-extract-check.cjs",
@@ -108,6 +114,9 @@
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@fontsource/inter": "^5.2.8",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "svgo": "^3.3.2",
     "@internationalized/date": "^3.11.0",
     "@react-aria/utils": "^3.33.0",
     "@react-stately/utils": "^3.11.0",

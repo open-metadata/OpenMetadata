@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
@@ -106,7 +107,12 @@ jest.mock('@react-awesome-query-builder/antd', () => {
       sanitizeTree: jest.fn(() => ({ fixedTree: {} })),
       jsonLogicFormat: jest.fn(() => ({ logic: { test: 'logic' } })),
     },
-    Builder: ({ onChange, ...props }: any) => (
+    Builder: ({
+      onChange,
+      ...props
+    }: {
+      onChange?: (tree: unknown, config: unknown) => void;
+    } & Record<string, unknown>) => (
       <div data-testid="query-builder" {...props}>
         <button
           data-testid="mock-query-change"
@@ -115,7 +121,14 @@ jest.mock('@react-awesome-query-builder/antd', () => {
         </button>
       </div>
     ),
-    Query: ({ onChange, renderBuilder, ...props }: any) => {
+    Query: ({
+      onChange,
+      renderBuilder,
+      ...props
+    }: {
+      onChange?: (tree: unknown, config: unknown) => void;
+      renderBuilder: (props: Record<string, unknown>) => ReactNode;
+    } & Record<string, unknown>) => {
       const mockActions = { test: 'actions' };
 
       return (
@@ -123,7 +136,8 @@ jest.mock('@react-awesome-query-builder/antd', () => {
           {renderBuilder({
             ...props,
             actions: mockActions,
-            onChange: (tree: any, config: any) => onChange?.(tree, config),
+            onChange: (tree: unknown, config: unknown) =>
+              onChange?.(tree, config),
           })}
         </div>
       );
@@ -141,7 +155,9 @@ const mockSearchResponse = {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: any) => {
+  debounce: (
+    fn: ((...args: unknown[]) => unknown) & { cancel?: jest.Mock }
+  ) => {
     fn.cancel = jest.fn();
 
     return fn;
@@ -359,7 +375,7 @@ describe('QueryBuilderWidgetV1', () => {
     });
 
     it('should show loading skeleton while fetching count', async () => {
-      let resolveSearch: (value: any) => void;
+      let resolveSearch: (value: unknown) => void;
       const searchPromise = new Promise((resolve) => {
         resolveSearch = resolve;
       });

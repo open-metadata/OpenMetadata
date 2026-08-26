@@ -1152,6 +1152,10 @@ public class SystemRepository {
     boolean reindexNeeded() {
       return !stalePending.isEmpty() || !missingIndexes.isEmpty();
     }
+
+    boolean passed() {
+      return driftComputed && !reindexNeeded() && clusterHealthy;
+    }
   }
 
   static ReindexStatus classifyReindexStatus(
@@ -1280,19 +1284,25 @@ public class SystemRepository {
   }
 
   private StepValidation getReindexStatusValidation() {
-    StepValidation step =
-        new StepValidation().withDescription(ValidationStepDescription.SEARCH_REINDEX.key);
     SearchRepository searchRepository = Entity.getSearchRepository();
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
-      SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
-      boolean healthy = status.driftComputed() && !status.reindexNeeded();
-      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
+      result = buildReindexStepValidation(computeSearchReindexStatus(searchRepository));
     } else {
       result =
-          step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
+          new StepValidation()
+              .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage("Skipped: search instance is not reachable.");
     }
     return result;
+  }
+
+  static StepValidation buildReindexStepValidation(SearchReindexStatus status) {
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+        .withPassed(status.passed())
+        .withMessage(buildReindexStatusMessage(status));
   }
 
   private SearchReindexStatus computeSearchReindexStatus(SearchRepository searchRepository) {
