@@ -114,6 +114,17 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
   }
 );
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockReturnValue({
+    entityRules: {
+      canAddMultipleDataProducts: true,
+      requireDomainForDataProduct: false,
+    },
+    rules: [],
+    isRulesLoaded: true,
+    isLoading: false,
+  }),
+}));
 jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
   return jest.fn().mockImplementation(({ onUpdate, testCase, onCancel }) => (
     <div>

@@ -38,6 +38,7 @@ import {
   TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
   getTestDefinitionById,
@@ -367,6 +368,8 @@ const TestCaseResultTab = () => {
     isVersionPage,
   ]);
 
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
+
   const renderParameterRows = useCallback(
     (items: Array<{ label?: string; value: string | React.ReactNode }>) => {
       if (items.length === 0) {
@@ -637,6 +640,9 @@ const TestCaseResultTab = () => {
                 activeDomains={testCaseData?.domains ?? []}
                 dataProducts={testCaseData?.dataProducts ?? []}
                 hasPermission={!isVersionPage && (hasEditPermission ?? false)}
+                requireDomainForDataProduct={
+                  !isRulesLoaded || entityRules.requireDomainForDataProduct
+                }
                 onSave={handleDataProductsSave}
               />
             </div>
