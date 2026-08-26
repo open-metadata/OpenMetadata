@@ -71,7 +71,7 @@ const IncidentDetails = ({
             className="tw:shrink-0 tw:self-start"
             data-testid="test-case-incident-status">
             <BadgeWithDot
-              className="tw:bg-white"
+              className="tw:bg-primary"
               color={statusConfig.color}
               size="sm"
               type="pill-color">
