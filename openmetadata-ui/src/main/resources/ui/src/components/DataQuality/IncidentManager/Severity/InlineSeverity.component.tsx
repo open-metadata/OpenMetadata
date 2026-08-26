@@ -57,9 +57,8 @@ const InlineSeverity = ({
   const severityKey = severity ?? 'NoSeverity';
   const severityColor =
     SEVERITY_COLORS[severityKey] ?? SEVERITY_COLORS['NoSeverity'];
-  const label = severity
-    ? startCase(severity)
-    : t('label.no-entity', { entity: t('label.severity') });
+  const noSeverityLabel = t('label.no-entity', { entity: t('label.severity') });
+  const label = severity ? startCase(severity) : noSeverityLabel;
 
   const palette = {
     bg: severityColor.bg,
@@ -113,9 +112,9 @@ const InlineSeverity = ({
             <Dropdown.Item
               className={SELECTED_ITEM_CLASS}
               id="none"
-              textValue={t('label.no-entity', { entity: t('label.severity') })}>
+              textValue={noSeverityLabel}>
               <Typography as="span" size="text-sm" weight="regular">
-                {t('label.no-entity', { entity: t('label.severity') })}
+                {noSeverityLabel}
               </Typography>
             </Dropdown.Item>
             <Dropdown.Separator />

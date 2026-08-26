@@ -16,6 +16,7 @@ import {
   ChevronDown as ArrowDownIcon,
   ChevronUp as ArrowUpIcon,
 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { type RefObject } from 'react';
 
 export type ChipPalette = {
@@ -72,6 +73,9 @@ const CHIP_TRIGGER_BTN_CLASS =
 const CHIP_PILL_CLASS =
   'tw:inline-flex tw:items-center tw:gap-0.5 tw:whitespace-nowrap tw:rounded-full tw:border tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
 
+const CHIP_PILL_PALETTE_CLASS =
+  'tw:bg-[var(--chip-bg)] tw:text-[var(--chip-color)] tw:border-[var(--chip-border)]';
+
 export const ChipTrigger = ({
   chipRef,
   dataTestId,
@@ -99,9 +103,11 @@ export const ChipTrigger = ({
         ? { onPress: onStatusClick }
         : {})}>
       <span
-        className={`${CHIP_PILL_CLASS} ${
+        className={classNames(
+          CHIP_PILL_CLASS,
+          CHIP_PILL_PALETTE_CLASS,
           maxChipWidth ?? 'tw:max-w-max'
-        } tw:bg-[var(--chip-bg)] tw:text-[var(--chip-color)] tw:border-[var(--chip-border)]`}
+        )}
         style={{
           backgroundColor: palette.bg,
           borderColor: palette.border,
