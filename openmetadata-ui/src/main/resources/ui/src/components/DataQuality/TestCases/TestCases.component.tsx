@@ -34,25 +34,8 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
+import { getTestCaseListDisplayState } from './TestCases.utils';
 import { useTestCaseListPage } from './useTestCaseListPage';
-
-const getTestCaseListDisplayState = ({
-  canCreate,
-  emptyStateAction,
-  hasActiveFilters,
-  searchValue,
-  showDeleted,
-}: {
-  canCreate: boolean;
-  emptyStateAction?: EmptyPlaceholderAction;
-  hasActiveFilters: boolean;
-  searchValue: string;
-  showDeleted: boolean;
-}) => ({
-  displayedEmptyStateAction: showDeleted ? undefined : emptyStateAction,
-  enableBulkActions: !showDeleted && canCreate,
-  hasListActiveFilters: showDeleted || Boolean(searchValue) || hasActiveFilters,
-});
 
 export const TestCases = () => {
   const { t } = useTranslation();

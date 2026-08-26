@@ -642,38 +642,38 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       ? t('label.remove')
       : t('label.delete');
 
-    let hasAnyPermission = testCaseEditPermission || testCaseDeletePermission;
-    let menuItems = [
-      {
-        id: 'edit',
-        isDisabled: !testCaseEditPermission,
-        label: t('label.edit'),
-        onAction: () => handleEdit(record),
-        testId: `edit-${record.name}`,
-      },
-      {
-        id: removeFromTestSuite ? 'remove' : 'delete',
-        isDisabled: !testCaseDeletePermission,
-        label: deleteBtnLabel,
-        onAction: () => handleDelete(record),
-        testId: removeFromTestSuite
-          ? `remove-${record.name}`
-          : `delete-${record.name}`,
-      },
-    ];
+    const hasAnyPermission = isRestoreMode
+      ? testCaseRestorePermission
+      : testCaseEditPermission || testCaseDeletePermission;
 
-    if (isRestoreMode) {
-      hasAnyPermission = testCaseRestorePermission;
-      menuItems = [
-        {
-          id: 'restore',
-          isDisabled: !testCaseRestorePermission,
-          label: t('label.restore'),
-          onAction: () => handleRestore(record),
-          testId: `restore-${record.name}`,
-        },
-      ];
-    }
+    const menuItems = isRestoreMode
+      ? [
+          {
+            id: 'restore',
+            isDisabled: !testCaseRestorePermission,
+            label: t('label.restore'),
+            onAction: () => handleRestore(record),
+            testId: `restore-${record.name}`,
+          },
+        ]
+      : [
+          {
+            id: 'edit',
+            isDisabled: !testCaseEditPermission,
+            label: t('label.edit'),
+            onAction: () => handleEdit(record),
+            testId: `edit-${record.name}`,
+          },
+          {
+            id: removeFromTestSuite ? 'remove' : 'delete',
+            isDisabled: !testCaseDeletePermission,
+            label: deleteBtnLabel,
+            onAction: () => handleDelete(record),
+            testId: removeFromTestSuite
+              ? `remove-${record.name}`
+              : `delete-${record.name}`,
+          },
+        ];
 
     return (
       <div className="tw:flex tw:w-full tw:items-center tw:justify-end tw:gap-5">

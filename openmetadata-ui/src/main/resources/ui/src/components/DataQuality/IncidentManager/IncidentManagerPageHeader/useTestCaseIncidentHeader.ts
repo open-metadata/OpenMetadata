@@ -105,6 +105,8 @@ export const useTestCaseIncidentHeader = ({
     setTestCase,
   } = useTestCaseStore();
 
+  const isDeleted = Boolean(testCaseData?.deleted);
+
   const { dimensionKey } = useRequiredParams<{
     fqn: string;
     dimensionKey?: string;
@@ -143,7 +145,7 @@ export const useTestCaseIncidentHeader = ({
   );
 
   const handleSeverityUpdate = async (severity?: Severities) => {
-    if (testCaseData?.deleted || isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -167,7 +169,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (testCaseData?.deleted || isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -296,7 +298,7 @@ export const useTestCaseIncidentHeader = ({
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]
   ) => {
-    if (!testCaseData || testCaseData.deleted) {
+    if (!testCaseData || isDeleted) {
       return;
     }
 
@@ -319,7 +321,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return isVersionPage || testCaseData?.deleted
+    return isVersionPage || isDeleted
       ? {
           hasEditStatusPermission: false,
           hasEditOwnerPermission: false,
@@ -341,7 +343,7 @@ export const useTestCaseIncidentHeader = ({
   }, [
     testCasePermission,
     isVersionPage,
-    testCaseData?.deleted,
+    isDeleted,
     getPrioritizedEditPermission,
   ]);
 
@@ -373,9 +375,7 @@ export const useTestCaseIncidentHeader = ({
     hasEditStatusPermission,
     hasEditOwnerPermission,
     hasEditDomainPermission:
-      !isVersionPage &&
-      !testCaseData?.deleted &&
-      Boolean(testCasePermission?.EditAll),
+      !isVersionPage && !isDeleted && Boolean(testCasePermission?.EditAll),
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,
