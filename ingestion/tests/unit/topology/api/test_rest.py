@@ -408,6 +408,45 @@ MOCK_RESPONSE_NESTED_DATA_REF = {
 
 MOCK_RESPONSE_NO_SCHEMA = {"responses": {"200": {"description": "successful operation"}}}
 
+MOCK_RESPONSE_INLINE_OBJECT_ARRAY = {
+    "responses": {
+        "200": {
+            "description": "successful operation",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "order_list": {
+                                "type": "array",
+                                "description": "List of orders",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "order_id": {
+                                            "type": "integer",
+                                            "description": "Order ID",
+                                        },
+                                        "order_amount": {
+                                            "type": "number",
+                                            "format": "double",
+                                            "description": "Order amount in USD",
+                                        },
+                                        "order_status": {
+                                            "type": "string",
+                                            "description": "Order status",
+                                        },
+                                    },
+                                },
+                            }
+                        },
+                    }
+                }
+            },
+        }
+    }
+}
+
 # Canned OpenAPI document fed to the source instead of fetching the live
 # petstore URL declared in mock_rest_config, so the collection tests stay
 # hermetic and deterministic (no network).
@@ -466,12 +505,49 @@ class TestRest:
         ]
         assert collections == expected_collections
 
+    def test_get_api_collections_parses_schema_variants(self):
+        self.rest_source.connection = object()
+        schema = {
+            "tags": [{}, {"name": "known"}],
+            "paths": {"/new": {"get": {"tags": ["new"]}}},
+        }
+
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.parse_openapi_schema",
+            return_value=schema,
+        ):
+            collections = list(self.rest_source.get_api_collections())
+
+        assert {collection.name.root for collection in collections} == {
+            "known",
+            "default",
+            "new",
+        }
+
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.parse_openapi_schema",
+            side_effect=RuntimeError("invalid schema"),
+        ):
+            assert list(self.rest_source.get_api_collections()) == []
+
     def test_yield_api_collection(self):
         """test yield api collections"""
         # deepcopy: yield_api_collection sets collection.url in place, which would
         # otherwise mutate the shared module-level MOCK_COLLECTIONS fixture.
         collection_request = list(self.rest_source.yield_api_collection(deepcopy(MOCK_COLLECTIONS[0])))
         assert collection_request == EXPECTED_COLLECTION_REQUEST
+
+    def test_yield_api_collection_returns_error(self):
+        with patch.object(
+            self.rest_source,
+            "_generate_collection_url",
+            side_effect=RuntimeError("invalid collection"),
+        ):
+            result = list(self.rest_source.yield_api_collection(deepcopy(MOCK_COLLECTIONS[0])))
+
+        assert len(result) == 1
+        assert result[0].left is not None
+        assert "invalid collection" in result[0].left.error
 
     def test_all_collections(self):
         collections = list(self.rest_source.get_api_collections())
@@ -491,10 +567,44 @@ class TestRest:
         collection_url = self.rest_source._generate_collection_url("store")
         assert collection_url == MOCK_STORE_URL
 
+    def test_url_helpers_use_fallbacks(self):
+        connection_config = self.rest_source.config.serviceConnection.root.config
+        assert self.rest_source._get_fallback_url() is None
+
+        connection_config.docURL = AnyUrl("https://example.com/#")
+        assert str(self.rest_source._generate_collection_url("store")) == "https://example.com/#/store"
+
+        connection_config.docURL = None
+        assert self.rest_source._generate_collection_url("store") is None
+
+        collection = deepcopy(MOCK_SINGLE_COLLECTION)
+        collection.url = None
+        assert self.rest_source._generate_endpoint_url(collection, MOCK_SINGLE_ENDPOINT) is None
+
+    def test_url_helpers_recover_from_errors(self):
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.clean_uri",
+            side_effect=RuntimeError("invalid URL"),
+        ):
+            assert self.rest_source._generate_collection_url("store") is None
+
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.AnyUrl",
+            side_effect=RuntimeError("invalid URL"),
+        ):
+            assert self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT) is None
+
     def test_generate_endpoint_url(self):
         """test generate endpoint url"""
         endpoint_url = self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT)
         assert endpoint_url == MOCK_STORE_ORDER_URL
+
+    def test_endpoint_helpers_handle_invalid_input(self):
+        self.rest_source.json_response = {"paths": None}
+
+        assert self.rest_source._filter_collection_endpoints(MOCK_SINGLE_COLLECTION) is None
+        assert self.rest_source._prepare_endpoint_data("/store", "get", None, MOCK_SINGLE_COLLECTION) is None
+        assert self.rest_source._get_api_request_method("unsupported") is None
 
     def test_collection_filter_pattern(self):
         """test collection filter pattern"""
@@ -684,6 +794,21 @@ class TestRest:
         assert result.description.root == "Page number"
         assert result.children is None
 
+    @pytest.mark.parametrize("schema", [None, "invalid"])
+    def test_convert_parameter_to_field_uses_top_level_type_with_non_object_schema(self, schema):
+        param = {
+            "in": "query",
+            "name": "page",
+            "type": "integer",
+            "schema": schema,
+        }
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.name.root == "page"
+        assert result.dataType == DataTypeTopic.INT
+
     def test_convert_parameter_to_field_openapi_3(self):
         """Test converting OpenAPI 3.0 parameter to FieldModel"""
         param = {
@@ -800,6 +925,40 @@ class TestRest:
         page_field = next(f for f in result.schemaFields if f.name.root == "page")
         assert page_field.dataType == DataTypeTopic.INT
         assert page_field.description.root == "Page number"
+
+    def test_get_request_schema_resolves_parameter_references(self):
+        parameter = {
+            "in": "query",
+            "name": "limit",
+            "type": "integer",
+        }
+        self.rest_source.json_response = {"parameters": {"Limit": parameter}}
+        info = {
+            "parameters": [
+                {"$ref": "#/parameters/Limit"},
+                {"$ref": "#/parameters/Missing"},
+            ]
+        }
+
+        result = self.rest_source._get_request_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert [field.name.root for field in result.schemaFields] == ["limit"]
+
+    def test_resolve_parameter_ref_variants(self):
+        parameter = {"in": "query", "name": "limit", "type": "integer"}
+
+        self.rest_source.json_response = {"parameters": {"Limit": parameter}}
+        assert self.rest_source._resolve_parameter_ref("#/parameters/Limit") == parameter
+
+        self.rest_source.json_response = {"components": {"parameters": {"Limit": parameter}}}
+        assert self.rest_source._resolve_parameter_ref("#/parameters/Limit") == parameter
+
+        self.rest_source.json_response = {}
+        assert self.rest_source._resolve_parameter_ref("#/parameters/Limit") is None
+        assert self.rest_source._resolve_parameter_ref("invalid") is None
+        assert self.rest_source._resolve_parameter_ref(1) is None
 
     def test_get_request_schema_openapi_3_query_parameters(self):
         """Test extracting request schema from OpenAPI 3.0 query parameters"""
@@ -980,6 +1139,10 @@ class TestRest:
         result = self.rest_source._parse_openapi_type("BOOLEAN")
         assert result == DataTypeTopic.BOOLEAN
 
+    @pytest.mark.parametrize("openapi_type", [[], ""])
+    def test_parse_openapi_type_empty_values(self, openapi_type):
+        assert self.rest_source._parse_openapi_type(openapi_type) == DataTypeTopic.UNKNOWN
+
     def test_process_schema_fields_with_nullable_type(self):
         self.rest_source.json_response = {
             "components": {
@@ -1075,6 +1238,44 @@ class TestRest:
         assert len(result.schemaFields) == 1
         assert result.schemaFields[0].dataType == DataTypeTopic.UNKNOWN
 
+    def test_process_inline_schema_expands_untyped_object_properties(self):
+        properties = {
+            "metadata": {
+                "description": "Nested metadata",
+                "properties": {
+                    "identifier": {
+                        "type": "integer",
+                        "description": "Metadata identifier",
+                    }
+                },
+            }
+        }
+
+        result = self.rest_source._process_inline_schema(properties)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        metadata_field = result.schemaFields[0]
+        assert metadata_field.dataType == DataTypeTopic.UNKNOWN
+        assert metadata_field.dataTypeDisplay == "OBJECT"
+        assert metadata_field.description == Markdown(root="Nested metadata")
+        assert metadata_field.children is not None
+        assert len(metadata_field.children) == 1
+        assert metadata_field.children[0].name.root == "identifier"
+        assert metadata_field.children[0].dataType == DataTypeTopic.INT
+        assert metadata_field.children[0].description == Markdown(root="Metadata identifier")
+
+    def test_schema_helpers_handle_invalid_input(self):
+        assert self.rest_source._process_array_items({}, []) is None
+        assert self.rest_source._process_inline_schema({"field": None}) is None
+        assert self.rest_source._convert_parameter_to_field({"name": "field", "schema": None}) is None
+        assert self.rest_source._get_response_schema(None) is None
+
+        self.rest_source.json_response = {}
+        schema_ref = "#/components/schemas/Missing"
+        assert self.rest_source._resolve_schema_ref(schema_ref) is None
+        assert self.rest_source.process_schema_fields(schema_ref) is None
+
     def test_get_response_schema_inline_properties(self):
         """Test _get_response_schema handles inline schemas without $ref"""
         self.rest_source.json_response = {}
@@ -1099,6 +1300,84 @@ class TestRest:
 
         assert result is not None
         assert len(result.schemaFields) == 2
+
+    def test_get_response_schema_inline_object_array_properties(self):
+        self.rest_source.json_response = {}
+
+        result = self.rest_source._get_response_schema(MOCK_RESPONSE_INLINE_OBJECT_ARRAY)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 1
+
+        order_list = result.schemaFields[0]
+        assert order_list.name.root == "order_list"
+        assert order_list.dataType == DataTypeTopic.ARRAY
+        assert order_list.description == Markdown(root="List of orders")
+        assert order_list.children is not None
+        assert [child.name.root for child in order_list.children] == [
+            "order_id",
+            "order_amount",
+            "order_status",
+        ]
+        assert [child.dataType for child in order_list.children] == [
+            DataTypeTopic.INT,
+            DataTypeTopic.DOUBLE,
+            DataTypeTopic.STRING,
+        ]
+        assert [child.description.root for child in order_list.children] == [
+            "Order ID",
+            "Order amount in USD",
+            "Order status",
+        ]
+
+    def test_get_response_schema_referenced_inline_object_array_properties(self):
+        schema = deepcopy(
+            MOCK_RESPONSE_INLINE_OBJECT_ARRAY["responses"]["200"]["content"]["application/json"]["schema"]
+        )
+        self.rest_source.json_response = {"components": {"schemas": {"Orders": schema}}}
+        info = {
+            "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Orders"}}}}}
+        }
+
+        result = self.rest_source._get_response_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        order_list = result.schemaFields[0]
+        assert order_list.dataType == DataTypeTopic.ARRAY
+        assert order_list.description == Markdown(root="List of orders")
+        assert order_list.children is not None
+        assert [child.name.root for child in order_list.children] == [
+            "order_id",
+            "order_amount",
+            "order_status",
+        ]
+        assert [child.dataType for child in order_list.children] == [
+            DataTypeTopic.INT,
+            DataTypeTopic.DOUBLE,
+            DataTypeTopic.STRING,
+        ]
+        assert [child.description.root for child in order_list.children] == [
+            "Order ID",
+            "Order amount in USD",
+            "Order status",
+        ]
+
+    def test_process_inline_schema_number_formats(self):
+        properties = {
+            "float_amount": {"type": "number", "format": "float"},
+            "double_amount": {"type": "number", "format": "double"},
+        }
+
+        result = self.rest_source._process_inline_schema(properties)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert [field.dataType for field in result.schemaFields] == [
+            DataTypeTopic.FLOAT,
+            DataTypeTopic.DOUBLE,
+        ]
 
     def test_get_response_schema_201_fallback(self):
         """Test _get_response_schema falls back to 201 when 200 not found"""

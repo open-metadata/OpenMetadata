@@ -15,6 +15,7 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedbackType } from '../../../generated/entity/feed/thread';
 import { MOCK_TASK_RECOGNIZER_FEEDBACK } from '../../../mocks/Task.mock';
+import { Task } from '../../../rest/tasksAPI';
 import FeedbackApprovalTask from './FeedbackApprovalTask';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -100,7 +101,7 @@ const baseTask = {
     feedback: MOCK_TASK_RECOGNIZER_FEEDBACK.feedback,
     recognizer: MOCK_TASK_RECOGNIZER_FEEDBACK.recognizer,
   },
-} as any;
+} as unknown as Task;
 
 const mockProps = {
   task: baseTask,
@@ -192,7 +193,7 @@ describe('FeedbackApprovalTask', () => {
           feedbackType: FeedbackType.IncorrectClassification,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithIncorrectClassification} />, {
       wrapper: Wrapper,
@@ -213,7 +214,7 @@ describe('FeedbackApprovalTask', () => {
           feedbackType: FeedbackType.OverlyBroad,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithOverlyBroad} />, {
       wrapper: Wrapper,
@@ -234,7 +235,7 @@ describe('FeedbackApprovalTask', () => {
           feedbackType: FeedbackType.ContextSpecific,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithContextSpecific} />, {
       wrapper: Wrapper,
@@ -255,7 +256,7 @@ describe('FeedbackApprovalTask', () => {
           userComments: undefined,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutComments} />, {
       wrapper: Wrapper,
@@ -274,7 +275,7 @@ describe('FeedbackApprovalTask', () => {
           createdBy: undefined,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutCreatedBy} />, {
       wrapper: Wrapper,
@@ -304,7 +305,7 @@ describe('FeedbackApprovalTask', () => {
           createdAt: undefined,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutCreatedAt} />, {
       wrapper: Wrapper,
@@ -328,7 +329,7 @@ describe('FeedbackApprovalTask', () => {
           },
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutDisplayName} />, {
       wrapper: Wrapper,

@@ -478,7 +478,7 @@ jobs:
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
   integration-tests-postgres-elasticsearch-redis:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'integration-tests-postgres-elasticsearch-redis (ignored label)' || 'integration-tests-postgres-elasticsearch-redis' }}
+    name: integration-tests-postgres-elasticsearch-redis
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5

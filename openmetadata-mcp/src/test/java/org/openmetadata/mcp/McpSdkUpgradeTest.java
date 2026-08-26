@@ -201,6 +201,30 @@ public class McpSdkUpgradeTest {
     assertThat(patchTool.annotations()).isNotNull();
     assertThat(patchTool.annotations().readOnlyHint()).isFalse();
     assertThat(patchTool.annotations().destructiveHint()).isTrue();
+    // A JSONPatch is not idempotent in general - an 'add' to '/owners/-' appends again on a retry -
+    // so a client must not treat a retry as free. The MCP default is false, but state it.
+    assertThat(patchTool.annotations().idempotentHint()).isFalse();
+  }
+
+  /**
+   * Guards against copy-paste duplication when a tool description is edited. These are sent to the
+   * model on every request, so a repeated sentence is paid for on every call - and folding two tools
+   * together left exactly that in patch_entity once already.
+   */
+  @Test
+  void testToolDescriptionsDoNotRepeatThemselves() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    for (McpSchema.Tool tool : tools) {
+      List<String> sentences =
+          java.util.Arrays.stream(tool.description().split("(?<=[.!?])\\s+"))
+              .map(String::trim)
+              .filter(sentence -> sentence.length() > 40)
+              .toList();
+      assertThat(sentences)
+          .as("tool '%s' repeats a sentence in its description", tool.name())
+          .doesNotHaveDuplicates();
+    }
   }
 
   private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
