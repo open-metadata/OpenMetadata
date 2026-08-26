@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -17,13 +16,16 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.DataInsightMetricFilter;
 import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
+import os.org.opensearch.client.opensearch._types.aggregations.TermsAggregation;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
+import os.org.opensearch.client.util.ObjectBuilder;
 
 public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggregatorInterface {
   public static class MetricFormulaHolder {
@@ -36,6 +38,33 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       this.holders = holders;
       this.formula = formula;
     }
+  }
+
+  private static final Map<String, SortOrder> ORDER_BY_FILTER =
+      Map.of(DataInsightMetricFilter.FILTER_AGG_KEY, SortOrder.Desc);
+
+  /**
+   * Configures the categorical axis. Both the initial build and the rebuild that attaches
+   * sub-aggregations go through here: rebuilding from the previous aggregation instead would drop
+   * whatever it does not read back, and losing {@code order} silently restores doc_count ranking.
+   */
+  private static ObjectBuilder<TermsAggregation> termsAxis(
+      TermsAggregation.Builder builder,
+      String field,
+      String include,
+      String exclude,
+      boolean rankByFilter) {
+    TermsAggregation.Builder axis = builder.field(field).size(100);
+    if (include != null) {
+      axis = axis.include(inc -> inc.regexp(include));
+    }
+    if (exclude != null) {
+      axis = axis.exclude(exc -> exc.regexp(exclude));
+    }
+    if (rankByFilter) {
+      axis = axis.order(ORDER_BY_FILTER);
+    }
+    return axis;
   }
 
   @Override
@@ -51,6 +80,8 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
     int i = 0;
     int groupByAggIndex = 0;
     long startTime = start;
+
+    final boolean rankByFilter = DataInsightMetricFilter.ranksByFilterBucket(lineChart);
 
     for (LineChartMetric metric : lineChart.getMetrics()) {
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
@@ -69,29 +100,15 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
         Aggregation termsAgg =
             Aggregation.of(
-                a -> {
-                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(100));
-                  if (finalIncludeTerms != null) {
-                    tb =
-                        a.terms(
-                            t ->
-                                t.field(lineChart.getxAxisField())
-                                    .size(100)
-                                    .include(inc -> inc.regexp(finalIncludeTerms)));
-                  }
-                  if (finalExcludeTerms != null) {
-                    tb =
-                        a.terms(
-                            t -> {
-                              var builder = t.field(lineChart.getxAxisField()).size(100);
-                              if (finalIncludeTerms != null) {
-                                builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
-                              }
-                              return builder.exclude(exc -> exc.regexp(finalExcludeTerms));
-                            });
-                  }
-                  return tb;
-                });
+                a ->
+                    a.terms(
+                        t ->
+                            termsAxis(
+                                t,
+                                lineChart.getxAxisField(),
+                                finalIncludeTerms,
+                                finalExcludeTerms,
+                                rankByFilter)));
 
         metricAggregations.put(metricName, termsAgg);
         startTime = end - MILLISECONDS_IN_DAY;
@@ -126,23 +143,19 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       Aggregation currentAgg = metricAggregations.get(metricName);
       if (!subAggregations.isEmpty()) {
         if (currentAgg._kind().name().equals("Terms")) {
-          final String fieldName = currentAgg.terms().field();
-          final int size = Optional.ofNullable(currentAgg.terms().size()).orElse(100);
+          // Rebuild the axis with its sub-aggregations attached, from the same inputs as above.
           metricAggregations.put(
               metricName,
               Aggregation.of(
                   a ->
                       a.terms(
-                              t -> {
-                                var builder = t.field(fieldName).size(size);
-                                if (finalIncludeTerms != null) {
-                                  builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
-                                }
-                                if (finalExcludeTerms != null) {
-                                  builder = builder.exclude(exc -> exc.regexp(finalExcludeTerms));
-                                }
-                                return builder;
-                              })
+                              t ->
+                                  termsAxis(
+                                      t,
+                                      lineChart.getxAxisField(),
+                                      finalIncludeTerms,
+                                      finalExcludeTerms,
+                                      rankByFilter))
                           .aggregations(subAggregations)));
         } else if (currentAgg._kind().name().equals("DateHistogram")) {
           final String fieldName = currentAgg.dateHistogram().field();

@@ -257,6 +257,82 @@ class OpenSearchLineChartAggregatorTest {
     return new DataInsightCustomChart().withName("avg_chart").withChartDetails(lineChart);
   }
 
+  @Test
+  void aFunctionMetricRanksTheAxisAndKeepsTheEmptyCategories() throws Exception {
+    JsonNode root = OBJECT_MAPPER.readTree(serializeToJson(prepare(functionChart(Function.COUNT))));
+
+    assertTrue(
+        root.path("query").isMissingNode(),
+        "a ranked axis must not also narrow the request, or the empty categories vanish: "
+            + root.path("query"));
+
+    JsonNode terms = findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD);
+    String path = terms.path("terms").path("order").path(0).fieldNames().next();
+    assertEquals("filter", path, "the axis must rank by the filter wrapper's document count");
+    assertFalse(
+        terms.path("aggregations").path(path).isMissingNode(),
+        "the order path must name an aggregation the request actually builds: " + terms);
+  }
+
+  @Test
+  void everyFunctionRanksTheSameWay() throws Exception {
+    // Ranking is on the wrapper's document count, never the metric value, so no function needs
+    // special handling -- an empty min or a negative sum cannot float to the top.
+    for (Function fn :
+        List.of(Function.COUNT, Function.SUM, Function.AVG, Function.MIN, Function.MAX)) {
+      JsonNode terms =
+          findAggregationWithTermsField(
+              OBJECT_MAPPER
+                  .readTree(serializeToJson(prepare(functionChart(fn))))
+                  .path("aggregations"),
+              X_AXIS_FIELD);
+      assertEquals(
+          "desc", terms.path("terms").path("order").path(0).path("filter").asText(), fn.value());
+    }
+  }
+
+  @Test
+  void aFormulaMetricStillNarrowsTheRequest() throws Exception {
+    // A formula compiles to one wrapper per term, so there is no single aggregation to rank by.
+    JsonNode root =
+        OBJECT_MAPPER.readTree(serializeToJson(prepare(filteredChart(TABLE_FILTER, TABLE_FILTER))));
+
+    assertEquals(TABLE_QUERY, unwrap(root.path("query")));
+    assertTrue(
+        findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD)
+            .path("terms")
+            .path("order")
+            .isMissingNode(),
+        "a narrowed request must not also carry an order");
+  }
+
+  @Test
+  void anUnfilteredChartIsUntouched() throws Exception {
+    JsonNode root = OBJECT_MAPPER.readTree(serializeToJson(prepare(formulaChart(null, null))));
+
+    assertTrue(root.path("query").isMissingNode());
+    assertTrue(
+        findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD)
+            .path("terms")
+            .path("order")
+            .isMissingNode(),
+        "nothing to rank by without a filter");
+  }
+
+  private static DataInsightCustomChart functionChart(Function function) {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withName(OWNER_METRIC)
+                        .withFunction(function)
+                        .withField("columns.dataLength")
+                        .withFilter(TABLE_FILTER)))
+            .withxAxisField(X_AXIS_FIELD);
+    return new DataInsightCustomChart().withName("fn_chart").withChartDetails(lineChart);
+  }
+
   private SearchRequest prepareHistorical(DataInsightCustomChart chart) {
     return aggregator.prepareSearchRequest(
         chart, 0L, END_TIME, new ArrayList<>(), new HashMap<>(), false);

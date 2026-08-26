@@ -1,13 +1,17 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
+import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import es.co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.util.NamedValue;
+import es.co.elastic.clients.util.ObjectBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +43,33 @@ public class ElasticSearchLineChartAggregator
     }
   }
 
+  private static final NamedValue<SortOrder> ORDER_BY_FILTER =
+      NamedValue.of(DataInsightMetricFilter.FILTER_AGG_KEY, SortOrder.Desc);
+
+  /**
+   * Configures the categorical axis. Both the initial build and the rebuild that attaches
+   * sub-aggregations go through here: rebuilding from the previous aggregation instead would drop
+   * whatever it does not read back, and losing {@code order} silently restores doc_count ranking.
+   */
+  private static ObjectBuilder<TermsAggregation> termsAxis(
+      TermsAggregation.Builder builder,
+      String field,
+      String include,
+      String exclude,
+      boolean rankByFilter) {
+    TermsAggregation.Builder axis = builder.field(field).size(100);
+    if (include != null) {
+      axis = axis.include(inc -> inc.regexp(include));
+    }
+    if (exclude != null) {
+      axis = axis.exclude(exc -> exc.regexp(exclude));
+    }
+    if (rankByFilter) {
+      axis = axis.order(ORDER_BY_FILTER);
+    }
+    return axis;
+  }
+
   @Override
   public SearchRequest prepareSearchRequest(
       @NotNull DataInsightCustomChart diChart,
@@ -52,6 +83,8 @@ public class ElasticSearchLineChartAggregator
     int i = 0;
     int groupByAggIndex = 0;
     long startTime = start;
+
+    final boolean rankByFilter = DataInsightMetricFilter.ranksByFilterBucket(lineChart);
 
     for (LineChartMetric metric : lineChart.getMetrics()) {
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
@@ -70,29 +103,15 @@ public class ElasticSearchLineChartAggregator
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
         Aggregation termsAgg =
             Aggregation.of(
-                a -> {
-                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(100));
-                  if (finalIncludeTerms != null) {
-                    tb =
-                        a.terms(
-                            t ->
-                                t.field(lineChart.getxAxisField())
-                                    .size(100)
-                                    .include(inc -> inc.regexp(finalIncludeTerms)));
-                  }
-                  if (finalExcludeTerms != null) {
-                    tb =
-                        a.terms(
-                            t -> {
-                              var builder = t.field(lineChart.getxAxisField()).size(100);
-                              if (finalIncludeTerms != null) {
-                                builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
-                              }
-                              return builder.exclude(exc -> exc.regexp(finalExcludeTerms));
-                            });
-                  }
-                  return tb;
-                });
+                a ->
+                    a.terms(
+                        t ->
+                            termsAxis(
+                                t,
+                                lineChart.getxAxisField(),
+                                finalIncludeTerms,
+                                finalExcludeTerms,
+                                rankByFilter)));
 
         metricAggregations.put(metricName, termsAgg);
         startTime = end - MILLISECONDS_IN_DAY;
@@ -127,24 +146,19 @@ public class ElasticSearchLineChartAggregator
       Aggregation currentAgg = metricAggregations.get(metricName);
       if (!subAggregations.isEmpty()) {
         if (currentAgg.isTerms()) {
-          // Rebuild terms aggregation with sub-aggregations, preserving include/exclude filters
-          final String fieldName = currentAgg.terms().field();
-          final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 100;
+          // Rebuild the axis with its sub-aggregations attached, from the same inputs as above.
           metricAggregations.put(
               metricName,
               Aggregation.of(
                   a ->
                       a.terms(
-                              t -> {
-                                var builder = t.field(fieldName).size(size);
-                                if (finalIncludeTerms != null) {
-                                  builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
-                                }
-                                if (finalExcludeTerms != null) {
-                                  builder = builder.exclude(exc -> exc.regexp(finalExcludeTerms));
-                                }
-                                return builder;
-                              })
+                              t ->
+                                  termsAxis(
+                                      t,
+                                      lineChart.getxAxisField(),
+                                      finalIncludeTerms,
+                                      finalExcludeTerms,
+                                      rankByFilter))
                           .aggregations(subAggregations)));
         } else if (currentAgg._kind().name().equals("DateHistogram")) {
           // Rebuild date histogram aggregation with sub-aggregations

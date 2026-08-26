@@ -9,12 +9,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reads the {@code query} node out of a Data Insight chart metric's {@code filter} string.
+ * Reads a Data Insight chart metric's {@code filter}, and decides how a categorical axis picks its
+ * categories.
  *
  * <p>Both engines used to parse that string inline, twice each, and both fell back to an unfiltered
  * aggregation on any failure. Routing every read through here keeps a filter that cannot be parsed
  * failing the same way everywhere: the caller gets {@code null} and leaves the aggregation
  * unfiltered, exactly as before.
+ *
+ * <p>The selection decision lives here too, because both engines must reach the same answer. A
+ * terms axis picks its top N by document count, which is neither the population the metric filters
+ * to nor the number the chart plots. {@link #ranksByFilterBucket} covers the metrics that can be
+ * ranked in place; {@link #hoistableQueryJson} narrows the request for the rest.
  */
 public final class DataInsightMetricFilter {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightMetricFilter.class);
@@ -22,6 +28,14 @@ public final class DataInsightMetricFilter {
   private static final String QUERY_KEY = "query";
   private static final String EMPTY_FILTER = "{}";
   private static final String TIMESTAMP_FIELD = "@timestamp";
+
+  /**
+   * Aggregation both engines wrap a filtered function metric in, and the whole order path a terms
+   * axis needs to rank by it. Naming the aggregation itself sorts on its document count; there is
+   * no metric key, so nothing here can contain a dot — an order path splits on {@code .} into a
+   * metric sub-field and the search is rejected outright when it does.
+   */
+  public static final String FILTER_AGG_KEY = "filter";
 
   private DataInsightMetricFilter() {}
 
@@ -57,10 +71,35 @@ public final class DataInsightMetricFilter {
    * aggregators.
    */
   public static String hoistableQueryJson(LineChart lineChart) {
-    if (lineChart == null || !hasTermsXAxis(lineChart)) {
+    if (lineChart == null || !hasTermsXAxis(lineChart) || ranksByFilterBucket(lineChart)) {
       return null;
     }
     return sharedQueryJson(lineChart.getMetrics());
+  }
+
+  /**
+   * Whether a terms axis can rank itself instead of the request being narrowed.
+   *
+   * <p>Narrowing fixes which categories are picked, but a terms aggregation carries {@code
+   * min_doc_count: 1}, so a category the filter emptied loses its bucket and the chart can no
+   * longer say a service holds none. Ordering the axis by {@link #FILTER_AGG_KEY} ranks categories
+   * by how many documents matched, which keeps the wide population and puts the empty ones last,
+   * where they cannot displace a category that has data.
+   *
+   * <p>Ranking on the wrapper's document count rather than the metric's value is what makes this
+   * safe for every function: an empty {@code min} reads as larger than any real minimum and an
+   * empty {@code sum} is zero, so sorting on either would float the empty categories to the top.
+   * A document count is never negative and is zero exactly when the category matched nothing.
+   *
+   * <p>Formula metrics are excluded: they compile to one wrapper per term, named with an index, so
+   * there is no single aggregation to name. Those still narrow the request.
+   */
+  public static boolean ranksByFilterBucket(LineChart lineChart) {
+    return lineChart != null
+        && hasTermsXAxis(lineChart)
+        && sharedQueryJson(lineChart.getMetrics()) != null
+        && lineChart.getMetrics().stream()
+            .allMatch(metric -> metric.getFormula() == null && metric.getFunction() != null);
   }
 
   private static boolean hasTermsXAxis(LineChart lineChart) {
