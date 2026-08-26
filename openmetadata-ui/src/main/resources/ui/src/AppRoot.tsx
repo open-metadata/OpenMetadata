@@ -28,6 +28,7 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
+import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
@@ -85,7 +86,9 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter basename={getBasePath()}>
+        <BrowserRouter
+          basename={getBasePath()}
+          useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
             <AntDConfigProvider>
               <HelmetProvider>

@@ -55,6 +55,7 @@ public class CreateContextMemoryTool implements McpTool {
     final ContextMemoryRepository repo =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
     repo.prepareInternal(entity, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.CONTEXT_MEMORY, entity);
 
     final String userName = CommonUtils.principal(securityContext);
     // createOrUpdate overwrites an existing memory with this name (the tool description

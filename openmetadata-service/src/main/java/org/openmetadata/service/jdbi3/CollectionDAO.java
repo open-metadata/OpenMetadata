@@ -90,6 +90,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.StartupChecksums;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -1822,6 +1823,19 @@ public interface CollectionDAO {
     default void deleteAllBatch(List<String> ids) {
       EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
     }
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>) AND jsonSchema = :jsonSchema")
+    void deleteByJsonSchemaBatchInternal(
+        @BindList("ids") List<String> ids, @Bind("jsonSchema") String jsonSchema);
+
+    /**
+     * Batch-delete only the rows of a given jsonSchema for the ids -- one statement per chunk. Used
+     * to clear an entity's own custom-property rows ("customFieldSchema") without touching its
+     * columnExtension or version rows the way deleteAllBatch() would.
+     */
+    default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
+      EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
+    }
   }
 
   class EntityVersionPair {
@@ -2474,13 +2488,21 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId OR fromId = :fromId AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :fromId) "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:fromId OR fromId = :fromId AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :fromId "
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -2712,13 +2734,21 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId OR toId = :toId AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' = :toId OR toId = :toId AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId "
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -2747,14 +2777,23 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "AND json->>'source' = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation AND json->>'source' = :source "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> findLineageBySourcePipeline(
@@ -2985,8 +3024,9 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE (json->>'$.pipeline.id' = :toId "
+                + "OR toId = :toId) AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -3759,47 +3799,6 @@ public interface CollectionDAO {
                 original = "toType",
                 parts = {":toType", ".%"})
             String toType);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(
-        @Define("tableName") String tableName, @Bind("entityLink") String entityLink);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -6097,151 +6096,91 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @Override
-    default int listCount(ListFilter filter) {
-      String condition =
-          "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
+    /**
+     * A pipeline's service category is not a column on the pipeline row — it lives in {@code
+     * entity_relationship.fromEntity} — so the {@code serviceType} filter has to be a join rather
+     * than a {@link ListFilter} condition. Every listing that honours {@code serviceType} shares
+     * this builder so ordered, unordered and count queries can never drift apart on which rows they
+     * consider in scope.
+     *
+     * <p>Always call this before branching on {@code serviceType}: the condition getters register
+     * derived bind parameters on the filter, and the non-serviceType path relies on them too.
+     */
+    default String serviceTypeJoinCondition(ListFilter filter) {
+      StringBuilder condition =
+          new StringBuilder(
+              "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId");
 
       if (filter.getQueryParam("pipelineType") != null) {
-        String pipelineTypeCondition =
-            String.format(" and %s", filter.getPipelineTypeCondition(null));
-        condition += pipelineTypeCondition;
+        condition.append(String.format(" and %s", filter.getPipelineTypeCondition(null)));
       }
 
       if (filter.getQueryParam("applicationType") != null) {
-        String applicationTypeCondition =
-            String.format(" and %s", filter.getApplicationTypeCondition());
-        condition += applicationTypeCondition;
+        condition.append(String.format(" and %s", filter.getApplicationTypeCondition()));
       }
 
       if (filter.getQueryParam("service") != null) {
-        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
-        condition += serviceCondition;
+        condition.append(String.format(" and %s", filter.getServiceCondition(null)));
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition =
-            String.format(" and %s", filter.getProviderCondition(getTableName()));
-        condition += providerCondition;
+        condition.append(String.format(" and %s", filter.getProviderCondition(getTableName())));
       }
 
-      Map<String, Object> bindMap = new HashMap<>();
-      String serviceType = filter.getQueryParam("serviceType");
-      String provider = filter.getQueryParam("provider");
-      if (!nullOrEmpty(provider)) {
-        bindMap.put("provider", provider);
-      }
-      if (!nullOrEmpty(serviceType)) {
+      return condition
+          .append(
+              String.format(
+                  " WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = %d",
+                  CONTAINS.ordinal()))
+          .toString();
+    }
 
-        condition =
-            String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation",
-                condition);
-        bindMap.put("relation", CONTAINS.ordinal());
-        return listIngestionPipelineCount(condition, bindMap, filter.getQueryParams());
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = serviceTypeJoinCondition(filter);
+      if (nullOrEmpty(filter.getQueryParam("serviceType"))) {
+        return EntityDAO.super.listCount(filter);
       }
-      return EntityDAO.super.listCount(filter);
+      return listIngestionPipelineCount(condition, new HashMap<>(), filter.getQueryParams());
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String condition =
-          "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-
-      if (filter.getQueryParam("pipelineType") != null) {
-        String pipelineTypeCondition =
-            String.format(" and %s", filter.getPipelineTypeCondition(null));
-        condition += pipelineTypeCondition;
+      String condition = serviceTypeJoinCondition(filter);
+      if (nullOrEmpty(filter.getQueryParam("serviceType"))) {
+        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
-      if (filter.getQueryParam("applicationType") != null) {
-        String applicationTypeCondition =
-            String.format(" and %s", filter.getApplicationTypeCondition());
-        condition += applicationTypeCondition;
-      }
-
-      if (filter.getQueryParam("service") != null) {
-        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
-        condition += serviceCondition;
-      }
-
-      if (filter.getQueryParam("provider") != null) {
-        String providerCondition =
-            String.format(" and %s", filter.getProviderCondition(getTableName()));
-        condition += providerCondition;
-      }
+      condition =
+          String.format(
+              "%s and (ingestion_pipeline_entity.name > :afterName OR (ingestion_pipeline_entity.name = :afterName AND ingestion_pipeline_entity.id > :afterId))  order by ingestion_pipeline_entity.name ASC,ingestion_pipeline_entity.id ASC LIMIT :limit",
+              condition);
 
       Map<String, Object> bindMap = new HashMap<>();
-      String serviceType = filter.getQueryParam("serviceType");
-      String provider = filter.getQueryParam("provider");
-      if (!nullOrEmpty(provider)) {
-        bindMap.put("provider", provider);
-      }
-      if (!nullOrEmpty(serviceType)) {
-
-        condition =
-            String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and (ingestion_pipeline_entity.name > :afterName OR (ingestion_pipeline_entity.name = :afterName AND ingestion_pipeline_entity.id > :afterId))  order by ingestion_pipeline_entity.name ASC,ingestion_pipeline_entity.id ASC LIMIT :limit",
-                condition);
-
-        bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("afterName", afterName);
-        bindMap.put("afterId", afterId);
-        bindMap.put("limit", limit);
-        return listAfterIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
-      }
-      return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+      bindMap.put("afterName", afterName);
+      bindMap.put("afterId", afterId);
+      bindMap.put("limit", limit);
+      return listAfterIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String condition =
-          "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-
-      if (filter.getQueryParam("pipelineType") != null) {
-        String pipelineTypeCondition =
-            String.format(" and %s", filter.getPipelineTypeCondition(null));
-        condition += pipelineTypeCondition;
+      String condition = serviceTypeJoinCondition(filter);
+      if (nullOrEmpty(filter.getQueryParam("serviceType"))) {
+        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
-      if (filter.getQueryParam("applicationType") != null) {
-        String applicationTypeCondition =
-            String.format(" and %s", filter.getApplicationTypeCondition());
-        condition += applicationTypeCondition;
-      }
-
-      if (filter.getQueryParam("service") != null) {
-        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
-        condition += serviceCondition;
-      }
-
-      if (filter.getQueryParam("provider") != null) {
-        String providerCondition =
-            String.format(" and %s", filter.getProviderCondition(getTableName()));
-        condition += providerCondition;
-      }
+      condition =
+          String.format(
+              "%s and (ingestion_pipeline_entity.name < :beforeName OR (ingestion_pipeline_entity.name = :beforeName AND ingestion_pipeline_entity.id < :beforeId))  order by ingestion_pipeline_entity.name DESC, ingestion_pipeline_entity.id DESC LIMIT :limit",
+              condition);
 
       Map<String, Object> bindMap = new HashMap<>();
-      String serviceType = filter.getQueryParam("serviceType");
-      String provider = filter.getQueryParam("provider");
-      if (!nullOrEmpty(provider)) {
-        bindMap.put("provider", provider);
-      }
-      if (!nullOrEmpty(serviceType)) {
-        condition =
-            String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and (ingestion_pipeline_entity.name < :beforeName OR (ingestion_pipeline_entity.name = :beforeName AND ingestion_pipeline_entity.id < :beforeId))  order by ingestion_pipeline_entity.name DESC, ingestion_pipeline_entity.id DESC LIMIT :limit",
-                condition);
-
-        bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("beforeName", beforeName);
-        bindMap.put("beforeId", beforeId);
-        bindMap.put("limit", limit);
-        return listBeforeIngestionPipelineByserviceType(
-            condition, bindMap, filter.getQueryParams());
-      }
-      return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+      bindMap.put("beforeName", beforeName);
+      bindMap.put("beforeId", beforeId);
+      bindMap.put("limit", limit);
+      return listBeforeIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
     }
 
     @SqlQuery("SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>")
@@ -6262,6 +6201,81 @@ public interface CollectionDAO {
         @Define("cond") String cond,
         @BindMap Map<String, Object> bindings,
         @BindMap Map<String, String> params);
+
+    /**
+     * The {@code <cond>} every displayName-ordered query below is given: the same scope the
+     * unordered listing uses, so ordering the list can never widen or narrow which rows it returns.
+     * Columns stay table-qualified because the serviceType variant joins {@code
+     * entity_relationship}, which has {@code json} and {@code deleted} columns of its own.
+     */
+    default String displayNameSortCondition(ListFilter filter) {
+      // Unqualified: a table prefix on the pipelineType JSON expression reads as a routine call.
+      return nullOrEmpty(filter.getQueryParam("serviceType"))
+          ? filter.getCondition()
+          : serviceTypeJoinCondition(filter);
+    }
+
+    /**
+     * The SQL for the value the Name column renders — {@code displayName} falling back to {@code
+     * name} — sorted inline. No generated column: the pipeline table is small enough (bounded by
+     * services × pipeline types plus automations) that an unindexed sort is instant, and an
+     * expression index can be added later without a schema change if a deployment ever grows.
+     * ORDER BY and the keyset comparison share this same expression, so its collation governs both
+     * and the cursor value is carried verbatim from Java.
+     */
+    default String displayNameSortExpression() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.displayName')), ''), ingestion_pipeline_entity.name)"
+          : "COALESCE(NULLIF(ingestion_pipeline_entity.json ->> 'displayName', ''), ingestion_pipeline_entity.name)";
+    }
+
+    @SqlQuery(
+        "SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
+            + "ORDER BY <displayExpr> <order>, ingestion_pipeline_entity.id <order> LIMIT :limit")
+    List<String> listByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
+        @Define("order") String order,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
+            + "AND (<displayExpr> <op> :afterDisplayName "
+            + "OR (<displayExpr> = :afterDisplayName "
+            + "AND ingestion_pipeline_entity.id <op> :afterId)) "
+            + "ORDER BY <displayExpr> <order>, ingestion_pipeline_entity.id <order> LIMIT :limit")
+    List<String> listAfterByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
+        @Define("order") String order,
+        @Define("op") String op,
+        @Bind("limit") int limit,
+        @Bind("afterDisplayName") String afterDisplayName,
+        @Bind("afterId") String afterId);
+
+    // Walks backwards in the reverse direction, then re-sorts the page into the requested order.
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT <displayExpr> AS sort_key, ingestion_pipeline_entity.id, "
+            + "ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
+            + "AND (<displayExpr> <op> :beforeDisplayName "
+            + "OR (<displayExpr> = :beforeDisplayName "
+            + "AND ingestion_pipeline_entity.id <op> :beforeId)) "
+            + "ORDER BY <displayExpr> <reverseOrder>, "
+            + "ingestion_pipeline_entity.id <reverseOrder> LIMIT :limit"
+            + ") last_rows_subquery ORDER BY sort_key <order>, id <order>")
+    List<String> listBeforeByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
+        @Define("order") String order,
+        @Define("reverseOrder") String reverseOrder,
+        @Define("op") String op,
+        @Bind("limit") int limit,
+        @Bind("beforeDisplayName") String beforeDisplayName,
+        @Bind("beforeId") String beforeId);
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {
@@ -9820,7 +9834,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <mysqlServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9839,7 +9853,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <postgresServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR pe.json->>'serviceType' = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9851,8 +9865,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(PipelineSummaryRowMapper.class)
     List<PipelineSummaryRow> listPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
-        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Bind("serviceType") String serviceType,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -9868,7 +9881,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <mysqlServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9881,7 +9894,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <postgresServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR pe.json->>'serviceType' = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9890,8 +9903,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int countPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
-        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Bind("serviceType") String serviceType,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -10184,6 +10196,55 @@ public interface CollectionDAO {
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {
+    String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+    String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+    String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+
+    /**
+     * Purges the profiler history left behind by a hard-deleted table, bounded to profiles recorded
+     * at or before {@code deletedAt}.
+     *
+     * <p>profiler_data_time_series is keyed by FQN hash and carries no table id, so a purge running
+     * after the FQN has been reused cannot otherwise tell the dead table's rows from its successor's.
+     * Everything the successor records happens after the delete, so the watermark makes this purge
+     * safe to run at any later point, and idempotent when it runs more than once.
+     */
+    default int deleteTableProfilerData(String tableFqn, long deletedAt) {
+      String table = getTimeSeriesTableName();
+      int deleted = deleteByFqnHash(table, tableFqn, TABLE_PROFILE_EXTENSION, deletedAt);
+      deleted += deleteByFqnHash(table, tableFqn, SYSTEM_PROFILE_EXTENSION, deletedAt);
+      deleted += deleteColumnProfiles(table, tableFqn, deletedAt);
+      return deleted;
+    }
+
+    @SqlUpdate(
+        "DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+            + "AND timestamp <= :deletedAt")
+    int deleteByFqnHash(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("deletedAt") long deletedAt);
+
+    @SqlUpdate(
+        "DELETE FROM <table> WHERE entityFQNHash LIKE :hashPrefix AND extension = :extension "
+            + "AND timestamp <= :deletedAt")
+    int deleteByFqnHashPrefix(
+        @Define("table") String table,
+        @Bind("hashPrefix") String hashPrefix,
+        @Bind("extension") String extension,
+        @Bind("deletedAt") long deletedAt);
+
+    /**
+     * Column profiles are keyed by the (possibly nested) column FQN, so they sit under the table's
+     * hash rather than on it. The prefix is built from MD5 segments, which cannot contain a LIKE
+     * wildcard, so it needs no escaping.
+     */
+    private int deleteColumnProfiles(String table, String tableFqn, long deletedAt) {
+      String hashPrefix = FullyQualifiedName.buildHash(tableFqn) + Entity.SEPARATOR + "%";
+      return deleteByFqnHashPrefix(table, hashPrefix, TABLE_COLUMN_PROFILE_EXTENSION, deletedAt);
+    }
+
     @Override
     default String getTimeSeriesTableName() {
       return "profiler_data_time_series";
@@ -10242,16 +10303,31 @@ public interface CollectionDAO {
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
 
+    // A table FQN is always service.database.schema.table, so table_entity.fqnHash is always four
+    // '.'-joined MD5 segments -- exactly 131 characters. A column profile is keyed by the column
+    // FQN, whose hash extends that with at least one more segment (more for nested columns), so
+    // truncating to 131 yields its parent table's hash, and is a no-op for table-level rows that
+    // are already that length. Comparing the raw hash never matched, which silently purged every
+    // column profile of every live table on each run (issue #27041).
+    //
+    // Resolving the parent from the outer row keeps a single equality, so both planners serve this
+    // as a hash anti-join. Correlating the other way (entityFQNHash LIKE te.fqnHash || '.%') builds
+    // the pattern from the inner row, leaving no equijoin key, and degrades to a nested loop over
+    // table_entity per profiler row: 32s vs 106ms on Postgres 15, 76s vs 247ms on MySQL 8 over 5k
+    // tables / 105k rows. 1.9.9/postgres/postDataMigrationSQLScript.sql resolves the same parent
+    // for the same reason, noting it is "much faster than LIKE".
+    String PARENT_TABLE_HASH = "LEFT(pdts.entityFQNHash, 131)";
+
     // profiler_data_time_series has no id column (unique key is
     // entityFQNHash + extension + operation + timestamp), so we limit by
     // row count using single-table DELETE+LIMIT on MySQL and ctid IN (...) on Postgres.
     // This bounds the rows deleted per batch, matching the other orphan-cleanup queries.
     @ConnectionAwareSqlUpdate(
         value =
-            "DELETE FROM profiler_data_time_series "
+            "DELETE FROM profiler_data_time_series AS pdts "
                 + "WHERE NOT EXISTS ("
-                + "  SELECT 1 FROM table_entity te "
-                + "  WHERE te.fqnHash = profiler_data_time_series.entityFQNHash"
+                + "  SELECT 1 FROM table_entity te WHERE te.fqnHash = "
+                + PARENT_TABLE_HASH
                 + ") "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -10261,8 +10337,8 @@ public interface CollectionDAO {
                 + "WHERE ctid IN ("
                 + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
                 + "  WHERE NOT EXISTS ("
-                + "    SELECT 1 FROM table_entity te "
-                + "    WHERE te.fqnHash = pdts.entityFQNHash"
+                + "    SELECT 1 FROM table_entity te WHERE te.fqnHash = "
+                + PARENT_TABLE_HASH
                 + "  ) "
                 + "  LIMIT :limit"
                 + ")",
@@ -10433,11 +10509,12 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
     @SqlQuery(
-        "SELECT t1.entityFQNHash, t1.json FROM test_case_resolution_status_time_series t1 "
-            + "INNER JOIN (SELECT entityFQNHash, MAX(timestamp) as maxTs "
-            + "FROM test_case_resolution_status_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
-            + "GROUP BY entityFQNHash) t2 "
-            + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
+        "SELECT ranked.entityFQNHash, ranked.json FROM ("
+            + "SELECT entityFQNHash, json, ROW_NUMBER() OVER ("
+            + "PARTITION BY entityFQNHash ORDER BY timestamp DESC, id DESC) AS rowNumber "
+            + "FROM test_case_resolution_status_time_series "
+            + "WHERE entityFQNHash IN (<entityFQNHashes>)) ranked "
+            + "WHERE ranked.rowNumber = 1")
     List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
         @BindListFQN("entityFQNHashes") List<String> entityFQNs);
 
@@ -11097,6 +11174,53 @@ public interface CollectionDAO {
   }
 
   interface SystemDAO {
+    @SqlQuery(
+        "SELECT (SELECT COUNT(*) FROM type_entity WHERE nameHash IN (<typeHashes>)) + "
+            + "(SELECT COUNT(*) FROM policy_entity WHERE fqnHash IN (<policyHashes>)) + "
+            + "(SELECT COUNT(*) FROM role_entity WHERE nameHash IN (<roleHashes>)) + "
+            + "(SELECT COUNT(*) FROM task_form_schema_entity WHERE fqnHash IN (<taskFormSchemaHashes>)) + "
+            + "(SELECT COUNT(*) FROM doc_store WHERE fqnHash IN (<documentHashes>)) + "
+            + "(SELECT COUNT(*) FROM workflow_definition_entity WHERE fqnHash IN (<workflowDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM event_subscription_entity WHERE nameHash IN (<eventSubscriptionHashes>)) + "
+            + "(SELECT COUNT(*) FROM notification_template_entity WHERE fqnHash IN (<notificationTemplateHashes>)) + "
+            + "(SELECT COUNT(*) FROM learning_resource_entity WHERE fqnHash IN (<learningResourceHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_definition WHERE nameHash IN (<testDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_connection_definition WHERE nameHash IN (<testConnectionDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM web_analytic_event WHERE fqnHash IN (<webAnalyticEventHashes>)) + "
+            + "(SELECT COUNT(*) FROM data_insight_chart WHERE fqnHash IN (<dataInsightChartHashes>)) + "
+            + "(SELECT COUNT(*) FROM di_chart_entity WHERE name IN (<dataInsightCustomChartNames>)) + "
+            + "(SELECT COUNT(*) FROM bot_entity WHERE nameHash IN (<botHashes>)) + "
+            + "(SELECT COUNT(*) FROM classification WHERE nameHash IN (<classificationHashes>)) + "
+            + "(SELECT COUNT(*) FROM tag WHERE fqnHash IN (<tagHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_entity WHERE nameHash IN (<glossaryHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash IN (<glossaryTermHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_policy_entity WHERE fqnHash IN (<aiGovernancePolicyHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_framework_entity WHERE fqnHash IN (<aiGovernanceFrameworkHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_framework_control_entity WHERE fqnHash IN (<aiFrameworkControlHashes>))")
+    long countRequiredSeedData(
+        @BindListFQN("typeHashes") List<String> typeNames,
+        @BindListFQN("policyHashes") List<String> policyNames,
+        @BindListFQN("roleHashes") List<String> roleNames,
+        @BindListFQN("taskFormSchemaHashes") List<String> taskFormSchemaNames,
+        @BindListFQN("documentHashes") List<String> documentNames,
+        @BindListFQN("workflowDefinitionHashes") List<String> workflowDefinitionNames,
+        @BindListFQN("eventSubscriptionHashes") List<String> eventSubscriptionNames,
+        @BindListFQN("notificationTemplateHashes") List<String> notificationTemplateNames,
+        @BindListFQN("learningResourceHashes") List<String> learningResourceNames,
+        @BindListFQN("testDefinitionHashes") List<String> testDefinitionNames,
+        @BindListFQN("testConnectionDefinitionHashes") List<String> testConnectionDefinitionNames,
+        @BindListFQN("webAnalyticEventHashes") List<String> webAnalyticEventNames,
+        @BindListFQN("dataInsightChartHashes") List<String> dataInsightChartNames,
+        @BindList("dataInsightCustomChartNames") List<String> dataInsightCustomChartNames,
+        @BindListFQN("botHashes") List<String> botNames,
+        @BindListFQN("classificationHashes") List<String> classificationNames,
+        @BindListFQN("tagHashes") List<String> tagNames,
+        @BindListFQN("glossaryHashes") List<String> glossaryNames,
+        @BindListFQN("glossaryTermHashes") List<String> glossaryTermNames,
+        @BindListFQN("aiGovernancePolicyHashes") List<String> aiGovernancePolicyNames,
+        @BindListFQN("aiGovernanceFrameworkHashes") List<String> aiGovernanceFrameworkNames,
+        @BindListFQN("aiFrameworkControlHashes") List<String> aiFrameworkControlNames);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT (SELECT COUNT(fqnHash) FROM table_entity <cond>) as tableCount, "
@@ -11294,6 +11418,7 @@ public interface CollectionDAO {
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
             case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
+            case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -14751,6 +14876,16 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM activity_stream WHERE timestamp < :cutoff")
     int deleteOlderThan(@Bind("cutoff") long cutoffTimestamp);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM activity_stream WHERE entityType = :entityType AND entityId = :entityId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM activity_stream WHERE entitytype = :entityType AND entityid = :entityId",
+        connectionType = POSTGRES)
+    int deleteByEntity(@Bind("entityType") String entityType, @Bind("entityId") String entityId);
 
     @SqlQuery("SELECT json FROM activity_stream WHERE id = :id")
     String findById(@Bind("id") String id);

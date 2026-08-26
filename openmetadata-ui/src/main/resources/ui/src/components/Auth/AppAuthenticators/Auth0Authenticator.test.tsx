@@ -46,6 +46,17 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
+const updateRenewToken = jest.fn();
+
+jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({
+      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
+    }),
+  },
+}));
+
 describe('Auth0Authenticator', () => {
   it('should render children', () => {
     const { getByText } = render(
@@ -137,5 +148,25 @@ describe('Auth0Authenticator', () => {
     await expect(ref.current?.renewIdToken()).rejects.toThrow(
       new Error('claims error')
     );
+  });
+
+  // Regression: renewer registration now lives here instead of in the
+  // parent AuthProvider's ref-deps useEffect.
+  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
+    const { unmount } = render(
+      <Auth0Authenticator ref={null}>
+        <div>Child</div>
+      </Auth0Authenticator>
+    );
+
+    expect(updateRenewToken).toHaveBeenCalled();
+
+    const registered = updateRenewToken.mock.calls[0][0];
+
+    expect(typeof registered).toBe('function');
+
+    unmount();
+
+    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
   });
 });

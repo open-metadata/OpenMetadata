@@ -67,6 +67,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -856,6 +858,42 @@ public class IncidentGroupsIT {
         1,
         group.getTrend().stream().mapToInt(Integer::intValue).sum(),
         "the tied incident must enter the trend exactly once");
+  }
+
+  @Test
+  void testLatestRecordBatchBreaksTimestampTiesByRecordId() throws Exception {
+    long timestamp = System.currentTimeMillis();
+    Table tieTable = createTable(schemaFqn, "latest_record_batch_tie_" + timestamp);
+    TestDefinition tieDefinition =
+        createTestDefinition(
+            "latest_record_batch_tie_def_" + timestamp, TestDefinitionEntityType.TABLE);
+    TestCase tieCase =
+        createTestCase(
+            "latest_record_batch_tie_case_" + timestamp,
+            tableLink(tieTable),
+            tieDefinition,
+            List.of());
+
+    String stateId = UUID.randomUUID().toString();
+    UUID lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID higherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    insertStatusRecords(
+        tieCase,
+        List.of(
+            seededRecord(stateId, timestamp, TestCaseResolutionStatusTypes.New, null)
+                .withId(lowerId),
+            seededRecord(stateId, timestamp, TestCaseResolutionStatusTypes.Ack, null)
+                .withId(higherId)));
+
+    List<CollectionDAO.LatestRecordWithFQNHash> latestRecords =
+        Entity.getCollectionDAO()
+            .testCaseResolutionStatusTimeSeriesDao()
+            .getLatestRecordBatch(List.of(tieCase.getFullyQualifiedName()));
+
+    assertEquals(1, latestRecords.size());
+    TestCaseResolutionStatus selected =
+        JsonUtils.readValue(latestRecords.getFirst().getJson(), TestCaseResolutionStatus.class);
+    assertEquals(higherId, selected.getId());
   }
 
   // 60 distinct assignee names exceed GROUP_CONCAT's default 1024-char cap; the JSON aggregate

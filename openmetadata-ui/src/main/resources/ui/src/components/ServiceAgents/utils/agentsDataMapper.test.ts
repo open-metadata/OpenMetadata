@@ -394,23 +394,93 @@ describe('agentsDataMapper', () => {
       expect(agent.finishedAt).toBeTruthy();
     });
 
-    it('should build recentRuns latest-first from pipeline statuses', () => {
+    it('should build recentRuns oldest-first from newest-first pipeline statuses', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
         pipelineStatuses: [
-          { pipelineState: PipelineState.Failed, runId: 'run-a' },
-          { pipelineState: PipelineState.Success, runId: 'run-b' },
-          { pipelineState: PipelineState.PartialSuccess, runId: 'run-c' },
+          {
+            pipelineState: PipelineState.Failed,
+            runId: 'run-a',
+            timestamp: 1_700_000_300_000,
+          },
+          {
+            pipelineState: PipelineState.Success,
+            runId: 'run-b',
+            timestamp: 1_700_000_200_000,
+          },
+          {
+            pipelineState: PipelineState.PartialSuccess,
+            runId: 'run-c',
+            timestamp: 1_700_000_100_000,
+          },
         ],
       };
 
       const agent = mapPipelineToAgent(pipeline);
 
       expect(agent.recentRuns).toEqual([
-        { id: 'run-a', status: 'failed' },
-        { id: 'run-b', status: 'success' },
         { id: 'run-c', status: 'partial' },
+        { id: 'run-b', status: 'success' },
+        { id: 'run-a', status: 'failed' },
       ]);
+    });
+
+    it('should order recentRuns by timestamp even when the statuses arrive unsorted', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            pipelineState: PipelineState.Success,
+            runId: 'unsorted-mid',
+            timestamp: 1_700_000_200_000,
+          },
+          {
+            pipelineState: PipelineState.Failed,
+            runId: 'unsorted-newest',
+            timestamp: 1_700_000_300_000,
+          },
+          {
+            pipelineState: PipelineState.PartialSuccess,
+            runId: 'unsorted-oldest',
+            timestamp: 1_700_000_100_000,
+          },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.recentRuns.map((run) => run.id)).toEqual([
+        'unsorted-oldest',
+        'unsorted-mid',
+        'unsorted-newest',
+      ]);
+    });
+
+    it('should not reorder the pipelineStatuses array it was handed', () => {
+      // Other consumers read `pipelineStatuses[0]` as the latest run, so sorting in place here would
+      // silently make them report the oldest one.
+      const newestRunId = 'shared-newest';
+      const pipelineStatuses = [
+        {
+          pipelineState: PipelineState.Failed,
+          runId: newestRunId,
+          timestamp: 1_700_000_300_000,
+        },
+        {
+          pipelineState: PipelineState.Success,
+          runId: 'shared-oldest',
+          timestamp: 1_700_000_100_000,
+        },
+      ];
+
+      const agent = mapPipelineToAgent({ ...basePipeline, pipelineStatuses });
+
+      expect(pipelineStatuses.map((status) => status.runId)).toEqual([
+        newestRunId,
+        'shared-oldest',
+      ]);
+      expect(agent.currentRunId).toBe(newestRunId);
+      expect(agent.lastRunAt).toBe(1_700_000_300_000);
     });
 
     it('should exclude in-flight queued and running statuses from recentRuns', () => {
@@ -433,16 +503,24 @@ describe('agentsDataMapper', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
         pipelineStatuses: [
-          { pipelineState: PipelineState.Stopped, runId: 'run-s' },
-          { pipelineState: PipelineState.Success, runId: 'run-t' },
+          {
+            pipelineState: PipelineState.Stopped,
+            runId: 'run-s',
+            timestamp: 1_700_000_200_000,
+          },
+          {
+            pipelineState: PipelineState.Success,
+            runId: 'run-t',
+            timestamp: 1_700_000_100_000,
+          },
         ],
       };
 
       const agent = mapPipelineToAgent(pipeline);
 
       expect(agent.recentRuns).toEqual([
-        { id: 'run-s', status: 'skipped' },
         { id: 'run-t', status: 'success' },
+        { id: 'run-s', status: 'skipped' },
       ]);
     });
 
@@ -464,20 +542,27 @@ describe('agentsDataMapper', () => {
       ]);
     });
 
-    it('should cap recentRuns at five entries', () => {
+    it('should cap recentRuns at the five newest entries', () => {
+      // `run-0` is the newest. Capping an ascending list instead of windowing newest-first would keep
+      // run-6..run-2 — the five oldest.
       const pipeline: IngestionPipeline = {
         ...basePipeline,
         pipelineStatuses: Array.from({ length: 7 }, (_, index) => ({
           pipelineState: PipelineState.Success,
           runId: `run-${index}`,
+          timestamp: 1_700_000_000_000 - index * 60_000,
         })),
       };
 
       const agent = mapPipelineToAgent(pipeline);
 
-      expect(agent.recentRuns).toHaveLength(5);
-      expect(agent.recentRuns[0].id).toBe('run-0');
-      expect(agent.recentRuns[4].id).toBe('run-4');
+      expect(agent.recentRuns.map((run) => run.id)).toEqual([
+        'run-4',
+        'run-3',
+        'run-2',
+        'run-1',
+        'run-0',
+      ]);
     });
 
     it('should sum errors and warnings across steps', () => {

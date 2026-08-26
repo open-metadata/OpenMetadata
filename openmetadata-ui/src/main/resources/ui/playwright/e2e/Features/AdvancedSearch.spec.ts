@@ -111,13 +111,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain1.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain1.responseData.name,
-            displayName: EntityDataClass.domain1.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain1.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain1.responseData.name,
+              displayName: EntityDataClass.domain1.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -159,13 +161,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain2.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain2.responseData.name,
-            displayName: EntityDataClass.domain2.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain2.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain2.responseData.name,
+              displayName: EntityDataClass.domain2.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -1053,7 +1057,7 @@ test.describe(
 
         await searchAndClickOnOption(
           page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
           true
         );
         await clickUpdateButtonIfVisible(page);
@@ -1077,7 +1081,7 @@ test.describe(
         await page.getByTestId('search-dropdown-Data Assets').click();
         await searchAndClickOnOption(
           page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
           true
         );
         await clickUpdateButtonIfVisible(page);

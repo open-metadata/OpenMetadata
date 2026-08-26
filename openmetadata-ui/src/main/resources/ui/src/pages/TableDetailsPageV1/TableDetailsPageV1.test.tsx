@@ -12,10 +12,13 @@
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -667,6 +670,106 @@ describe('TestDetailsPageV1 component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/table/fqn/sample_data', {
       replace: true,
       state: { breadcrumbData },
+    });
+  });
+
+  describe('Queries tab count', () => {
+    const getQueriesTabProps = () =>
+      (TabsLabel as unknown as jest.Mock).mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.id === EntityTabs.TABLE_QUERIES);
+
+    const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
+
+    const renderOnSchemaTab = async () => {
+      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    beforeEach(() => {
+      (TabsLabel as unknown as jest.Mock).mockClear();
+      (getQueriesList as jest.Mock).mockClear();
+    });
+
+    it('should fetch the count on mount without activating the Queries tab', async () => {
+      (getQueriesList as jest.Mock).mockResolvedValue({
+        paging: { total: 7 },
+      });
+
+      await renderOnSchemaTab();
+
+      // tableDetails resolves on a later render, so the count query starts after the act
+      // flush — poll rather than asserting synchronously.
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: '123',
+        })
+      );
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should render the skeleton instead of a count while the request is in flight', async () => {
+      let resolveCount: (value: { paging: { total: number } }) => void = () =>
+        undefined;
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+
+      await renderOnSchemaTab();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      // Every render so far, not just the latest — one frame with isLoading false is the
+      // 0 flash this guards against.
+      expect(getQueriesTabProps()).not.toHaveLength(0);
+      expect(
+        getQueriesTabProps().every((props) => props.isLoading)
+      ).toBeTruthy();
+
+      await act(async () => {
+        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
+        resolveCount({ paging: { total: 7 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should fall back to 0 when the count request fails', async () => {
+      (getQueriesList as jest.Mock).mockRejectedValue(new Error('failed'));
+
+      await renderOnSchemaTab();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 0, isLoading: false })
+        )
+      );
     });
   });
 });

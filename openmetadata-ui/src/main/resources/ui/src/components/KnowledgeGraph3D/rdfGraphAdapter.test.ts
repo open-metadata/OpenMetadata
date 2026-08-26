@@ -244,7 +244,9 @@ describe('adaptRdfGraph', () => {
   it('should classify each link kind from the RDF label and node types', () => {
     const { links } = adaptRdfGraph(SAMPLE);
     const findLink = (source: string, target: string): (typeof links)[number] =>
-      links.find((l) => l.source === source && l.target === target)!;
+      links.find(
+        (l) => l.source === source && l.target === target
+      ) as (typeof links)[number];
 
     expect(findLink('T1', 'CON1').kind).toBe('ontology');
     expect(findLink('CON1', 'CON3').label).toBe('Parent of');

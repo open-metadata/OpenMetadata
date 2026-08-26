@@ -42,6 +42,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
@@ -59,6 +61,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 
 @Slf4j
 @Path("/v1/classifications")
@@ -482,5 +485,119 @@ public class ClassificationResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportClassification",
+      summary = "Export classification in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with tags of the classification",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportClassification",
+      summary = "Export classification in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with tags of the classification",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importClassification",
+      summary = "Import tags from CSV to create, and update tags of a classification",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importClassificationAsync",
+      summary = "Import tags of a classification in CSV format asynchronously",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(description = "Dry run the import", schema = @Schema(type = "boolean"))
+          @QueryParam("dryRun")
+          @DefaultValue("true")
+          boolean dryRun) {
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 }

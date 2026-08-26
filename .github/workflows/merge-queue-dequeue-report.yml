@@ -47,6 +47,7 @@ jobs:
       PR: ${{ github.event.number || inputs.pr }}
       BASE_REF: ${{ github.event.repository.default_branch }}
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
+      SLACK_CHANNEL: C0AC5T013V1 # #ci-cleanup
     steps:
       - name: Resolve the dequeue event
         id: event
@@ -104,10 +105,11 @@ jobs:
           # An entry removed while still queued was never built, so it has no
           # merge-group commit and nothing ever ran against it.
           if [ -z "$SHA" ]; then
+            echo "The entry left the queue before it was built, so no checks ran against it." > detail.txt
             {
               echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
               echo
-              echo "The entry left the queue before it was built, so no checks ran against it."
+              cat detail.txt
             } > body.md
           else
             gh api "repos/$GH_REPO/commits/$SHA/check-runs?per_page=100" --paginate \
@@ -124,6 +126,7 @@ jobs:
               | awk '{ out = out (out ? ", " : "") "`" $0 "`" } END { print out }' || true)
 
             : > runs.md
+            : > runs.slack
             cut -f1 failures.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
               run_name=$(gh api "repos/$GH_REPO/actions/runs/${run##*/}" --jq '.name')
               # Matrix jobs carry every parameter; the first one is the shard id.
@@ -131,27 +134,57 @@ jobs:
                      | sed 's/ (\([^,)]*\)[^)]*)/ (\1)/' \
                      | awk '{ out = out (out ? ", " : "") $0 } END { print out }')
               echo "- [$run_name]($run) — $jobs" >> runs.md
+              # Slack mrkdwn has no []() links; it uses <url|text>.
+              echo "• <$run|$run_name> — $jobs" >> runs.slack
             done
+
+            if [ -s runs.md ]; then
+              if [ -n "$blocked" ]; then
+                echo "Blocked the queue: $blocked" > detail.txt
+              else
+                echo "No required check failed — the entry may have timed out, or been dequeued while a required check was still pending." > detail.txt
+              fi
+            else
+              echo "No failing check on merge-queue commit \`${SHA:0:7}\` — invalidated by an entry ahead in the queue, or a required check timed out." > detail.txt
+            fi
 
             {
               echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
               echo
+              cat detail.txt
               if [ -s runs.md ]; then
-                if [ -n "$blocked" ]; then
-                  echo "Blocked the queue: $blocked"
-                else
-                  echo "No required check failed — the entry may have timed out, or been dequeued while a required check was still pending."
-                fi
                 echo
                 cat runs.md
-              else
-                echo "No failing check on merge-queue commit \`${SHA:0:7}\` — invalidated by an entry ahead in the queue, or a required check timed out."
               fi
             } > body.md
           fi
+
+          # The same report, re-rendered as Slack mrkdwn. jq -Rs escapes the body,
+          # so backticks and newlines from the check names survive as-is.
+          {
+            echo ":rotating_light: *<$GITHUB_SERVER_URL/$GH_REPO/pull/$PR|PR #$PR>* removed from the merge queue — \`$REASON\`"
+            cat detail.txt
+            if [ -s runs.slack ]; then
+              cat runs.slack
+            fi
+          } | jq -Rs --arg channel "$SLACK_CHANNEL" '{channel: $channel, text: .}' > slack.json
 
           if [ "$DRY_RUN" = "true" ]; then
             cat body.md >> "$GITHUB_STEP_SUMMARY"
           else
             gh pr comment "$PR" --body-file body.md
           fi
+
+      # A dequeue holds up everyone behind it in the queue, so the channel gets
+      # the same report the PR does. Slack must never fail the report, hence
+      # continue-on-error; `errors: true` still surfaces the API error in the log.
+      - name: "Ping #ci-cleanup"
+        if: ${{ steps.event.outputs.reason != '' && env.DRY_RUN != 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload-file-path: slack.json

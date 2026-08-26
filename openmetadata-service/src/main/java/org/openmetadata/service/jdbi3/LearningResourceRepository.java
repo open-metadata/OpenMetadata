@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.learning.LearningResourceResource;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -60,6 +61,9 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
    * existing entities, this method will update existing resources if the seed data has changed.
    */
   public void initSeedDataWithMerge() throws java.io.IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<LearningResource> seedEntities = getEntitiesFromSeedData();
     for (LearningResource seedEntity : seedEntities) {
       setFullyQualifiedName(seedEntity);

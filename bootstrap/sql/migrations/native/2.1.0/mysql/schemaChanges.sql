@@ -35,3 +35,17 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- Pairing it with relation serves every pipeline lineage path without widening the generic table schema.
+CREATE INDEX idx_entity_relationship_pipeline_relation
+ON entity_relationship (
+    (CAST(json->>'$.pipeline.id' AS CHAR(36)) COLLATE utf8mb4_bin),
+    relation
+);
+
+-- Switch Oracle services to python-oracledb's native SQLAlchemy dialect.
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
+WHERE serviceType = 'Oracle'
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';

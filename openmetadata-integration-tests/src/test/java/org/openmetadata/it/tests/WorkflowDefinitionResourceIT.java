@@ -10779,6 +10779,174 @@ public class WorkflowDefinitionResourceIT {
             });
   }
 
+  /**
+   * A userApprovalTask node whose {@code config.transitionMetadata} is empty must still resolve.
+   * Verifies the end-to-end contract: task creation projects the default approve/reject pair onto
+   * {@code availableTransitions}, {@code POST /tasks/{id}/resolve} with {@code transitionId=approve}
+   * succeeds, and Flowable routes the signal (task closes as Approved rather than staying Open).
+   */
+  @Test
+  @Order(210)
+  void test_UserApprovalTask_EmptyTransitionMetadata_TaskResolvesWithDefaultTransitions(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("emptyTransitionMeta").substring(0, 30);
+    String dbServiceName = ns.prefix("emptyTransitionMetaSvc").substring(0, 30);
+
+    String reviewerSuffix = UUID.randomUUID().toString().substring(0, 8);
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("empty_meta_rvwr_" + reviewerSuffix)
+                    .withEmail("empty_meta_rvwr_" + reviewerSuffix + "@example.com")
+                    .withDisplayName("Empty Meta Reviewer")
+                    .withPassword("password123"));
+
+    // userApprovalTask with NO transitionMetadata. branches ["true","false"] mirrors legacy BPMN
+    // edge conditions (v200 migration rewrites those to approve/reject on redeploy).
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Empty Transition Metadata Workflow",
+              "description": "userApprovalTask with no transitionMetadata — must still resolve",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {"entityTypes": ["table"], "events": ["Created"]},
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "TaskReview",
+                  "displayName": "Task Review",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user",
+                         "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1,
+                    "stageId": "review",
+                    "stageDisplayName": "Review",
+                    "taskStatus": "Open"
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "endApproved", "type": "endEvent", "subType": "endEvent"},
+                {"name": "endRejected", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "TaskReview"},
+                {"from": "TaskReview", "to": "endApproved", "condition": "approve"},
+                {"from": "TaskReview", "to": "endRejected", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """
+            .formatted(
+                workflowName,
+                reviewer.getId(),
+                reviewer.getFullyQualifiedName(),
+                reviewer.getName());
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    waitForWorkflowDeployment(client, workflowName);
+
+    DatabaseService dbService =
+        client.databaseServices().create(createDatabaseServiceRequest(dbServiceName));
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(dbService.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("empty_meta_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+
+    String tableFqn = table.getFullyQualifiedName();
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> !listOpenApprovalTasks(client, tableFqn).getData().isEmpty());
+
+    Task task =
+        listOpenApprovalTasks(client, tableFqn).getData().stream()
+            .filter(
+                t ->
+                    t.getAssignees() != null
+                        && t.getAssignees().stream()
+                            .anyMatch(a -> reviewer.getName().equals(a.getName())))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("Task with expected reviewer assignee not found"));
+
+    // Empty transitionMetadata on the userApprovalTask node triggers
+    // resolveTransitionsForStage's default fallback at CreateTask time, so the task row must
+    // carry the default approve/reject pair.
+    assertEquals(
+        2,
+        task.getAvailableTransitions().size(),
+        "userApprovalTask with empty transitionMetadata must project approve/reject");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "approve".equals(t.getId())),
+        "availableTransitions must contain default 'approve'");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "reject".equals(t.getId())),
+        "availableTransitions must contain default 'reject'");
+
+    // /resolve on transitionId=approve returns 200 and Flowable routes the signal (redeployed
+    // BPMN's approve/reject edge conditions match the projected id).
+    OpenMetadataClient reviewerClient =
+        SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
+    org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
+        new org.openmetadata.schema.api.tasks.ResolveTask()
+            .withTransitionId("approve")
+            .withResolutionType(TaskResolutionType.Approved);
+    reviewerClient.tasks().resolve(task.getId().toString(), resolveRequest);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              Task refetched = client.tasks().get(task.getId().toString());
+              return refetched.getStatus() == TaskEntityStatus.Approved;
+            });
+  }
+
   private void assertDisplayNameUnchangedAfterQuietPeriod(OpenMetadataClient client, UUID termId)
       throws Exception {
     String originalDisplayName = client.glossaryTerms().get(termId).getDisplayName();

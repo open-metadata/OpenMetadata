@@ -36,7 +36,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  group: sso-login-nightly-${{ github.ref }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
   cancel-in-progress: true
 
 jobs:
@@ -86,7 +86,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Cache Maven Dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}

@@ -1086,8 +1086,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Rest5ClientBuilder builder =
         Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
-                httpClientBuilder ->
-                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+                httpClientBuilder -> {
+                  httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                  // httpclient5 5.6.0 enables automatic gzip decompression by default; the
+                  // elasticsearch-java client also decompresses the response body, so leaving
+                  // both on runs the second pass over already-inflated bytes and throws
+                  // "java.util.zip.ZipException: Not in GZIP format". Let the ES client own
+                  // decompression. Mirrors the production ElasticSearchClient fix.
+                  httpClientBuilder.disableContentCompression();
+                });
     return builder.build();
   }
 

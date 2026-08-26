@@ -59,9 +59,15 @@ import {
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
+import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import { EntityIconSize, getEntityIcon } from './EntityIconUtils';
+import {
+  EntityIconBgSize,
+  EntityIconSize,
+  ENTITY_ICON_BG_SIZE_MAP,
+  getEntityIcon,
+} from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
 import { getServiceIcon } from './EntityServiceIconUtils';
@@ -855,6 +861,22 @@ class SearchClassBase {
     _options: Array<Option>
   ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {
     return [];
+  }
+
+  public getEntityIconMapper(): typeof ENTITY_ICON_MAPPER {
+    return ENTITY_ICON_MAPPER;
+  }
+
+  public getEntityIconWithBg(entityType?: string, iconSize?: EntityIconBgSize) {
+    const config =
+      iconSize !== undefined ? ENTITY_ICON_BG_SIZE_MAP[iconSize] : undefined;
+
+    return getEntityIconWithBg(
+      entityType,
+      config?.containerProps,
+      config?.iconProps,
+      this.getEntityIconMapper()
+    );
   }
 
   public getIndexGroupLabel(index: string) {

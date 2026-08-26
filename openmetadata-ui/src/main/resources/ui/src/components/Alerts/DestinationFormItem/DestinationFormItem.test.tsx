@@ -228,15 +228,11 @@ describe('DestinationFormItem', () => {
       });
 
       mockGetFormattedDestinations.mockReturnValue(formattedDestinations);
+      // The API redacts destination configs from the test response
       (testAlertDestination as jest.Mock).mockResolvedValue([
         {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
-          config: {
-            endpoint: 'https://example.com/webhook',
-            headers: { 'Content-Type': 'application/json' },
-            queryParams: { param1: 'value1' },
-          },
           statusDetails: { status: 200 },
         },
       ]);

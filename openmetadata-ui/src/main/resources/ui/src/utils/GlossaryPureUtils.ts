@@ -225,10 +225,8 @@ export const findExpandableKeys = (
     if (glossaryTerm.fullyQualifiedName) {
       expandableKeys.push(glossaryTerm.fullyQualifiedName);
     }
-  } else if (glossaryTerm.childrenCount) {
-    if (glossaryTerm.fullyQualifiedName) {
-      expandableKeys.push(glossaryTerm.fullyQualifiedName);
-    }
+  } else if (glossaryTerm.childrenCount && glossaryTerm.fullyQualifiedName) {
+    expandableKeys.push(glossaryTerm.fullyQualifiedName);
   }
 
   return expandableKeys;
