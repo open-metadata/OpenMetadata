@@ -308,6 +308,10 @@ export const AuthProvider = ({
   const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
+    // Clear persona selection before the async SSO call so it is always
+    // erased even when invokeLogout() throws (no try/catch here).
+    clearPersonaSession();
+
     // Let SSO complete the logout process
     await authenticatorRef.current?.invokeLogout();
 
@@ -315,9 +319,6 @@ export const AuthProvider = ({
 
     // reset the user details on logout
     setCurrentUser({} as User);
-
-    // clear the persisted persona selection so the next login starts fresh
-    clearPersonaSession();
 
     // remove analytics session on logout
     removeSession();
@@ -417,6 +418,7 @@ export const AuthProvider = ({
   }, []);
 
   const resetUserDetails = (forceLogout = false) => {
+    clearPersonaSession();
     setCurrentUser({} as User);
     clearOidcToken();
     setIsAuthenticated(false);
