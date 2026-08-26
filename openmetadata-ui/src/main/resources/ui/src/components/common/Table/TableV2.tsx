@@ -1089,6 +1089,14 @@ const TableV2 = <T extends object>(
         className="tw:relative tw:flex tw:flex-col tw:w-full"
         data-testid={dataTestId}
         style={scrollStyle}>
+        {rest.title && (
+          // AntD's table-level title slot: a band above the table, handed the
+          // rows currently on screen. Call sites hang bulk actions off it.
+          <div className="tw:px-4 tw:py-2" data-testid="table-title">
+            {rest.title(pagedDataSource)}
+          </div>
+        )}
+
         {isLoading && (
           <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60">
             <Loader />
