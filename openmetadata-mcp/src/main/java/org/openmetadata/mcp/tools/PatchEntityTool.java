@@ -5,9 +5,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.io.StringReader;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -36,6 +39,20 @@ import org.openmetadata.service.util.RestUtil;
 public class PatchEntityTool implements McpTool {
 
   private static final String PATCH_PARAM = "patch";
+  private static final String OP_KEY = "op";
+  private static final String PATH_KEY = "path";
+  private static final String VALUE_KEY = "value";
+  private static final String FROM_KEY = "from";
+
+  /** The members RFC 6902 requires for each operation, beyond {@code op} itself. */
+  private static final Map<String, List<String>> REQUIRED_MEMBERS =
+      Map.of(
+          "add", List.of(PATH_KEY, VALUE_KEY),
+          "replace", List.of(PATH_KEY, VALUE_KEY),
+          "test", List.of(PATH_KEY, VALUE_KEY),
+          "remove", List.of(PATH_KEY),
+          "move", List.of(PATH_KEY, FROM_KEY),
+          "copy", List.of(PATH_KEY, FROM_KEY));
 
   @Override
   public Map<String, Object> execute(
@@ -45,7 +62,6 @@ public class PatchEntityTool implements McpTool {
     requireTarget(entityType, fqn);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
-    requireApplicable(jsonPatch, entityType, fqn);
 
     // The permission comes from the patch itself: the operations it carries decide which
     // MetadataOperations are checked, exactly as the REST resource does it.
@@ -85,7 +101,57 @@ public class PatchEntityTool implements McpTool {
           "Parameter 'patch' is required: a JSONPatch document (RFC 6902) as a JSON array string,"
               + " e.g. [{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"...\"}].");
     }
-    return Json.createPatch(readOperations(rawPatch));
+    JsonArray operations = readOperations(rawPatch);
+    operations.forEach(PatchEntityTool::requireOperationShape);
+    return Json.createPatch(operations);
+  }
+
+  /**
+   * Checks that one operation has the members RFC 6902 requires for its {@code op}.
+   *
+   * <p>Structural only, deliberately. {@code Json.createPatch} validates nothing - it builds
+   * happily and fails at apply time, inside {@code repository.patch}, where an unknown {@code op}
+   * surfaces as a {@code JsonException} and a bare {@code [{"foo":"bar"}]} as a raw {@code
+   * NullPointerException}; the dispatcher reads neither as the caller's fault and answers 500 with
+   * "retrying will not help", for a document the model wrote and could correct.
+   *
+   * <p>Whether a path exists is <em>not</em> checked here. That is a question about the entity, not
+   * about the document, and the two are indistinguishable once the patch is applied: replacing
+   * {@code /description} or appending to {@code /owners/-} both fail against an object that lacks
+   * those members, and both are perfectly valid patches. The repository answers that question
+   * against the real entity.
+   */
+  private static void requireOperationShape(JsonValue operation) {
+    if (operation.getValueType() != JsonValue.ValueType.OBJECT) {
+      throw invalidPatch("every operation must be a JSON object, and this one is not");
+    }
+    JsonObject fields = operation.asJsonObject();
+    String op = memberOrNull(fields, OP_KEY);
+    if (op == null || !REQUIRED_MEMBERS.containsKey(op)) {
+      throw invalidPatch(
+          "'op' must be one of " + REQUIRED_MEMBERS.keySet() + ", and this one is " + op);
+    }
+    REQUIRED_MEMBERS.get(op).stream()
+        .filter(member -> !fields.containsKey(member))
+        .findFirst()
+        .ifPresent(
+            missing -> {
+              throw invalidPatch("a '" + op + "' operation needs a '" + missing + "' member");
+            });
+  }
+
+  private static String memberOrNull(JsonObject fields, String key) {
+    JsonValue value = fields.get(key);
+    return value != null && value.getValueType() == JsonValue.ValueType.STRING
+        ? ((JsonString) value).getString()
+        : null;
+  }
+
+  private static IllegalArgumentException invalidPatch(String reason) {
+    return new IllegalArgumentException(
+        "Parameter 'patch' is not a valid JSONPatch document: "
+            + reason
+            + ". Nothing was changed. See https://jsonpatch.com for the shape of each operation.");
   }
 
   /**
@@ -95,37 +161,6 @@ public class PatchEntityTool implements McpTool {
    * dispatcher classifies an unrecognised exception as a server fault and tells the model its
    * arguments were fine and not to retry - for a document the model wrote and could correct.
    */
-  /**
-   * Rejects a document that is valid JSON but not a valid patch, before it reaches the repository.
-   *
-   * <p>{@code Json.createPatch} builds the patch without checking the operations - an unknown
-   * {@code op}, a missing {@code path}, or an array of non-objects all construct happily and only
-   * fail when the patch is applied, deep inside {@code repository.patch}. There they surface as a
-   * {@code JsonException}, or for a bare {@code [{"foo":"bar"}]} a raw {@code
-   * NullPointerException}, and the dispatcher classifies neither as the caller's fault: the model
-   * is told its arguments were fine and not to retry, for a document it wrote and could correct.
-   *
-   * <p>Applying it to an empty object forces that validation. The result is discarded; only whether
-   * it threw matters. A patch that legitimately fails against an empty object - a {@code test}, or
-   * a {@code remove} of a path that must already exist - is not a malformed document, so anything
-   * other than a shape error is left to be judged against the real entity.
-   */
-  private static void requireApplicable(JsonPatch jsonPatch, String entityType, String fqn) {
-    try {
-      jsonPatch.apply(JsonValue.EMPTY_JSON_OBJECT);
-    } catch (JsonException | NullPointerException e) {
-      throw new IllegalArgumentException(
-          "Parameter 'patch' is not a valid JSONPatch document: "
-              + e.getMessage()
-              + ". Every operation needs an 'op' (add, remove, replace, move, copy, test) and a"
-              + " 'path', plus a 'value' where the op takes one.",
-          e);
-    } catch (RuntimeException e) {
-      LOG.debug(
-          "Patch for {} {} did not apply to an empty object: {}", entityType, fqn, e.getMessage());
-    }
-  }
-
   private static JsonArray readOperations(String rawPatch) {
     try {
       return Json.createReader(new StringReader(rawPatch)).readArray();

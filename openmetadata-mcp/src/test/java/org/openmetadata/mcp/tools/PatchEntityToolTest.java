@@ -176,6 +176,45 @@ class PatchEntityToolTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]",
+        "[{\"op\":\"add\",\"path\":\"/owners/-\",\"value\":{\"id\":\"u\",\"type\":\"user\"}}]",
+        "[{\"op\":\"remove\",\"path\":\"/owners/0\"}]",
+        "[{\"op\":\"move\",\"from\":\"/a\",\"path\":\"/b\"}]",
+        "[{\"op\":\"test\",\"path\":\"/description\",\"value\":\"x\"}]"
+      })
+  void execute_validPatchReachesTheRepository(String goodPatch) {
+    // Validation must judge the DOCUMENT, never the entity. An earlier attempt checked the patch by
+    // applying it to an empty object, which rejected every one of these - including the
+    // owner-append
+    // the tool description itself advertises - because the paths do not exist in '{}'. Whether a
+    // path exists is the repository's question to answer against the real entity.
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
+    EntityInterface mockEntity = mock(EntityInterface.class);
+    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put("fqn", "db.schema.test_table");
+    params.put("patch", goodPatch);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+
+      verify(mockRepo).patch(any(), any(String.class), any(), any(), any(), any(), any());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "[{\"foo\":\"bar\"}]",
         "[{\"op\":\"bogus\",\"path\":\"/x\",\"value\":1}]",
         "[{\"op\":\"replace\"}]",
