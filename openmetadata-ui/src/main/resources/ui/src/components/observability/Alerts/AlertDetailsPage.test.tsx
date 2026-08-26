@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import {
   AlertType,
@@ -25,7 +26,6 @@ import {
   ProviderType,
 } from '../../../generated/events/eventSubscription';
 import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { ReactNode } from 'react';
 import AlertDetailsPage from './AlertDetailsPage';
 
 const mockNavigate = jest.fn();
@@ -49,12 +49,9 @@ jest.mock('../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'service.alert' }),
 }));
 
-jest.mock(
-  '../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage',
-  () => ({
-    useAlertDetailsPage: (params: unknown) => mockUseAlertDetailsPage(params),
-  })
-);
+jest.mock('../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage', () => ({
+  useAlertDetailsPage: (params: unknown) => mockUseAlertDetailsPage(params),
+}));
 
 jest.mock(
   '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
@@ -158,15 +155,12 @@ jest.mock('@untitledui/icons', () => ({
   Trash01: () => null,
 }));
 
-jest.mock(
-  '../../../components/common/DocumentTitle/DocumentTitle',
-  () => ({
-    __esModule: true,
-    default: ({ title }: { title: string }) => (
-      <span data-testid="document-title">{title}</span>
-    ),
-  })
-);
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => (
+    <span data-testid="document-title">{title}</span>
+  ),
+}));
 
 jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
@@ -183,38 +177,32 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../../components/common/OwnerLabel/OwnerLabel.component',
-  () => ({
-    OwnerLabel: () => <span data-testid="owner-label" />,
-  })
-);
+jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: () => <span data-testid="owner-label" />,
+}));
 
-jest.mock(
-  '../../../components/common/DeleteModal/DeleteModal',
-  () => ({
-    __esModule: true,
-    default: ({
-      onCancel,
-      onDelete,
-      open,
-    }: {
-      onCancel: () => void;
-      onDelete: () => void;
-      open: boolean;
-    }) =>
-      open ? (
-        <div data-testid="delete-modal">
-          <button data-testid="confirm-delete" onClick={onDelete}>
-            confirm
-          </button>
-          <button data-testid="cancel-delete" onClick={onCancel}>
-            cancel
-          </button>
-        </div>
-      ) : null,
-  })
-);
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: ({
+    onCancel,
+    onDelete,
+    open,
+  }: {
+    onCancel: () => void;
+    onDelete: () => void;
+    open: boolean;
+  }) =>
+    open ? (
+      <div data-testid="delete-modal">
+        <button data-testid="confirm-delete" onClick={onDelete}>
+          confirm
+        </button>
+        <button data-testid="cancel-delete" onClick={onCancel}>
+          cancel
+        </button>
+      </div>
+    ) : null,
+}));
 
 jest.mock(
   '../../../components/common/HeaderShell/HeaderShell.component',

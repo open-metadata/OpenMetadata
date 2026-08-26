@@ -20,20 +20,14 @@ import {
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { AlertCircle } from '@untitledui/icons';
-import { NOTIFICATION_TEMPLATES_DOCS } from './alertFormDocs.constants';
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
 import { isEmpty } from 'lodash';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { NotificationTemplateValidationResponse } from '../../../generated/api/events/notificationTemplateValidationResponse';
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { validateNotificationTemplate } from '../../../rest/notificationtemplateAPI';
-import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getTemplateValidationAlert } from './NotificationTemplateUtils';
 import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiNotificationSectionProps } from './AlertAiFormFields.interface';
 import { updateAlertAiValue } from './AlertAiFormFieldsPureUtils';
@@ -42,10 +36,10 @@ import {
   renderSelectItem,
 } from './AlertAiFormFieldsSelectUtils';
 import {
-  CUSTOM_TEMPLATE_FIELD_DOC_NAMES,
-  CUSTOM_TEMPLATE_FIELD_NAMES,
   CustomTemplateErrors,
   CustomTemplateField,
+  CUSTOM_TEMPLATE_FIELD_DOC_NAMES,
+  CUSTOM_TEMPLATE_FIELD_NAMES,
   getCustomTemplateFieldData,
   getCustomTemplateFieldDocs,
   getCustomTemplateFieldLabels,
@@ -54,6 +48,12 @@ import {
   getSelectedTemplateKey,
 } from './AlertAiNotificationTemplateUtils';
 import AlertAiSection from './AlertAiSection.component';
+import { NOTIFICATION_TEMPLATES_DOCS } from './alertFormDocs.constants';
+import { getTemplateValidationAlert } from './NotificationTemplateUtils';
+import {
+  CUSTOM_TEMPLATE_VALUE,
+  SYSTEM_DEFAULT_TEMPLATES,
+} from './Template.constants';
 
 /** Renders notification template selection and custom-template fields. */
 const AlertAiNotificationSection = ({

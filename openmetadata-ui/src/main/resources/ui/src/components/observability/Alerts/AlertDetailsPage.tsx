@@ -15,6 +15,9 @@ import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
+import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -31,20 +34,14 @@ import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAl
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../utils/ToastUtils';
-import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { OBSERVABILITY_ROUTES } from '../observability.constants';
+import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
+import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
-import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import { getAlertsObservabilityDetailsPath } from './alertUtils';
 
 const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';

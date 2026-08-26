@@ -22,11 +22,6 @@ import {
 import { Trash01 } from '@untitledui/icons';
 import { isEqual, isUndefined, omitBy } from 'lodash';
 import {
-  SubscriptionCategory,
-  SubscriptionType,
-} from '../../../generated/events/eventSubscription';
-import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
-import {
   ComponentProps,
   ComponentType,
   useEffect,
@@ -35,6 +30,11 @@ import {
 } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import {
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../../../generated/events/eventSubscription';
+import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import {
   ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,

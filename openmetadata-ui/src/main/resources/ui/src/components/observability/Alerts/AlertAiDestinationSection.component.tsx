@@ -19,6 +19,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import {
   Destination,
@@ -30,8 +32,6 @@ import {
   getFormattedDestinations,
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,

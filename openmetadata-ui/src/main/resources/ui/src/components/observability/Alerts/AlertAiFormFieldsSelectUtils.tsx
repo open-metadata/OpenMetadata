@@ -12,10 +12,6 @@
  */
 
 import { Select, SelectItemType } from '@openmetadata/ui-core-components';
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
 import { TFunction } from 'i18next';
 import { isEmpty, isString, startCase } from 'lodash';
 import {
@@ -36,6 +32,10 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getAlertDestinationCategoryIcons } from '../../../utils/ObservabilityUtils';
 import { getTemplateEntityRefObject } from './NotificationTemplateUtils';
+import {
+  CUSTOM_TEMPLATE_VALUE,
+  SYSTEM_DEFAULT_TEMPLATES,
+} from './Template.constants';
 
 /** Renders Core UI select items with a stable text value for search and a11y. */
 export const renderSelectItem = ({

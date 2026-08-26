@@ -23,10 +23,10 @@ import {
 import { Trash01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, uniqBy } from 'lodash';
-import { Effect } from '../../../generated/events/eventSubscription';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { Effect } from '../../../generated/events/eventSubscription';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   SEARCHABLE_ARGUMENTS,

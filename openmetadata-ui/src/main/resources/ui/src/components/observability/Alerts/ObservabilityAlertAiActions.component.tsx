@@ -18,14 +18,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Edit03, Trash01 } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
+import { MouseEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   EventSubscription,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
 import { AlertPermission } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.interface';
-import { MouseEvent } from 'react';
-import { useTranslation } from 'react-i18next';
 
 const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
 const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';

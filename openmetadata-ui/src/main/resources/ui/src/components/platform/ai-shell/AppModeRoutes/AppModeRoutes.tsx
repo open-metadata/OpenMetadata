@@ -22,6 +22,7 @@ import KeepAliveRoutes, {
   KeepAliveRoute,
 } from '../KeepAliveRoutes/KeepAliveRoutes';
 import { useAllAppModules } from '../sharedAppModules';
+import { useSyncActiveModule } from '../state/useActiveModule';
 
 // The app-mode shell owns its own /404, mirroring the classic
 // `AuthenticatedRoutes`. Without an explicit element the catch-all fallback's
@@ -30,7 +31,6 @@ import { useAllAppModules } from '../sharedAppModules';
 const PageNotFound = withPageSuspenseFallback(
   lazy(() => import('../../../../pages/PageNotFound/PageNotFound'))
 );
-import { useSyncActiveModule } from '../state/useActiveModule';
 
 /**
  * Top-level routes component for app mode.

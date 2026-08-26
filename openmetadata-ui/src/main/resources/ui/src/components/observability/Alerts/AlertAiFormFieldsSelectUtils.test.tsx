@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
 import { TFunction } from 'i18next';
 import { Type } from '../../../generated/events/eventSubscription';
 import {
   getAuthTypeItems,
   getTemplateItems,
 } from './AlertAiFormFieldsSelectUtils';
+import {
+  CUSTOM_TEMPLATE_VALUE,
+  SYSTEM_DEFAULT_TEMPLATES,
+} from './Template.constants';
 
 jest.mock('./NotificationTemplateUtils', () => ({
   getTemplateEntityRefObject: jest.fn((template) => ({

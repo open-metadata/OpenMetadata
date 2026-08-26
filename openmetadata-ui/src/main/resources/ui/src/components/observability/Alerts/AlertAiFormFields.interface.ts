@@ -12,6 +12,7 @@
  */
 
 import { SelectItemType } from '@openmetadata/ui-core-components';
+import { ComponentProps, ReactNode } from 'react';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import {
@@ -24,7 +25,6 @@ import {
   ModifiedEventSubscription,
   ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { ComponentProps, ReactNode } from 'react';
 
 export type AlertAiFormMode = 'add' | 'edit' | 'view';
 

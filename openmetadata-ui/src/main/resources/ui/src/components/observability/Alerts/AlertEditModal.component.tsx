@@ -13,6 +13,8 @@
 
 import { AlertTriangle } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AiFormModal } from '../../../components/common/atoms/drawer/AiFormModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
@@ -26,8 +28,6 @@ import {
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import AlertAiForm from './AlertAiForm.component';
 import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,

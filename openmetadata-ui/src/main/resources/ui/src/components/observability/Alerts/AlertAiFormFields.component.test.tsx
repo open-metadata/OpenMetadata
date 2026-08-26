@@ -28,7 +28,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { CUSTOM_TEMPLATE_VALUE } from './Template.constants';
+import { ReactNode } from 'react';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import {
@@ -49,7 +49,6 @@ import {
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { validateNotificationTemplate } from '../../../rest/notificationtemplateAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { ReactNode } from 'react';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
@@ -59,6 +58,7 @@ import AlertAiNotificationSection from './AlertAiNotificationSection.component';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
+import { CUSTOM_TEMPLATE_VALUE } from './Template.constants';
 
 jest.mock('./NotificationTemplateUtils', () => ({
   getTemplateValidationAlert: jest.fn((response) =>

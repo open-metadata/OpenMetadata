@@ -27,6 +27,9 @@ import {
   ZapFast,
 } from '@untitledui/icons';
 import classNames from 'classnames';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import {
   PAGE_SIZE_BASE,
@@ -38,9 +41,9 @@ import { CursorType } from '../../../enums/pagination.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { Paging } from '../../../generated/type/paging';
 import {
-  ALERT_TABLE_COLUMN_IDS,
   AlertTableColumn,
   AlertTableColumnId,
+  ALERT_TABLE_COLUMN_IDS,
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.constants';
 import { AlertPermission } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.interface';
 import {
@@ -49,9 +52,6 @@ import {
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import ObservabilityAlertAiActions from './ObservabilityAlertAiActions.component';
 
 interface ObservabilityAlertsAiPageChangeParams {

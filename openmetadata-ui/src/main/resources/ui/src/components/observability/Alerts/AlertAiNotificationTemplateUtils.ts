@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
 import type { TFunction } from 'i18next';
 import { isEmpty } from 'lodash';
 import type { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import type { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import {
+  CUSTOM_TEMPLATE_VALUE,
+  SYSTEM_DEFAULT_TEMPLATES,
+} from './Template.constants';
 
 export const CUSTOM_TEMPLATE_FIELD_NAMES = {
   displayName: 'displayName',

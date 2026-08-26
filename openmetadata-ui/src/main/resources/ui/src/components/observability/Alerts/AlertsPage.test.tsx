@@ -13,8 +13,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { ReactNode } from 'react';
+import { EventSubscription } from '../../../generated/events/eventSubscription';
 import AlertsPage from './AlertsPage';
 
 const mockNavigate = jest.fn();
@@ -60,46 +60,40 @@ jest.mock('@untitledui/icons', () => ({
   Plus: () => null,
 }));
 
-jest.mock(
-  '../../../components/common/DocumentTitle/DocumentTitle',
-  () => ({
-    __esModule: true,
-    default: ({ title }: { title: string }) => (
-      <span data-testid="document-title">{title}</span>
-    ),
-  })
-);
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => (
+    <span data-testid="document-title">{title}</span>
+  ),
+}));
 
 jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader" />,
 }));
 
-jest.mock(
-  '../../../components/common/DeleteModal/DeleteModal',
-  () => ({
-    __esModule: true,
-    default: ({
-      onCancel,
-      onDelete,
-      open,
-    }: {
-      onCancel: () => void;
-      onDelete: () => void;
-      open: boolean;
-    }) =>
-      open ? (
-        <div data-testid="delete-modal">
-          <button data-testid="confirm-delete" onClick={onDelete}>
-            delete
-          </button>
-          <button data-testid="cancel-delete" onClick={onCancel}>
-            cancel
-          </button>
-        </div>
-      ) : null,
-  })
-);
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: ({
+    onCancel,
+    onDelete,
+    open,
+  }: {
+    onCancel: () => void;
+    onDelete: () => void;
+    open: boolean;
+  }) =>
+    open ? (
+      <div data-testid="delete-modal">
+        <button data-testid="confirm-delete" onClick={onDelete}>
+          delete
+        </button>
+        <button data-testid="cancel-delete" onClick={onCancel}>
+          cancel
+        </button>
+      </div>
+    ) : null,
+}));
 
 jest.mock(
   '../../../components/common/HeaderShell/HeaderShell.component',

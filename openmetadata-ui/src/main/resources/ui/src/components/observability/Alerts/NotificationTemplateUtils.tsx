@@ -15,9 +15,9 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { AlertCircle, CheckCircle } from '@untitledui/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import type { ReactNode } from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { NotificationTemplateValidationResponse } from '../../../generated/api/events/notificationTemplateValidationResponse';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
-import { EntityType } from '../../../enums/entity.enum';
 import { t } from '../../../utils/i18next/LocalUtil';
 
 export const getTemplateValidationMessage = (

@@ -20,6 +20,7 @@
 /* eslint-disable jsx-a11y/control-has-associated-label */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import {
   AlertType,
   ProviderType,
@@ -30,7 +31,6 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { ReactNode } from 'react';
 import AlertEditModal from './AlertEditModal.component';
 
 const mockUseObservabilityAlertForm = jest.fn();

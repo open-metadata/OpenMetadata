@@ -15,6 +15,9 @@ import { Button } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
@@ -25,20 +28,14 @@ import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { useObservabilityAlerts } from '../../../pages/ObservabilityAlertsPage/hooks/useObservabilityAlerts';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
-import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
-import { getAlertsObservabilityDetailsPath } from './alertUtils';
 import AlertEditModal from './AlertEditModal.component';
+import { getAlertsObservabilityDetailsPath } from './alertUtils';
+import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
+import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
 
 const AlertsPage = () => {
   const { t } = useTranslation();

@@ -19,11 +19,11 @@ import {
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
-import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
-import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import {
   ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS,

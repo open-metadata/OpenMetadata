@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CursorType } from '../../../enums/pagination.enum';
@@ -20,11 +21,10 @@ import {
   ProviderType,
 } from '../../../generated/events/eventSubscription';
 import {
-  ALERT_TABLE_COLUMN_IDS,
   AlertTableColumn,
+  ALERT_TABLE_COLUMN_IDS,
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.constants';
 import { AlertPermission } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.interface';
-import { ReactNode } from 'react';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
 
 interface MockButtonProps {
