@@ -197,10 +197,10 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      // Cleared to zero and locked by the ESLint-cleanup stack — real types
-      // where available (generated/ entities, precise props, unknown+guards),
-      // documented disables for untyped third-party surfaces (e.g. the rapi-doc
-      // web component) and dynamic test fixtures. Promoted to error.
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
       '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled

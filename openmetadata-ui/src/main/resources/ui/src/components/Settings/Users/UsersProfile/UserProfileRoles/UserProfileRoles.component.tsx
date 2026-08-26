@@ -12,10 +12,16 @@
  */
 
 import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
-import { RefSelectProps } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -109,7 +115,7 @@ const UserProfileRoles = ({
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
 
-  const dropdownRef = useRef<RefSelectProps | null>(null);
+  const dropdownRef = useRef<ComponentRef<typeof Select> | null>(null);
 
   const handleRolesSave = async () => {
     setIsLoading(true);

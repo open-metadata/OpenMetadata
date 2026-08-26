@@ -14,9 +14,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { mockAccessData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';

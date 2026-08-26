@@ -19,8 +19,8 @@ import {
   hydrateBackendSyncedPreferences,
   resetBackendSyncState,
   useCurrentUserPreferences,
-  UserPreferences,
   usePersistentStorage,
+  UserPreferences,
 } from './useCurrentUserStore';
 
 // Mock the useApplicationStore

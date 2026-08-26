@@ -12,11 +12,11 @@
  */
 
 import { Button, Col, Row, Select } from 'antd';
-import { RefSelectProps } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
   FC,
+  ComponentRef,
   HTMLAttributes,
   useCallback,
   useEffect,
@@ -52,7 +52,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
-  const selectRef = useRef<RefSelectProps>(null);
+  const selectRef = useRef<ComponentRef<typeof Select>>(null);
 
   const [data, setData] = useState<Array<SourceType>>([]);
   const [searchValue, setSearchValue] = useState<string>('');

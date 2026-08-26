@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../generated/settings/settings';
 import * as securityConfigAPI from '../../rest/securityConfigAPI';
 import SettingsSso from './SettingsSso';
