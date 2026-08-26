@@ -87,7 +87,7 @@ class PatchEntityToolTest {
               any(String.class),
               eq("alice"),
               any(),
-              eq(ChangeSource.MANUAL),
+              eq(ChangeSource.AUTOMATED),
               isNull(),
               impersonatedByCaptor.capture());
 
@@ -128,7 +128,7 @@ class PatchEntityToolTest {
               any(String.class),
               eq("alice"),
               any(),
-              eq(ChangeSource.MANUAL),
+              eq(ChangeSource.AUTOMATED),
               isNull(),
               impersonatedByCaptor.capture());
 
@@ -172,13 +172,28 @@ class PatchEntityToolTest {
   }
 
   @Test
+  void execute_malformedPatch_isTheCallersProblemNotABackendFault() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put("fqn", "db.schema.test_table");
+    params.put("patch", "[{\"op\": \"add\", \"path\": \"/owners/-\", \"value\": {\"id\": \"x\"}]");
+
+    // An IllegalArgumentException is what the dispatcher maps to 400. Letting the JSON library's
+    // own exception escape produced a 500 telling the model its arguments were fine and not to
+    // retry - for a document the model wrote and could fix.
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not valid JSON");
+  }
+
+  @Test
   void execute_missingPatch_throwsIllegalArgumentException() {
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", null);
 
-    // The patch document is the whole interface, so its absence names the RFC rather than a menu.
+    // The patch document is the whole interface, so its absence names the RFC and shows the shape.
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'patch' is required")
