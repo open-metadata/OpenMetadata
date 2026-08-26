@@ -100,37 +100,38 @@ test(
       await page.goto('/data-quality/test-suites/bundle-suites');
       await waitForAllLoadersToDisappear(page);
 
-      await Promise.all([
-        page.waitForResponse('/api/v1/dataQuality/testSuites/search/list*'),
-        page.getByPlaceholder('Search Bundle Suites').fill(NEW_TEST_SUITE.name),
-      ]);
+      const testSuiteSearchResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testSuites/search/list*'
+      );
+      await page
+        .getByPlaceholder('Search Bundle Suites')
+        .fill(NEW_TEST_SUITE.name);
+      await testSuiteSearchResponse;
 
-      await Promise.all([
-        page.waitForURL(
-          (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`
-        ),
-        page
-          .getByRole('link', { exact: true, name: NEW_TEST_SUITE.name })
-          .click(),
-      ]);
+      const testSuiteDetailsPage = page.waitForURL(
+        (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`
+      );
+      await page
+        .getByRole('link', { exact: true, name: NEW_TEST_SUITE.name })
+        .click();
+      await testSuiteDetailsPage;
       await verifyBundleSuitePageLoaded(page, NEW_TEST_SUITE.name, 1);
     });
 
     await test.step('Search test cases on the details page', async () => {
       const searchInput = page.getByTestId('test-suite-test-case-search');
 
-      await Promise.all([
-        page.waitForResponse((response) => {
-          const responseUrl = new URL(response.url());
+      const testCaseSearchResponse = page.waitForResponse((response) => {
+        const responseUrl = new URL(response.url());
 
-          return (
-            responseUrl.pathname.includes(
-              '/api/v1/dataQuality/testCases/search/list'
-            ) && responseUrl.searchParams.get('q') === testCaseName1
-          );
-        }),
-        searchInput.fill(testCaseName1 ?? ''),
-      ]);
+        return (
+          responseUrl.pathname.includes(
+            '/api/v1/dataQuality/testCases/search/list'
+          ) && responseUrl.searchParams.get('q') === testCaseName1
+        );
+      });
+      await searchInput.fill(testCaseName1 ?? '');
+      await testCaseSearchResponse;
 
       await expect(page.getByTestId(testCaseName1 ?? '')).toBeVisible();
     });
