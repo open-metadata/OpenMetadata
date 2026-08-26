@@ -113,7 +113,12 @@ public class McpTestUtils {
     arguments.put("entityType", "glossaryTerm");
     arguments.put("name", name);
     arguments.put("description", description);
-    arguments.put("attributes", Map.of("glossary", glossary));
+    // 'glossary' is an EntityReference on GlossaryTerm; a bare name string fails Jackson binding.
+    // Resolution falls back to fullyQualifiedName when no id is given, and a top-level glossary's
+    // fqn equals its name.
+    arguments.put(
+        "attributes",
+        Map.of("glossary", Map.of("type", "glossary", "fullyQualifiedName", glossary)));
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_entity", arguments);
