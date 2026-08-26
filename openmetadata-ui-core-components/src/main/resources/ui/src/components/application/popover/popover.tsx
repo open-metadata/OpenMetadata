@@ -70,13 +70,6 @@ export const Popover = ({
 }: PopoverProps) => {
   return (
     <AriaPopover
-      // Non-modal: modal popovers apply aria-hidden to the rest of the page
-      // and leak it permanently on abrupt unmount — see base/select/popover.tsx.
-      isNonModal
-      // Top layer so an ancestor dismissable overlay (drawer / modal) neither
-      // dismisses this popover on an inside click nor reclaims its focus — see
-      // base/select/popover.tsx for the full rationale.
-      data-react-aria-top-layer="true"
       offset={offset}
       {...popoverProps}
       className={(state) =>
