@@ -12,7 +12,6 @@
  */
 
 import { Card, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -27,6 +26,7 @@ import { getDecodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import Table from '../common/Table/Table';
+import { ColumnsType } from '../common/Table/Table.interface';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';

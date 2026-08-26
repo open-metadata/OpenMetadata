@@ -683,7 +683,10 @@ export function useOntologyExplorer({
         accumulated.length < ONTOLOGY_TERMS_PAGE_SIZE &&
         pendingGlossariesRef.current.length > 0
       ) {
-        const glossary = pendingGlossariesRef.current.shift()!;
+        const glossary = pendingGlossariesRef.current.shift();
+        if (!glossary) {
+          break;
+        }
         const { terms, nextCursor } = await fetchTermsForGlossary(
           glossary,
           undefined,
@@ -984,8 +987,8 @@ export function useOntologyExplorer({
     async (filtered: string[]) => {
       const loadedGlossaryIds = new Set(
         (graphDataRef.current?.nodes ?? [])
-          .filter((n) => n.glossaryId)
-          .map((n) => n.glossaryId!)
+          .map((n) => n.glossaryId)
+          .filter((id): id is string => Boolean(id))
       );
       const unloaded = filtered.filter(
         (id) =>
@@ -1266,9 +1269,8 @@ export function useOntologyExplorer({
 
   const getNodePath = useCallback((node: OntologyNode) => {
     if (node.entityRef?.type && node.entityRef?.fullyQualifiedName) {
-      const entityType = Object.values(EntityType).find(
-        (v) => v === node.entityRef!.type
-      );
+      const nodeType = node.entityRef.type;
+      const entityType = Object.values(EntityType).find((v) => v === nodeType);
       if (entityType) {
         return getEntityDetailsPath(
           entityType,
