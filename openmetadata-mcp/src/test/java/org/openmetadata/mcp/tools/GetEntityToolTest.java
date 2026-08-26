@@ -16,14 +16,29 @@ package org.openmetadata.mcp.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 /**
  * Pins {@link GetEntityTool#cleanEntityResponse}. The entity-level description must always be
@@ -33,6 +48,44 @@ import org.openmetadata.schema.utils.JsonUtils;
  * both table and column level.
  */
 class GetEntityToolTest {
+
+  @Test
+  void contentOnlyPreservesViewBasicAuthorization() throws Exception {
+    String fqn = "Knowledge.Article";
+    Page page =
+        new Page()
+            .withId(java.util.UUID.randomUUID())
+            .withName("Article")
+            .withFullyQualifiedName(fqn)
+            .withDescription("full article body");
+    Authorizer authorizer = mock(Authorizer.class);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
+          .thenReturn(page);
+      result =
+          new GetEntityTool()
+              .execute(
+                  authorizer,
+                  securityContext,
+                  Map.of("entityType", Entity.PAGE, "fqn", fqn, "include", List.of("content")));
+    }
+
+    ArgumentCaptor<OperationContext> operation = ArgumentCaptor.forClass(OperationContext.class);
+    ArgumentCaptor<ResourceContextInterface> resource =
+        ArgumentCaptor.forClass(ResourceContextInterface.class);
+    verify(authorizer, times(1)).authorize(any(), operation.capture(), resource.capture());
+    assertEquals(
+        List.of(MetadataOperation.VIEW_BASIC),
+        operation.getValue().getOperations(resource.getValue()));
+    assertEquals(Entity.PAGE, result.get("entityType"));
+    assertEquals(fqn, result.get("fullyQualifiedName"));
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("full article body");
+    assertThat(result).doesNotContainKey("description");
+  }
 
   private static Map<String, Object> column(String name, String description) {
     Map<String, Object> column = new HashMap<>();
