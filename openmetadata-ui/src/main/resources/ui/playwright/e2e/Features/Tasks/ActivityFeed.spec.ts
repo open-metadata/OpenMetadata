@@ -495,24 +495,20 @@ test.describe('Activity Feed - Entity Page', () => {
 
     await expect(page.getByTestId('mentions-toggle')).toBeVisible();
 
-    // Mentions renders the task list, so it has to query tasks-where-mentioned
-    // about this entity — not the conversation feed, whose results the mentions
-    // list never reads.
+    // Mentions renders the conversations that mention the user, so it has to
+    // query the conversation feed with the MENTIONS filter — not the task list,
+    // whose rows the mentions list never reads.
     const mentionsResponse = page.waitForResponse((response) => {
       if (
         response.request().method() !== 'GET' ||
-        !response.url().includes('/api/v1/tasks')
+        !response.url().includes('/api/v1/conversations')
       ) {
         return false;
       }
 
       const requestUrl = new URL(response.url());
 
-      return (
-        Boolean(requestUrl.searchParams.get('mentionedUser')) &&
-        requestUrl.searchParams.get('aboutEntity') ===
-          table.entityResponseData?.fullyQualifiedName
-      );
+      return requestUrl.searchParams.get('filterType') === 'MENTIONS';
     });
 
     await page.getByTestId('mentions-toggle').click();

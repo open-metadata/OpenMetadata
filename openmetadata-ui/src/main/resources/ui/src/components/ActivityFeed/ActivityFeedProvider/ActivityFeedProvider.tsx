@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
+import { Operation } from 'fast-json-patch';
 import { isEqual, orderBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import {
@@ -36,33 +36,41 @@ import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+  Conversation,
+  ConversationReply,
+} from '../../../generated/entity/feed/conversation';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
+import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
 import { Paging } from '../../../generated/type/paging';
-import { Reaction, ReactionType } from '../../../generated/type/reaction';
+import { ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
   addActivityReaction,
-  deletePostById,
-  deleteThread,
+  createActivityReply,
   getActivityEvents,
-  getAllFeeds,
   getEntityActivityByFqn,
-  getFeedById,
   getFollowingActivityFeed,
   getMyActivityFeed,
-  getPostsFeedById,
   getUserActivity,
   ListActivityParams,
-  postFeedById,
+  listActivityReplies,
   removeActivityReaction,
-  updatePost,
-  updateThread,
-} from '../../../rest/feedsAPI';
+} from '../../../rest/activityAPI';
+import {
+  addConversationReaction,
+  addConversationReplyReaction,
+  createConversationReply,
+  deleteConversation,
+  deleteConversationReply,
+  getConversation,
+  listConversationReplies,
+  listConversations,
+  patchConversation,
+  patchConversationReply,
+  removeConversationReaction,
+  removeConversationReplyReaction,
+} from '../../../rest/conversationsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
 import {
   addTaskComment,
@@ -76,7 +84,6 @@ import {
   TaskStatusGroup,
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getUpdatedThread } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
@@ -94,6 +101,39 @@ interface Props {
 export const ActivityFeedContext = createContext(
   {} as ActivityFeedProviderContextType
 );
+
+const getConversationFilterType = (filter?: FeedFilter) => {
+  switch (filter) {
+    case FeedFilter.OWNER:
+      return ConversationFilterType.Owner;
+    case FeedFilter.FOLLOWS:
+      return ConversationFilterType.Follows;
+    case FeedFilter.MENTIONS:
+      return ConversationFilterType.Mentions;
+    case FeedFilter.OWNER_OR_FOLLOWS:
+      return ConversationFilterType.OwnerOrFollows;
+    default:
+      return undefined;
+  }
+};
+
+const withReply = (
+  conversation: Conversation,
+  reply: ConversationReply,
+  replyLimit?: number
+) => {
+  const replies = [
+    ...(conversation.replies ?? []).filter((item) => item.id !== reply.id),
+    reply,
+  ];
+
+  return {
+    ...conversation,
+    replies: replyLimit ? replies.slice(-replyLimit) : replies,
+    replyCount: conversation.replyCount + 1,
+    updatedAt: reply.createdAt,
+  };
+};
 
 const TASK_LIST_FIELDS = 'assignees,createdBy,about,comments,payload';
 
@@ -183,17 +223,6 @@ const fetchTaskList = (
 };
 
 /** Replaces one post inside a thread's post list, leaving the rest untouched. */
-const applyPostUpdate = (
-  posts: Post[],
-  postId: string,
-  updated: Pick<Post, 'reactions' | 'message'>
-) =>
-  posts.map((post) =>
-    isEqual(postId, post.id)
-      ? { ...post, reactions: updated.reactions, message: updated.message }
-      : post
-  );
-
 /** Swaps a refreshed task into the list by id. */
 const replaceTaskById = (tasks: Task[], fresh: Task) =>
   tasks.map((task) => (task.id === fresh.id ? fresh : task));
@@ -203,19 +232,19 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // For activity events (entity changes)
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<ActivityEvent>();
+  const [activityReplies, setActivityReplies] = useState<ConversationReply[]>(
+    []
+  );
+  const activityReplyRequest = useRef(0);
   const [isActivityLoading, setIsActivityLoading] = useState(false);
-  // The activity fetchers all write to the same activityEvents state. Switching the
-  // home widget filter quickly can let a slower earlier request resolve last and
-  // overwrite newer results, so each request claims a sequence number and only the
-  // latest one is allowed to commit.
   const activityRequestSeq = useRef(0);
   // getTaskData and getFeedData write the same `loading` and `entityPaging`, so a
   // single sequence guards both: an older request must not commit its rows, its
   // paging cursor, or clear the loader after a newer one has started.
   const listRequestSeq = useRef(0);
-  // For regular feeds (conversations, announcements)
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<Thread>();
+  // Conversations have their own API and model. Announcements are not mixed into this state.
+  const [entityThread, setEntityThread] = useState<Conversation[]>([]);
+  const [selectedThread, setSelectedThread] = useState<Conversation>();
   // For tasks - using Task type directly
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task>();
@@ -251,18 +280,18 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
-  const fetchPostsFeed = useCallback(async (active: Thread) => {
-    // If the posts count is greater than the page count, fetch the posts
+  const fetchPostsFeed = useCallback(async (active: Conversation) => {
     if (
-      active?.postsCount &&
-      active?.postsCount > POST_FEED_PAGE_COUNT &&
-      active?.posts?.length !== active?.postsCount
+      active.replyCount > POST_FEED_PAGE_COUNT &&
+      active.replies?.length !== active.replyCount
     ) {
       setIsPostsLoading(true);
       try {
-        const { data } = await getPostsFeedById(active.id);
+        const { data } = await listConversationReplies(active.id, {
+          limit: 100,
+        });
         setSelectedThread((pre) =>
-          pre?.id === active?.id ? { ...active, posts: data } : pre
+          pre?.id === active.id ? { ...active, replies: data } : pre
         );
       } finally {
         setIsPostsLoading(false);
@@ -271,7 +300,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   }, []);
 
   const setActiveThread = useCallback(
-    (active?: Thread) => {
+    (active?: Conversation) => {
       setSelectedThread(active);
       active && fetchPostsFeed(active);
     },
@@ -313,10 +342,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setSelectedTask(task);
           setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
         } else {
-          const res = await getFeedById(id);
-          setSelectedThread(res.data);
+          const conversation = await getConversation(id);
+          setSelectedThread(conversation);
           setEntityThread((prev) =>
-            prev.map((thread) => (thread.id === id ? res.data : thread))
+            prev.map((item) => (item.id === id ? conversation : item))
           );
         }
       } catch {
@@ -391,10 +420,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     async (
       filterType?: FeedFilter,
       after?: string,
-      type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
       const requestId = ++listRequestSeq.current;
@@ -413,17 +440,18 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           userId = currentUser?.id;
         }
 
-        const { data, paging } = await getAllFeeds(
-          entityType !== EntityType.USER && fqn
-            ? getEntityFeedLink(entityType, fqn)
-            : undefined,
+        const { data, paging } = await listConversations({
+          entityLink:
+            entityType !== EntityType.USER && fqn
+              ? getEntityFeedLink(entityType, fqn)
+              : undefined,
           after,
-          type,
-          feedFilterType,
-          undefined,
+          filterType:
+            getConversationFilterType(feedFilterType) ??
+            (userId ? ConversationFilterType.OwnerOrFollows : undefined),
           userId,
-          limit
-        );
+          limit,
+        });
         if (listRequestSeq.current !== requestId) {
           return;
         }
@@ -459,35 +487,29 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
       try {
         if (isTask) {
-          // Use tasksAPI for task comments
           const updatedTask = await addTaskComment(id, value);
           setActiveTask(updatedTask);
           setTasks((prev) =>
             prev.map((task) => (task.id === id ? updatedTask : task))
           );
         } else {
-          const data = {
-            message: value,
-          } as Post;
-
-          const res = await postFeedById(id, data);
-          setActiveThread(res);
-          const { id: responseId, posts } = res;
-          setEntityThread((pre) =>
-            pre.map((thread) => {
-              if (thread.id === responseId) {
-                return { ...res, posts: posts?.slice(-3) };
-              }
-
-              return thread;
-            })
+          const reply = await createConversationReply(id, { message: value });
+          setSelectedThread((current) =>
+            current?.id === id ? withReply(current, reply) : current
+          );
+          setEntityThread((current) =>
+            current.map((conversation) =>
+              conversation.id === id
+                ? withReply(conversation, reply, POST_FEED_PAGE_COUNT)
+                : conversation
+            )
           );
         }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
           t('server.add-entity-error', {
-            entity: t('label.feed-plural'),
+            entity: t('label.conversation'),
           })
         );
       }
@@ -495,11 +517,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [currentUser, setActiveTask, setActiveThread, t]
   );
 
-  const refreshActivityFeed = useCallback((threads: Thread[]) => {
+  const refreshActivityFeed = useCallback((threads: Conversation[]) => {
     setEntityThread([...threads]);
   }, []);
 
-  const updateEntityThread = useCallback((thread: Thread) => {
+  const updateEntityThread = useCallback((thread: Conversation) => {
     setEntityThread((prev) =>
       prev.map((threadItem) =>
         threadItem.id === thread.id ? thread : threadItem
@@ -516,29 +538,35 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
       if (isThread) {
-        const data = await deleteThread(threadId);
+        const data = await deleteConversation(threadId);
         setEntityThread((prev) =>
           prev.filter((thread) => thread.id !== data.id)
         );
+        setSelectedThread((current) =>
+          current?.id === data.id ? undefined : current
+        );
       } else {
-        const deleteResponse = await deletePostById(threadId, postId);
-        if (deleteResponse) {
-          const data = await getUpdatedThread(threadId);
-          setEntityThread((pre) =>
-            pre.map((thread) => {
-              if (thread.id === data.id) {
-                return {
-                  ...thread,
-                  posts: data.posts?.slice(-3),
-                  postsCount: data.postsCount,
-                };
-              } else {
-                return thread;
-              }
-            })
-          );
-          setActiveThread(data);
-        }
+        await deleteConversationReply(threadId, postId);
+        const withoutReply = (conversation: Conversation) => ({
+          ...conversation,
+          replies: (conversation.replies ?? []).filter(
+            (reply) => reply.id !== postId
+          ),
+          replyCount: Math.max(0, conversation.replyCount - 1),
+        });
+        setEntityThread((current) =>
+          current.map((conversation) =>
+            conversation.id === threadId
+              ? withoutReply(conversation)
+              : conversation
+          )
+        );
+        setSelectedThread((current) =>
+          current?.id === threadId ? withoutReply(current) : current
+        );
+        setActivityReplies((current) =>
+          current.filter((reply) => reply.id !== postId)
+        );
       }
     },
     [setActiveThread]
@@ -547,20 +575,18 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const updateThreadHandler = useCallback(
     async (threadId: string, data: Operation[]) => {
       try {
-        const res = await updateThread(threadId, data);
+        const res = await patchConversation(threadId, data);
         setEntityThread((prevData) =>
           prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
-              return {
-                ...thread,
-                reactions: res.reactions,
-                message: res.message,
-                announcement: res?.announcement,
-              };
+              return res;
             } else {
               return thread;
             }
           })
+        );
+        setSelectedThread((current) =>
+          current?.id === threadId ? res : current
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -572,24 +598,24 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const updatePostHandler = useCallback(
     async (threadId: string, postId: string, data: Operation[]) => {
       try {
-        const res = await updatePost(threadId, postId, data);
-        // Deliberately sequential: this reads back the thread the PATCH above just
-        // modified. Issuing them together would let the read observe pre-patch
-        // state and land it in setSelectedThread, so the right panel would
-        // disagree with the optimistic list update below.
-        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
-        const activeThreadData = await getFeedById(threadId);
+        const res = await patchConversationReply(threadId, postId, data);
+        const updateReplies = (replies?: ConversationReply[]) =>
+          (replies ?? []).map((reply) => (reply.id === postId ? res : reply));
         setEntityThread((prevData) =>
-          prevData.map((thread) =>
-            isEqual(threadId, thread.id)
-              ? {
-                  ...thread,
-                  posts: applyPostUpdate(thread.posts ?? [], postId, res),
-                }
-              : thread
-          )
+          prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              return { ...thread, replies: updateReplies(thread.replies) };
+            } else {
+              return thread;
+            }
+          })
         );
-        setSelectedThread(activeThreadData.data);
+        setSelectedThread((current) =>
+          current?.id === threadId
+            ? { ...current, replies: updateReplies(current.replies) }
+            : current
+        );
+        setActivityReplies(updateReplies);
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
@@ -614,50 +640,57 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         });
       }
     },
-    [updateThreadHandler, updatePostHandler]
+    [updatePostHandler, updateThreadHandler]
   );
 
   const updateReactions = useCallback(
     async (
-      post: Post,
+      post: Conversation | ConversationReply,
       feedId: string,
       isThread: boolean,
       reactionType: ReactionType,
       reactionOperation: ReactionOperation
     ) => {
-      let updatedReactions = post.reactions ?? [];
-      if (reactionOperation === ReactionOperation.ADD) {
-        const reactionObject = {
-          reactionType,
-          user: {
-            id: currentUser?.id as string,
-          },
-        };
-
-        updatedReactions = [...updatedReactions, reactionObject as Reaction];
-      } else {
-        updatedReactions = updatedReactions.filter(
-          (reaction) =>
-            !(
-              reaction.reactionType === reactionType &&
-              reaction.user.id === currentUser?.id
-            )
+      if (isThread) {
+        const conversation =
+          reactionOperation === ReactionOperation.ADD
+            ? await addConversationReaction(feedId, reactionType)
+            : await removeConversationReaction(feedId, reactionType);
+        setEntityThread((current) =>
+          current.map((item) => (item.id === feedId ? conversation : item))
         );
+        setSelectedThread((current) =>
+          current?.id === feedId ? conversation : current
+        );
+
+        return;
       }
 
-      const patch = compare(
-        { ...post, reactions: [...(post.reactions ?? [])] },
-        {
-          ...post,
-          reactions: updatedReactions,
-        }
+      const reply =
+        reactionOperation === ReactionOperation.ADD
+          ? await addConversationReplyReaction(feedId, post.id, reactionType)
+          : await removeConversationReplyReaction(
+              feedId,
+              post.id,
+              reactionType
+            );
+      const updateReplies = (replies?: ConversationReply[]) =>
+        (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
+      setEntityThread((current) =>
+        current.map((conversation) =>
+          conversation.id === feedId
+            ? { ...conversation, replies: updateReplies(conversation.replies) }
+            : conversation
+        )
       );
-
-      await updateFeed(feedId, post.id, isThread, patch).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-      });
+      setSelectedThread((current) =>
+        current?.id === feedId
+          ? { ...current, replies: updateReplies(current.replies) }
+          : current
+      );
+      setActivityReplies(updateReplies);
     },
-    [currentUser?.id, updateFeed]
+    []
   );
 
   const updateActivityReaction = useCallback(
@@ -707,7 +740,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   }, []);
 
   const showDrawer = useCallback(
-    (thread: Thread) => {
+    (thread: Conversation) => {
       setIsDrawerOpen(true);
       setActiveThread(thread);
       setSelectedTask(undefined);
@@ -725,23 +758,69 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [setActiveTask]
   );
 
-  // Change-event activities are read-only notifications with no discussion
-  // thread of their own — selecting one just shows its change detail + reactions.
-  const setActiveActivity = useCallback((activity?: ActivityEvent) => {
+  const setActiveActivity = useCallback(async (activity?: ActivityEvent) => {
+    const requestId = activityReplyRequest.current + 1;
+    activityReplyRequest.current = requestId;
     setSelectedActivity(activity);
+    setActivityReplies([]);
+
+    if (!activity) {
+      setIsPostsLoading(false);
+
+      return;
+    }
+
+    setIsPostsLoading(true);
+    try {
+      const response = await listActivityReplies(activity.id, { limit: 100 });
+      if (activityReplyRequest.current === requestId) {
+        setActivityReplies((current) => {
+          const currentIds = new Set(current.map((reply) => reply.id));
+
+          return [
+            ...response.data.filter((reply) => !currentIds.has(reply.id)),
+            ...current,
+          ];
+        });
+      }
+    } catch {
+      // The request starts from an empty list; retain replies posted while it was pending.
+    } finally {
+      if (activityReplyRequest.current === requestId) {
+        setIsPostsLoading(false);
+      }
+    }
   }, []);
 
-  const showActivityDrawer = useCallback((activity: ActivityEvent) => {
-    setIsDrawerOpen(true);
-    setSelectedActivity(activity);
-    setSelectedThread(undefined);
-    setSelectedTask(undefined);
-  }, []);
+  const showActivityDrawer = useCallback(
+    (activity: ActivityEvent) => {
+      setIsDrawerOpen(true);
+      setSelectedThread(undefined);
+      setSelectedTask(undefined);
+      setActiveActivity(activity);
+    },
+    [setActiveActivity]
+  );
 
+  const postActivityComment = useCallback(
+    async (message: string, activity: ActivityEvent) => {
+      try {
+        const reply = await createActivityReply(activity.id, { message });
+        setActivityReplies((current) => [
+          ...current.filter((item) => item.id !== reply.id),
+          reply,
+        ]);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    []
+  );
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
     setSelectedActivity(undefined);
+    setActivityReplies([]);
   }, []);
 
   const updateTestCaseIncidentStatus = useCallback(
@@ -873,6 +952,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       refreshActivityFeed,
       deleteFeed,
       postFeed,
+      postActivityComment,
       updateFeed,
       updateReactions,
       getFeedData,
@@ -894,6 +974,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       updateTestCaseIncidentStatus,
       activityEvents,
       selectedActivity,
+      activityReplies,
       fetchActivityEvents: fetchActivityEventsHandler,
       fetchMyActivityFeed: fetchMyActivityFeedHandler,
       fetchFollowingActivity: fetchFollowingActivityHandler,
@@ -915,6 +996,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     refreshActivityFeed,
     deleteFeed,
     postFeed,
+    postActivityComment,
     updateFeed,
     updateReactions,
     getFeedData,
@@ -937,6 +1019,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     updateTestCaseIncidentStatus,
     activityEvents,
     selectedActivity,
+    activityReplies,
     fetchActivityEventsHandler,
     fetchMyActivityFeedHandler,
     fetchFollowingActivityHandler,
