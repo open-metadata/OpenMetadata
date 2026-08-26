@@ -172,32 +172,17 @@ class PatchEntityToolTest {
   }
 
   @Test
-  void execute_neitherPatchNorTypedFields_throwsIllegalArgumentException() {
+  void execute_missingPatch_throwsIllegalArgumentException() {
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", null);
 
-    // 'patch' is no longer the only way in, so the error names both forms rather than just that
-    // one.
+    // The patch document is the whole interface, so its absence names the RFC rather than a menu.
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Nothing to apply")
-        .hasMessageContaining("typed fields");
-  }
-
-  @Test
-  void execute_bothPatchAndTypedFields_isRejectedRatherThanGuessed() {
-    Map<String, Object> params = new HashMap<>();
-    params.put("entityType", "table");
-    params.put("fqn", "db.schema.test_table");
-    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"A\"}]");
-    params.put("description", "B");
-
-    // Silently preferring one would let the ignored half look applied.
-    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("not both");
+        .hasMessageContaining("'patch' is required")
+        .hasMessageContaining("RFC 6902");
   }
 
   @Test

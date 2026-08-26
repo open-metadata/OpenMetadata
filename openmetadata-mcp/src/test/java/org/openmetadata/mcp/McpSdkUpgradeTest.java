@@ -201,8 +201,8 @@ public class McpSdkUpgradeTest {
     assertThat(patchTool.annotations()).isNotNull();
     assertThat(patchTool.annotations().readOnlyHint()).isFalse();
     assertThat(patchTool.annotations().destructiveHint()).isTrue();
-    // descriptionMode 'append' and the add/remove array modes are not idempotent, so a client must
-    // not treat a retry as free. The MCP default is false, but state it rather than imply it.
+    // A JSONPatch is not idempotent in general - an 'add' to '/owners/-' appends again on a retry -
+    // so a client must not treat a retry as free. The MCP default is false, but state it.
     assertThat(patchTool.annotations().idempotentHint()).isFalse();
   }
 
