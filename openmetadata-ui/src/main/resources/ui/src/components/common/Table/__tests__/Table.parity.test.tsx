@@ -23,6 +23,8 @@ const antdAdapter: ParityAdapter = {
       document.querySelector('.ant-pagination-next button') as HTMLElement
     );
   },
+  getTextAlign: (el) =>
+    el.style.textAlign || (el.className.includes('text-right') ? 'right' : ''),
   isBordered: () => Boolean(document.querySelector('.ant-table-bordered')),
   getTableLayout: () =>
     (document.querySelector('table') as HTMLElement).style.tableLayout ===

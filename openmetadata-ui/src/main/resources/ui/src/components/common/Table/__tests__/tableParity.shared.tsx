@@ -44,6 +44,7 @@ type ParityColumn = {
   sorter?: boolean | ((a: ParityRow, b: ParityRow) => number);
   sortOrder?: 'ascend' | 'descend';
   sortDirections?: ('ascend' | 'descend')[];
+  align?: 'left' | 'center' | 'right';
   fixed?: 'left' | 'right';
   width?: number;
   ellipsis?: boolean;
@@ -71,6 +72,8 @@ export interface ParityAdapter {
   queryPager: () => HTMLElement | null;
   /** The built-in pager's page-size control, or null when none is rendered. */
   queryPageSizeControl: () => HTMLElement | null;
+  /** How a header or body cell aligns its text. */
+  getTextAlign: (el: HTMLElement) => string;
   /** Whether the table is drawing AntD's full `bordered` grid. */
   isBordered: () => boolean;
   /**
@@ -452,6 +455,40 @@ export const runTableParitySuite = (
         .map((row) => row.getAttribute('data-row-key'));
 
       expect(keys).toEqual(PARITY_ROWS.map((row) => row.name));
+    });
+  });
+
+  describe(`${suiteName} — column alignment`, () => {
+    const alignedColumns: ParityColumn[] = [
+      { ...nameColumn, align: 'right' },
+      countColumn,
+    ];
+
+    const alignmentOf = (el: Element | null) =>
+      adapter.getTextAlign(el as HTMLElement);
+
+    it('aligns a column header as the column asks', () => {
+      renderTable({ columns: alignedColumns });
+
+      expect(
+        alignmentOf(screen.getByRole('columnheader', { name: /Name/ }))
+      ).toBe('right');
+    });
+
+    it("aligns that column's cells the same way", () => {
+      renderTable({ columns: alignedColumns });
+
+      const cell = screen.getAllByRole('row')[1].querySelector('td, th');
+
+      expect(alignmentOf(cell)).toBe('right');
+    });
+
+    it('leaves an unaligned column alone', () => {
+      renderTable({ columns: alignedColumns });
+
+      const cells = screen.getAllByRole('row')[1].querySelectorAll('td, th');
+
+      expect(alignmentOf(cells[1])).not.toBe('right');
     });
   });
 
