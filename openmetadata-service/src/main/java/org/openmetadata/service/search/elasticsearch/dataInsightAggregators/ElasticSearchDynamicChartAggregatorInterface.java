@@ -409,8 +409,10 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String group,
       boolean isTimeStamp,
       String metric) {
-    double value = aggregation.value();
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+    // avg/min/max over a bucket the metric filter emptied return a null value, not NaN.
+    // Unboxing that throws, and the whole chart request dies with a 500.
+    Double value = aggregation.value();
+    if (value != null && !value.isInfinite() && !value.isNaN()) {
       DataInsightCustomChartResult diChartResult =
           getDIChartResult(value, key, group, isTimeStamp, metric);
       diChartResults.add(diChartResult);

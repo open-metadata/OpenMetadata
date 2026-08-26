@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.stream.JsonGenerator;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,12 +23,16 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
+import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
+import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 class OpenSearchLineChartAggregatorTest {
 
@@ -206,6 +212,49 @@ class OpenSearchLineChartAggregatorTest {
       assertTrue(
           query.has("range"), "the request must carry the bare @timestamp range, got: " + query);
     }
+  }
+
+  @Test
+  void anEmptyBucketDoesNotKillTheResponse() throws Exception {
+    // avg over a category the metric filter matched nothing in comes back as {"value": null},
+    // not NaN. This engine boxes the value, so unboxing it threw a 500.
+    String canned =
+        "{\"took\":1,\"timed_out\":false,"
+            + "\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},"
+            + "\"hits\":{\"total\":{\"value\":0,\"relation\":\"eq\"},\"hits\":[]},"
+            + "\"aggregations\":{\"sterms#"
+            + OWNER_METRIC
+            + "\":{\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0,\"buckets\":["
+            + "{\"key\":\"svc-with-none\",\"doc_count\":10,"
+            + "\"filter#filter\":{\"doc_count\":0,"
+            + "\"avg#columns.dataLength0\":{\"value\":null}}}]}}}";
+
+    SearchResponse<JsonData> response =
+        SearchResponse.createSearchResponseDeserializer(JsonData._DESERIALIZER)
+            .deserialize(
+                JACKSON_JSONP_MAPPER.jsonProvider().createParser(new StringReader(canned)),
+                JACKSON_JSONP_MAPPER);
+
+    DataInsightCustomChartResultList results =
+        assertDoesNotThrow(
+            () ->
+                aggregator.processSearchResponse(
+                    avgChart(), response, new ArrayList<>(), new HashMap<>()));
+    assertTrue(results.getResults().isEmpty(), "a null metric value must be skipped, not emitted");
+  }
+
+  private static DataInsightCustomChart avgChart() {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withName(OWNER_METRIC)
+                        .withFunction(Function.AVG)
+                        .withField("columns.dataLength")
+                        .withFilter(TABLE_FILTER)))
+            .withxAxisField(X_AXIS_FIELD);
+    return new DataInsightCustomChart().withName("avg_chart").withChartDetails(lineChart);
   }
 
   private SearchRequest prepareHistorical(DataInsightCustomChart chart) {

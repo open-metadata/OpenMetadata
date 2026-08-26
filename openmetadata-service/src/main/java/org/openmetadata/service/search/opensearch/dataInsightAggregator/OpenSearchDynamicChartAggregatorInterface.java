@@ -359,13 +359,14 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   }
 
   private void addProcessedSubResult(
-      double value,
+      Double value,
       List<DataInsightCustomChartResult> diChartResults,
       String key,
       String group,
       boolean isTimeStamp,
       String metric) {
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+    // avg/min/max over a bucket the metric filter emptied return a null value, not NaN.
+    if (value != null && !value.isInfinite() && !value.isNaN()) {
       DataInsightCustomChartResult diChartResult =
           getDIChartResult(value, key, group, isTimeStamp, metric);
       diChartResults.add(diChartResult);
