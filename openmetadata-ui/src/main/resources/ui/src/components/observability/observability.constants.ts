@@ -44,3 +44,16 @@ export const OBSERVABILITY_ROUTES = {
   OBSERVABILITY_TEST_CASE_DIMENSIONS_WITH_TAB:
     '/observability/test-case/:fqn/dimensions/:dimensionKey/:tab',
 };
+
+/**
+ * React Query key for the app-shell observability alerts sidebar count badge.
+ * The value must stay identical to the key the shell subscribes with, since
+ * React Query matches keys structurally — creating or deleting an alert
+ * invalidates this key to keep the badge in sync.
+ */
+export const OBSERVABILITY_ALERT_COUNT_QUERY_KEY = [
+  'askCollate',
+  'observability',
+  'alerts',
+  'count',
+] as const;

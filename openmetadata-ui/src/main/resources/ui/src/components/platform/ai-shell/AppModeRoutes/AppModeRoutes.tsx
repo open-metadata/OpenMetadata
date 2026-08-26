@@ -11,15 +11,25 @@
  *  limitations under the License.
  */
 
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { Route } from 'react-router-dom';
+import { APP_ROUTER_ROUTES } from '../../../../constants/router.constants';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
+import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
 import { AppShell } from '../AppShell';
 import KeepAliveRoutes, {
   KeepAliveRoute,
 } from '../KeepAliveRoutes/KeepAliveRoutes';
 import { useAllAppModules } from '../sharedAppModules';
+
+// The app-mode shell owns its own /404, mirroring the classic
+// `AuthenticatedRoutes`. Without an explicit element the catch-all fallback's
+// `Navigate → /404` (from OSS/Collate `AuthenticatedAppRouter`) has nothing to
+// render and the page goes blank.
+const PageNotFound = withPageSuspenseFallback(
+  lazy(() => import('../../../../pages/PageNotFound/PageNotFound'))
+);
 import { useSyncActiveModule } from '../state/useActiveModule';
 
 /**
@@ -73,6 +83,7 @@ export const AppModeRoutes = () => {
   return (
     <AppShell>
       <KeepAliveRoutes routes={routes}>
+        <Route element={<PageNotFound />} path={APP_ROUTER_ROUTES.NOT_FOUND} />
         {fallback ? (
           <Route element={fallback.element} path="/*" />
         ) : (

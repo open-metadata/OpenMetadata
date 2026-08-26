@@ -354,6 +354,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
       {
         type: 'item',
         id: 'settings',
+        dataTestId: 'ask-user-menu-settings',
         icon: Settings01,
         label: t('label.setting-plural'),
         onAction: () => {

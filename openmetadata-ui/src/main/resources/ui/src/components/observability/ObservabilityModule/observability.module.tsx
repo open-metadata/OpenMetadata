@@ -58,10 +58,18 @@ const TestCaseDetail = withSuspenseFallback(
   React.lazy(() => import('../TestCaseDetail/TestCaseDetail'))
 );
 
-// NOTE: Pipeline* and Alert* pages still live in Collate (large plugin-coupled
-// pages). Until they are moved to OSS, their routes resolve through the
-// app-mode fallback (CollateRouter); the pipeline/alerts sub-nav items below
-// navigate to those fallback-served paths.
+const AlertsPage = withSuspenseFallback(
+  React.lazy(() => import('../Alerts/AlertsPage'))
+);
+
+const AlertDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../Alerts/AlertDetailsPage'))
+);
+
+// NOTE: Pipeline* pages still live in Collate (large plugin-coupled pages).
+// Until they are moved to OSS, their routes resolve through the app-mode
+// fallback (CollateRouter); the pipeline sub-nav item below navigates to those
+// fallback-served paths.
 
 export const observabilityModule: AppModule = {
   id: 'observability',
@@ -122,6 +130,33 @@ export const observabilityModule: AppModule = {
       element: (
         <ObservabilityLayout>
           <IncidentManagerPage />
+        </ObservabilityLayout>
+      ),
+      position: RoutePosition.APP,
+    },
+    {
+      path: OBSERVABILITY_ROUTES.OBSERVABILITY_ALERTS,
+      element: (
+        <ObservabilityLayout>
+          <AlertsPage />
+        </ObservabilityLayout>
+      ),
+      position: RoutePosition.APP,
+    },
+    {
+      path: OBSERVABILITY_ROUTES.OBSERVABILITY_ALERT_DETAILS,
+      element: (
+        <ObservabilityLayout>
+          <AlertDetailsPage />
+        </ObservabilityLayout>
+      ),
+      position: RoutePosition.APP,
+    },
+    {
+      path: OBSERVABILITY_ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB,
+      element: (
+        <ObservabilityLayout>
+          <AlertDetailsPage />
         </ObservabilityLayout>
       ),
       position: RoutePosition.APP,

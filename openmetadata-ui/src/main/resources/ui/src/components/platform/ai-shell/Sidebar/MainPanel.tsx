@@ -75,7 +75,7 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
         </div>
       </header>
 
-      <nav className="ask-main-panel__nav">
+      <nav className="ask-main-panel__nav" data-testid="ask-main-panel-nav">
         {nodes.map((node) => {
           if (node.type === 'more') {
             return (
