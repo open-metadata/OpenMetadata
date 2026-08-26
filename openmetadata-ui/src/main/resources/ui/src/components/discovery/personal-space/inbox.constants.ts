@@ -23,3 +23,12 @@ export const INBOX_OPEN_TASK_COUNT_QUERY_KEY = [
 export const INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY = [
   'inbox-unread-activity-count',
 ] as const;
+
+/**
+ * Evaluated `feed` resource permission for the current user (Inbox comment
+ * delete gating). Session-stable, so consumers cache it with
+ * `staleTime: Infinity`.
+ */
+export const FEED_DELETE_ACCESS_QUERY_KEY = [
+  'feed-resource-delete-access',
+] as const;

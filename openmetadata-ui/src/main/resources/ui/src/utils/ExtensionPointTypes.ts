@@ -14,6 +14,7 @@
 import { ComponentType, ReactElement, ReactNode } from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
+import { Task } from '../generated/entity/tasks/task';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ServicesType } from '../interface/service.interface';
@@ -70,6 +71,12 @@ export const EXTENSION_POINTS = {
   // recent-chats list (expanded panel) and its collapsed-rail popover.
   APP_MODE_SIDEBAR_RECENT: 'app-mode.sidebar.recent',
   APP_MODE_SIDEBAR_RECENT_RAIL: 'app-mode.sidebar.recentRail',
+
+  // Inbox task overview — a plugin contributes a task-type-specific detail
+  // panel (e.g. a Data Access Request panel) that replaces the generic task
+  // overview when its `condition(task)` matches. The core inbox renders the
+  // generic overview standalone when nothing is contributed.
+  INBOX_TASK_PANELS: 'inbox.task-panels',
 } as const;
 
 /**
@@ -95,6 +102,12 @@ export interface PluginEntityDetailsContext {
   userData?: User;
   isLoggedInUser?: boolean;
   teamId?: string;
+  /**
+   * True when the consumer is the app-mode (AI) surface rather than a classic
+   * page. Lets a plugin contribute a mode-specific variant of the same tab
+   * (e.g. a compact vs. table layout) via `condition`.
+   */
+  isAiMode?: boolean;
 }
 
 // ============================================================================
@@ -127,6 +140,18 @@ export interface TabContribution {
 
   /** React component to render for tab content */
   component: ComponentType<PluginEntityDetailsContext>;
+
+  /**
+   * Optional icon for consumers that render tabs as a nav with icons (e.g. the
+   * app-mode profile side-nav). Classic tab bars that show label-only ignore it.
+   */
+  icon?: ComponentType<{ className?: string }>;
+
+  /**
+   * Optional description/subtitle (translation key or string) for consumers
+   * that render a content header per tab. Ignored by label-only tab bars.
+   */
+  description?: string;
 
   /** Optional count badge to display on tab */
   count?: number;
@@ -202,4 +227,18 @@ export interface AppModeSlotContribution {
   key: string;
   /** Rendered with no props at the slot location. */
   component: ComponentType;
+}
+
+/**
+ * Task-type-specific overview panel for the inbox (`inbox.task-panels`). When
+ * `condition(task)` matches, the inbox renders `component` in place of the
+ * generic task overview. The first matching contribution wins.
+ */
+export interface InboxTaskPanelContribution {
+  /** Stable key, unique within the slot. */
+  key: string;
+  /** True when this panel should render for the given task. */
+  condition: (task: Task) => boolean;
+  /** Replaces the generic task overview body for a matching task. */
+  component: ComponentType<{ id: string; task: Task }>;
 }

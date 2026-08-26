@@ -25,9 +25,17 @@ const InboxPage = withSuspenseFallback(
   React.lazy(() => import('./InboxPage/InboxPage'))
 );
 
+const MyData = withSuspenseFallback(
+  React.lazy(() => import('./MyData/MyData'))
+);
+
+const InboxContent = withSuspenseFallback(
+  React.lazy(() => import('./InboxPage/InboxContent'))
+);
+
 const gatedInbox = (
   <PersonalSpaceGate>
-    <InboxPage />
+    <InboxPage myDataContent={<MyData />} triageContent={<InboxContent />} />
   </PersonalSpaceGate>
 );
 

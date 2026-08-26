@@ -14,9 +14,22 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { useAppModeBanners, useAppModeOverlays } from '../appModeExtensions';
 import Sidebar from '../Sidebar/Sidebar';
 import './assistant-layout.less';
+
+// Core personal-space chrome (the Profile modal). Unlike the plugin-contributed
+// overlays below, this is an OSS-owned surface, so it is mounted directly here
+// rather than through the `app-mode.layout.overlays` extension point.
+const PersonalSpaceModal = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../discovery/personal-space/PersonalSpaceModal/PersonalSpaceModal'
+      )
+  )
+);
 
 interface AssistantLayoutProps {
   children: React.ReactNode;
@@ -61,6 +74,7 @@ const AssistantLayout: React.FC<AssistantLayoutProps> = ({ children }) => {
       {overlays.map(({ key, component: Overlay }) => (
         <Overlay key={key} />
       ))}
+      <PersonalSpaceModal />
     </>
   );
 };
