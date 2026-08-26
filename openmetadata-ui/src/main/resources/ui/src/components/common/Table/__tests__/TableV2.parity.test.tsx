@@ -468,3 +468,31 @@ describe('TableV2 — row drag and drop', () => {
     expect(onDragStart).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * TableV2-only: legacy AntD masks the table with its own `Spin` wrapper, so
+ * there is no shared DOM to assert. What matters here is that the overlay is
+ * anchored — an `inset-0` overlay with no positioned ancestor escapes to the
+ * viewport, dims the whole page and centres its spinner away from the rows it
+ * is meant to be masking.
+ */
+describe('TableV2 — loading overlay is anchored to the table', () => {
+  it('gives the overlay a positioned ancestor', () => {
+    render(
+      <TableV2
+        loading
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const overlay = document.querySelector('[class*="inset-0"]');
+
+    expect(overlay).not.toBeNull();
+    expect((overlay as HTMLElement).parentElement?.className).toContain(
+      'tw:relative'
+    );
+  });
+});
