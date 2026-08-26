@@ -268,13 +268,11 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 responsive `sm:px-6`, and tailwind-merge treats a variant class
                 as a different group from its base, so `p-0` alone leaves 24px
                 of side padding at sm and up. That padding stops the hint column
-                reaching the modal edge and steals width from the form.
-                overflow-x-hidden clips horizontal bleed during the modal's
-                width animation transition when the hint column opens/closes. */}
+                reaching the modal edge and steals width from the form. */}
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:flex-row tw:gap-0 tw:overflow-x-hidden tw:p-0 tw:sm:p-0'
+                  ? 'tw:flex-row tw:gap-0 tw:p-0 tw:sm:p-0'
                   : undefined
               }>
               {children}
