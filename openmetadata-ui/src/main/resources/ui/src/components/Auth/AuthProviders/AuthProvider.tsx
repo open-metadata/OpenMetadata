@@ -87,6 +87,7 @@ import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   extractDetailsFromToken,
   getAuthConfig,
@@ -314,6 +315,9 @@ export const AuthProvider = ({
 
     // reset the user details on logout
     setCurrentUser({} as User);
+
+    // clear the persisted persona selection so the next login starts fresh
+    clearPersonaSession();
 
     // remove analytics session on logout
     removeSession();
