@@ -21,7 +21,8 @@
     "saslPassword": {
       "title": "SASL Password",
       "description": "The SASL authentication password.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     }
   }
 }
