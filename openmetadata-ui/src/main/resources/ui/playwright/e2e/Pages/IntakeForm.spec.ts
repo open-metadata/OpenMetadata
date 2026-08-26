@@ -217,6 +217,7 @@ const selectExtensionReference = async ({
   // popup without pointer activation leaves the ComboBox in a state where the
   // subsequent option.click() triggers unexpected re-renders that continuously
   // detach the option element, causing a 3-minute hang.
+  // eslint-disable-next-line playwright/no-force-option -- see comment above: re-rendering drawer makes plain click() time out and focus() hang
   await input.click({ force: true });
   await input.fill(query);
   await searchResponse;

@@ -262,14 +262,8 @@ export const selectRange = async (
   startDate: string,
   endDate: string
 ) => {
-  await ruleLocator
-    .locator('.rule--value input[type="date"]')
-    .nth(0)
-    .fill(startDate);
-  await ruleLocator
-    .locator('.rule--value input[type="date"]')
-    .nth(1)
-    .fill(endDate);
+  await ruleLocator.getByTestId('query-date-value-0').fill(startDate);
+  await ruleLocator.getByTestId('query-date-value-1').fill(endDate);
 };
 
 export const fillRule = async (

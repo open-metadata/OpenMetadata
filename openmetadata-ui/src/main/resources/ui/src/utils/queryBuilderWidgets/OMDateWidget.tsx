@@ -64,6 +64,7 @@ const OMDateWidget: FC<DateTimeWidgetProps> = ({
   fieldType,
   valueFormat,
   dateFormat,
+  delta,
 }) => {
   const { t } = useTranslation();
   const kind = getInputKind(fieldType, valueFormat ?? dateFormat);
@@ -87,6 +88,7 @@ const OMDateWidget: FC<DateTimeWidgetProps> = ({
     <input
       aria-label={placeholder ?? t('label.value')}
       className={classNameValue}
+      data-testid={`query-date-value-${delta}`}
       disabled={readonly}
       placeholder={placeholder}
       // Native time inputs default to step=60, which rejects values with a

@@ -480,7 +480,6 @@ const handlePropertyValueInput = async (
       await page
         .locator('[role="listbox"]:visible')
         .getByRole('option', { name: String(value), exact: true })
-        .first()
         .click();
     } else if (
       ((operator === 'equal' || operator === 'not_equal') &&

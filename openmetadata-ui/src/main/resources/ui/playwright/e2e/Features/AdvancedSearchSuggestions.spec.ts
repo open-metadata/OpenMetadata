@@ -88,9 +88,8 @@ test.describe('Advanced Search Suggestions', () => {
           page
             .locator('[role="listbox"]:visible [role="option"]')
             .filter({ hasText: searchText })
-            .first()
         )
-        .toBeVisible();
+        .not.toHaveCount(0);
     });
   });
 });

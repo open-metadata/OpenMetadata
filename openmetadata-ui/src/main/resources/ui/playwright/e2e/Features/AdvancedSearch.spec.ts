@@ -1683,11 +1683,6 @@ test.describe(
       return { ruleLocator, comboboxInput, dropdown };
     };
 
-    test.skip('should append page-2 items and make them visible when Load more button is clicked', () => {
-      // Load more and rc-virtual-list are Ant Design Select features not present
-      // in the new react-aria MultiSelect component.
-    });
-
     test('should find page-2 items via search without clicking Load more', async ({
       page,
     }) => {

@@ -3236,12 +3236,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         getEpochMillisForFutureDays(1),
         'yyyy-MM-dd'
       );
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value input[type="date"]')
-        .nth(0)
-        .fill(newStart);
+      await page.getByTestId('query-date-value-0').fill(newStart);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3327,12 +3322,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         getEpochMillisForFutureDays(1),
         'yyyy-MM-dd'
       );
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value input[type="date"]')
-        .nth(0)
-        .fill(newStart);
+      await page.getByTestId('query-date-value-0').fill(newStart);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
