@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
-import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorPureUtils';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { renderBreakableTooltip } from '../../../../utils/TooltipUtils';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<
@@ -109,43 +110,47 @@ export default forwardRef<
   }));
 
   return (
-    <Space
-      className="suggestion-menu-wrapper"
-      direction="vertical"
-      id="hashtag-viewport">
+    <div className="suggestion-menu-wrapper" id="hashtag-viewport">
       {items.map((item, index) => {
         const breadcrumbsData = item.breadcrumbs
           ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
           : '';
 
         return (
-          <Space
-            className={classNames('w-full cursor-pointer hashtag-item', {
-              'bg-grey-2': index === selectedIndex,
-            })}
+          <button
+            className={classNames(
+              'tw:w-full tw:cursor-pointer hashtag-item tw:flex tw:items-start tw:flex-col',
+              {
+                'bg-grey-2': index === selectedIndex,
+              }
+            )}
             data-testid={`hash-mention-${item.label}`}
-            direction="vertical"
             id={`hashtag-item-${item.id}`}
             key={item.id}
-            size={2}
+            type="button"
             onClick={() => selectItem(index)}>
-            <div className="d-flex flex-wrap">
-              <span className="text-grey-muted truncate w-max-200 text-xss">
+            <div className="tw:w-full tw:min-w-0 tw:flex tw:flex-wrap">
+              <Typography
+                className="tw:text-quaternary tw:block tw:text-left tw:min-w-0"
+                ellipsis={{ tooltip: renderBreakableTooltip(breadcrumbsData) }}
+                size="text-xs">
                 {breadcrumbsData}
-              </span>
+              </Typography>
             </div>
-            <Space align="center">
+            <Box align="center" className="tw:min-w-0" gap={2}>
               {searchClassBase.getEntityIconWithBg(
                 item.type,
                 EntityIconSize.Size14
               )}
-              <Typography className="truncate w-max-200">
+              <Typography
+                className="tw:block tw:text-left tw:min-w-0"
+                ellipsis={{ tooltip: renderBreakableTooltip(item.label) }}>
                 {item.label}
               </Typography>
-            </Space>
-          </Space>
+            </Box>
+          </button>
         );
       })}
-    </Space>
+    </div>
   );
 });

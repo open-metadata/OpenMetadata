@@ -76,8 +76,11 @@ VERSIONS = {
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
+    # <1.0: 1.0.0 is a SQLAlchemy-2.0 rewrite (first release since 0.0.5 in 2020) that drops
+    # get_all_table_comments and retypes the dialect methods vertica/metadata.py patches onto it
+    "sqlalchemy-vertica": "sqlalchemy-vertica[vertica-python]>=0.0.5,<1.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=8.1.0",
+    "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -380,7 +383,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
+    "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
@@ -427,7 +430,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
-    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},

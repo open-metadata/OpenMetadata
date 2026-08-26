@@ -12,7 +12,6 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +27,7 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function DirectoryChildrenTable() {

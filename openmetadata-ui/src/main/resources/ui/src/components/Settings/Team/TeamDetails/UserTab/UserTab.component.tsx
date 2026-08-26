@@ -12,7 +12,6 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Modal, Space, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
@@ -56,6 +55,7 @@ import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/Filt
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { UserTabProps } from './UserTab.interface';

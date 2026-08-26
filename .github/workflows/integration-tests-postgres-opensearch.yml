@@ -122,7 +122,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -227,7 +227,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -423,7 +423,7 @@ jobs:
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
   integration-tests-postgres-opensearch:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'integration-tests-postgres-opensearch (ignored label)' || 'integration-tests-postgres-opensearch' }}
+    name: integration-tests-postgres-opensearch
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
