@@ -331,9 +331,6 @@
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    },
-    "playwright/no-skipped-test": {
-      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts": {
