@@ -149,20 +149,20 @@ const EXPANDER_GUTTER_PX = 16;
 /**
  * AntD's size scale mapped onto the core component's.
  *
- * `small` stays on `sm` rather than the tighter `compact`: it is what these
- * tables have always rendered at, and dropping to `compact` changed row height
- * and header padding together on every table that asks for it. `compact`
- * remains available to a call site that asks for it deliberately.
+ * Only `small` is a step down; everything else, a table that sets no size
+ * included, stays at `md`. Densifying by default would resize every table in
+ * the app, not just the ones being migrated. `compact` is available to a call
+ * site that opts into it deliberately.
  */
 const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
   compact: 'compact',
   small: 'sm',
-  middle: 'sm',
+  middle: 'md',
   large: 'md',
 };
 
 const toCoreSize = (size: TableComponentProps<never>['size']) =>
-  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'sm';
+  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
  * Internal pagination is off whenever the parent owns paging, so a server page
