@@ -1,0 +1,621 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: py-tests-shared
+
+# Shared job graph for py-tests.yml (MySQL) and py-tests-postgres.yml (PostgreSQL).
+# Callers own their `py-tests-status` job: moving it here renames the required check
+# context and breaks the ruleset.
+
+on:
+  workflow_call:
+    inputs:
+      compose-args:
+        description: Arguments forwarded to docker/run_local_docker.sh
+        required: true
+        type: string
+      artifact-prefix:
+        description: Prefix for uploaded test-result and diagnostic artifacts
+        required: true
+        type: string
+      test-profile:
+        description: TEST_PROFILE reported to classify_test_outcome.py for the integration lane
+        required: true
+        type: string
+      run-unit-tests:
+        description: Run the unit-test and static-check matrix
+        required: false
+        type: boolean
+        default: false
+      run-coverage:
+        description: Combine coverage and push results to Sonar
+        required: false
+        type: boolean
+        default: false
+
+env:
+  # matrix can't use 'env'. When updating it, update it for both jobs.
+  MAIN_PYTHON_VERSION: "3.10"
+  # Hugging Face uses a moving wheel name, so pin its immutable revision and content hash.
+  SPACY_MODEL_VERSION: "3.7.1"
+  SPACY_MODEL_REVISION: "22f17ee20cda126e498ea2fb92dc504bea0d111c"
+  SPACY_MODEL_SHA256: "6a0f857a2b4d219c6fa17d455f82430b365bf53171a2d919b9376e5dc9be032e"
+  SONAR_OPTS: >-
+    -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+    -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+    -Dsonar.pullrequest.github.repository=OpenMetadata
+    -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+    -Dsonar.pullrequest.provider=github
+
+jobs:
+  # Authorize pull request code once before the matrix fans out, then detect
+  # whether relevant paths changed.
+  changes:
+    name: Authorize & Detect Changes
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    outputs:
+      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            python:
+              - 'ingestion/**'
+              - '.github/workflows/py-tests-shared.yml'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.7.0
+        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+  # Produces the one artifact docker/development/Dockerfile needs, so shards can skip Maven.
+  build-distribution:
+    name: Build Backend Distribution
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Restore-only: pull_request_target / merge_group writes are scoped to refs no
+      # other run can read, so saving would only consume the repo's cache quota.
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # -am builds only openmetadata-dist's dependency closure, and -DonlyBackend is what
+      # drops openmetadata-ui from it. Removing either pulls the whole frontend build back
+      # in, which also needs the antlr4 CLI that this job deliberately does not install.
+      - name: Build backend distribution
+        run: mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
+        shell: bash
+
+      - name: Upload backend distribution
+        uses: actions/upload-artifact@v6
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  prepare-spacy-model:
+    name: Prepare spaCy model
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    concurrency:
+      group: spacy-model-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Restore spaCy model wheel
+        id: spacy-model-cache
+        uses: actions/cache@v6
+        with:
+          path: .cache/spacy-model
+          key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
+
+      - name: Download spaCy model wheel
+        if: steps.spacy-model-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .cache/spacy-model
+          wheel_path=".cache/spacy-model/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
+          curl --fail --location --retry 10 --retry-all-errors --connect-timeout 20 --max-time 600 \
+            --output "${wheel_path}" \
+            "https://huggingface.co/spacy/en_core_web_md/resolve/${SPACY_MODEL_REVISION}/en_core_web_md-any-py3-none-any.whl"
+          echo "${SPACY_MODEL_SHA256}  ${wheel_path}" | sha256sum --check --strict
+        shell: bash
+
+      - name: Upload spaCy model wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: spacy-en-model
+          path: .cache/spacy-model/*.whl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  py-unit-tests:
+    name: Unit Tests & Static Checks
+    needs: [changes, prepare-spacy-model]
+    if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version }}
+          install-server: 'false'
+
+      - name: Download spaCy model
+        uses: actions/download-artifact@v7
+        with:
+          name: spacy-en-model
+          path: /tmp/spacy-model
+
+      - name: Install and verify spaCy model
+        run: |
+          source env/bin/activate
+          uv pip install --no-deps /tmp/spacy-model/*.whl
+          python -c 'import spacy; spacy.load("en_core_web_md")'
+        shell: bash
+
+      - name: Run Static Checks
+        # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
+        # supported version) so type-checking results are identical across the
+        # 3.10/3.11/3.12 matrix. Run on the lowest version only to avoid
+        # redundant work and keep the baseline file deterministic.
+        if: matrix.py-version == '3.10'
+        run: |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s static-checks 2>&1 | tee static-checks-run.log
+        shell: bash
+
+      - name: Run Unit Tests
+        id: unit-tests
+        run: |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          set +e
+          nox --no-venv -s unit-tests 2>&1 | tee unit-test-run.log
+          test_exit_code=${PIPESTATUS[0]}
+          echo "$test_exit_code" > unit-test-exit-code.txt
+          exit "$test_exit_code"
+        shell: bash
+
+      - name: Classify Python unit test outcome
+        if: ${{ always() }}
+        env:
+          TEST_LANE: python-${{ matrix.py-version }}
+          TEST_PROFILE: python-unit
+          TEST_STEP_OUTCOME: ${{ steps.unit-tests.outcome }}
+        run: |
+          test_exit_code=""
+          if [[ -s ingestion/unit-test-exit-code.txt ]]; then
+            read -r test_exit_code < ingestion/unit-test-exit-code.txt
+          fi
+          python3 .github/scripts/classify_test_outcome.py \
+            --step-outcome "$TEST_STEP_OUTCOME" \
+            --exit-code "$test_exit_code" \
+            --report-glob 'ingestion/junit/test-results-*.xml' \
+            --diagnostic-glob 'ingestion/*-test-run.log' \
+            --diagnostic-glob 'ingestion/static-checks-run.log' \
+            --output ingestion/ci-diagnostics/outcome.json
+
+      - name: Upload test results
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.artifact-prefix }}-unit-test-results-${{ matrix.py-version }}
+          path: |
+            ingestion/junit/
+            ingestion/ci-diagnostics/outcome.json
+            ingestion/*-test-run.log
+            ingestion/static-checks-run.log
+            ingestion/unit-test-exit-code.txt
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 1
+
+      - name: Upload coverage artifact
+        if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-unit
+          path: ingestion/.coverage
+          include-hidden-files: true
+
+  py-integration-tests:
+    name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
+    needs: [changes, build-distribution, prepare-spacy-model]
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py-version: ["3.10", "3.11", "3.12"]
+        # shard-3 is the catch-all and is deliberately the lightest, so new directories land
+        # in slack rather than on the critical path. Moving one OUT of shard-1 or shard-2
+        # means removing its --ignore too, or it runs nowhere.
+        shard:
+          - name: "shard-1"
+            nox-args: >-
+              tests/integration/automations
+              tests/integration/data_quality
+              tests/integration/mysql
+              tests/integration/postgres
+              tests/integration/powerbi
+              tests/integration/sas
+              tests/integration/superset
+          - name: "shard-2"
+            needs-disk: true
+            nox-args: >-
+              tests/integration/alationsink
+              tests/integration/auto_classification
+              tests/integration/datalake
+              tests/integration/profiler
+              tests/integration/sources
+              tests/integration/sql_server
+              tests/integration/ssrs
+          - name: "shard-3"
+            nox-args: >-
+              --ignore=tests/integration/automations
+              --ignore=tests/integration/data_quality
+              --ignore=tests/integration/mysql
+              --ignore=tests/integration/postgres
+              --ignore=tests/integration/powerbi
+              --ignore=tests/integration/sas
+              --ignore=tests/integration/superset
+              --ignore=tests/integration/alationsink
+              --ignore=tests/integration/auto_classification
+              --ignore=tests/integration/datalake
+              --ignore=tests/integration/profiler
+              --ignore=tests/integration/sources
+              --ignore=tests/integration/sql_server
+              --ignore=tests/integration/ssrs
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+      - name: Use runner data disk for Docker
+        if: matrix.shard.needs-disk
+        run: bash .github/scripts/configure_docker_storage.sh
+
+      # Must precede the setup action, which builds the server image from this tarball.
+      - name: Download backend distribution
+        uses: actions/download-artifact@v7
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version}}
+          args: ${{ inputs.compose-args }}
+
+      - name: Download spaCy model
+        if: matrix.shard.name == 'shard-1'
+        uses: actions/download-artifact@v7
+        with:
+          name: spacy-en-model
+          path: /tmp/spacy-model
+
+      - name: Install and verify spaCy model
+        if: matrix.shard.name == 'shard-1'
+        run: |
+          source env/bin/activate
+          uv pip install --no-deps /tmp/spacy-model/*.whl
+          python -c 'import spacy; spacy.load("en_core_web_md")'
+        shell: bash
+
+      - name: Reclaim unused disk for the Exasol shard
+        if: matrix.shard.needs-disk
+        continue-on-error: true
+        run: |
+          {
+            echo "Before Exasol shard disk reclaim"
+            df -h
+            docker system df
+            sudo rm -rf /opt/hostedtoolcache/CodeQL
+            docker image prune --all --force || true
+            docker builder prune --all --force || true
+            echo "After Exasol shard disk reclaim"
+            df -h
+            docker system df
+          } 2>&1 | tee "${RUNNER_TEMP}/exasol-disk-reclaim.log"
+        shell: bash
+
+      - name: Run Integration Tests
+        id: integration-tests
+        run: |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          read -r -a shard_args <<< "$NOX_ARGS"
+          nox --no-venv -s integration-tests -- --standalone --durations=5 "${shard_args[@]}" 2>&1 | tee integration-test-run.log
+        env:
+          NOX_ARGS: ${{ matrix.shard.nox-args }}
+          TESTCONTAINERS_RYUK_DISABLED: true
+        shell: bash
+
+      - name: Classify Python integration test outcome
+        if: ${{ always() }}
+        env:
+          TEST_LANE: ${{ matrix.shard.name }}-python-${{ matrix.py-version }}
+          TEST_PROFILE: ${{ inputs.test-profile }}
+          TEST_STEP_OUTCOME: ${{ steps.integration-tests.outcome }}
+        run: |
+          python3 .github/scripts/classify_test_outcome.py \
+            --step-outcome "$TEST_STEP_OUTCOME" \
+            --report-glob 'ingestion/junit/test-results-*.xml' \
+            --diagnostic-glob 'ingestion/integration-test-run.log' \
+            --output ingestion/ci-diagnostics/outcome.json
+
+      - name: Upload coverage artifact
+        if: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-integration-${{ matrix.shard.name }}
+          path: ingestion/.coverage
+          include-hidden-files: true
+
+      - name: Upload test results
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.artifact-prefix }}-integration-test-results-${{ matrix.shard.name }}-${{ matrix.py-version }}
+          path: |
+            ingestion/junit/
+            ingestion/ci-diagnostics/outcome.json
+            ingestion/integration-test-run.log
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 1
+
+      - name: Collect runner and service diagnostics
+        if: ${{ failure() || cancelled() }}
+        continue-on-error: true
+        run: |
+          diagnostics="${RUNNER_TEMP}/python-ci-diagnostics"
+          rm -rf "$diagnostics"
+          mkdir -p "$diagnostics"
+          df -h > "$diagnostics/disk-usage.txt" 2>&1 || true
+          free -h > "$diagnostics/memory-usage.txt" 2>&1 || true
+          docker info > "$diagnostics/docker-info.txt" 2>&1 || true
+          docker system df > "$diagnostics/docker-disk-usage.txt" 2>&1 || true
+          docker ps --all --no-trunc > "$diagnostics/docker-containers.txt" 2>&1 || true
+          if [ -d docker/development ]; then
+            (cd docker/development && docker compose ps --all) > "$diagnostics/docker-compose-ps.txt" 2>&1 || true
+            (cd docker/development && docker compose logs --no-color --tail 2000) > "$diagnostics/docker-compose.log" 2>&1 || true
+          fi
+          coredumpctl --no-pager list > "$diagnostics/coredumps.txt" 2>&1 || true
+          coredumpctl --no-pager info >> "$diagnostics/coredumps.txt" 2>&1 || true
+          find "$GITHUB_WORKSPACE" /tmp /var/crash -maxdepth 3 -type f \
+            \( -name 'core' -o -name 'core.*' -o -name '*.core' -o -name '*.dmp' -o -name '*.crash' \) \
+            -printf '%p %s bytes\n' >> "$diagnostics/core-files.txt" 2>/dev/null || true
+          if [ -f "${RUNNER_TEMP}/exasol-disk-reclaim.log" ]; then
+            cp "${RUNNER_TEMP}/exasol-disk-reclaim.log" "$diagnostics/"
+          fi
+        shell: bash
+
+      - name: Upload runner and service diagnostics
+        if: ${{ failure() || cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.artifact-prefix }}-integration-diagnostics-${{ matrix.shard.name }}-${{ matrix.py-version }}
+          path: ${{ runner.temp }}/python-ci-diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 1
+
+      - name: Clean Up
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans || true
+          sudo rm -rf "${PWD}/docker-volume"
+
+  # Cross-checks that the jobs which were supposed to run actually ran.
+  verify:
+    name: Verify Expected Jobs
+    needs: [changes, build-distribution, py-unit-tests, py-integration-tests]
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all expected Python jobs completed
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
+          BUILD_RESULT: ${{ needs.build-distribution.result }}
+          UNIT_RESULT: ${{ needs.py-unit-tests.result }}
+          INTEGRATION_RESULT: ${{ needs.py-integration-tests.result }}
+          RUN_UNIT_TESTS: ${{ inputs.run-unit-tests }}
+        run: |
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "Python preflight did not succeed: $CHANGES_RESULT"
+            exit 1
+          fi
+
+          expected_unit="skipped"
+          if [ "$RUN_UNIT_TESTS" = "true" ]; then
+            expected_unit="success"
+          fi
+
+          if [ "$PYTHON_CHANGED" = "true" ]; then
+            if [ "$BUILD_RESULT" != "success" ] || [ "$INTEGRATION_RESULT" != "success" ] \
+               || [ "$UNIT_RESULT" != "$expected_unit" ]; then
+              echo "Expected Python jobs did not succeed: build=$BUILD_RESULT unit=$UNIT_RESULT (expected $expected_unit) integration=$INTEGRATION_RESULT"
+              exit 1
+            fi
+          elif [ "$PYTHON_CHANGED" = "false" ]; then
+            if [ "$BUILD_RESULT" != "skipped" ] || [ "$UNIT_RESULT" != "skipped" ] \
+               || [ "$INTEGRATION_RESULT" != "skipped" ]; then
+              echo "Unexpected Python job result for an unchanged tree: build=$BUILD_RESULT unit=$UNIT_RESULT integration=$INTEGRATION_RESULT"
+              exit 1
+            fi
+          else
+            echo "Python change detection produced an invalid result: $PYTHON_CHANGED"
+            exit 1
+          fi
+        shell: bash
+
+  py-combine-coverage:
+    needs: [changes, py-unit-tests, py-integration-tests]
+    if: ${{ always() && inputs.run-coverage && needs.changes.outputs.python == 'true' && needs.py-unit-tests.result == 'success' && needs.py-integration-tests.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+
+      - name: Install uv
+        run: pip install uv
+        shell: bash
+
+      - name: Install coverage
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          uv pip install "coverage[toml]" nox
+        shell: bash
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-*
+          path: ingestion/coverage-data/
+
+      - name: Prepare coverage files
+        run: |
+          cd ingestion
+          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          for dir in coverage-data/coverage-integration-*/; do
+            shard=$(basename "$dir" | sed 's/coverage-integration-//')
+            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"
+          done
+        shell: bash
+
+      - name: Combine coverage
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s combine-coverage
+        shell: bash
+
+      - name: Remove pom.xml
+        run: rm pom.xml
+        shell: bash
+
+        # we have to pass these args values since we are working with the 'pull_request_target' trigger
+      - name: Push Results in PR to Sonar
+        id: push-to-sonar
+        if: ${{ github.event_name == 'pull_request_target'}}
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+          args: ${{ env.SONAR_OPTS }}

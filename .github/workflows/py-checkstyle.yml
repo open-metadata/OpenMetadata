@@ -26,7 +26,7 @@ permissions:
 
 concurrency:
   group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   py-checkstyle:
@@ -55,9 +55,10 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5

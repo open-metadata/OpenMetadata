@@ -34,7 +34,7 @@ permissions:
 
 concurrency:
   group: integration-tests-pg-os-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified
   # the downstream job is skipped via its `if` condition.
@@ -95,13 +95,14 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Cache Maven dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
