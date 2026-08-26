@@ -13,7 +13,9 @@
 
 import { lazy, useMemo } from 'react';
 import { Route } from 'react-router-dom';
+import Loader from '../../../common/Loader/Loader';
 import { ROUTES } from '../../../../constants/constants';
+import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
@@ -57,6 +59,13 @@ export const AppModeRoutes = () => {
   useSyncActiveModule();
   const modules = useAllAppModules();
   const fallback = useAppModeRoutesFallback();
+  // Install-gated plugin modules (AI Automations / Studio / Dashboards) only
+  // register once `/api/v1/apps/installed` resolves. Until then the route table
+  // is incomplete, so their paths would hit the catch-all fallback and get
+  // redirected to /404 — destroying a deep link or reload. Hold the route table
+  // (chrome stays, content shows a loader) until the apps fetch settles so the
+  // requested URL survives and resolves against the complete table.
+  const { isLoading: isApplicationsLoading } = useApplicationsProvider() ?? {};
 
   // The catch-all page route table. Mirrors how the classic `AppContainer`
   // renders its content: the same `applicationRoutesClass.getRouteElements()`
@@ -81,14 +90,18 @@ export const AppModeRoutes = () => {
 
   return (
     <AppShell>
-      <KeepAliveRoutes routes={routes}>
-        <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
-        {fallback ? (
-          <Route element={fallback.element} path="/*" />
-        ) : (
-          <Route element={<RouteElements />} path="/*" />
-        )}
-      </KeepAliveRoutes>
+      {isApplicationsLoading ? (
+        <Loader />
+      ) : (
+        <KeepAliveRoutes routes={routes}>
+          <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
+          {fallback ? (
+            <Route element={fallback.element} path="/*" />
+          ) : (
+            <Route element={<RouteElements />} path="/*" />
+          )}
+        </KeepAliveRoutes>
+      )}
     </AppShell>
   );
 };
