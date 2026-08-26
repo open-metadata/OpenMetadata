@@ -434,11 +434,18 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             return;
           }
 
-          // Polling reads only the index total so it cannot supersede or
-          // commit over a search, sort, or paging request made meanwhile.
-          const indexedTotal = await fetchIndexedTestCaseTotal(
-            targetTestSuiteId
-          );
+          // A transient failure polling the index (e.g. a dropped request)
+          // must not abandon the refresh — fall through to the invalidate
+          // below so the list still catches up to whatever is indexed now,
+          // instead of silently going stale.
+          let indexedTotal: number | undefined;
+          try {
+            // Polling reads only the index total so it cannot supersede or
+            // commit over a search, sort, or paging request made meanwhile.
+            indexedTotal = await fetchIndexedTestCaseTotal(targetTestSuiteId);
+          } catch {
+            break;
+          }
 
           if (!isCurrentTestSuite()) {
             return;
