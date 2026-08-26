@@ -51,11 +51,7 @@ export const AssetSelectionModal = ({
           title={t('label.add-entity', { entity: t('label.asset-plural') })}
           width={675}
           onClose={onCancel}>
-          {/* Dialog.Content now defaults to overflow-y-auto; tailwind-merge
-              treats overflow-* (shorthand) and overflow-y-* as separate
-              conflict groups, so a plain overflow-hidden here wouldn't
-              reliably strip that default — the axis-specific form does. */}
-          <Dialog.Content className="tw:overflow-x-hidden tw:overflow-y-hidden">
+          <Dialog.Content>
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}
