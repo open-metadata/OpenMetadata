@@ -474,6 +474,36 @@ describe('ActivityFeedProvider', () => {
     expect(listConversations).not.toHaveBeenCalled();
   });
 
+  it('keeps a posted reply when the initial activity reply request resolves later', async () => {
+    let resolveReplies!: (value: unknown) => void;
+    (listActivityReplies as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveReplies = resolve;
+      })
+    );
+    (createActivityReply as jest.Mock).mockResolvedValue(activityReply);
+
+    render(
+      <ActivityFeedProvider>
+        <DummySetActiveActivityComponent activity={activity} />
+        <DummyActivityCommentComponent activity={activity} />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('set-active'));
+    await waitFor(() => expect(listActivityReplies).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('post-comment'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    await act(async () => {
+      resolveReplies({ data: [], paging: { total: 0 } });
+    });
+
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1');
+  });
+
   it('uses the same single POST for subsequent activity replies', async () => {
     (listActivityReplies as jest.Mock).mockResolvedValue({
       data: [activityReply],

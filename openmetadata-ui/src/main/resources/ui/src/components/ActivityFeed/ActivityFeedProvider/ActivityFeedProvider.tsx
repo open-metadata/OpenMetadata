@@ -774,12 +774,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     try {
       const response = await listActivityReplies(activity.id, { limit: 100 });
       if (activityReplyRequest.current === requestId) {
-        setActivityReplies(response.data);
+        setActivityReplies((current) => {
+          const currentIds = new Set(current.map((reply) => reply.id));
+
+          return [
+            ...response.data.filter((reply) => !currentIds.has(reply.id)),
+            ...current,
+          ];
+        });
       }
     } catch {
-      if (activityReplyRequest.current === requestId) {
-        setActivityReplies([]);
-      }
+      // The request starts from an empty list; retain replies posted while it was pending.
     } finally {
       if (activityReplyRequest.current === requestId) {
         setIsPostsLoading(false);

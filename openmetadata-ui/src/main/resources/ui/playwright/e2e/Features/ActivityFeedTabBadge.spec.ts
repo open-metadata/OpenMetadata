@@ -291,7 +291,11 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
 
       // The list has to actually switch — only the conversation that mentions
       // the logged-in user renders, and no task card survives the switch.
-      await expect(page.getByTestId('feed-card-v2-sidebar')).toHaveCount(1);
+      const mentionCards = page
+        .locator('#center-container')
+        .getByTestId('feed-card-v2-sidebar');
+
+      await expect(mentionCards).toHaveCount(1);
       await expect(page.getByTestId('task-feed-card')).toHaveCount(0);
       await expect(
         page.getByTestId('no-data-placeholder-container')
@@ -312,7 +316,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await page.reload();
       await waitForPageLoaded(page);
 
-      await expect(page.getByTestId('feed-card-v2-sidebar')).toHaveCount(1);
+      await expect(mentionCards).toHaveCount(1);
     } finally {
       await mentionTable.delete(apiContext);
       await afterAction();

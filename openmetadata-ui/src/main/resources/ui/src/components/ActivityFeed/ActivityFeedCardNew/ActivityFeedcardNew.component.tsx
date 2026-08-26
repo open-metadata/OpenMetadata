@@ -257,7 +257,7 @@ const ActivityFeedCardNew = ({
     ) : null;
 
   const posts = useMemo(() => {
-    if (!showThread) {
+    if (!showThread && !isOpenInDrawer) {
       return null;
     }
     if (isPostsLoading) {
@@ -294,6 +294,7 @@ const ActivityFeedCardNew = ({
   }, [
     feed,
     showThread,
+    isOpenInDrawer,
     closeFeedEditor,
     isPostsLoading,
     isActivityEvent,

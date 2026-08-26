@@ -112,6 +112,27 @@ describe('ActivityFeedListV1New', () => {
     expect(onActivityClick).not.toHaveBeenCalled();
   });
 
+  it('does not auto-select an activity in the landing-page widget', async () => {
+    const onActivityClick = jest.fn();
+
+    render(
+      <ActivityFeedListV1New
+        isFeedWidget
+        activityList={[createActivity('activity', 300)]}
+        emptyPlaceholderText="No activity"
+        hidePopover={false}
+        isLoading={false}
+        onActivityClick={onActivityClick}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('feed-item-activity')).toBeInTheDocument()
+    );
+
+    expect(onActivityClick).not.toHaveBeenCalled();
+  });
+
   it('does not replace a selected item that remains in the mixed feed', async () => {
     const onActivityClick = jest.fn();
     const onFeedClick = jest.fn();

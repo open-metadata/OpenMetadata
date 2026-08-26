@@ -14,10 +14,24 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
+  ActivityEvent,
+  ActivityEventType,
+} from '../../../generated/entity/activity/activityEvent';
+import {
   Conversation,
+  ConversationReply,
   ConversationSource,
 } from '../../../generated/entity/feed/conversation';
 import ActivityFeedCardNew from './ActivityFeedcardNew.component';
+
+const mockProviderValue = {
+  activityReplies: [] as ConversationReply[],
+  isPostsLoading: false,
+  postActivityComment: jest.fn(),
+  postFeed: jest.fn(),
+  selectedThread: undefined,
+  updateFeed: jest.fn(),
+};
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -29,15 +43,12 @@ jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: () => [false, undefined, { id: 'author-id', name: 'alice' }],
 }));
 
+jest.mock('../../../utils/FeedUtils', () => ({
+  getActivityEventHeaderText: jest.fn(() => 'updated description'),
+}));
+
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
-  useActivityFeedProvider: () => ({
-    activityReplies: [],
-    isPostsLoading: false,
-    postActivityComment: jest.fn(),
-    postFeed: jest.fn(),
-    selectedThread: undefined,
-    updateFeed: jest.fn(),
-  }),
+  useActivityFeedProvider: () => mockProviderValue,
 }));
 
 jest.mock('../ActivityFeedCard/FeedCardBody/FeedCardBodyNew', () =>
@@ -54,6 +65,12 @@ jest.mock('../ActivityFeedCardV2/FeedCardFooter/ActivityEventFooter', () =>
 
 jest.mock('../Shared/ActivityFeedActions', () =>
   jest.fn(() => <div data-testid="conversation-root-actions" />)
+);
+
+jest.mock('./CommentCard.component', () =>
+  jest.fn(({ reply }) => (
+    <div data-testid="feed-reply-card">{reply.message}</div>
+  ))
 );
 
 jest.mock('../../common/PopOverCard/EntityPopOverCard', () =>
@@ -96,7 +113,33 @@ const conversation: Conversation = {
   updatedAt: 1,
 };
 
+const activity: ActivityEvent = {
+  entity: {
+    id: 'table-id',
+    type: 'table',
+    name: 'table',
+    fullyQualifiedName: 'service.table',
+  },
+  eventType: ActivityEventType.DescriptionUpdated,
+  id: 'activity-1',
+  summary: 'Description updated',
+  timestamp: 1,
+};
+
+const activityReply: ConversationReply = {
+  author: { id: 'author-id', type: 'user', name: 'alice' },
+  conversationId: 'activity-1',
+  createdAt: 2,
+  id: 'reply-1',
+  message: 'Activity reply',
+  updatedAt: 2,
+};
+
 describe('ActivityFeedCardNew', () => {
+  beforeEach(() => {
+    mockProviderValue.activityReplies = [];
+  });
+
   it('keeps root reactions and management actions available in the drawer', () => {
     render(
       <MemoryRouter>
@@ -110,5 +153,19 @@ describe('ActivityFeedCardNew', () => {
     fireEvent.mouseEnter(screen.getByTestId('feed-card-v2-sidebar'));
 
     expect(screen.getByTestId('conversation-root-actions')).toBeVisible();
+  });
+
+  it('renders activity replies in the open side panel', () => {
+    mockProviderValue.activityReplies = [activityReply];
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('feed-reply-card')).toHaveTextContent(
+      activityReply.message
+    );
   });
 });

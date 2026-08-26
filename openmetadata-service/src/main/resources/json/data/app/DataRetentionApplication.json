@@ -6,7 +6,8 @@
     "activityThreadsRetentionPeriod": 60,
     "activityCommentsRetentionPeriod": 0,
     "profileDataRetentionPeriod": 1440,
-    "testCaseResultsRetentionPeriod": 1440
+    "testCaseResultsRetentionPeriod": 1440,
+    "auditLogRetentionPeriod": 90
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",

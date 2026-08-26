@@ -61,7 +61,8 @@
     "activityThreadsRetentionPeriod",
     "activityCommentsRetentionPeriod",
     "testCaseResultsRetentionPeriod",
-    "profileDataRetentionPeriod"
+    "profileDataRetentionPeriod",
+    "auditLogRetentionPeriod"
   ],
   "additionalProperties": false
 }

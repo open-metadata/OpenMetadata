@@ -104,6 +104,10 @@ const ActivityFeedListV1New = ({
   const autoSelectedIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    if (isFeedWidget) {
+      return;
+    }
+
     const firstItem = mergedList[0];
     if (isUndefined(firstItem)) {
       return;
@@ -144,6 +148,7 @@ const ActivityFeedListV1New = ({
     selectedActivity,
     onFeedClick,
     onActivityClick,
+    isFeedWidget,
   ]);
 
   useEffect(() => {
