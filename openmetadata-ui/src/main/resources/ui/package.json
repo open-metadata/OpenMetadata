@@ -245,7 +245,7 @@
     "eslint-plugin-i18next": "^6.0.0-2",
     "eslint-plugin-jest": "^28.9.0",
     "eslint-plugin-jest-formatting": "^3.1.0",
-    "eslint-plugin-jsonc": "^2.19.2",
+    "eslint-plugin-jsonc": "^3.4.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-playwright": "^2.9.0",
     "eslint-plugin-prettier": "^5.2.1",
