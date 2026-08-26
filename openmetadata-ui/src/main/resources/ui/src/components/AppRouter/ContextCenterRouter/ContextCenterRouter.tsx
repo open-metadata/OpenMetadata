@@ -79,10 +79,7 @@ const ContextCenterRouter = () => {
       />
       <Route
         element={<ContextCenterDashboardPage />}
-        path={ROUTES.CONTEXT_CENTER_OVERVIEW.replace(
-          ROUTES.CONTEXT_CENTER,
-          ''
-        )}
+        path={ROUTES.CONTEXT_CENTER_OVERVIEW.replace(ROUTES.CONTEXT_CENTER, '')}
       />
       {[
         ROUTES.CONTEXT_CENTER_ARTICLES,
