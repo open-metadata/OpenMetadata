@@ -87,7 +87,6 @@ import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
-import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   extractDetailsFromToken,
   getAuthConfig,
@@ -96,6 +95,7 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
+import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
   getOidcToken,

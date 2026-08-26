@@ -31,65 +31,71 @@ const test = base.extend<{ userPage: Page }>({
   },
 });
 
-test.beforeAll('Setup persona session persistence tests', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.beforeAll(
+  'Setup persona session persistence tests',
+  async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await user.create(apiContext);
-  await defaultPersona.create(apiContext);
-  await otherPersona.create(apiContext);
+    await user.create(apiContext);
+    await defaultPersona.create(apiContext);
+    await otherPersona.create(apiContext);
 
-  // Assign both personas to the user and set defaultPersona as default
-  await user.patch({
-    apiContext,
-    patchData: [
-      {
-        op: 'add',
-        path: '/personas/0',
-        value: {
-          id: defaultPersona.responseData.id,
-          name: defaultPersona.responseData.name,
-          displayName: defaultPersona.responseData.displayName,
-          fullyQualifiedName: defaultPersona.responseData.fullyQualifiedName,
-          type: 'persona',
+    // Assign both personas to the user and set defaultPersona as default
+    await user.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/personas/0',
+          value: {
+            id: defaultPersona.responseData.id,
+            name: defaultPersona.responseData.name,
+            displayName: defaultPersona.responseData.displayName,
+            fullyQualifiedName: defaultPersona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
         },
-      },
-      {
-        op: 'add',
-        path: '/personas/1',
-        value: {
-          id: otherPersona.responseData.id,
-          name: otherPersona.responseData.name,
-          displayName: otherPersona.responseData.displayName,
-          fullyQualifiedName: otherPersona.responseData.fullyQualifiedName,
-          type: 'persona',
+        {
+          op: 'add',
+          path: '/personas/1',
+          value: {
+            id: otherPersona.responseData.id,
+            name: otherPersona.responseData.name,
+            displayName: otherPersona.responseData.displayName,
+            fullyQualifiedName: otherPersona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
         },
-      },
-      {
-        op: 'add',
-        path: '/defaultPersona',
-        value: {
-          id: defaultPersona.responseData.id,
-          name: defaultPersona.responseData.name,
-          displayName: defaultPersona.responseData.displayName,
-          fullyQualifiedName: defaultPersona.responseData.fullyQualifiedName,
-          type: 'persona',
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: defaultPersona.responseData.id,
+            name: defaultPersona.responseData.name,
+            displayName: defaultPersona.responseData.displayName,
+            fullyQualifiedName: defaultPersona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
         },
-      },
-    ],
-  });
+      ],
+    });
 
-  await afterAction();
-});
+    await afterAction();
+  }
+);
 
-test.afterAll('Teardown persona session persistence tests', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.afterAll(
+  'Teardown persona session persistence tests',
+  async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await defaultPersona.delete(apiContext);
-  await otherPersona.delete(apiContext);
-  await user.delete(apiContext);
+    await defaultPersona.delete(apiContext);
+    await otherPersona.delete(apiContext);
+    await user.delete(apiContext);
 
-  await afterAction();
-});
+    await afterAction();
+  }
+);
 
 /** Reload the page and wait for the logged-in-user fetch that drives persona resolution. */
 const reloadAndAwaitUser = async (page: Page) => {
@@ -102,11 +108,14 @@ const reloadAndAwaitUser = async (page: Page) => {
 };
 
 test.describe('Persona session persistence', () => {
-  test('selected persona persists across page refresh', async ({ userPage }) => {
+  test('selected persona persists across page refresh', async ({
+    userPage,
+  }) => {
     await redirectToHomePage(userPage);
 
     const defaultPersonaName =
-      defaultPersona.responseData.displayName ?? defaultPersona.responseData.name;
+      defaultPersona.responseData.displayName ??
+      defaultPersona.responseData.name;
     const otherPersonaName =
       otherPersona.responseData.displayName ?? otherPersona.responseData.name;
 
@@ -136,7 +145,8 @@ test.describe('Persona session persistence', () => {
     await redirectToHomePage(userPage);
 
     const defaultPersonaName =
-      defaultPersona.responseData.displayName ?? defaultPersona.responseData.name;
+      defaultPersona.responseData.displayName ??
+      defaultPersona.responseData.name;
     const otherPersonaName =
       otherPersona.responseData.displayName ?? otherPersona.responseData.name;
 
