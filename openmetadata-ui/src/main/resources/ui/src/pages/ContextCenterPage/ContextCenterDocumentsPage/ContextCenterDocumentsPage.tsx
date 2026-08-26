@@ -356,14 +356,8 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [
-    allDocuments,
-    isDocumentsLoading,
-    previewFile,
-    searchParams,
-    t,
-    setSearchParams,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');
