@@ -171,7 +171,9 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} onEdgeClick={onEdgeClick} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
 
     await waitFor(() => {
       expect(currentPane).toBeInTheDocument();
@@ -200,7 +202,7 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    fireEvent(currentPane!, clickEvent);
+    fireEvent(currentPane, clickEvent);
 
     await waitFor(() => {
       expect(mockGetEdgeAtPoint).toHaveBeenCalled();
@@ -243,7 +245,9 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+    (document.querySelector('.react-flow__pane') as HTMLElement).dispatchEvent(
+      clickEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeClick).toHaveBeenCalledWith(
@@ -284,7 +288,10 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    fireEvent(document.querySelector('.react-flow__pane')!, moveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      moveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalled();
@@ -300,7 +307,10 @@ describe('CanvasEdgeRenderer', () => {
 
     const leaveEvent = new MouseEvent('mouseleave', { bubbles: true });
 
-    fireEvent(document.querySelector('.react-flow__pane')!, leaveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      leaveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalledWith(null);
@@ -322,7 +332,9 @@ describe('CanvasEdgeRenderer', () => {
     });
 
     await waitFor(() => {
-      document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+      (
+        document.querySelector('.react-flow__pane') as HTMLElement
+      ).dispatchEvent(clickEvent);
     });
 
     expect(onEdgeClick).not.toHaveBeenCalled();
@@ -385,9 +397,11 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
     const removeEventListenerSpy = jest.spyOn(
-      currentPane!,
+      currentPane,
       'removeEventListener'
     );
 

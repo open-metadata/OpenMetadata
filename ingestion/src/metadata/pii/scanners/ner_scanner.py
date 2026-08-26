@@ -60,9 +60,15 @@ class NERScanner(BaseScanner):
 
     @staticmethod
     def get_highest_score_label(entities_score: Dict[str, StringAnalysis]) -> Tuple[str, float]:  # noqa: UP006
+        # Confidence is the tie-breaker: a weak pattern matching every row can reach the same
+        # weighted total as a strong one matching a subset, and without it the winner would be
+        # decided by whichever entity happened to be recorded first.
         top_entity = max(
             entities_score,
-            key=lambda type_: entities_score[type_].score * entities_score[type_].appearances * 0.8,
+            key=lambda type_: (
+                entities_score[type_].score * entities_score[type_].appearances * 0.8,
+                entities_score[type_].score,
+            ),
         )
         return top_entity, entities_score[top_entity].score
 
@@ -84,7 +90,9 @@ class NERScanner(BaseScanner):
           b. Each time an `Entity` appears (e.g., DATE_TIME), we store its max score and the number of appearances
         3. After gathering all the results for each row, get the `Entity` with maximum overall score
            and number of appearances. This gets computed as "score * appearances * 0.8", which can
-           be thought as the "score" times "weighted down appearances".
+           be thought as the "score" times "weighted down appearances". Equal weighted totals are
+           broken by the raw confidence, so a weak pattern matching every row does not outrank a
+           strong one matching a subset.
         4. Once we have the "top" `Entity` from that column, we assign the PII label accordingly from `NEREntity`.
         """
         logger.debug("Processing '%s'", data)
