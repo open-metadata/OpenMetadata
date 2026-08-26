@@ -33,7 +33,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   FeedbackType,
   RecognizerFeedback,
-} from '../../../generated/entity/feed/thread';
+} from '../../../generated/type/recognizerFeedback';
 import { Task } from '../../../rest/tasksAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';

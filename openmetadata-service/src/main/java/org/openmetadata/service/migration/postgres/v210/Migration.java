@@ -14,10 +14,14 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.ConversationMigration;
+import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -27,6 +31,10 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    ConversationMigration.migrate(handle, POSTGRES);
+    ConversationReferenceMigration.migrate(handle, POSTGRES);
+    refreshConversationNotificationTemplates();
+    addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
   }

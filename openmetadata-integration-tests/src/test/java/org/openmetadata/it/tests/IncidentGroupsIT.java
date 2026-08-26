@@ -72,6 +72,8 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -97,10 +99,7 @@ public class IncidentGroupsIT {
   private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
   private static final String GROUP_BY_OWNER = "owner";
   private static final String MAX_LIMIT = "1000";
-  private static final String INCIDENT_BACKFILL_END_MARKER =
-      "-- Invalidate pre-2.1 projection success records.";
-  private static final Path MIGRATION_ROOT =
-      Path.of("bootstrap", "sql", "migrations", "native", "2.1.0");
+  private static final String INCIDENT_SUMMARY_BACKFILL_PREFIX = "INSERT INTO test_case_incident";
 
   private OpenMetadataClient client;
   private Table tableA;
@@ -988,31 +987,35 @@ public class IncidentGroupsIT {
     }
   }
 
-  // Direct SQL seeding bypasses the repository's write path, so the summary projection the
-  // groups endpoint reads must be synced the way pre-existing history is at upgrade time: by
-  // the 2.1.0 backfill. Execute that section from the shipped file without also running the
-  // unrelated RDF and search post-migration operations that follow it.
+  // Direct SQL seeding bypasses the repository's write path, so sync the summary projection with
+  // the shipped 2.1.0 backfill. Parsing the migration and selecting its target statement keeps this
+  // fixture aligned with production without executing unrelated post-migration statements.
   private void syncIncidentSummary(Connection connection, boolean postgres) throws Exception {
     Path migrationFile =
-        resolveMigrationRoot()
-            .resolve(postgres ? "postgres" : "mysql")
-            .resolve("postDataMigrationSQLScript.sql");
-    String migrationScript = Files.readString(migrationFile);
-    int backfillEnd = migrationScript.indexOf(INCIDENT_BACKFILL_END_MARKER);
-    if (backfillEnd < 0) {
-      throw new IllegalStateException("Incident backfill end marker missing from " + migrationFile);
+        Path.of(
+            "bootstrap",
+            "sql",
+            "migrations",
+            "native",
+            "2.1.0",
+            postgres ? "postgres" : "mysql",
+            "postDataMigrationSQLScript.sql");
+    if (!Files.exists(migrationFile)) {
+      migrationFile = Path.of("..").resolve(migrationFile);
     }
+    Path resolvedMigrationFile = migrationFile;
+    ConnectionType connectionType = postgres ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
+    String backfill =
+        MigrationFile.parseSQLFile(resolvedMigrationFile.toFile(), connectionType).stream()
+            .filter(sql -> sql.contains(INCIDENT_SUMMARY_BACKFILL_PREFIX))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Incident summary backfill is missing from " + resolvedMigrationFile));
     try (Statement statement = connection.createStatement()) {
-      statement.executeUpdate(migrationScript.substring(0, backfillEnd));
+      statement.executeUpdate(backfill);
     }
-  }
-
-  private Path resolveMigrationRoot() {
-    Path migrationRoot = MIGRATION_ROOT;
-    if (!Files.isDirectory(migrationRoot)) {
-      migrationRoot = Path.of("..").resolve(migrationRoot).normalize();
-    }
-    return migrationRoot;
   }
 
   @Test

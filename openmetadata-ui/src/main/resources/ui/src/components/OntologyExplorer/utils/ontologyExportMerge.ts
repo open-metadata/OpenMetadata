@@ -16,6 +16,10 @@ import { OntologyExportFormat } from '../../../rest/rdfAPI';
 const RDF_ROOT_OPEN = /<rdf:RDF\b[^>]*>/i;
 const RDF_ROOT_CLOSE = /<\/rdf:RDF\s*>/i;
 
+function getMatchEnd(match: RegExpMatchArray): number | undefined {
+  return match.index === undefined ? undefined : match.index + match[0].length;
+}
+
 function mergeJsonLd(parts: string[]): string {
   const graph: unknown[] = [];
   let context: unknown;
@@ -42,7 +46,12 @@ function mergeRdfXml(parts: string[]): string {
     return parts.join('\n');
   }
 
-  const header = parts[0].slice(0, openMatch.index! + openMatch[0].length);
+  const rootContentStart = getMatchEnd(openMatch);
+  if (rootContentStart === undefined) {
+    return parts.join('\n');
+  }
+
+  const header = parts[0].slice(0, rootContentStart);
   const bodies = parts.map((part) => {
     const open = part.match(RDF_ROOT_OPEN);
     const close = part.match(RDF_ROOT_CLOSE);
@@ -50,7 +59,11 @@ function mergeRdfXml(parts: string[]): string {
       return '';
     }
 
-    return part.slice(open.index! + open[0].length, close.index).trim();
+    const bodyStart = getMatchEnd(open);
+
+    return bodyStart === undefined
+      ? ''
+      : part.slice(bodyStart, close.index).trim();
   });
 
   return `${header}\n${bodies.filter(Boolean).join('\n')}\n</rdf:RDF>`;

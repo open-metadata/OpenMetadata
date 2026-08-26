@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import {
   ConceptMappingType,
   GlossaryTerm,
@@ -113,13 +119,11 @@ describe('OntologyNodeRelationsContent', () => {
     });
 
     fireEvent.click(screen.getByTestId('add-concept-mapping'));
-    const conceptIriInput = screen
-      .getByTestId('concept-mapping-iri')
-      .querySelector('input');
+    const conceptIriInput = within(
+      screen.getByTestId('concept-mapping-iri')
+    ).getByRole('textbox');
 
-    expect(conceptIriInput).not.toBeNull();
-
-    fireEvent.change(conceptIriInput!, {
+    fireEvent.change(conceptIriInput, {
       target: { value: 'https://example.com/new' },
     });
     fireEvent.click(screen.getByTestId('save-concept-mapping'));

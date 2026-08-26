@@ -14,10 +14,14 @@
 package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.ConversationMigration;
+import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -27,6 +31,10 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    ConversationMigration.migrate(handle, MYSQL);
+    ConversationReferenceMigration.migrate(handle, MYSQL);
+    refreshConversationNotificationTemplates();
+    addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
   }

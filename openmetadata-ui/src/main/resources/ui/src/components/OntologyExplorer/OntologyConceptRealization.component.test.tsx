@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import {
   AssetRealization,
   RealizationRole,
@@ -141,7 +147,9 @@ describe('OntologyConceptRealization', () => {
 
     fireEvent.click(screen.getByTestId('add-realization'));
     fireEvent.change(
-      screen.getByTestId('realization-asset-input').querySelector('input')!,
+      within(screen.getByTestId('realization-asset-input')).getByRole(
+        'textbox'
+      ),
       { target: { value: 'fact' } }
     );
 
