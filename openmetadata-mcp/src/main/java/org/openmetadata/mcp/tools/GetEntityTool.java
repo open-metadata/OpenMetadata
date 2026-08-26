@@ -243,7 +243,7 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> params,
       String entityType,
       String fqn) {
-    List<String> includes = McpParams.getStringList(params, INCLUDE_PARAM);
+    List<String> includes = McpParams.getStringList(params, INCLUDE_PARAM).stream().distinct().toList();
     if (includes.size() == 1 && includes.contains(INCLUDE_CONTENT)) {
       return readContentOnly(authorizer, securityContext, params, entityType, fqn);
     }
