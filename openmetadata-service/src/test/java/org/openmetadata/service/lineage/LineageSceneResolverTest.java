@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.lineage.LineageGraphConfiguration;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class LineageSceneResolverTest {
@@ -567,6 +568,13 @@ class LineageSceneResolverTest {
 
     assertNotEquals(shallow, deeperUpstream);
     assertNotEquals(shallow, deeperDownstream);
+  }
+
+  @Test
+  void sceneCacheTreatsNullKeyAsMiss() {
+    LineageSceneCache cache = new LineageSceneCache(LineageGraphConfiguration.getDefault());
+
+    assertTrue(cache.get(null).isEmpty());
   }
 
   @Test

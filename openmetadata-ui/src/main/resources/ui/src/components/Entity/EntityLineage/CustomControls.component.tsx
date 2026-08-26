@@ -471,11 +471,13 @@ const CustomControls: FC<{
             </Tabs>
           )}
 
-          <LineageTimeFilter
-            endTime={timeFilter?.endTime}
-            startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
-          />
+          {activeTab === 'impact_analysis' && (
+            <LineageTimeFilter
+              endTime={timeFilter?.endTime}
+              startTime={timeFilter?.startTime}
+              onChange={setTimeFilter}
+            />
+          )}
           {lineageEditButton}
           <Tooltip
             placement="top"

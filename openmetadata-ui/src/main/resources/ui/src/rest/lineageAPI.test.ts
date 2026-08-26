@@ -23,6 +23,7 @@ import {
   exportLineageByEntityCountAsync,
   getLineageByEntityCount,
   getLineageDataByFQN,
+  getLineageEdgeDetails,
   getLineagePagingData,
   getLineageScene,
 } from './lineageAPI';
@@ -173,5 +174,13 @@ describe('lineageAPI', () => {
         size: 50,
       },
     });
+  });
+
+  it('getLineageEdgeDetails encodes entity IDs as URL path segments', async () => {
+    await getLineageEdgeDetails('source/id?version=1', 'target#id');
+
+    expect(mockGet).toHaveBeenCalledWith(
+      'lineage/getLineageEdge/source%2Fid%3Fversion%3D1/target%23id'
+    );
   });
 });

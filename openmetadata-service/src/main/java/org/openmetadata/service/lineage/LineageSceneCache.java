@@ -43,7 +43,7 @@ public final class LineageSceneCache {
   }
 
   public Optional<LineageScene> get(Key key) {
-    return enabled ? Optional.ofNullable(cache.getIfPresent(key)) : Optional.empty();
+    return enabled && key != null ? Optional.ofNullable(cache.getIfPresent(key)) : Optional.empty();
   }
 
   public void put(Key key, LineageScene scene) {

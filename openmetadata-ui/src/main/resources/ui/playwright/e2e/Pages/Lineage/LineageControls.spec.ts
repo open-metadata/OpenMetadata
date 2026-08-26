@@ -177,52 +177,24 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
 test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Data Observability Layer', () => {
-    test.skip(
-      true,
-      'Data observability overlays are not rendered by hierarchical lineage scenes.'
-    );
-
     test.beforeEach(async ({ page }) => {
       await table.visitEntityPage(page);
       await visitLineageTab(page);
       await performZoomOut(page);
     });
 
-    test('Verify DQ layer toggle activation', async ({ page }) => {
+    test('Verify unsupported DQ overlay is hidden in scene mode', async ({
+      page,
+    }) => {
       await page.getByTestId('lineage-layer-btn').click();
 
-      const observabilityBtn = page.getByTestId(
-        'lineage-layer-observability-btn'
-      );
-      await expect(observabilityBtn).toBeVisible();
-
-      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
-
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
-
-      await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).toHaveAttribute('data-selected');
-    });
-
-    test('Verify DQ layer toggle off removes highlights', async ({ page }) => {
-      await page.getByTestId('lineage-layer-btn').click();
-
-      const observabilityBtn = page.getByTestId(
-        'lineage-layer-observability-btn'
-      );
-
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
-
-      await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).toHaveAttribute('data-selected');
-
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
-
-      await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
+      await expect(
+        page.getByTestId('lineage-layer-observability-btn')
+      ).not.toBeVisible();
+      await expect(
+        page.getByTestId('lineage-layer-lens-service')
+      ).toBeVisible();
+      await expect(page.getByTestId('lineage-layer-band-FIELD')).toBeVisible();
     });
   });
 

@@ -1014,10 +1014,6 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify LineageSearchSelect in lineage mode', async ({ page }) => {
-    test.skip(
-      true,
-      'The hierarchical map uses its scene search to focus nodes instead of the classic entity drawer search.'
-    );
     const searchSelect = page.getByTestId('lineage-search');
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
@@ -1029,6 +1025,7 @@ test.describe('Lineage Filters', () => {
       .fill(topicEntity.entity.name);
 
     const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await page.getByTestId(`option-${topicFqn}`).click();
 
     await page.locator('.lineage-entity-panel').waitFor();
@@ -1048,11 +1045,6 @@ test.describe('Lineage Filters', () => {
     await page.locator('.lineage-entity-panel').waitFor({
       state: 'hidden',
     });
-
-    await rearrangeNodes(page);
-    await fitToScreen(page);
-
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
   });
 
   test.describe('Verify filters for Impact Analysis', () => {

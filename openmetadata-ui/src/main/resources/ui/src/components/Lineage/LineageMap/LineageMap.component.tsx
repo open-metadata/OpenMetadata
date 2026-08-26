@@ -77,6 +77,7 @@ import { LineageLayer } from '../../../generated/settings/settings';
 import { LineageDetails } from '../../../generated/type/entityLineage';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import type { LineageSceneFocus } from '../../../rest/lineageAPI';
 import {
   getLineageEdgeDetails,
   getLineageScene,
@@ -100,6 +101,7 @@ import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapp
 import { LineageNodeType, LineageProps } from '../Lineage.interface';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
+import type { LineageSceneRequest } from './LineageMap.utils';
 import {
   buildLineagePathHighlightIndex,
   getBandLabelKey,
@@ -192,12 +194,13 @@ const SCENE_LAYOUT_OPTIONS: Record<LineageBand, LayoutOptions> = {
   },
 };
 
-interface SceneRequest {
-  lens: LineageLens;
-  band: LineageBand;
-  focusFqn?: string;
-  entityType?: string;
-}
+type SceneRequest = LineageSceneRequest;
+
+const getSceneFocus = (
+  focusFqn?: string,
+  entityType?: string
+): LineageSceneFocus =>
+  focusFqn && entityType ? { focusFqn, entityType } : {};
 
 interface SceneFlowNodeData {
   node: LineageNodeType;
@@ -353,8 +356,10 @@ const isDeeperBand = (currentBand: LineageBand, nextBand: LineageBand) =>
 
 const isSceneNodeDrillable = (
   node?: LineageSceneNode
-): node is LineageSceneNode =>
-  Boolean(node?.isExpandable && node.fullyQualifiedName);
+): node is LineageSceneNode & {
+  fullyQualifiedName: string;
+  entityType: string;
+} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
 
 export const getSceneCacheKey = (
   request: SceneRequest,
@@ -820,17 +825,18 @@ const LineageMapCanvas = ({
       : isPlatformLineage
       ? LineageBand.Layer
       : LineageBand.Asset;
+  const initialFocusFqn =
+    typeof queryParams.lineageFocus === 'string'
+      ? queryParams.lineageFocus
+      : entity?.fullyQualifiedName;
+  const initialFocusEntityType =
+    typeof queryParams.lineageEntityType === 'string'
+      ? queryParams.lineageEntityType
+      : entityType;
   const [request, setRequest] = useState<SceneRequest>({
     lens: initialLens,
     band: initialBand,
-    focusFqn:
-      typeof queryParams.lineageFocus === 'string'
-        ? queryParams.lineageFocus
-        : entity?.fullyQualifiedName,
-    entityType:
-      typeof queryParams.lineageEntityType === 'string'
-        ? queryParams.lineageEntityType
-        : entityType,
+    ...getSceneFocus(initialFocusFqn, initialFocusEntityType),
   });
   const [scene, setScene] = useState<LineageScene>();
   const [loading, setLoading] = useState(true);
@@ -977,14 +983,15 @@ const LineageMapCanvas = ({
   }, [deleted]);
 
   const getOriginRequestTarget = useCallback(
-    (currentScene?: LineageScene) => ({
-      entityType: isPlatformLineage
-        ? undefined
-        : currentScene?.originEntityType ?? entityType,
-      focusFqn: isPlatformLineage
-        ? undefined
-        : currentScene?.originFqn ?? entity?.fullyQualifiedName,
-    }),
+    (currentScene?: LineageScene): LineageSceneFocus =>
+      getSceneFocus(
+        isPlatformLineage
+          ? undefined
+          : currentScene?.originFqn ?? entity?.fullyQualifiedName,
+        isPlatformLineage
+          ? undefined
+          : currentScene?.originEntityType ?? entityType
+      ),
     [entity?.fullyQualifiedName, entityType, isPlatformLineage]
   );
 
@@ -1406,8 +1413,7 @@ const LineageMapCanvas = ({
       updateRequest({
         lens: scene.lens,
         band,
-        focusFqn: originTarget.focusFqn,
-        entityType: originTarget.entityType,
+        ...originTarget,
       });
     },
     [getOriginRequestTarget, pickCenterExpandableNode, scene, updateRequest]
@@ -1501,7 +1507,7 @@ const LineageMapCanvas = ({
   );
 
   const handleRecenterOrigin = useCallback(() => {
-    if (!scene?.originFqn) {
+    if (!scene?.originFqn || !scene.originEntityType) {
       fitViewWithoutSemanticZoom();
 
       return;

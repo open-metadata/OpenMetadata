@@ -20,6 +20,7 @@ import {
   LineageSceneBreadcrumb,
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
+import type { LineageSceneFocus } from '../../../rest/lineageAPI';
 
 const ASSET_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Table,
@@ -194,12 +195,10 @@ export const getBandLabelKey = (band: LineageBand) => {
   }
 };
 
-export interface LineageSceneRequest {
+export type LineageSceneRequest = LineageSceneFocus & {
   lens: LineageLens;
   band: LineageBand;
-  focusFqn?: string;
-  entityType?: string;
-}
+};
 
 export interface LineagePathEdge {
   id: string;
@@ -521,7 +520,7 @@ export const getBreadcrumbSceneRequest = (
   scene: LineageScene,
   breadcrumb: LineageSceneBreadcrumb
 ): LineageSceneRequest => {
-  if (!breadcrumb.fullyQualifiedName) {
+  if (!breadcrumb.fullyQualifiedName || !breadcrumb.entityType) {
     return {
       lens: scene.lens,
       band: LineageBand.Layer,
@@ -544,7 +543,11 @@ export const getBreadcrumbSceneRequest = (
 export const getParentSceneRequest = (
   scene: LineageScene
 ): LineageSceneRequest | undefined => {
-  if (scene.band === LineageBand.Field && scene.focusFqn) {
+  if (
+    scene.band === LineageBand.Field &&
+    scene.focusFqn &&
+    scene.focusEntityType
+  ) {
     return {
       lens: scene.lens,
       band: LineageBand.Asset,

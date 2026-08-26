@@ -115,6 +115,23 @@ export const getLineageDataByFQN = async ({
   return response.data;
 };
 
+export type LineageSceneFocus =
+  | {
+      focusFqn: string;
+      entityType: string;
+    }
+  | {
+      focusFqn?: never;
+      entityType?: never;
+    };
+
+export type LineageSceneRequest = LineageSceneFocus & {
+  lens: LineageLens;
+  band: LineageBand;
+  config?: LineageConfig;
+  queryFilter?: string;
+};
+
 export const getLineageScene = async ({
   focusFqn,
   entityType,
@@ -122,14 +139,7 @@ export const getLineageScene = async ({
   band,
   config,
   queryFilter,
-}: {
-  focusFqn?: string;
-  entityType?: string;
-  lens: LineageLens;
-  band: LineageBand;
-  config?: LineageConfig;
-  queryFilter?: string;
-}) => {
+}: LineageSceneRequest) => {
   const {
     upstreamDepth = 1,
     downstreamDepth = 1,
@@ -156,8 +166,10 @@ export const getLineageEdgeDetails = async (
   fromId: string,
   toId: string
 ): Promise<LineageDetails> => {
+  const encodedFromId = encodeURIComponent(fromId);
+  const encodedToId = encodeURIComponent(toId);
   const response = await APIClient.get<{ edge: LineageDetails }>(
-    `lineage/getLineageEdge/${fromId}/${toId}`
+    `lineage/getLineageEdge/${encodedFromId}/${encodedToId}`
   );
 
   return response.data.edge;

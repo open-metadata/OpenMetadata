@@ -242,6 +242,12 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('CustomControls', () => {
+  beforeEach(() => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=lineage&depth=3&dir=downstream',
+    }));
+  });
+
   it('renders all main control buttons', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -261,6 +267,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
+    expect(screen.queryByTestId('lineage-time-filter')).not.toBeInTheDocument();
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
@@ -273,6 +280,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-time-filter')).toBeInTheDocument();
   });
 
   it('Not shows SearchBar when in impact analysis mode & onSearchValueChange is not provided', () => {
@@ -331,7 +339,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const exportButton = screen.getByLabelText('label.export-as-type');
+    const exportButton = screen.getByLabelText('label.export');
     fireEvent.click(exportButton);
 
     expect(mockOnExportClick).toHaveBeenCalled();

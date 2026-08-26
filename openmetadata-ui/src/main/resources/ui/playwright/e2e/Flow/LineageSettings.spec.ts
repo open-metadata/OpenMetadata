@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Request } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -237,45 +237,14 @@ test.describe.serial(
       });
     });
 
-    test('Verify lineage time filter and tab switch reuse loaded graph', async ({
+    test('Verify lineage time filter availability across tabs', async ({
       page,
     }) => {
-      test.skip(
-        true,
-        'Time-window filtering is not part of the hierarchical scene request contract.'
-      );
       await table.visitEntityPage(page);
       await visitLineageTab(page);
       await verifyNodePresent(page, table);
 
-      const lineageTimeFilteredResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-
-        return (
-          url.pathname.endsWith('/api/v1/lineage/getLineage') &&
-          url.searchParams.has('startTime') &&
-          url.searchParams.has('endTime')
-        );
-      });
-
-      await page.getByTestId('lineage-time-filter').click();
-      await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
-
-      const response = await lineageTimeFilteredResponse;
-      const responseUrl = new URL(response.url());
-      const startTime = responseUrl.searchParams.get('startTime');
-      const endTime = responseUrl.searchParams.get('endTime');
-
-      expect(Number(startTime)).toBeLessThan(Number(endTime));
-      await expect(page.getByTestId('lineage-time-filter')).toContainText(
-        'Last 7 days'
-      );
-
-      const isLineageFetchRequest = (request: Request) => {
-        const url = new URL(request.url());
-
-        return url.pathname.endsWith('/api/v1/lineage/getLineage');
-      };
+      await expect(page.getByTestId('lineage-time-filter')).not.toBeVisible();
 
       const lineageTabPanel = page.getByRole('tabpanel', { name: 'Lineage' });
 
@@ -284,15 +253,13 @@ test.describe.serial(
         .click();
       await expect(page).toHaveURL(/mode=impact_analysis/);
       await waitForAllLoadersToDisappear(page);
-
-      const lineageFetchAfterViewSwitch = page
-        .waitForRequest(isLineageFetchRequest, { timeout: 1000 })
-        .then(() => true)
-        .catch(() => false);
+      await expect(page.getByTestId('lineage-time-filter')).toBeVisible();
 
       await lineageTabPanel.getByRole('tab', { name: 'Lineage' }).click();
       await expect(page).not.toHaveURL(/mode=impact_analysis/);
-      expect(await lineageFetchAfterViewSwitch).toBe(false);
+      await waitForAllLoadersToDisappear(page);
+      await expect(page.getByTestId('lineage-time-filter')).not.toBeVisible();
+      await verifyNodePresent(page, table);
     });
 
     test('Verify lineage settings for PipelineViewMode as Edge', async ({
