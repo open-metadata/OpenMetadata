@@ -16,7 +16,16 @@ export const Popover = (props: PopoverProps) => {
       // never runs — leaving the whole app invisible to the accessibility
       // tree (and to role-based queries) while looking perfectly normal.
       isNonModal
+      // Mark the non-modal listbox as a top layer. Without this, when the select
+      // lives inside a dismissable overlay (SlideoutMenu drawer / centered Modal)
+      // that overlay treats an option click as an interaction *outside* itself
+      // and its focus trap reclaims focus from the portaled listbox — dismissing
+      // the drawer or flickering the listbox closed mid-open (options never go
+      // "stable"). react-aria honors this marker in both paths: useInteractOutside
+      // (no ancestor dismiss) and FocusScope (no focus reclaim). It only auto-sets
+      // it for toasts, so non-modal popovers must opt in explicitly.
       containerPadding={0}
+      data-react-aria-top-layer="true"
       offset={4}
       placement="bottom"
       {...props}
