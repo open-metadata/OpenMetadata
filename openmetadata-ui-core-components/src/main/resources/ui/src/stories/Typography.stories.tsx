@@ -221,21 +221,26 @@ export const DomStructure: StoryObj = {
   render: () => (
     <div style={{ display: 'grid', gap: 16, maxWidth: 520 }}>
       <div>
-        <code>as=&quot;span&quot;</code> → <code>&lt;span class=&quot;prose&quot;&gt;</code>
+        <code>as=&quot;span&quot;</code> →{' '}
+        <code>&lt;span class=&quot;prose&quot;&gt;</code>
         <div>
           <Typography>no wrapper</Typography>
         </div>
       </div>
       <div>
-        <code>as=&quot;div&quot;</code> → <code>&lt;div class=&quot;prose&quot;&gt;</code>
+        <code>as=&quot;div&quot;</code> →{' '}
+        <code>&lt;div class=&quot;prose&quot;&gt;</code>
         <div>
           <Typography as="div">no wrapper</Typography>
         </div>
       </div>
       <div>
-        <code>as=&quot;p&quot;</code> → <code>&lt;div class=&quot;prose&quot;&gt;&lt;p&gt;</code>
+        <code>as=&quot;p&quot;</code> →{' '}
+        <code>&lt;div class=&quot;prose&quot;&gt;&lt;p&gt;</code>
         <div>
-          <Typography as="p">wrapper kept — .prose p sets its margins</Typography>
+          <Typography as="p">
+            wrapper kept — .prose p sets its margins
+          </Typography>
         </div>
       </div>
       <div>
@@ -265,10 +270,9 @@ export const InlineFlow: StoryObj = {
   },
   render: () => (
     <p style={{ maxWidth: 460 }}>
-      Updated by{' '}
-      <Typography className="tw:font-semibold">Alice</Typography> in{' '}
-      <Typography className="tw:font-semibold">Sales Pipeline</Typography> —
-      all three fragments share one line.
+      Updated by <Typography className="tw:font-semibold">Alice</Typography> in{' '}
+      <Typography className="tw:font-semibold">Sales Pipeline</Typography> — all
+      three fragments share one line.
     </p>
   ),
 };
