@@ -369,6 +369,8 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     testCaseFormBody
   );
 
+  const closeDrawerRef = useRef<() => void>(() => undefined);
+
   const formBody = (
     <HookForm
       form={form}
@@ -386,8 +388,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       </div>
     </HookForm>
   );
-
-  const closeDrawerRef = useRef<() => void>(() => undefined);
 
   // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
   // funnels through the base drawer's onClose, so the parent is notified

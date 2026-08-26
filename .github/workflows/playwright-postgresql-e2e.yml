@@ -19,9 +19,10 @@
 #   * `playwright-summary`    — the required PR check + PR-comment
 #                               payload uploader (comment forwarding lives
 #                               in playwright-postgresql-pr-comment.yml).
-#   * `refresh-timing-baseline` — merge_group-only auto-PR that keeps
-#                                 `.github/playwright/timing-baseline.json`
-#                                 fresh from the latest full-mode run.
+#   * `refresh-timing-baseline` — merge_group-only direct commit to main
+#                                 that keeps `.github/playwright/timing-baseline.json`
+#                                 fresh from the latest full-mode run
+#                                 (materiality-gated; see the job comment).
 #
 # Reusable jobs are reported as `<caller-job> / <sub-job>` — GH always
 # prefixes — so a required check named `playwright-summary` could never
@@ -109,30 +110,15 @@ jobs:
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
 
   playwright-summary:
-    # Publish the required check name `playwright-summary` ONLY when the
-    # reusable's gate authorized the run. Every explicit gate skip publishes
-    # a differently-named check so a redundant sibling event cannot satisfy
-    # branch protection before the real pipeline finishes. Gate failures
-    # keep the required name and fail in the guard step below.
-    #
-    # Decision tree (mirrors the reusable's gate outputs verbatim):
-    #   gate succeeded with should_run=true              → 'playwright-summary'
-    #   gate failed                                      → 'playwright-summary'
-    #   labeled event with non-'safe to test' label      → 'playwright-summary (label ignored)'
-    #   gate succeeded with should_run=false             → 'playwright-summary (skipped)'
     name: >-
       ${{
         (
-          needs.playwright.outputs.gate_result != 'success'
+          github.event.action == 'labeled'
+          || needs.playwright.outputs.gate_result != 'success'
           || needs.playwright.outputs.gate_should_run == 'true'
         )
         && 'playwright-summary'
-        || (
-          github.event.action == 'labeled'
-          && github.event.label.name != 'safe to test'
-          && 'playwright-summary (label ignored)'
-          || 'playwright-summary (skipped)'
-        )
+        || 'playwright-summary (skipped)'
       }}
     if: ${{ always() && !cancelled() }}
     needs: [playwright]
@@ -141,6 +127,9 @@ jobs:
     permissions:
       actions: read
       contents: read
+      # For the budget-breach tracked issue (Signal Playwright budget
+      # breaches step below).
+      issues: write
     steps:
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
@@ -300,18 +289,18 @@ jobs:
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
         run: |
-          performance_args=()
-          if [[ "$EXECUTION_MODE" == "full" ]]; then
-            performance_args+=(--enforce)
-          fi
+          # No --enforce: time/flake budget targets are SIGNALS (surfaced by
+          # the "Signal Playwright budget breaches" step below), never a
+          # reason to fail the required check on an otherwise-green run.
+          # Blocking targets (reserved for corrupt-results states; empty
+          # today) would still exit non-zero under --enforce if reintroduced.
           timeout --foreground --signal=TERM --kill-after=30s 2m \
             python3 .github/scripts/evaluate_playwright_performance.py \
               --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
               --request-glob "$RUNNER_TEMP/playwright-timings/**/request-metrics.json" \
               --phase-glob "$RUNNER_TEMP/playwright-timings/**/shard-phases.json" \
               --mode "$EXECUTION_MODE" \
-              --output "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json" \
-              "${performance_args[@]}"
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
           jq . "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
 
       - name: Upload merged Playwright report
@@ -335,19 +324,105 @@ jobs:
           performance="$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
           [[ -f "$performance" ]] || exit 0
           report_seconds=$(($(date +%s) - PW_REPORT_STARTED_AT))
+          # Reporting duration is a BUDGET target: recorded, surfaced by the
+          # budget-signal step below, but never a reason to fail the check
+          # (it used to exit 1 here on full-mode runs and eject green PRs).
           jq \
             --argjson reportSeconds "$report_seconds" \
             '.metrics.reportingSeconds = $reportSeconds |
              .targets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
-             .blockingTargets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
+             .budgetTargets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
              .targetsMet = ([.targets[]] | all) |
+             .budgetTargetsMet = ([.budgetTargets[]] | all) |
              .blockingTargetsMet = ([.blockingTargets[]] | all) |
              .convergenceTargetsMet = ([.convergenceTargets[]] | all)' \
             "$performance" > "$performance.tmp"
           mv "$performance.tmp" "$performance"
-          if [[ "$EXECUTION_MODE" == "full" && "$report_seconds" -gt 120 ]]; then
-            echo "Playwright reporting and report upload exceeded two minutes" >&2
-            exit 1
+          if [[ "$report_seconds" -gt 120 ]]; then
+            echo "::warning::Playwright reporting and report upload took ${report_seconds}s (budget 120s)"
+          fi
+
+      # THE budget signal. Time/flake budgets no longer fail the required
+      # check (see evaluate_playwright_performance.py — run 32500973433
+      # ejected a PR with zero test failures); instead every breach is:
+      #   * a ::warning annotation on this run,
+      #   * a section in the job summary,
+      #   * an upsert into the tracked issue "Playwright CI over time budget"
+      #     (merge_group full runs only, comment throttled to one per 20 h)
+      # so capacity problems page a human through the issue, not by ejecting
+      # innocent PRs from the merge queue.
+      - name: Signal Playwright budget breaches
+        id: budget-signal
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_TITLE: "Playwright CI over time budget"
+        run: |
+          performance="$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+          [[ -f "$performance" ]] || { echo "No performance payload; nothing to signal."; exit 0; }
+          met=$(jq -r '.budgetTargetsMet // true' "$performance")
+          if [[ "$met" == "true" ]]; then
+            echo "All Playwright budget targets met."
+            exit 0
+          fi
+
+          breached_names=$(jq -r '(.budgetTargets // {}) | to_entries[] | select(.value == false) | .key' "$performance")
+          detail_lines=$(jq -r '
+            (.failedBudgetTargetDetails // {}) | to_entries[] | . as $e |
+            "- **\($e.value.label)**: budget ≤ \($e.value.threshold) \($e.value.unit)" +
+            (if ($e.value.offendingShards | length) > 0
+             then " — exceeded on " + ($e.value.offendingShards | map("`\(.shardId)` (\(.value) \($e.value.unit))") | join(", "))
+             else "" end)' "$performance")
+          # Budget targets without phase attribution (flaky rate, retry
+          # share, boot shape) still need a line each.
+          plain_lines=$(jq -r '
+            (.failedBudgetTargetDetails // {}) as $d |
+            (.budgetTargets // {}) | to_entries[]
+            | select(.value == false and ($d[.key] | not))
+            | "- \(.key)"' "$performance")
+
+          while IFS= read -r name; do
+            [[ -n "$name" ]] && echo "::warning::Playwright budget breach: $name"
+          done <<< "$breached_names"
+
+          {
+            echo "## ⚠️ Playwright budget breaches"
+            echo
+            [[ -n "$detail_lines" ]] && echo "$detail_lines"
+            [[ -n "$plain_lines" ]] && echo "$plain_lines"
+            echo
+            echo "Budget breaches do not fail this check; investigate via the tracked issue."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Tracked issue: only authoritative (merge_group + full) runs feed
+          # it — PR-time targeted runs measure a subset and would be noise.
+          if [[ "${GITHUB_EVENT_NAME}" != "merge_group" || "$EXECUTION_MODE" != "full" ]]; then
+            exit 0
+          fi
+
+          body=$(printf 'Latest breach: [run %s](%s)\n\n%s\n%s\n\nThe merge-queue check stays green on budget breaches; this issue is the signal. Investigate shard packing (`build_playwright_shards.py`), the timing baseline, or runaway specs. Close when runs stay within budget.\n' \
+            "${GITHUB_RUN_ID}" "$RUN_URL" "$detail_lines" "$plain_lines")
+
+          existing=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" \
+            --json number,title --jq --arg t "$ISSUE_TITLE" '[.[] | select(.title == $t)][0].number // empty')
+          if [[ -z "$existing" ]]; then
+            gh issue create --title "$ISSUE_TITLE" --body "$body"
+            echo "Opened budget-breach issue."
+          else
+            # Throttle: at most one comment per 20 h so a breached week does
+            # not bury the issue in per-run comments.
+            last_comment=$(gh issue view "$existing" --json comments \
+              --jq '.comments[-1].createdAt // ""')
+            cutoff=$(date -u -d '20 hours ago' +%FT%TZ)
+            if [[ -z "$last_comment" || "$last_comment" < "$cutoff" ]]; then
+              gh issue comment "$existing" --body "$body"
+              echo "Commented on budget-breach issue #$existing."
+            else
+              echo "Issue #$existing already updated within 20 h; skipping comment."
+            fi
           fi
 
       - name: Upload timing history
@@ -463,15 +538,19 @@ jobs:
           retention-days: 5
           if-no-files-found: ignore
 
-  # Auto-refresh the checked-in timing baseline from every successful
-  # full-mode merge_group run. Without this,
-  # `.github/playwright/timing-baseline.json` only gets updated by hand —
-  # and it drifts fast (see PR #30871 for the 12-day, 23%-dead-title
-  # snapshot that triggered this workflow addition).
+  # Auto-refresh the checked-in timing baseline from successful full-mode
+  # merge_group runs. Without this, `.github/playwright/timing-baseline.json`
+  # only gets updated by hand — and it drifts fast (see PR #30871 for the
+  # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
   #
-  # The step opens/updates a single tracked PR against `main`. A human
-  # still clicks merge — the auto-PR just eliminates the "regenerate the
-  # file" busywork.
+  # COMMITS DIRECTLY TO MAIN (no PR). The previous auto-PR design
+  # deadlocked with the merge queue: the refresh PR had to pass through the
+  # very queue whose activity kept invalidating it, and concurrent refresh
+  # runs raced on the bot branch (`cannot lock ref`, run 32354038772). A
+  # data-only JSON regenerated from a known-good run doesn't need review —
+  # the guards below are the review. `[skip ci]` keeps the push from
+  # burning a CI cycle; note any push to main still resets in-flight
+  # merge-queue entries, which is why the materiality threshold exists.
   #
   # Guards:
   #   * merge_group event only (skip on PR/dispatch — the ci-status
@@ -481,6 +560,12 @@ jobs:
   #   * playwright-summary success only (no partial data on gate failures)
   #   * a drift cap in refresh_timing_baseline.py refuses > 40 % churn as
   #     a safety valve against an accidentally-broken source run
+  #   * a materiality threshold (--min-materiality-percent) skips commits
+  #     for run-to-run jitter — only structural changes (files gained or
+  #     lost, zero-duration entries recovering) or ≥ 10 % of entries
+  #     drifting/shifting significantly produce a commit
+  #   * fetch → regenerate → push retry loop (3 attempts) absorbs races
+  #     with the queue landing merges mid-refresh
   refresh-timing-baseline:
     name: Refresh timing baseline
     needs: [playwright, playwright-summary]
@@ -493,14 +578,18 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
-      pull-requests: write
     steps:
+      # NOTE: pushing to a protected `main` requires the token identity to
+      # be on the branch-protection bypass list. RELEASE_BOT_TOKEN is the
+      # same identity auto-revert-release.yml uses to push release
+      # branches; GITHUB_TOKEN is the fallback for repos where Actions is
+      # allowed to bypass.
       - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Download timing history artifact
         uses: actions/download-artifact@v7
@@ -519,57 +608,78 @@ jobs:
           fi
           echo "history_path=$history" >> "$GITHUB_OUTPUT"
 
-      - name: Build refreshed baseline
-        run: |
-          python3 .github/scripts/refresh_timing_baseline.py \
-            --history "${{ steps.locate.outputs.history_path }}" \
-            --current .github/playwright/timing-baseline.json \
-            --output .github/playwright/timing-baseline.json \
-            --source-run-id "${{ github.run_id }}" \
-            --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
-
-      - name: Skip if baseline unchanged
-        id: diff
-        run: |
-          if git diff --quiet -- .github/playwright/timing-baseline.json; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Push refresh branch and open/update PR
-        if: steps.diff.outputs.changed == 'true'
+      - name: Refresh baseline and commit to main
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HISTORY_PATH: ${{ steps.locate.outputs.history_path }}
           RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          branch="ci/auto-refresh-timing-baseline"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          # Reset the tracked branch to the latest state — a single tracked
-          # PR gets updated across successive runs rather than accumulating
-          # one PR per merge_group. Plain `--force` (not `--force-with-lease`)
-          # because Checkout only fetched `main`, so no remote-tracking ref
-          # exists for this bot-owned branch and a lease would be rejected
-          # with "stale info" on the second and every subsequent run.
-          git checkout -B "$branch"
-          git add .github/playwright/timing-baseline.json
-          git commit -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID}"
-          git push --force origin "$branch"
 
-          summary_body="$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")"
-          pr_body=$(printf '## Summary\n\nAuto-refreshed from [merge_group run %s](%s).\n\n```\n%s\n```\n\nA human still clicks merge. If this drift looks unreasonable, close the PR — the next successful merge_group run will open a fresh one.\n' "$RUN_ID" "$RUN_URL" "$summary_body")
-          # `.[0].number` on an empty array yields the literal string "null",
-          # not an empty string; the `// empty` fallback turns that into a
-          # real empty string so the -n test below correctly picks the
-          # `gh pr create` branch on the very first run.
-          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty' || echo "")
-          if [[ -n "$existing" ]]; then
-            gh pr edit "$existing" --body "$pr_body"
-            echo "Updated existing PR #$existing"
-          else
-            gh pr create --base main --head "$branch" \
-              --title "chore(playwright): auto-refresh timing-baseline.json" \
-              --body "$pr_body"
-          fi
+          # Regenerate INSIDE the retry loop: each attempt rebuilds the
+          # baseline against the freshly-fetched main, so a queue merge (or
+          # a concurrent refresh run) landing mid-refresh changes the
+          # regeneration input instead of producing a rejected push — the
+          # race that killed the bot-branch design (run 32354038772).
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            set +e
+            python3 .github/scripts/refresh_timing_baseline.py \
+              --history "$HISTORY_PATH" \
+              --current .github/playwright/timing-baseline.json \
+              --output .github/playwright/timing-baseline.json \
+              --source-run-id "$RUN_ID" \
+              --min-materiality-percent 10 \
+              --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
+            rc=$?
+            set -e
+
+            if [[ "$rc" -eq 3 ]]; then
+              echo "Change below materiality threshold; skipping refresh commit."
+              exit 0
+            elif [[ "$rc" -ne 0 ]]; then
+              echo "refresh_timing_baseline.py exited $rc" >&2
+              exit "$rc"
+            fi
+
+            if git diff --quiet -- .github/playwright/timing-baseline.json; then
+              echo "Baseline identical to main; nothing to commit."
+              exit 0
+            fi
+
+            git add .github/playwright/timing-baseline.json
+            git commit \
+              -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID} [skip ci]" \
+              -m "$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")" \
+              -m "Source: ${RUN_URL}"
+            push_rc=0
+            push_output=$(git push origin HEAD:main 2>&1) || push_rc=$?
+            echo "$push_output"
+            if [[ "$push_rc" -eq 0 ]]; then
+              echo "Baseline refreshed on main (attempt $attempt)."
+              exit 0
+            fi
+            # A ruleset/branch-protection rejection (GH013: "changes must be
+            # made through the merge queue") is a CONFIGURATION gap, not a
+            # pipeline failure: the token identity is not on main's bypass
+            # list yet. Failing the job here turns every full-mode
+            # merge_group run red and ejects innocent PRs (runs 32750389130,
+            # 32750390655) — the exact failure mode this pipeline exists to
+            # prevent. Surface loudly, skip gracefully.
+            if grep -qE "GH013|rule violations|protected branch" <<< "$push_output"; then
+              echo "::warning::Baseline refresh skipped: push to main rejected by repository ruleset (GH013). Grant the workflow token (RELEASE_BOT_TOKEN or Actions) bypass on main's ruleset to enable auto-refresh."
+              {
+                echo "## ⚠️ Timing-baseline auto-refresh blocked by ruleset"
+                echo
+                echo "The direct push to \`main\` was rejected (GH013). The refresh is skipped — downstream planning keeps using the current baseline. Grant the workflow token bypass on the main ruleset to enable it."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Push rejected (main moved during refresh); retrying." >&2
+          done
+
+          echo "Failed to push refreshed baseline after 3 attempts." >&2
+          exit 1

@@ -32,6 +32,9 @@ const CollapseHeader = ({
 }: CollapseHeaderProps) => {
   const { t } = useTranslation();
 
+  const getPopupContainer = (triggerNode: HTMLElement) =>
+    triggerNode.parentElement ?? document.body;
+
   return (
     <div className="d-flex items-center justify-between">
       <Typography.Text className="text-md font-semibold">
@@ -39,7 +42,7 @@ const CollapseHeader = ({
       </Typography.Text>
       {menuItems ? (
         <Dropdown
-          getPopupContainer={(triggerNode) => triggerNode.parentElement!}
+          getPopupContainer={getPopupContainer}
           menu={{
             items: menuItems,
             className: 'menu-items',
