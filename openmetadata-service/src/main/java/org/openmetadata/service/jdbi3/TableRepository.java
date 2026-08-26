@@ -1686,6 +1686,14 @@ public class TableRepository extends EntityRepository<Table> {
               Relationship.CONTAINS));
     }
     bulkInsertRelationships(relationships);
+    // Re-add the FK/ER (RELATED_TO) edges that clearEntitySpecificRelationshipsForMany removed.
+    // The single-entity store path does this via storeEntity() -> addConstraintRelationship(); the
+    // bulk path (recursive CSV import, bulk create) only restored CONTAINS, so a table's
+    // foreign-key
+    // relationship disappeared even though its tableConstraints JSON was preserved.
+    for (Table table : entities) {
+      addConstraintRelationship(table, table.getTableConstraints());
+    }
   }
 
   @Override
