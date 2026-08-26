@@ -20,14 +20,14 @@ import {
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
+import { LineageNodeType } from '../../../Lineage/Lineage.interface';
 import NodeChildren from './NodeChildren.component';
 
 const mockUpdateColumnsInCurrentPages = jest.fn();
 const mockGetTestCaseExecutionSummary =
   getTestCaseExecutionSummary as jest.Mock;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockNode: any = {
+const mockNode = {
   id: 'test-id',
   entityType: EntityType.TABLE,
   fullyQualifiedName: 'test.fqn',
@@ -44,17 +44,16 @@ const mockNode: any = {
       dataType: 'STRING',
     },
   ],
-};
+} as unknown as LineageNodeType;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockNodeWithTestSuite: any = {
+const mockNodeWithTestSuite = {
   ...mockNode,
   testSuite: {
     id: 'test-suite-id',
     name: 'test-suite',
     fullyQualifiedName: 'test.fqn.testsuite',
   },
-};
+} as unknown as LineageNodeType;
 
 const mockColumnsMap = new Map();
 mockColumnsMap.set(mockNode.id, new Set(['test.fqn.column1']));
@@ -64,7 +63,7 @@ const defaultLineageStoreState = {
   activeLayer: [LineageLayer.ColumnLevelLineage],
   tracedColumns: new Set(),
   updateColumnsInCurrentPages: mockUpdateColumnsInCurrentPages,
-  selectedColumn: undefined,
+  selectedColumn: undefined as string | undefined,
   isCreatingEdge: false,
   isDQEnabled: false,
 };
@@ -167,7 +166,7 @@ describe('NodeChildren Component', () => {
         ...mockNode,
         entityType: EntityType.PIPELINE,
         columns: undefined,
-      };
+      } as unknown as LineageNodeType;
 
       render(
         <NodeChildren
@@ -335,8 +334,7 @@ describe('NodeChildren Component', () => {
 
   describe('Lineage Filter', () => {
     it('should show only columns with lineage when filter is active', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nodeWithMultipleColumns: any = {
+      const nodeWithMultipleColumns = {
         ...mockNode,
         columns: [
           {
@@ -369,7 +367,7 @@ describe('NodeChildren Component', () => {
           isChildrenListExpanded
           isOnlyShowColumnsWithLineageFilterActive
           isConnectable={false}
-          node={nodeWithMultipleColumns}
+          node={nodeWithMultipleColumns as unknown as LineageNodeType}
         />
       );
 
@@ -419,8 +417,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should apply search on filtered columns when lineage filter is active', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nodeWithMultipleColumns: any = {
+      const nodeWithMultipleColumns = {
         ...mockNode,
         columns: [
           {
@@ -453,7 +450,7 @@ describe('NodeChildren Component', () => {
           isChildrenListExpanded
           isOnlyShowColumnsWithLineageFilterActive
           isConnectable={false}
-          node={nodeWithMultipleColumns}
+          node={nodeWithMultipleColumns as unknown as LineageNodeType}
         />
       );
 
@@ -568,8 +565,7 @@ describe('NodeChildren Component', () => {
 
   describe('CSS Classes and Styling', () => {
     it('should apply "any-column-selected" class when a column is selected', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockLineageStoreState.selectedColumn = 'test.fqn.column1' as any;
+      mockLineageStoreState.selectedColumn = 'test.fqn.column1';
 
       render(
         <NodeChildren
@@ -601,8 +597,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should apply both classes when column is selected and creating edge', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockLineageStoreState.selectedColumn = 'test.fqn.column1' as any;
+      mockLineageStoreState.selectedColumn = 'test.fqn.column1';
       mockLineageStoreState.isCreatingEdge = true;
 
       render(
@@ -622,8 +617,7 @@ describe('NodeChildren Component', () => {
 
   describe('Different Entity Types', () => {
     it('should render columns for DASHBOARD_DATA_MODEL entity', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const dashboardDataModelNode: any = {
+      const dashboardDataModelNode = {
         ...mockNode,
         entityType: EntityType.DASHBOARD_DATA_MODEL,
       };
@@ -632,7 +626,7 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isConnectable={false}
-          node={dashboardDataModelNode}
+          node={dashboardDataModelNode as unknown as LineageNodeType}
         />
       );
 
@@ -640,8 +634,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should render fields for TOPIC entity', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const topicNode: any = {
+      const topicNode = {
         id: 'topic-id',
         entityType: EntityType.TOPIC,
         fullyQualifiedName: 'test.topic',
@@ -661,7 +654,7 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isConnectable={false}
-          node={topicNode}
+          node={topicNode as unknown as LineageNodeType}
         />
       );
 
@@ -669,8 +662,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should render features for MLMODEL entity', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mlModelNode: any = {
+      const mlModelNode = {
         id: 'mlmodel-id',
         entityType: EntityType.MLMODEL,
         fullyQualifiedName: 'test.mlmodel',
@@ -688,7 +680,7 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isConnectable={false}
-          node={mlModelNode}
+          node={mlModelNode as unknown as LineageNodeType}
         />
       );
 
@@ -698,8 +690,7 @@ describe('NodeChildren Component', () => {
 
   describe('Edge Cases', () => {
     it('should handle nodes with empty column names', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nodeWithEmptyNames: any = {
+      const nodeWithEmptyNames = {
         ...mockNode,
         columns: [
           {
@@ -714,7 +705,7 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isConnectable={false}
-          node={nodeWithEmptyNames}
+          node={nodeWithEmptyNames as unknown as LineageNodeType}
         />
       );
 
@@ -722,8 +713,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should handle search with special characters', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nodeWithSpecialChars: any = {
+      const nodeWithSpecialChars = {
         ...mockNode,
         columns: [
           {
@@ -743,7 +733,7 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isConnectable={false}
-          node={nodeWithSpecialChars}
+          node={nodeWithSpecialChars as unknown as LineageNodeType}
         />
       );
 
@@ -756,8 +746,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should handle columns without fullyQualifiedName', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nodeWithMissingFQN: any = {
+      const nodeWithMissingFQN = {
         ...mockNode,
         columns: [{ name: 'column1', dataType: 'STRING' }],
       };
@@ -766,7 +755,7 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isConnectable={false}
-          node={nodeWithMissingFQN}
+          node={nodeWithMissingFQN as unknown as LineageNodeType}
         />
       );
 

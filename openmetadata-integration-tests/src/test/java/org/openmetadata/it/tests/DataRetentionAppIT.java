@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -22,6 +23,8 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
@@ -39,6 +42,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -46,11 +50,13 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for the Data Retention application.
@@ -69,6 +75,19 @@ public class DataRetentionAppIT {
   private static final String APP_NAME = "DataRetentionApplication";
   // Default activityThreadsRetentionPeriod is 60 days; 90 days is safely past it.
   private static final long NINETY_DAYS_MILLIS = 90L * 24 * 60 * 60 * 1000;
+
+  /** org.quartz.threadPool.threadCount in AppScheduler — every thread must run the job once. */
+  /** Mirrors {@code ReindexHelpers}. Everything else in the schema's enum is still in flight. */
+  private static final Set<String> TERMINAL_RUN_STATUSES =
+      Set.of("success", "completed", "failed", "stopped", "activeError");
+
+  private static final int APP_SCHEDULER_THREAD_COUNT = 10;
+
+  private static final int RUNS_AFTER_CONFIG_CHANGE = 3;
+
+  /** Not a schema default, so a stale read cannot be mistaken for the configured value. */
+  private static final int DISTINCT_RETENTION_DAYS = 11;
+
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -105,6 +124,59 @@ public class DataRetentionAppIT {
         1,
         threadRowCount(threadTable, recentThread.getId()),
         "recent conversation must be retained");
+  }
+
+  /**
+   * A config change must reach the next run. Quartz worker threads are long lived and cache the App
+   * they were handed, so once every thread has run this job at least once, a stale copy is all any
+   * later run sees — the job keeps pruning to whatever retention period was current when that
+   * thread first woke up, for the life of the process.
+   */
+  @Test
+  void test_appConfigurationChange_isUsedByTheNextRun() throws Exception {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+
+    App app = Apps.getByName(APP_NAME);
+    int original = changeEventRetentionPeriod(JsonUtils.getMap(app.getAppConfiguration()));
+    int changed =
+        original == DISTINCT_RETENTION_DAYS ? DISTINCT_RETENTION_DAYS + 1 : DISTINCT_RETENTION_DAYS;
+
+    try {
+      for (int i = 0; i < APP_SCHEDULER_THREAD_COUNT; i++) {
+        triggerAppAndWaitForCompletion();
+      }
+
+      setChangeEventRetentionPeriod(app.getId(), changed);
+
+      for (int run = 0; run < RUNS_AFTER_CONFIG_CHANGE; run++) {
+        AppRunRecord record = triggerAppAndWaitForCompletion();
+        assertEquals(
+            changed,
+            changeEventRetentionPeriod(record.getConfig()),
+            "run " + run + " used a stale appConfiguration");
+      }
+    } finally {
+      setChangeEventRetentionPeriod(app.getId(), original);
+    }
+  }
+
+  private void setChangeEventRetentionPeriod(UUID appId, int days) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/apps/" + appId,
+            String.format(
+                "[{\"op\":\"replace\",\"path\":\"/appConfiguration/changeEventRetentionPeriod\","
+                    + "\"value\":%d}]",
+                days),
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+  }
+
+  private int changeEventRetentionPeriod(Map<String, Object> config) {
+    assertNotNull(config, "run record carried no config");
+    return ((Number) config.get("changeEventRetentionPeriod")).intValue();
   }
 
   private Table createTestTable(TestNamespace ns) throws Exception {
@@ -200,9 +272,44 @@ public class DataRetentionAppIT {
                     .one());
   }
 
+  /**
+   * Triggers the app and returns the record for <em>that</em> run.
+   *
+   * <p>{@link AppRunRecord} carries no run id, and {@code /runs/latest} hands back whichever record
+   * has the highest timestamp, so a start-time floor is the only thing separating this run's record
+   * from the previous one. Waiting for the previous run to go terminal, capturing the floor, then
+   * requiring a terminal record at or after it is the shape {@code
+   * ReindexHelpers.triggerSearchIndexAndWait} already uses against the same endpoint. Its helpers
+   * take a {@code ServerHandle} rather than an SDK client, so the shape is ported rather than
+   * called.
+   *
+   * <p>The floor carries no skew tolerance on purpose. {@code TestSuiteBootstrap} runs the server
+   * in-process under {@code DropwizardAppExtension}, so the timestamp {@code
+   * OmAppJobListener.jobToBeExecuted} writes comes from this same JVM clock. A skew window would
+   * drag the floor below the previous run's timestamp, and the first poll — which can easily beat
+   * the RUNNING record, since the listener makes two DB round trips before writing it — would
+   * accept that stale record instead.
+   */
   private AppRunRecord triggerAppAndWaitForCompletion() {
-    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    long triggerTime = System.currentTimeMillis();
+    waitForLatestRunTerminal();
+    long floorMillis = System.currentTimeMillis();
+    triggerWhenAccepted();
+    return waitForTerminalRunStartedAtOrAfter(floorMillis);
+  }
+
+  private void waitForLatestRunTerminal() {
+    Awaitility.await("Previous run of " + APP_NAME + " to reach a terminal status")
+        .atMost(Duration.ofMinutes(5))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              AppRunRecord run = fetchLatestRun();
+              return run == null || isTerminal(run);
+            });
+  }
+
+  private void triggerWhenAccepted() {
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
@@ -213,35 +320,38 @@ public class DataRetentionAppIT {
               Apps.trigger(APP_NAME).run();
               return true;
             });
+  }
 
+  private AppRunRecord waitForTerminalRunStartedAtOrAfter(long floorMillis) {
     AtomicReference<AppRunRecord> completedRun = new AtomicReference<>();
-    Awaitility.await("Wait for terminal run of " + APP_NAME)
+    Awaitility.await("Terminal run of " + APP_NAME + " started at or after " + floorMillis)
         .atMost(Duration.ofMinutes(5))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
         .until(
             () -> {
-              AppRunRecord run =
-                  httpClient.execute(
-                      HttpMethod.GET,
-                      "/v1/apps/name/" + APP_NAME + "/runs/latest",
-                      null,
-                      AppRunRecord.class);
-              if (run == null
-                  || run.getStatus() == null
-                  || run.getTimestamp() == null
-                  // Allow modest clock skew between the test JVM and the server under test.
-                  || run.getTimestamp() < triggerTime - 60_000) {
-                return false;
+              AppRunRecord run = fetchLatestRun();
+              boolean isTheRunWeTriggered =
+                  run != null
+                      && run.getTimestamp() != null
+                      && run.getTimestamp() >= floorMillis
+                      && isTerminal(run);
+              if (isTheRunWeTriggered) {
+                completedRun.set(run);
               }
-              String status = run.getStatus().value();
-              if ("running".equalsIgnoreCase(status) || "started".equalsIgnoreCase(status)) {
-                return false;
-              }
-              completedRun.set(run);
-              return true;
+              return isTheRunWeTriggered;
             });
     return completedRun.get();
+  }
+
+  private AppRunRecord fetchLatestRun() {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    return httpClient.execute(
+        HttpMethod.GET, "/v1/apps/name/" + APP_NAME + "/runs/latest", null, AppRunRecord.class);
+  }
+
+  private static boolean isTerminal(AppRunRecord run) {
+    return run.getStatus() != null && TERMINAL_RUN_STATUSES.contains(run.getStatus().value());
   }
 }
