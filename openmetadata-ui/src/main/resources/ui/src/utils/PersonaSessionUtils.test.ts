@@ -40,11 +40,9 @@ describe('PersonaSessionUtils', () => {
     });
 
     it('silently does nothing when sessionStorage throws', () => {
-      jest
-        .spyOn(Storage.prototype, 'setItem')
-        .mockImplementation(() => {
-          throw new DOMException('QuotaExceededError');
-        });
+      jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('QuotaExceededError');
+      });
 
       expect(() => writePersonaSession('persona-123')).not.toThrow();
     });
@@ -76,11 +74,9 @@ describe('PersonaSessionUtils', () => {
     });
 
     it('returns null when sessionStorage throws', () => {
-      jest
-        .spyOn(Storage.prototype, 'getItem')
-        .mockImplementation(() => {
-          throw new DOMException('SecurityError');
-        });
+      jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new DOMException('SecurityError');
+      });
 
       expect(readPersonaSession()).toBeNull();
     });
@@ -113,11 +109,9 @@ describe('PersonaSessionUtils', () => {
     });
 
     it('silently does nothing when sessionStorage throws', () => {
-      jest
-        .spyOn(Storage.prototype, 'removeItem')
-        .mockImplementation(() => {
-          throw new DOMException('SecurityError');
-        });
+      jest.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+        throw new DOMException('SecurityError');
+      });
 
       expect(() => clearPersonaSession()).not.toThrow();
     });
