@@ -104,6 +104,7 @@ const ExpressionCodeCell = ({
               className="bulk-edit-code-editor"
               data-testid="bulk-edit-code-editor"
               ref={panelRef}
+              role="presentation"
               style={{ top: position.top, left: position.left }}
               onKeyDown={handleKeyDown}
               onMouseDown={(event) => event.stopPropagation()}>

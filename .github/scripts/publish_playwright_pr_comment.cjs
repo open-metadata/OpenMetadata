@@ -582,6 +582,36 @@ module.exports = async function publishPlaywrightPrComment({
     '',
   ];
 
+  // One-line verdict so the author knows at a glance whether the outcome is
+  // on them (test failures), on CI (infrastructure), or informational only
+  // (budget signals on a green run) — see PR #31907's budget/blocking split.
+  const totalTestFailures = totals.failed + shardTotals.lifecycleFailed;
+  const budgetWarnings = (performance?.convergenceWarnings ?? []).filter(
+    (warning) => warning.startsWith('Budget target')
+  );
+  if (totalTestFailures > 0) {
+    lines.push(
+      '❌ **Action needed:** test(s) failed on every attempt against this ' +
+        'PR’s validated commit — see **Genuine Failures** below. These ' +
+        'are test failures, not CI budget or infrastructure issues.'
+    );
+    lines.push('');
+  } else if (run.conclusion !== 'success') {
+    lines.push(
+      '⚙️ **No test failures.** This run failed in CI infrastructure or ' +
+        'reporting (see **Pipeline and setup failures**), not because of ' +
+        'your changes — no test action needed from you.'
+    );
+    lines.push('');
+  } else if (budgetWarnings.length > 0) {
+    lines.push(
+      '✅ All tests passed. The ⚠️ CI time-budget signals below are ' +
+        'pipeline capacity telemetry, **not test failures** — nothing to ' +
+        'fix on this PR.'
+    );
+    lines.push('');
+  }
+
   if (infrastructureIssueCount > 0) {
     lines.push(`### Pipeline and setup failures (${infrastructureIssueCount})`);
     lines.push('');
@@ -639,9 +669,26 @@ module.exports = async function publishPlaywrightPrComment({
         `${metrics.commonShardSkewPercent.toFixed(2)}% common-shard skew`
     );
     lines.push('');
-    if (performance.convergenceWarnings.length > 0) {
+    // Budget breaches and optimization notes travel in the same payload
+    // field (schema is locked across workflow versions); render them under
+    // separate headings so a budget breach is never mistaken for something
+    // the PR author must act on.
+    const optimizationWarnings = performance.convergenceWarnings.filter(
+      (warning) => !warning.startsWith('Budget target')
+    );
+    if (budgetWarnings.length > 0) {
+      lines.push(
+        '⚠️ CI time-budget signals — pipeline capacity telemetry, **not ' +
+          'test failures**, and not caused by this PR:'
+      );
+      for (const warning of budgetWarnings) {
+        lines.push(`- ${escapeMarkdown(warning)}`);
+      }
+      lines.push('');
+    }
+    if (optimizationWarnings.length > 0) {
       lines.push('Optimization targets still in progress:');
-      for (const warning of performance.convergenceWarnings) {
+      for (const warning of optimizationWarnings) {
         lines.push(`- ${escapeMarkdown(warning)}`);
       }
       lines.push('');

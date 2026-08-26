@@ -12,8 +12,6 @@
  */
 
 import { Button, Col, Modal, Row, Typography } from 'antd';
-import { ColumnType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +24,10 @@ import {
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Table from '../../common/Table/Table';
+import {
+  ColumnType,
+  ExpandableConfig,
+} from '../../common/Table/Table.interface';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 

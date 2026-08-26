@@ -229,6 +229,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: string) => void;
   }) => (
     <input
+      aria-label={placeholder}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
@@ -488,7 +489,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',

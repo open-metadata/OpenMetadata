@@ -65,7 +65,16 @@ const AccountActivationConfirmation = () => {
               message={t('message.user-verified-successfully')}
               type="success"
             />
-            <div className="mt-12" onClick={handleBackToLogin}>
+            <div
+              className="mt-12"
+              role="button"
+              tabIndex={0}
+              onClick={handleBackToLogin}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleBackToLogin();
+                }
+              }}>
               <Typography.Link underline>
                 {t('label.back-to-login-lowercase')}
               </Typography.Link>

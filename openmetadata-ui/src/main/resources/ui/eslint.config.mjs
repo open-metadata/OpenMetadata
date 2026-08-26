@@ -26,6 +26,7 @@ import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 
 export default [
   // Base recommended configs
@@ -176,7 +177,10 @@ export default [
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-use-before-define': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — safe reorders
+      // where possible, documented disables for mutual-recursion / derived-below
+      // cases. Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-use-before-define': 'error',
       'no-unused-expressions': 'off',
       '@typescript-eslint/no-unused-expressions': [
         'error',
@@ -193,7 +197,11 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
       // for no longer reproduces — verified running against this config, where
@@ -294,33 +302,39 @@ export default [
       'jsx-a11y/no-distracting-elements': 'error',
       'jsx-a11y/scope': 'error',
 
+      // --- blocking (error): brought to zero by the ESLint-cleanup stack and
+      // locked so they cannot regress. jsx-a11y + safe-mechanical sonarjs were
+      // cleared in the a11y/safe-mechanical PR; promoting to error keeps CI red
+      // on any new violation instead of letting the backlog silently grow back.
+      'jsx-a11y/control-has-associated-label': 'error',
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/label-has-for': 'error',
+      'jsx-a11y/no-autofocus': 'error',
+      'jsx-a11y/anchor-has-content': 'error',
+      'jsx-a11y/no-noninteractive-element-interactions': 'error',
+      'jsx-a11y/interactive-supports-focus': 'error',
+      'jsx-a11y/anchor-is-valid': 'error',
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/no-redundant-roles': 'error',
+      'jsx-a11y/mouse-events-have-key-events': 'error',
+      'jsx-a11y/media-has-caption': 'error',
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
+      'jsx-a11y/anchor-ambiguous-text': 'error',
+      'sonarjs/no-collapsible-if': 'error',
+      'sonarjs/no-extra-arguments': 'error',
+      'sonarjs/no-redundant-jump': 'error',
+      'sonarjs/no-duplicated-branches': 'error',
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/prefer-object-literal': 'error',
+      'sonarjs/no-redundant-boolean': 'error',
+
       // --- warn tier: on, visible, not yet blocking. Counts are the measured
-      // backlog at the time of writing; they only go down.
+      // backlog at the time of writing; they only go down. Each is promoted to
+      // error by its own cleanup PR once its violations reach zero.
       'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
-      'jsx-a11y/control-has-associated-label': 'warn', // 146
-      'jsx-a11y/click-events-have-key-events': 'warn', // 89
-      'jsx-a11y/no-static-element-interactions': 'warn', // 87
-      'jsx-a11y/label-has-for': 'warn', // 61
-      'jsx-a11y/no-autofocus': 'warn', // 45
-      'jsx-a11y/anchor-has-content': 'warn', // 12
-      'jsx-a11y/no-noninteractive-element-interactions': 'warn', // 8
-      'jsx-a11y/interactive-supports-focus': 'warn', // 7
-      'jsx-a11y/anchor-is-valid': 'warn', // 5
-      'jsx-a11y/alt-text': 'warn', // 3
-      'jsx-a11y/no-redundant-roles': 'warn', // 2
-      'jsx-a11y/mouse-events-have-key-events': 'warn', // 2
-      'jsx-a11y/media-has-caption': 'warn', // 2
-      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'warn', // 2
-      'jsx-a11y/anchor-ambiguous-text': 'warn', // 1
       'sonarjs/no-duplicate-string': 'warn', // 640
       'sonarjs/cognitive-complexity': ['warn', 15], // 85
-      'sonarjs/no-collapsible-if': 'warn', // 21
-      'sonarjs/no-extra-arguments': 'warn', // 20
-      'sonarjs/no-redundant-jump': 'warn', // 14
-      'sonarjs/no-duplicated-branches': 'warn', // 9
-      'sonarjs/no-identical-functions': 'warn', // 6
-      'sonarjs/prefer-object-literal': 'warn', // 1
-      'sonarjs/no-redundant-boolean': 'warn', // 1
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
@@ -342,7 +356,11 @@ export default [
       'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
       'react/no-unstable-nested-components': 'warn', // 25 across 23 files
       'react/no-danger': 'warn', // 0 in sample
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
+      // removed / narrowed where safe, documented disables where the value is
+      // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
+      // (that would change throw-on-null to silent undefined). Promoted to error.
+      '@typescript-eslint/no-non-null-assertion': 'error',
 
       // Import architecture and request fan-out. These are warnings while the
       // measured legacy backlog is worked down; they are reporting-only and do
@@ -428,6 +446,7 @@ export default [
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     plugins: {
+      'openmetadata-playwright': openMetadataPlaywright,
       playwright,
     },
     rules: {
@@ -490,6 +509,14 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+
+      // A facet aggregation wait must name the value it is waiting for, not just
+      // the endpoint or field: a dropdown fires one aggregation when it opens and
+      // one per typed search, so a wait that names neither can resolve off the
+      // wrong one and run the test ahead of the request it queued (#31859). Warn
+      // rather than error while the remaining 27 call sites are migrated to
+      // playwright/utils/searchAggregation.ts.
+      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
 
       // Playwright rules — aspirational (warn): existing violations to fix over time
       'playwright/missing-playwright-await': 'warn',
