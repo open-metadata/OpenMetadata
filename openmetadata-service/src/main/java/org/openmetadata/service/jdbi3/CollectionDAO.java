@@ -2009,12 +2009,16 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("updatedAt") long updatedAt);
 
-    // Locks the hold row for this (entity, requester). accumulate() guarantees the row exists first
-    // (via insertIfAbsent), so this always takes a record lock, never a gap lock, and concurrent
-    // edits for the same key serialize instead of deadlocking.
+    // Locks the hold row for this (entity, requester) and returns its json plus current updated_at.
+    // accumulate() guarantees the row exists first (via insertIfAbsent), so this always takes a
+    // record lock, never a gap lock, and concurrent edits for the same key serialize instead of
+    // deadlocking. The returned updated_at lets accumulate() advance the version token
+    // monotonically.
     @SqlQuery(
-        "SELECT json FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy FOR UPDATE")
-    String findForUpdate(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
+        "SELECT json, updated_at FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy FOR UPDATE")
+    @RegisterRowMapper(PendingApprovalChangeRecordMapper.class)
+    PendingApprovalChangeRecord findForUpdate(
+        @BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);
 
     @SqlQuery(
         "SELECT json, updated_at FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy")

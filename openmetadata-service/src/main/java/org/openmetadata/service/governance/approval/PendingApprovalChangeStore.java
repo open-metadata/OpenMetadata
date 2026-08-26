@@ -61,7 +61,10 @@ public final class PendingApprovalChangeStore {
    * exist (seeded with this edit when absent), then read under a lock (SELECT FOR UPDATE) and written
    * back, so a concurrent accumulate for the same requester serializes behind this read-modify-write
    * instead of racing it and dropping a proposed change. Seeding first keeps the lock on a real
-   * record rather than a gap, which would otherwise deadlock concurrent inserts on this table.
+   * record rather than a gap, which would otherwise deadlock concurrent inserts on this table. The
+   * stored updated_at is advanced strictly past the row's current value so it is a monotonic version
+   * token: two states of a hold never share one, even within a clock millisecond, so a resolution's
+   * {@link #deleteIfUnchanged} snapshot cannot match and drop a newer edit.
    */
   public static void accumulate(UUID entityId, String updatedBy, ChangeDescription incoming) {
     String incomingJson = JsonUtils.pojoToJson(incoming);
@@ -71,12 +74,14 @@ public final class PendingApprovalChangeStore {
             handle -> {
               PendingApprovalChangeDAO dao = handle.attach(PendingApprovalChangeDAO.class);
               dao.insertIfAbsent(entityId, updatedBy, incomingJson, now);
-              String existingJson = dao.findForUpdate(entityId, updatedBy);
+              PendingApprovalChangeRecord current = dao.findForUpdate(entityId, updatedBy);
               ChangeDescription existing =
-                  CommonUtil.nullOrEmpty(existingJson)
+                  current == null || CommonUtil.nullOrEmpty(current.json())
                       ? null
-                      : JsonUtils.readValue(existingJson, ChangeDescription.class);
-              dao.upsert(entityId, updatedBy, JsonUtils.pojoToJson(merge(existing, incoming)), now);
+                      : JsonUtils.readValue(current.json(), ChangeDescription.class);
+              long versionTs = current == null ? now : Math.max(now, current.updatedAt() + 1);
+              dao.upsert(
+                  entityId, updatedBy, JsonUtils.pojoToJson(merge(existing, incoming)), versionTs);
             });
   }
 
