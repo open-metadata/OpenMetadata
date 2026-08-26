@@ -78,7 +78,8 @@ function RecentItem({
         </div>
         <Box align="center" gap={1}>
           {item.meta.map((metaItem, index) => (
-            <Fragment key={metaItem}>
+            // eslint-disable-next-line react/no-array-index-key -- meta strings may repeat; index disambiguates
+            <Fragment key={`${metaItem}-${index}`}>
               <div className="tw:max-w-20">
                 <Typography
                   ellipsis

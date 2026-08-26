@@ -21,6 +21,7 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
+import DOMPurify from 'dompurify';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
@@ -37,7 +38,6 @@ import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
-import { getSanitizeContent } from './sanitize.utils';
 import searchClassBase from './SearchClassBase';
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
@@ -141,9 +141,9 @@ export const generateSearchDropdownLabel = (
             className="dropdown-option-label"
             title={option.label}>
             <span
-              // eslint-disable-next-line react/no-danger -- sanitized via getSanitizeContent (DOMPurify)
+              // eslint-disable-next-line react/no-danger -- sanitized via DOMPurify
               dangerouslySetInnerHTML={{
-                __html: getSanitizeContent(
+                __html: DOMPurify.sanitize(
                   getSearchLabel(option.label, searchKey)
                 ),
               }}
