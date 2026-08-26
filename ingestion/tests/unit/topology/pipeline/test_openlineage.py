@@ -17,6 +17,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     ConsumerOffsets,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     SecurityProtocol,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
@@ -2972,6 +2977,28 @@ class TestKinesisMultiShardPolling(unittest.TestCase):
         events = list(source._poll_kinesis(broker))
 
         assert len(events) == 2
+
+
+class TestKafkaPolling(unittest.TestCase):
+    def test_consumer_errors_use_broker_session_timeout(self):
+        message = MagicMock()
+        message.error.return_value = "broker error"
+        consumer = MagicMock()
+        consumer.poll.return_value = message
+        broker = KafkaBrokerConfig(
+            brokersUrl="broker:9092",
+            topicName="openlineage",
+            poolTimeout=1.0,
+            sessionTimeout=1,
+        )
+        source = object.__new__(OpenlineageSource)
+        source.client = consumer
+
+        events = list(source._poll_kafka(broker))
+
+        assert events == []
+        assert consumer.poll.call_count == 2
+        consumer.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

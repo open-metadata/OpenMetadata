@@ -1276,10 +1276,7 @@ class OpenlineageSource(PipelineServiceSource):
                 elif message.error():
                     logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
-                    if (
-                        empty_msg_cnt * pool_timeout
-                        > self.service_connection.sessionTimeout
-                    ):
+                    if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
