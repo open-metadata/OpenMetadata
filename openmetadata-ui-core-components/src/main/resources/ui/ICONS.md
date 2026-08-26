@@ -85,28 +85,13 @@ This will:
 - Generate `src/icons/MyNewIcon.tsx`
 - Update `src/icons/index.ts` to export it
 
-### 4. Update categories
-
-Open `src/icons/categories.ts` and add the new component name under the appropriate category:
-
-```ts
-export const ICON_CATEGORIES: Record<string, string[]> = {
-  'Collate Product': [
-    // ... existing icons ...
-    'MyNewIcon',   // ← add here
-  ],
-};
-```
-
-The generator never touches this file — it is always maintained manually.
-
-### 5. Verify in Storybook
+### 4. Verify in Storybook
 
 ```bash
 yarn storybook
 ```
 
-Open [http://localhost:6006](http://localhost:6006) and navigate to **Icons → Library**. Your new icon should appear in the correct category.
+Open [http://localhost:6006](http://localhost:6006) and navigate to **Icons → Library**. Your new icon should appear in the searchable grid.
 
 ---
 
@@ -136,7 +121,6 @@ Navigate to **Icons → Library** in the left sidebar.
 | `scripts/generate-icons.mjs` | Reads `icons/`, runs SVGO + SVGR, writes `src/icons/` |
 | `templates/component.cjs` | SVGR template that produces each `.tsx` file |
 | `templates/index.cjs` | SVGR template that produces `src/icons/index.ts` |
-| `src/icons/categories.ts` | Category → icon name map for Storybook (manual) |
 | `src/icons/types.ts` | `IconProps` interface |
 
 The Vite library build (`vite.config.ts`) auto-discovers `src/icons/index.ts` as an entry point — no build config changes are needed when adding icons.
@@ -147,4 +131,4 @@ The Vite library build (`vite.config.ts`) auto-discovers `src/icons/index.ts` as
 yarn icons:generate    # re-reads all SVGs in icons/ and overwrites src/icons/*.tsx + index.ts
 ```
 
-Safe to run at any time — it only touches generated files, never `categories.ts`, `types.ts`, or other hand-written files.
+Safe to run at any time — it only touches generated files, never `types.ts` or other hand-written files.
