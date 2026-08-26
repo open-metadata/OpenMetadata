@@ -35,10 +35,23 @@ const resolvePersonaFromSession = (user: User): EntityReference | undefined => {
   if (!storedId) {
     return undefined;
   }
-  const { defaultPersona, personas = [], inheritedPersonas = [] } = user;
+
+  const { defaultPersona, personas, inheritedPersonas } = user;
+
+  // Partial API responses (e.g. a team-join PATCH) omit all persona fields.
+  // Skip validation — and the stale-key clear — when none were returned so
+  // we don't discard a still-valid selection.
+  if (
+    defaultPersona === undefined &&
+    personas === undefined &&
+    inheritedPersonas === undefined
+  ) {
+    return undefined;
+  }
+
   const allPersonas = [
-    ...personas,
-    ...inheritedPersonas,
+    ...(personas ?? []),
+    ...(inheritedPersonas ?? []),
     ...(defaultPersona ? [defaultPersona] : []),
   ];
 
@@ -179,11 +192,25 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
 
   updateCurrentUser: (user) => {
+    const { defaultPersona, personas, inheritedPersonas } = user;
+
+    // Partial API responses (join-team PATCH etc.) omit all persona fields.
+    // Don't touch the active selection — just record the updated user object.
+    if (
+      defaultPersona === undefined &&
+      personas === undefined &&
+      inheritedPersonas === undefined
+    ) {
+      set({ currentUser: user });
+      syncDomainStoreForUser(user);
+
+      return;
+    }
+
     const { selectedPersona } = get();
-    const { defaultPersona, personas = [], inheritedPersonas = [] } = user;
     const allPersonas = [
-      ...personas,
-      ...inheritedPersonas,
+      ...(personas ?? []),
+      ...(inheritedPersonas ?? []),
       ...(defaultPersona ? [defaultPersona] : []),
     ];
     const isSelectedStillValid =
