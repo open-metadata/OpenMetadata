@@ -323,7 +323,7 @@ test.describe('Glossary Advanced Operations', () => {
   });
 
   // G-U12: Remove domain from glossary
-  test.skip('should remove domain from glossary', async ({ page }) => {
+  test('should remove domain from glossary', async ({ page }) => {
     test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const domain = new Domain();
@@ -362,7 +362,7 @@ test.describe('Glossary Advanced Operations', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       await assignDomainWidget(page, domain1.responseData);
-      await assignDomainWidget(page, domain2.responseData);
+      await assignDomainWidget(page, domain2.responseData, false, true);
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);

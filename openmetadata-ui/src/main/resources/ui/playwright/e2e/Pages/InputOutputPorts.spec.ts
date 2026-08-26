@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import base, { expect, Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -45,19 +45,9 @@ import {
 } from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
 
-const domain = new Domain();
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const test = base.extend<{
-  page: Page;
-}>({
-  page: async ({ browser }, setPage) => {
-    const { page, afterAction } = await performAdminLogin(browser, {
-      navigate: true,
-    });
-    await setPage(page);
-    await afterAction();
-  },
-});
+const domain = new Domain();
 
 test.describe('Input Output Ports', () => {
   const tables: TableClass[] = [];
@@ -77,8 +67,8 @@ test.describe('Input Output Ports', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -93,8 +83,8 @@ test.describe('Input Output Ports', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -109,8 +99,8 @@ test.describe('Input Output Ports', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -998,7 +988,6 @@ test.describe('Input Output Ports', () => {
       await test.step('Open and cancel removal dialog', async () => {
         const portId = tables[0].entityResponseData.id;
 
-        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 

@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToExplorePage } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToExplorePage,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
@@ -22,7 +27,11 @@ import {
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
-import { test } from '../fixtures/pages';
+
+// Dedicated admin user so that completed search-export background jobs
+// accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let searchExportUser: UserClass;
 
 const startAsyncExport = async (page: Page) => {
   const exportAsyncPromise = page.waitForResponse(
@@ -90,37 +99,6 @@ const fetchCompletedExportCsv = async (
   return resultResponse.text();
 };
 
-const getJobsLauncherButton = (page: Page) =>
-  page.getByRole('button', {
-    name: /Background jobs|jobs running/,
-  });
-
-const getJobsTrayPopover = (page: Page) =>
-  page.locator('.csv-jobs-tray-popover');
-
-const openJobsTray = async (page: Page) => {
-  const trayPopover = getJobsTrayPopover(page);
-
-  await expect(getJobsLauncherButton(page).or(trayPopover)).toBeVisible();
-
-  if (!(await trayPopover.isVisible())) {
-    await getJobsLauncherButton(page).click();
-  }
-
-  await expect(trayPopover).toBeVisible();
-};
-
-const refreshJobsTray = async (page: Page) => {
-  const trayPopover = getJobsTrayPopover(page);
-
-  if (await trayPopover.isVisible()) {
-    await trayPopover.locator('.csv-jobs-tray-close').click();
-    await expect(trayPopover).not.toBeVisible();
-  }
-
-  await openJobsTray(page);
-};
-
 test.describe(
   'Search Export',
   { tag: ['@Features', '@Discovery', '@import-export'] },
@@ -142,12 +120,24 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
+      }
 
+      searchExportUser = new UserClass(undefined, true);
+      await searchExportUser.create(apiContext);
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      if (searchExportUser) {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await searchExportUser.delete(apiContext);
         await afterAction();
       }
     });
 
     test.beforeEach(async ({ page }) => {
+      await searchExportUser.login(page);
       await redirectToExplorePage(page);
     });
 
@@ -213,7 +203,6 @@ test.describe(
 
     test('Search mode visible export downloads CSV with tab-specific row count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -240,7 +229,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the displayed tab count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -292,7 +281,6 @@ test.describe(
 
     test('Filtered search visible export downloads CSV with the filtered record count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -361,7 +349,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the filtered record count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(filteredCount);
@@ -372,7 +360,6 @@ test.describe(
 
     test('Browse mode visible export downloads CSV with current page row count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -410,7 +397,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the displayed page count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -460,7 +447,6 @@ test.describe(
 
     test('Export queues a background job and downloads from the jobs tray', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -491,7 +477,22 @@ test.describe(
         //
         // Fix: wait for whichever surface appears first, then open the tray
         // only if it has not already been auto-opened.
-        await openJobsTray(page);
+        const launcherButton = page.getByRole('button', {
+          name: /Background jobs|jobs running/,
+        });
+        const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+        // Block until the launcher (job in progress) or the tray (job
+        // completed and auto-opened by the useEffect) is in the DOM.
+        await expect(launcherButton.or(trayPopover)).toBeVisible();
+
+        // Open the tray only if it has not already been auto-opened.
+        // When the job finished fast, the tray is already visible and the
+        // launcher is gone from the DOM — clicking it would throw.
+        if (!(await trayPopover.isVisible())) {
+          await launcherButton.click();
+        }
+
         await expect(
           page.getByText(/Exporting|Exported/).first()
         ).toBeVisible();
@@ -505,18 +506,21 @@ test.describe(
         // API first (the same way fetchCompletedExportCsv does), so a stalled job is
         // named as such and the UI waits that follow are short.
         //
-        // performAdminLogin, not page.request: the latter carries the page's cookies
-        // but not the bearer token these endpoints need, so it returns an error object
-        // rather than the job array.
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        // getApiContext(page), not page.request: page.request carries cookies but
+        // not the bearer token the csvAsyncJobs endpoint requires. getApiContext
+        // extracts the token from the page's storage so the request is authenticated
+        // as searchExportUser — the same user who created the job.
+        const { apiContext, afterAction } = await getApiContext(page);
         await waitForExportJobCompleted(apiContext, jobId);
         await afterAction();
-        await refreshJobsTray(page);
 
-        const downloadButton = getJobsTrayPopover(page)
-          .getByRole('button', { name: 'Download' })
-          .first();
+        // Scope to the specific job's tray row so we don't accidentally click
+        // an already-visible Download button from a different completed job
+        // (e.g. "Exported Lineage") whose result URL won't match jobId.
+        const jobRow = page.locator(`[data-testid="csv-job-${jobId}"]`);
+        await expect(jobRow).toBeVisible();
 
+        const downloadButton = jobRow.getByRole('button', { name: 'Download' });
         await expect(downloadButton).toBeVisible();
 
         const resultResponsePromise = page.waitForResponse(

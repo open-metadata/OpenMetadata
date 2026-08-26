@@ -22,7 +22,7 @@ env:
   UI_COVERAGE_DIRECTORY: openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 concurrency:
   group: yarn-coverage-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   check-changes:
     runs-on: ubuntu-latest

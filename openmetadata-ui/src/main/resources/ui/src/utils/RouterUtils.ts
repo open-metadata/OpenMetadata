@@ -725,16 +725,19 @@ export const getServiceDetailsPath = (
   return path;
 };
 
+// Built from the ROUTES constant rather than the router's current location —
+// callers merging this into a `search`-only update need a pathname that
+// can't be affected by the router's location-context resolution.
+export const getExploreTabPath = (tab?: string): string =>
+  ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab ?? '');
+
 export const getExplorePath: (args: {
   tab?: string;
   search?: string;
   extraParameters?: Record<string, unknown>;
   isPersistFilters?: boolean;
 }) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
-  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
-    PLACEHOLDER_ROUTE_TAB,
-    tab ?? ''
-  );
+  const pathname = getExploreTabPath(tab);
   let paramsObject: Record<string, unknown> = QueryString.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)

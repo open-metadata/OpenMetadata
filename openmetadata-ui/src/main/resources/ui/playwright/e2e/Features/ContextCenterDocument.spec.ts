@@ -484,6 +484,103 @@ test.describe('Context Center - Documents Page', () => {
     });
   });
 
+  // ─── Search scoped to selected folder ────────────────────────────────────
+
+  test('searching with folder selected scopes results to that folder only', async ({
+    browser,
+    page,
+  }) => {
+    const sharedToken = uuid();
+    const folderName = `search-scope-folder-${sharedToken}`;
+    const docInFolderName = `doc-${sharedToken}-in.txt`;
+    const docOutsideName = `doc-${sharedToken}-out.txt`;
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const folderRes = await apiContext.post(
+      '/api/v1/contextCenter/drive/folders',
+      { data: { name: folderName, displayName: folderName } }
+    );
+    const folderBody = await folderRes.text();
+
+    expect(folderRes.status(), folderBody).toBe(201);
+
+    const folder = parseResponseJson<ContextCenterFolder>(folderBody);
+
+    contextFolderIdsToCleanup.add(folder.id);
+
+    const inFolderDoc = await uploadDocument(
+      apiContext,
+      docInFolderName,
+      Buffer.from('document inside folder'),
+      folder.fullyQualifiedName
+    );
+    const outsideDoc = await uploadDocument(
+      apiContext,
+      docOutsideName,
+      Buffer.from('document outside folder')
+    );
+
+    await afterAction();
+
+    await page.route(
+      (url) =>
+        url.pathname.includes('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'contextFile',
+      async (route) => {
+        const isFolderScoped = decodeURIComponent(
+          route.request().url()
+        ).includes(folder.id);
+        const hits = isFolderScoped
+          ? [{ _source: { ...inFolderDoc } }]
+          : [{ _source: { ...inFolderDoc } }, { _source: { ...outsideDoc } }];
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            hits: { hits, total: { value: hits.length } },
+          }),
+        });
+      }
+    );
+
+    await navigateToDocuments(page);
+
+    const searchInput = page
+      .getByTestId('context-center-header')
+      .getByTestId('search-input')
+      .getByLabel('Search Documents');
+    const view = page.getByTestId('documents-view');
+
+    const noFolderSearchResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.url().includes('index=contextFile')
+    );
+
+    await searchInput.fill(sharedToken);
+    await noFolderSearchResPromise;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
+    ).toBeVisible();
+    await expect(
+      view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
+    ).toBeVisible();
+
+    await searchInput.clear();
+    await waitForAllLoadersToDisappear(page);
+    await selectFolderInSidebar(page, folderName);
+
+    await expect(
+      view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
+    ).toBeVisible();
+    await expect(
+      view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
+    ).not.toBeVisible();
+  });
+
   // ─── Basic rendering ──────────────────────────────────────────────────────
 
   test('shows header with Upload File button', async ({ page }) => {

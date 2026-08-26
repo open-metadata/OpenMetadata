@@ -1,0 +1,264 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Gate for auto-revert-release.yml. When a cherry-pick lands on a release
+# branch (N.N.N), this runs the three checkstyles inline on the FILES the
+# push actually touched. Any failure here is what triggers the auto-revert
+# of the tip commit.
+#
+# Scope-of-check note: each job diffs github.event.before..HEAD (falling
+# back to HEAD~1..HEAD on dispatch) and only lints the files in that diff.
+# This is deliberate — running checks against the whole tree would let a
+# pre-existing baseline violation (e.g. from an earlier cherry-pick or a
+# main-side rule bump not yet in this branch) revert an innocent commit
+# and publicly blame its author.
+#
+# Phase 1: hygiene only (spotless / ruff / eslint + prettier). We will
+# broaden this to actual tests/build in a later pass without touching
+# auto-revert-release.yml — swap the jobs below or replace this workflow.
+
+name: Release Branch Validate
+
+on:
+  push:
+    branches:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-branch-validate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  java-checkstyle:
+    name: Java Checkstyle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout with parent
+        uses: actions/checkout@v7
+        with:
+          # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
+          # older base on demand in the "Determine changed X files" step.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Determine changed Java files
+        id: files
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git rev-parse HEAD~1)
+          else
+            # Multi-commit push: BEFORE may be older than the shallow depth 2
+            # checkout carries, so pull just that one object on demand.
+            git cat-file -e "${BEFORE}" 2>/dev/null || git fetch --depth=1 origin "${BEFORE}"
+            BASE="${BEFORE}"
+          fi
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "${BASE}" HEAD -- '*.java' | tr '\n' ' ')
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "changed=${CHANGED}" >> "$GITHUB_OUTPUT"
+          if [ -z "${CHANGED}" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "No Java files changed; skipping spotless."
+          else
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "Changed Java files: ${CHANGED}"
+          fi
+
+      - name: Set up JDK 21
+        if: steps.files.outputs.any == 'true'
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        if: steps.files.outputs.any == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run spotless:check on changed Java files only
+        if: steps.files.outputs.any == 'true'
+        env:
+          CHANGED: ${{ steps.files.outputs.changed }}
+        run: |
+          set -euo pipefail
+          # spotless-maven-plugin accepts a comma-separated list of regexes
+          # matched against absolute file paths. Build one regex per file with
+          # `.` escaped and a `.*` prefix so it survives Maven's absolutization.
+          PATTERNS=""
+          for f in ${CHANGED}; do
+            # Escape regex metacharacters we might see in filenames.
+            ESCAPED=$(printf '%s' "$f" | sed 's/[][().^$+*?|\\]/\\&/g')
+            PATTERNS="${PATTERNS}${PATTERNS:+,}.*${ESCAPED}"
+          done
+          echo "spotless:check regex: ${PATTERNS}"
+          # Baseline drift on other files is intentionally ignored; scope
+          # matches the "Determine changed X files" step above.
+          mvn -B spotless:check "-DspotlessFiles=${PATTERNS}"
+
+  python-checkstyle:
+    name: Python Checkstyle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout with parent
+        uses: actions/checkout@v7
+        with:
+          # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
+          # older base on demand in the "Determine changed X files" step.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Determine changed Python files
+        id: files
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git rev-parse HEAD~1)
+          else
+            # Multi-commit push: BEFORE may be older than the shallow depth 2
+            # checkout carries, so pull just that one object on demand.
+            git cat-file -e "${BEFORE}" 2>/dev/null || git fetch --depth=1 origin "${BEFORE}"
+            BASE="${BEFORE}"
+          fi
+          # Scope to the two dirs ingestion/Makefile:py_format_check targets.
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "${BASE}" HEAD -- 'ingestion/**/*.py' 'openmetadata-airflow-apis/**/*.py' | tr '\n' ' ')
+          echo "changed=${CHANGED}" >> "$GITHUB_OUTPUT"
+          if [ -z "${CHANGED}" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "No Python files changed under ingestion/ or openmetadata-airflow-apis/; skipping ruff."
+          else
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "Changed Python files: ${CHANGED}"
+          fi
+
+      - name: Set up Python 3.10
+        if: steps.files.outputs.any == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        if: steps.files.outputs.any == 'true'
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install Ruff
+        if: steps.files.outputs.any == 'true'
+        run: |
+          uv venv env --python 3.10
+          uv pip install --python env/bin/python "ruff~=0.15.12"
+
+      - name: Ruff check + format on changed files
+        if: steps.files.outputs.any == 'true'
+        env:
+          CHANGED: ${{ steps.files.outputs.changed }}
+        run: |
+          set -euo pipefail
+          source env/bin/activate
+          ruff check --config ingestion/pyproject.toml ${CHANGED}
+          ruff format --check --config ingestion/pyproject.toml ${CHANGED}
+
+  ui-checkstyle:
+    name: UI Checkstyle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
+    steps:
+      - name: Checkout with parent
+        uses: actions/checkout@v7
+        with:
+          # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
+          # older base on demand in the "Determine changed X files" step.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Determine changed UI files
+        id: files
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git rev-parse HEAD~1)
+          else
+            # Multi-commit push: BEFORE may be older than the shallow depth 2
+            # checkout carries, so pull just that one object on demand.
+            git cat-file -e "${BEFORE}" 2>/dev/null || git fetch --depth=1 origin "${BEFORE}"
+            BASE="${BEFORE}"
+          fi
+          # Match existing ui-checkstyle: src globs only, exclude generated/**.
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "${BASE}" HEAD \
+            -- 'openmetadata-ui/src/main/resources/ui/src/**/*.ts' \
+               'openmetadata-ui/src/main/resources/ui/src/**/*.tsx' \
+               'openmetadata-ui/src/main/resources/ui/src/**/*.js' \
+               'openmetadata-ui/src/main/resources/ui/src/**/*.jsx' \
+               'openmetadata-ui/src/main/resources/ui/src/**/*.json' \
+            ':(exclude)openmetadata-ui/src/main/resources/ui/src/generated/**' \
+            | tr '\n' ' ')
+          echo "changed=${CHANGED}" >> "$GITHUB_OUTPUT"
+          if [ -z "${CHANGED}" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "No UI src files changed; skipping eslint + prettier."
+          else
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "Changed UI files: ${CHANGED}"
+          fi
+
+      - name: Set up Node
+        if: steps.files.outputs.any == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: |
+            ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
+
+      - name: Install Antlr4 CLI
+        if: steps.files.outputs.any == 'true'
+        run: sudo make install_antlr_cli
+
+      - name: Install UI yarn packages
+        if: steps.files.outputs.any == 'true'
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: ESLint + Prettier on changed files
+        if: steps.files.outputs.any == 'true'
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_ABS: ${{ steps.files.outputs.changed }}
+        run: |
+          set -euo pipefail
+          # Rewrite absolute-repo paths to paths relative to UI_WORKING_DIRECTORY.
+          PREFIX="openmetadata-ui/src/main/resources/ui/"
+          REL=""
+          for f in ${CHANGED_ABS}; do
+            REL="${REL} ${f#${PREFIX}}"
+          done
+          REL="$(echo ${REL} | xargs)"
+          if [ -z "${REL}" ]; then exit 0; fi
+          echo "Linting: ${REL}"
+          yarn lint:base ${REL}
+          yarn pretty:base --check ${REL}

@@ -60,6 +60,7 @@ public class CreateClassificationTool implements McpTool {
     final ClassificationRepository repo =
         (ClassificationRepository) Entity.getEntityRepository(Entity.CLASSIFICATION);
     repo.prepareInternal(entity, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.CLASSIFICATION, entity);
 
     final String userName = CommonUtils.principal(securityContext);
     // createOrUpdate silently overwrites an existing classification with this name —

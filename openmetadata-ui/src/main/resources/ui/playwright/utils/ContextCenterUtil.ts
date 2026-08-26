@@ -108,7 +108,7 @@ export const getDocumentRowByName = (page: Page, fileName: string): Locator =>
     .filter({ hasText: fileName });
 
 export const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
+  const row = await searchAndGetDocumentRow(page, fileName);
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
   await row.getByTestId('document-checkbox').click();
@@ -527,6 +527,54 @@ export async function waitForDocumentPermanentlyDeleted(
 
   throw new Error(
     `Document ${documentId} was still present in the archive API after ${timeout}ms`
+  );
+}
+
+export async function waitForDocumentAbsentFromSearch(
+  apiContext: APIRequestContext,
+  documentName: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/search/query', {
+      params: {
+        q: documentName,
+        index: 'contextFile',
+        deleted: false,
+        size: 100,
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling search for absence of ${documentName}: ${response.status()} ${body}`
+      );
+    }
+
+    const body = await response.json();
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentName} was still present in search results after ${timeout}ms`
   );
 }
 

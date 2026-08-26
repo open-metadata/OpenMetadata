@@ -26,10 +26,10 @@ const mockSetItem = jest.fn();
 
 jest.mock('cookie-storage', () => ({
   CookieStorage: class {
-    getItem(...args: any[]) {
+    getItem(...args: unknown[]) {
       return mockGetItem(...args);
     }
-    setItem(...args: any[]) {
+    setItem(...args: unknown[]) {
       return mockSetItem(...args);
     }
     constructor() {
@@ -92,7 +92,7 @@ jest.mock('../../hooks/useDomainStore', () => ({
 
 jest.mock('../NotificationBox/NotificationBox.component', () => {
   return jest.fn().mockImplementation(({ onTabChange }) => (
-    <div data-testid="tab-change" onClick={onTabChange}>
+    <div data-testid="tab-change" role="presentation" onClick={onTabChange}>
       tab change
     </div>
   ));

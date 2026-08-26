@@ -228,11 +228,15 @@ const RelatedTerms = () => {
           relationType,
           terms: relations
             .filter((r) => r.term?.fullyQualifiedName)
-            .map((r) => ({
-              value: r.term!.fullyQualifiedName!,
-              label: getEntityName(r.term as EntityReference),
-              entity: r.term as EntityReference,
-            })),
+            .map((r) => {
+              const term = r.term as EntityReference;
+
+              return {
+                value: term.fullyQualifiedName ?? '',
+                label: getEntityName(term),
+                entity: term,
+              };
+            }),
         }))
       );
     }

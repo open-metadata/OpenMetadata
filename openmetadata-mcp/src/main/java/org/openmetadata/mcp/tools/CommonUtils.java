@@ -6,17 +6,22 @@ import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public class CommonUtils {
@@ -115,14 +120,61 @@ public class CommonUtils {
   }
 
   /**
+   * Adds an {@link MetadataOperation#EDIT_ALL} check against the entity that already exists at this
+   * fully qualified name, on top of the CREATE check the calling tool has already performed.
+   *
+   * <p>The {@code create_*} tools authorize CREATE against a {@code CreateResourceContext} for the
+   * new entity and then call {@code EntityRepository.createOrUpdate}, which updates in place when the
+   * name is taken. A caller holding Create but not Edit could therefore overwrite an entity owned by
+   * somebody else, discarding its description, owners and tags. This closes that gap.
+   *
+   * <p>Note this is deliberately <em>stricter</em> than REST rather than identical to it. {@code
+   * EntityResource.createOrUpdate} branches exclusively — CREATE plus the create quota for a new
+   * entity, EDIT_ALL alone for an update — whereas here the overwrite leg requires both. Branching
+   * exclusively would mean deciding create-vs-update before the CREATE check, and the fully qualified
+   * name is not reliably known that early: several repositories build it from references that {@code
+   * prepare} resolves (see {@code TagRepository.setFullyQualifiedName}, which reads the resolved
+   * classification). Requiring create rights on a tool named {@code create_*} is the safer side to
+   * err on; the practical cost is that a caller holding only edit rights cannot use these tools to
+   * update an existing entity.
+   *
+   * <p>Call after the name is resolved and before {@code createOrUpdate}. The existence lookup uses
+   * {@link Include#ALL} to match {@code createOrUpdate}, which finds a soft-deleted entity and
+   * restores it rather than creating a new one.
+   *
+   * @param entityType the entity type being written, e.g. {@link Entity#TAG}
+   * @param entity the entity carrying the resolved fully qualified name
+   */
+  public static void authorizeOverwrite(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      String entityType,
+      EntityInterface entity) {
+    String fqn = entity.getFullyQualifiedName();
+    // Include.ALL because createOrUpdate finds the original with ALL: a soft-deleted entity at
+    // this name is still updated in place, so it still needs the EDIT_ALL check.
+    boolean overwritesExisting = fqn != null && entityExistsByName(entityType, fqn, Include.ALL);
+    if (overwritesExisting) {
+      OperationContext editContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      ResourceContext<EntityInterface> existing =
+          new ResourceContext<>(entityType, null, fqn, Include.ALL);
+      authorizer.authorize(securityContext, editContext, existing);
+    }
+  }
+
+  /**
    * Returns true when an entity with the given name exists. Only an {@link EntityNotFoundException}
    * counts as "does not exist" — any other failure (DB outage, etc.) propagates so a real infra
    * error is never mislabelled as a missing entity.
    */
   public static boolean entityExistsByName(String entityType, String fqn) {
+    return entityExistsByName(entityType, fqn, Include.NON_DELETED);
+  }
+
+  public static boolean entityExistsByName(String entityType, String fqn, Include include) {
     boolean exists = true;
     try {
-      Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+      Entity.getEntityReferenceByName(entityType, fqn, include);
     } catch (EntityNotFoundException e) {
       exists = false;
     }

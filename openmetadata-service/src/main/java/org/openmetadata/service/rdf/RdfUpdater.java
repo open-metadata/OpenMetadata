@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 
 @Slf4j
 public class RdfUpdater {
@@ -31,12 +34,20 @@ public class RdfUpdater {
   private static final AtomicLong droppedWrites = new AtomicLong(0L);
   private static final ConcurrentMap<UUID, CompletableFuture<Void>> keyedWriteTails =
       new ConcurrentHashMap<>();
+  private static volatile Semaphore rdfWritePermits =
+      new Semaphore(new AsyncOperationsConfiguration().getMaxConcurrentRdfWrites(), true);
 
   private static RdfRepository rdfRepository;
 
   private RdfUpdater() {}
 
   public static void initialize(RdfConfiguration config) {
+    initialize(config, new AsyncOperationsConfiguration());
+  }
+
+  public static void initialize(
+      RdfConfiguration config, AsyncOperationsConfiguration asyncOperationsConfiguration) {
+    rdfWritePermits = new Semaphore(asyncOperationsConfiguration.getMaxConcurrentRdfWrites(), true);
     if (config.getEnabled() != null && config.getEnabled()) {
       RdfRepository.initialize(config);
       rdfRepository = RdfRepository.getInstance();
@@ -237,7 +248,7 @@ public class RdfUpdater {
           .execute(
               () -> {
                 try {
-                  task.run();
+                  runRdfTask(description, task);
                 } finally {
                   pendingWrites.decrementAndGet();
                 }
@@ -259,7 +270,10 @@ public class RdfUpdater {
       CompletableFuture<Void> previousWrites =
           CompletableFuture.allOf(previous).handle((ignored, error) -> null);
       try {
-        next = previousWrites.thenRunAsync(task, AsyncService.getInstance().getExecutorService());
+        next =
+            previousWrites.thenRunAsync(
+                () -> runRdfTask(description, task),
+                AsyncService.getInstance().getExecutorService());
       } catch (RuntimeException e) {
         pendingWrites.decrementAndGet();
         LOG.error("Failed to submit RDF {} to keyed async executor", description, e);
@@ -282,6 +296,31 @@ public class RdfUpdater {
             LOG.error("RDF {} failed while running in keyed async queue", description, error);
           }
         });
+  }
+
+  private static void runRdfTask(String description, Runnable task) {
+    Semaphore permits = rdfWritePermits;
+    boolean permitAcquired = false;
+    try {
+      permits.acquire();
+      permitAcquired = true;
+      AsyncService.getInstance()
+          .submitDatabaseTask(
+              DatabaseOperation.RDF_UPDATE,
+              description,
+              () -> {
+                task.run();
+                return null;
+              })
+          .join();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while waiting to write RDF", e);
+    } finally {
+      if (permitAcquired) {
+        permits.release();
+      }
+    }
   }
 
   private static Set<UUID> writeKeys(UUID... keys) {
