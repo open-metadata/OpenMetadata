@@ -970,7 +970,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
       <Card.Content className="tw:p-5 lineage-container">
         <TableV2
-          bordered
           className="h-full"
           columns={columns}
           customPaginationProps={pagingProps}
