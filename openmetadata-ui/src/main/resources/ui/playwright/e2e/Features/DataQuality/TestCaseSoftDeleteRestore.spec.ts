@@ -106,6 +106,22 @@ test.describe(
       const detailResponse = waitForTestCaseDetailsResponse(page);
       await page.getByTestId(testCaseName).getByRole('link').click();
       await detailResponse;
+      await expect(page.getByTestId('edit-description')).toHaveCount(0);
+      await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
+
+      await page.getByTestId('tab-expand-button').click();
+      for (const widgetTestId of [
+        'tags-container',
+        'glossary-container',
+        'data-products-container',
+      ]) {
+        const widget = page.getByTestId(widgetTestId);
+
+        await expect(widget).toBeVisible();
+        await expect(widget.getByTestId('edit-button')).toHaveCount(0);
+        await expect(widget.getByTestId('add-tag')).toHaveCount(0);
+      }
+
       await page.getByTestId('manage-button').click();
       await waitForAntdPopupToSettle(page);
       await expect(page.getByTestId('restore-button')).toBeVisible();
