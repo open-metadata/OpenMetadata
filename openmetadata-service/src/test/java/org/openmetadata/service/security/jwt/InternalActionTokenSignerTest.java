@@ -15,13 +15,17 @@ package org.openmetadata.service.security.jwt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import java.lang.reflect.Constructor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner.Claims;
 
 class InternalActionTokenSignerTest {
@@ -51,8 +55,37 @@ class InternalActionTokenSignerTest {
         () -> signer(NOW.plusSeconds(31)).verify(token, "ontology-delete"));
   }
 
+  @Test
+  void missingSigningKeysIdentifyRequiredConfiguration() {
+    final JWTTokenGenerator generator = newTokenGenerator();
+    generator.init(
+        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256,
+        new JWTTokenConfiguration()
+            .withJwtissuer("openmetadata-test")
+            .withKeyId("internal-action-test"));
+
+    final IllegalStateException exception =
+        assertThrows(IllegalStateException.class, generator::internalSigningAlgorithm);
+
+    assertTrue(exception.getMessage().contains("jwtTokenConfiguration.rsaprivateKeyFilePath"));
+    assertTrue(exception.getMessage().contains("jwtTokenConfiguration.rsapublicKeyFilePath"));
+    assertTrue(exception.getMessage().contains("jwtTokenConfiguration.jwtissuer"));
+    assertTrue(exception.getMessage().contains("jwtTokenConfiguration.keyId"));
+  }
+
   private static InternalActionTokenSigner signer(final Instant instant) {
     final Clock clock = Clock.fixed(instant, ZoneOffset.UTC);
     return new InternalActionTokenSigner(ALGORITHM, ALGORITHM, "openmetadata-test", clock);
+  }
+
+  private static JWTTokenGenerator newTokenGenerator() {
+    try {
+      final Constructor<JWTTokenGenerator> constructor =
+          JWTTokenGenerator.class.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      return constructor.newInstance();
+    } catch (ReflectiveOperationException exception) {
+      throw new AssertionError("Unable to construct an isolated JWT token generator", exception);
+    }
   }
 }

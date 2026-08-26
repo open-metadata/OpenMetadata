@@ -1,5 +1,7 @@
 package org.openmetadata.service.rdf.storage;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -33,6 +35,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryFactory;
@@ -64,6 +67,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
+  private static final String GRAPH_TRIPLE_COUNT_QUERY =
+      "SELECT (COUNT(*) as ?count) WHERE { GRAPH ?graph { ?s ?p ?o } }";
 
   // Defaults keep TCP connect fail-fast while giving production Fuseki enough
   // time for larger SPARQL UPDATE transactions. The request timeout bounds the
@@ -1297,8 +1302,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   @Override
   public long getTripleCount(final String graphUri) {
     throwIfCircuitOpen("getTripleCount");
-    final String query =
-        "SELECT (COUNT(*) as ?count) WHERE { GRAPH <" + graphUri + "> { ?s ?p ?o } }";
+    final Query query = graphTripleCountQuery(graphUri);
     long tripleCount = 0;
     try (QueryExecution queryExecution = connection.query(query)) {
       final ResultSet results = queryExecution.execSelect();
@@ -1313,6 +1317,28 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       throw exception;
     }
     return tripleCount;
+  }
+
+  static Query graphTripleCountQuery(final String graphUri) {
+    final URI validatedGraphUri = requireAbsoluteGraphUri(graphUri);
+    final ParameterizedSparqlString query = new ParameterizedSparqlString(GRAPH_TRIPLE_COUNT_QUERY);
+    query.setIri("graph", validatedGraphUri.toASCIIString());
+    return query.asQuery();
+  }
+
+  private static URI requireAbsoluteGraphUri(final String graphUri) {
+    if (nullOrEmpty(graphUri) || graphUri.isBlank()) {
+      throw new IllegalArgumentException("graphUri must be a valid absolute IRI");
+    }
+    try {
+      final URI uri = URI.create(graphUri);
+      if (!uri.isAbsolute()) {
+        throw new IllegalArgumentException("graphUri must be a valid absolute IRI");
+      }
+      return uri;
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalArgumentException("graphUri must be a valid absolute IRI", exception);
+    }
   }
 
   @Override
