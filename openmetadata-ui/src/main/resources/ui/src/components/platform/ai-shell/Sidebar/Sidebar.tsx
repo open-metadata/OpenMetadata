@@ -21,9 +21,11 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { SubNavConfig } from '../AppModule.types';
+import { Intent, SubNavConfig } from '../AppModule.types';
 import { useAllAppModules } from '../sharedAppModules';
 import { matchModuleByPathname } from '../state/useActiveModule';
+import { emitIntent } from '../useIntent';
+import ContextCenterSubNavSections from './ContextCenterSubNavSections';
 import MainPanel from './MainPanel';
 import { buildMainNavItems, resolveActiveSubNavKey } from './navConfig';
 import Rail, { RailItem } from './Rail';
@@ -31,6 +33,11 @@ import './sidebar.less';
 import SubPanel from './SubPanel';
 import SubRail from './SubRail';
 import { useCustomizedMainNav } from './useCustomizedMainNav';
+
+// Sub-nav config key for the Context Center module — its sub-panel carries
+// the dynamic Quick Actions / Recently Viewed / Bookmarks sections below the
+// static nav items.
+const CONTEXT_CENTER_SUBNAV_KEY = 'context-center';
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();
@@ -57,7 +64,29 @@ const Sidebar: React.FC = () => {
   }, [pathname, modules]);
 
   const inSubMode = activeSubNav !== null;
+  const isContextCenter = activeSubNav?.key === CONTEXT_CENTER_SUBNAV_KEY;
   const prevInSubModeRef = useRef(false);
+
+  const handleUploadFile = useCallback(() => emitIntent(Intent.UploadFile), []);
+  const handleCreateArticle = useCallback(
+    () => emitIntent(Intent.CreateArticle),
+    []
+  );
+  const handleAddQuickLink = useCallback(
+    () => emitIntent(Intent.AddQuickLink),
+    []
+  );
+
+  // Context Center's sub-panel appends dynamic Quick Actions / Recently
+  // Viewed / Bookmarks sections beneath its static nav items.
+  const dynamicSections = isContextCenter ? (
+    <ContextCenterSubNavSections
+      enabled={isContextCenter}
+      onAddQuickLink={handleAddQuickLink}
+      onCreateArticle={handleCreateArticle}
+      onUploadFile={handleUploadFile}
+    />
+  ) : undefined;
 
   useEffect(() => {
     if (inSubMode && !prevInSubModeRef.current) {
@@ -138,7 +167,11 @@ const Sidebar: React.FC = () => {
         <Rail nodes={mainNavNodes} onToggle={handleToggleMain} />
       ) : null}
       {showSubPanel && activeSubNav ? (
-        <SubPanel config={activeSubNav} onCollapse={handleToggleSub} />
+        <SubPanel
+          config={activeSubNav}
+          dynamicSections={dynamicSections}
+          onCollapse={handleToggleSub}
+        />
       ) : null}
       {showSubRail ? (
         <SubRail items={subRailItems} onExpand={handleToggleSub} />
