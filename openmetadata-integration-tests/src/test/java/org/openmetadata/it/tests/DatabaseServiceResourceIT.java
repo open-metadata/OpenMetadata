@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -64,6 +65,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -903,6 +906,18 @@ public class DatabaseServiceResourceIT
         List.of(refIdFqn),
         fk.getReferredColumns(),
         "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
+
+    // The FOREIGN_KEY also materializes a RELATED_TO relationship edge (the ER/graph link between
+    // the two tables). The recursive/bulk import path clears and rebuilds relationships, so assert
+    // the edge itself survives -- not just the tableConstraints JSON. Reading it from the DAO keeps
+    // this deterministic (the search-backed ER endpoint is eventually consistent).
+    List<CollectionDAO.EntityRelationshipRecord> fkEdges =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findTo(table.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
+    assertTrue(
+        fkEdges.stream().anyMatch(r -> refTable.getId().equals(r.getId())),
+        "FOREIGN_KEY RELATED_TO edge (table -> referenced table) must survive a recursive import");
   }
 
   @Test
