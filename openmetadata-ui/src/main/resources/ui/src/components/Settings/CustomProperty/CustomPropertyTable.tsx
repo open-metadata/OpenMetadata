@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Tooltip } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import {
   Button,
@@ -20,7 +20,6 @@ import {
   Dropdown,
   Row,
   Skeleton,
-  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';

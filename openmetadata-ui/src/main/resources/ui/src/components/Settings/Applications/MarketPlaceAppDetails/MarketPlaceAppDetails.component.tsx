@@ -18,7 +18,6 @@ import {
   Col,
   Row,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -45,6 +44,7 @@ import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
@@ -174,7 +174,7 @@ const MarketPlaceAppDetails = () => {
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
+        <Tooltip placement="top" title={tooltipTitle}>
           <Button
             block
             className="m-t-md"

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty, map } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -110,8 +111,7 @@ const TableConstraints = ({
                     {map(referredColumns, (referredColumn) => (
                       <Tooltip
                         placement="top"
-                        title={referredColumn}
-                        trigger="hover">
+                        title={referredColumn}>
                         <Link
                           className="no-underline"
                           to={entityUtilClassBase.getEntityLink(

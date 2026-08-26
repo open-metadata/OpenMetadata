@@ -22,7 +22,6 @@ import {
   Row,
   Space,
   Tabs,
-  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -72,6 +71,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 type Attribute = 'roles' | 'teams';
 

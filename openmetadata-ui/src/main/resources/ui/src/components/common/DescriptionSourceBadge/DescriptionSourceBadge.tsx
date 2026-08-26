@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +27,7 @@ import {
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import './description-source-badge.less';
 import { DescriptionSourceBadgeProps } from './DescriptionSourceBadge.interface';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 interface BadgeConfig {
   labelKey: string;

@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React from 'react';

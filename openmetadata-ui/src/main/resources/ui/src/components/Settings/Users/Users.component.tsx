@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Col, Row, Tabs } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';

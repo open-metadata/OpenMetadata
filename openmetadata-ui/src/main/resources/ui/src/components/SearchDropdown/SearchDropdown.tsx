@@ -24,7 +24,6 @@ import {
   Radio,
   Row,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import classNames from 'classnames';
@@ -51,6 +50,7 @@ import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
 import './search-dropdown.less';
 import {
+import { Tooltip } from '@openmetadata/ui-core-components';
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
@@ -487,10 +487,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       }}>
       <Tooltip
         mouseLeaveDelay={0}
-        overlayClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
+        containerClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
         placement="top"
-        title={getSelectedOptionLabelString(selectedKeys, true)}
-        trigger="hover">
+        title={getSelectedOptionLabelString(selectedKeys, true)}>
         <Button
           className="quick-filter-dropdown-trigger-btn"
           data-testid={`search-dropdown-${searchKey}`}

@@ -19,7 +19,6 @@ import {
   Select,
   Tag,
   TimePicker,
-  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -96,6 +95,7 @@ import {
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
+import { Tooltip } from '@openmetadata/ui-core-components';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -930,13 +930,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 className="w-max-full d-flex gap-2 flex-wrap"
                 data-testid="enum-value">
                 {value.map((val) => (
-                  <Tooltip key={val} title={val} trigger="hover">
+                  <Tooltip key={val} title={val}>
                     <Tag className="enum-key-tag">{val}</Tag>
                   </Tooltip>
                 ))}
               </div>
             ) : (
-              <Tooltip key={value} title={value} trigger="hover">
+              <Tooltip key={value} title={value}>
                 <Tag className="enum-key-tag" data-testid="enum-value">
                   {value}
                 </Tag>

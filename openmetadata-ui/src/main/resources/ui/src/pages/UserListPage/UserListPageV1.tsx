@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Switch } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';

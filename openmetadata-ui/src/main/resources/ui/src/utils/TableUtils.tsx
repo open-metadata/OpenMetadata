@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
@@ -160,8 +161,7 @@ export const getConstraintIcon = ({
     <Tooltip
       className={classNames(className)}
       placement="bottom"
-      title={title}
-      trigger="hover">
+      title={title}>
       <Icon
         alt={title}
         className={classNames({

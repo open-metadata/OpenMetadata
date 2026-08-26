@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Input, Popover, Tooltip } from 'antd';
+import { Button, Input, Popover } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -218,10 +219,9 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
         content={popoverContent}
         getPopupContainer={() => searchContainerRef.current || document.body}
         open={isSearchBoxOpen}
-        overlayClassName="customise-search-overlay"
+        containerClassName="customise-search-overlay"
         overlayStyle={{ paddingTop: 0, width: '100%' }}
         placement="bottom"
-        showArrow={false}
         trigger={['click']}
         onOpenChange={(open) => {
           setIsSearchBoxOpen(isNLPActive ? open : !!searchValue && open);

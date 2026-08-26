@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';

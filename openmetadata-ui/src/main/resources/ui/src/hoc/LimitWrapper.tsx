@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Tooltip } from 'antd';
+import { Skeleton } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { cloneElement, ReactElement, useEffect, useState } from 'react';

@@ -12,7 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,8 +79,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             placement="bottom"
             title={t('label.start-entity', {
               entity: t('label.conversation-lowercase'),
-            })}
-            trigger="hover">
+            })}>
             <Button
               data-testid="add-new-conversation"
               icon={<PlusOutlined />}

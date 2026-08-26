@@ -13,7 +13,8 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
+import { Button, Collapse, Divider, Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -87,7 +88,6 @@ const ConnectionStepCard = ({
             </Typography.Text>
             <Tooltip
               placement="bottom"
-              showArrow={false}
               title={testConnectionStep.description}>
               <InfoCircleOutlined />
             </Tooltip>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Label } from '@openmetadata/ui-core-components';
+import { Label, Tooltip } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -19,7 +19,6 @@ import {
   Row,
   Select,
   TableProps,
-  Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';

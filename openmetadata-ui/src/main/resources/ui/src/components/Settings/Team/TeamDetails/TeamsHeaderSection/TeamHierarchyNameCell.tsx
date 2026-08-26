@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
 import { FC, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
@@ -18,6 +17,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../../utils/StringUtils';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 type TeamHierarchyNameCellProps = {
   record: Team;

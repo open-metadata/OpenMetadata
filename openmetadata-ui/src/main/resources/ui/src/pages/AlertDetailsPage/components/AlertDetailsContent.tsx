@@ -12,7 +12,8 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { Button, Card, Col, Row, Skeleton, Space, Tabs } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';

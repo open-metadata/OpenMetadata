@@ -19,7 +19,6 @@ import {
   Row,
   Space,
   Tabs,
-  Tooltip,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -126,6 +125,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
+import { Tooltip } from '@openmetadata/ui-core-components';
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>

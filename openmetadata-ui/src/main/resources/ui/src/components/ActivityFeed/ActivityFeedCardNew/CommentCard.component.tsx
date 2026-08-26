@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -159,7 +160,7 @@ const CommentCard = ({
           <Typography.Text>
             <Tooltip
               color="white"
-              overlayClassName="timestamp-tooltip"
+              containerClassName="timestamp-tooltip"
               title={formatDateTime(post.postTs)}>
               <Typography.Text
                 className="feed-card-header-v2-timestamp mr-2"

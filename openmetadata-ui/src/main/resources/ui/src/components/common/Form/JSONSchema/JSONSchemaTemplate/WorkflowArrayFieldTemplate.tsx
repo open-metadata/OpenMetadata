@@ -12,7 +12,8 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Select, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -150,7 +151,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
 
         <div className="workflow-array-field-divider" />
         <Tooltip
-          overlayClassName="custom-tooltip"
+          containerClassName="custom-tooltip"
           placement="top"
           title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
           <Button

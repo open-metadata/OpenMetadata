@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Progress, Tooltip, Typography } from 'antd';
+import { Progress, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -89,8 +90,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
                 {daysLeft <= 0 || isTargetMet ? (
                   <Tooltip
                     placement="bottom"
-                    title={getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-                    trigger="hover">
+                    title={getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}>
                     <InfoCircleOutlined className="kpi-legend-info-icon" />
                   </Tooltip>
                 ) : null}

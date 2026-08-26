@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 

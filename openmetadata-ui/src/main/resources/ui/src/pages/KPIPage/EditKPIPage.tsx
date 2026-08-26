@@ -22,7 +22,6 @@ import {
   Select,
   Slider,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
@@ -61,6 +60,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
+import { Tooltip } from '@openmetadata/ui-core-components';
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { fqn: kpiName } = useFqn();

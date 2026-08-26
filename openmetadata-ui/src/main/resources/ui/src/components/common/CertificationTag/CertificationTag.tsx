@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -60,8 +61,7 @@ const CertificationTag = ({
 
     return (
       <Tooltip
-        title={getTagTooltip(name, certification.tagLabel.description)}
-        trigger="hover">
+        title={getTagTooltip(name, certification.tagLabel.description)}>
         <Link
           className={classNames('d-flex items-center', {
             'certification-tag-with-name  gap-1': showName,

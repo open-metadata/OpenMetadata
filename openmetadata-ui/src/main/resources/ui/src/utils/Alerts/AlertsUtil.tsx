@@ -31,7 +31,6 @@ import {
   Select,
   Skeleton,
   Switch,
-  Tooltip,
   Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
@@ -87,6 +86,7 @@ import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
 import {
+import { Tooltip } from '@openmetadata/ui-core-components';
   getAlertEventsFilterLabels,
   getMessageFromArgumentName,
   getSelectOptionsFromEnum,

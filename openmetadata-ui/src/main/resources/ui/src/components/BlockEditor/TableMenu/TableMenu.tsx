@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import type { Editor } from '@tiptap/react';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Space } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
@@ -159,7 +160,7 @@ const TableMenu = (props: TableMenuProps) => {
   return (
     <div className="table-menu" ref={menuRef}>
       <Space size="middle">
-        <Tooltip showArrow={false} title="Add row after current row">
+        <Tooltip title="Add row after current row">
           <Button
             data-testid="Add row after current row"
             type="text"
@@ -168,7 +169,7 @@ const TableMenu = (props: TableMenuProps) => {
           </Button>
         </Tooltip>
 
-        <Tooltip showArrow={false} title="Add column after current column">
+        <Tooltip title="Add column after current column">
           <Button
             data-testid="Add column after current column"
             type="text"
@@ -177,7 +178,7 @@ const TableMenu = (props: TableMenuProps) => {
           </Button>
         </Tooltip>
 
-        <Tooltip showArrow={false} title="Delete current row">
+        <Tooltip title="Delete current row">
           <Button
             data-testid="Delete current row"
             type="text"
@@ -186,7 +187,7 @@ const TableMenu = (props: TableMenuProps) => {
           </Button>
         </Tooltip>
 
-        <Tooltip showArrow={false} title="Delete current column">
+        <Tooltip title="Delete current column">
           <Button
             data-testid="Delete current col"
             type="text"
@@ -195,7 +196,7 @@ const TableMenu = (props: TableMenuProps) => {
           </Button>
         </Tooltip>
 
-        <Tooltip showArrow={false} title="Delete table">
+        <Tooltip title="Delete table">
           <Button
             data-testid="Delete table"
             type="text"

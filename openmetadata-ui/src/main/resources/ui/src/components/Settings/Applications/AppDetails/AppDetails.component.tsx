@@ -26,7 +26,6 @@ import {
   Row,
   Space,
   Tabs,
-  Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -86,6 +85,7 @@ import McpApplicationConfiguration from '../McpApplicationConfiguration/McpAppli
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -555,7 +555,7 @@ const AppDetails = () => {
                 items: manageButtonContent,
               }}
               open={showActions}
-              overlayClassName="glossary-manage-dropdown-list-container"
+              containerClassName="glossary-manage-dropdown-list-container"
               overlayStyle={{ width: '350px' }}
               placement="bottomRight"
               trigger={['click']}

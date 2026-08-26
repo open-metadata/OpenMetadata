@@ -12,7 +12,8 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Progress, Row, Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,8 +110,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                       title={getKpiResultFeedback(
                         daysLeft,
                         Boolean(isTargetMet)
-                      )}
-                      trigger="hover">
+                      )}>
                       <InfoCircleOutlined style={{ fontSize: '14px' }} />
                     </Tooltip>
                   ) : null}

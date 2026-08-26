@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Col, Row, Space } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';

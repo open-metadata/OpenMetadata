@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';

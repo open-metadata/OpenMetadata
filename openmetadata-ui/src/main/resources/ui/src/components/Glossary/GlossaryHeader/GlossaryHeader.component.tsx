@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -609,7 +610,7 @@ const GlossaryHeader = ({
                     items: manageButtonContent,
                   }}
                   open={showActions}
-                  overlayClassName="glossary-manage-dropdown-list-container"
+                  containerClassName="glossary-manage-dropdown-list-container"
                   overlayStyle={{ width: '350px' }}
                   placement="bottomRight"
                   trigger={['click']}

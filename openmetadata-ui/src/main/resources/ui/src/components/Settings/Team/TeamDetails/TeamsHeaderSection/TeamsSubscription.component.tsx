@@ -17,7 +17,6 @@ import {
   Modal,
   Select,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -38,6 +37,7 @@ import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
+import { Tooltip } from '@openmetadata/ui-core-components';
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconForeignKey } from '../../../assets/svg/foreign-key.svg';
 import SectionLine from '../../../assets/svg/section-line-medium.svg';
 import { ConstraintType } from '../../../generated/entity/data/table';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 const ForeignKeyConstraint = () => {
   const { t } = useTranslation();
@@ -32,8 +32,7 @@ const ForeignKeyConstraint = () => {
       />
       <Tooltip
         placement="bottom"
-        title={t('label.foreign-key')}
-        trigger="hover">
+        title={t('label.foreign-key')}>
         <Icon
           alt="foreign-key"
           className="foreign-key-icon"

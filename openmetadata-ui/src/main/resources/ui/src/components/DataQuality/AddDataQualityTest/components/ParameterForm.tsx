@@ -21,7 +21,6 @@ import {
   InputNumber,
   Select,
   Switch,
-  Tooltip,
   Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
@@ -66,6 +65,7 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+import { Tooltip } from '@openmetadata/ui-core-components';
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );

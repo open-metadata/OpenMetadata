@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, EmptyPlaceholder, Tooltip } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { Table, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -271,7 +271,7 @@ const FailedTestCaseSampleData = ({
                 items: manageButtonContent,
               }}
               open={showActions}
-              overlayClassName="manage-dropdown-list-container"
+              containerClassName="manage-dropdown-list-container"
               overlayStyle={{ width: '350px' }}
               placement="bottomRight"
               trigger={['click']}

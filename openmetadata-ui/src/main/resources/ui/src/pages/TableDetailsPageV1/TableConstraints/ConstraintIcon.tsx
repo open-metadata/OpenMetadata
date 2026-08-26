@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from 'antd';
 import { ReactComponent as IconDistribution } from '../../../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/icon-sort.svg';
@@ -23,6 +22,7 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConstraintType } from '../../../generated/entity/data/table';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 interface ConstraintIconProps {
   constraintType: ConstraintType;
@@ -83,7 +83,7 @@ const ConstraintIcon = ({
       {!showOnlyIcon && (
         <img alt="" className="primary-key-section-line" src={SectionLine} />
       )}
-      <Tooltip placement="bottom" title={title} trigger="hover">
+      <Tooltip placement="bottom" title={title}>
         <Icon
           alt={constraintType}
           className="primary-key-icon"

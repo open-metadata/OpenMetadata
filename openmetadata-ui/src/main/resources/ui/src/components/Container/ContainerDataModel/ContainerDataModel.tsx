@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,

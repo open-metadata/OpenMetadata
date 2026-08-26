@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Divider, Row, Space, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

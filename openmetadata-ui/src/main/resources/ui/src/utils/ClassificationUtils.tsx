@@ -16,7 +16,7 @@ import {
   Tooltip as UTTooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
@@ -160,7 +160,7 @@ export const getTagsTableColumn = ({
 
         return (
           <Space align="center" size={8}>
-            <Tooltip
+            <UTTooltip
               placement="topRight"
               title={
                 disableEditButton &&
@@ -186,9 +186,9 @@ export const getTagsTableColumn = ({
                   handleEditTagClick ? handleEditTagClick(record) : null
                 }
               />
-            </Tooltip>
+            </UTTooltip>
 
-            <Tooltip
+            <UTTooltip
               placement="topRight"
               title={disableDeleteButton && disabledDeleteMessage}>
               <Button
@@ -206,7 +206,7 @@ export const getTagsTableColumn = ({
                   handleActionDeleteTag ? handleActionDeleteTag(record) : null
                 }
               />
-            </Tooltip>
+            </UTTooltip>
           </Space>
         );
       },

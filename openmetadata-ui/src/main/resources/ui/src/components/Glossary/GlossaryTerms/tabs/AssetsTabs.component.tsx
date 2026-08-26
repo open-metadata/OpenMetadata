@@ -21,7 +21,6 @@ import {
   Row,
   Skeleton,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -110,6 +109,7 @@ import {
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -806,7 +806,7 @@ const AssetsTabs = forwardRef(
                       align={{ targetOffset: [-12, 0] }}
                       dropdownRender={renderDropdownContainer}
                       menu={{ items }}
-                      overlayClassName="manage-dropdown-list-container"
+                      containerClassName="manage-dropdown-list-container"
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
                       trigger={['click']}>

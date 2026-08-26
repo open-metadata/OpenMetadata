@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

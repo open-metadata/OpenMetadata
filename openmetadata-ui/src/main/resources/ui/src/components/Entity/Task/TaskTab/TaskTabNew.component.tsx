@@ -22,7 +22,6 @@ import {
   Row,
   Skeleton,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -158,6 +157,7 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
+import { Tooltip } from '@openmetadata/ui-core-components';
 
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
@@ -1238,7 +1238,7 @@ export const TaskTabNew = ({
             selectedKeys: selectedTransition ? [selectedTransition.id] : [],
             onClick: ({ key }) => handleWorkflowTransitionSelect(String(key)),
           }}
-          overlayClassName="task-action-dropdown"
+          containerClassName="task-action-dropdown"
           onClick={() => {
             if (selectedTransition) {
               handleWorkflowTransitionSelect(selectedTransition.id);
@@ -1290,7 +1290,7 @@ export const TaskTabNew = ({
               selectedKeys: [taskAction.key],
               onClick: handleGlossaryTaskMenuClick,
             }}
-            overlayClassName="task-action-dropdown"
+            containerClassName="task-action-dropdown"
             onClick={() =>
               handleGlossaryTaskMenuClick({ key: taskAction.key } as MenuInfo)
             }>
@@ -1337,7 +1337,7 @@ export const TaskTabNew = ({
             onClick: handleTaskMenuClick,
             disabled: !hasApprovalAccess,
           }}
-          overlayClassName="task-action-dropdown"
+          containerClassName="task-action-dropdown"
           onClick={onTestCaseTaskDropdownClick}>
           {taskAction.label}
         </Dropdown.Button>
@@ -1388,7 +1388,7 @@ export const TaskTabNew = ({
                     selectedKeys: [taskAction.key],
                     onClick: handleNoSuggestionMenuItemClick,
                   }}
-                  overlayClassName="task-action-dropdown"
+                  containerClassName="task-action-dropdown"
                   onClick={onNoSuggestionTaskDropdownClick}>
                   {taskAction.label}
                 </Dropdown.Button>
@@ -1408,7 +1408,7 @@ export const TaskTabNew = ({
                   selectedKeys: [taskAction.key],
                   onClick: handleMenuItemClick,
                 }}
-                overlayClassName="task-action-dropdown"
+                containerClassName="task-action-dropdown"
                 onClick={() =>
                   handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>

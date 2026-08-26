@@ -21,7 +21,6 @@ import {
   Space,
   Switch,
   Tabs,
-  Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -110,6 +109,7 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+import { Tooltip } from '@openmetadata/ui-core-components';
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
