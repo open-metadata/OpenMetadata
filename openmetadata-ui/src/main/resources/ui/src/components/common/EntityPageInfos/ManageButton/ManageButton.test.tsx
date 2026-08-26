@@ -204,4 +204,16 @@ describe('Test manage button component', () => {
 
     expect(mockOnRestoreEntity).toHaveBeenCalled();
   });
+
+  it('should gate restore independently from delete permission', async () => {
+    render(
+      <ManageButton {...mockProps} canDelete deleted canRestore={false} />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument();
+    expect(mockOnRestoreEntity).not.toHaveBeenCalled();
+  });
 });

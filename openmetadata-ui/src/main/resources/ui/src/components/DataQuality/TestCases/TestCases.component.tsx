@@ -36,6 +36,24 @@ import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.componen
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
+const getTestCaseListDisplayState = ({
+  canCreate,
+  emptyStateAction,
+  hasActiveFilters,
+  searchValue,
+  showDeleted,
+}: {
+  canCreate: boolean;
+  emptyStateAction?: EmptyPlaceholderAction;
+  hasActiveFilters: boolean;
+  searchValue: string;
+  showDeleted: boolean;
+}) => ({
+  displayedEmptyStateAction: showDeleted ? undefined : emptyStateAction,
+  enableBulkActions: !showDeleted && canCreate,
+  hasListActiveFilters: showDeleted || Boolean(searchValue) || hasActiveFilters,
+});
+
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();
@@ -71,6 +89,8 @@ export const TestCases = () => {
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    handleShowDeletedChange,
   } = useTestCaseListPage();
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
@@ -87,6 +107,15 @@ export const TestCases = () => {
 
     return action;
   }, [createActions?.canCreateTestCase, createActions?.onAddTestCase, t]);
+
+  const { displayedEmptyStateAction, enableBulkActions, hasListActiveFilters } =
+    getTestCaseListDisplayState({
+      canCreate: Boolean(testSuitePermission?.Create),
+      emptyStateAction,
+      hasActiveFilters,
+      searchValue,
+      showDeleted,
+    });
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return (
@@ -291,7 +320,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
-          afterDeleteAction={fetchTestCases}
+          afterDeleteAction={() => fetchTestCases(pagingData.currentPage)}
           breadcrumbData={[
             {
               name: t('label.data-quality'),
@@ -300,10 +329,11 @@ export const TestCases = () => {
               ),
             },
           ]}
-          emptyStateAction={emptyStateAction}
-          enableBulkActions={Boolean(testSuitePermission?.Create)}
+          deletionMode="soft"
+          emptyStateAction={displayedEmptyStateAction}
+          enableBulkActions={enableBulkActions}
           fetchTestCases={sortTestCase}
-          hasActiveFilters={Boolean(searchValue) || hasActiveFilters}
+          hasActiveFilters={hasListActiveFilters}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
@@ -311,7 +341,9 @@ export const TestCases = () => {
             <TestCaseListTableHeader
               extraDropdownContent={extraDropdownContent}
               searchValue={searchValue}
+              showDeleted={showDeleted}
               onSearch={(value) => handleSearchParam('searchValue', value)}
+              onShowDeletedChange={handleShowDeletedChange}
             />
           }
           testCases={testCase}

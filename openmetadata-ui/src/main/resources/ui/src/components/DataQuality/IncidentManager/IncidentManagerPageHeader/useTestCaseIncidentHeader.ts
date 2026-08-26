@@ -143,7 +143,7 @@ export const useTestCaseIncidentHeader = ({
   );
 
   const handleSeverityUpdate = async (severity?: Severities) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (testCaseData?.deleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -167,7 +167,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (testCaseData?.deleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -296,7 +296,7 @@ export const useTestCaseIncidentHeader = ({
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]
   ) => {
-    if (!testCaseData) {
+    if (!testCaseData || testCaseData.deleted) {
       return;
     }
 
@@ -319,7 +319,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return isVersionPage
+    return isVersionPage || testCaseData?.deleted
       ? {
           hasEditStatusPermission: false,
           hasEditOwnerPermission: false,
@@ -338,7 +338,12 @@ export const useTestCaseIncidentHeader = ({
               Operation.EditOwners
             ),
         };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+  }, [
+    testCasePermission,
+    isVersionPage,
+    testCaseData?.deleted,
+    getPrioritizedEditPermission,
+  ]);
 
   const taskLinkInfo = useMemo(
     () =>
@@ -368,7 +373,9 @@ export const useTestCaseIncidentHeader = ({
     hasEditStatusPermission,
     hasEditOwnerPermission,
     hasEditDomainPermission:
-      !isVersionPage && Boolean(testCasePermission?.EditAll),
+      !isVersionPage &&
+      !testCaseData?.deleted &&
+      Boolean(testCasePermission?.EditAll),
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

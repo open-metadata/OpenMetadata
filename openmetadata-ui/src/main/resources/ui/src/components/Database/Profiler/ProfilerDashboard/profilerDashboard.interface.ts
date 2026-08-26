@@ -80,6 +80,7 @@ export interface DataQualityTabProps {
   editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
+  deletionMode?: 'hard' | 'soft';
 }
 
 export interface TestSummaryProps {
@@ -95,7 +96,7 @@ export interface ProfilerLatestValueProps {
 
 export type TestCaseAction = {
   data: TestCase;
-  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+  action: 'UPDATE' | 'DELETE' | 'RESTORE' | 'UPDATE_STATUS';
 };
 
 export type TestCaseChartDataType = {

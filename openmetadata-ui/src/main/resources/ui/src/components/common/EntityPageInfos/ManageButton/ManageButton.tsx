@@ -55,6 +55,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   displayName,
   entityType,
   canDelete,
+  canRestore = canDelete,
   entityId,
   isAsyncDelete = false,
   isRecursiveDelete,
@@ -175,7 +176,7 @@ const ManageButton: FC<ManageButtonProps> = ({
       ? ([
           {
             label: (
-              <Tooltip title={canDelete ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+              <Tooltip title={canRestore ? '' : t(NO_PERMISSION_FOR_ACTION)}>
                 <ManageButtonItemLabel
                   description={t('message.restore-action-description', {
                     entityType,
@@ -187,7 +188,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               </Tooltip>
             ),
             onClick: (e) => {
-              if (canDelete) {
+              if (canRestore) {
                 e.domEvent.stopPropagation();
                 setIsDropdownOpen(false);
                 setShowReactiveModal(true);
