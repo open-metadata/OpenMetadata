@@ -132,7 +132,11 @@ test.describe(
       await page.getByTestId(`action-dropdown-${testCaseName}`).click();
       await page.getByTestId(`restore-${testCaseName}`).click();
       const confirmationModal = page.getByTestId('confirmation-modal');
-      await expect(confirmationModal).toBeVisible();
+      const restoreButton = confirmationModal.getByTestId('save-button');
+
+      // Ant Design's modal root is a zero-size portal wrapper, so the visible
+      // action inside the dialog is the reliable signal that it is interactive.
+      await expect(restoreButton).toBeVisible();
       await expect(confirmationModal.getByTestId('body-text')).toContainText(
         testCaseName
       );
@@ -143,7 +147,7 @@ test.describe(
           response.request().method() === 'PUT'
       );
       const deletedListRefresh = waitForTestCaseListResponse(page);
-      await confirmationModal.getByTestId('save-button').click();
+      await restoreButton.click();
       expect((await restoreResponse).status()).toBe(200);
       await deletedListRefresh;
       await expect(page.getByTestId(testCaseName)).not.toBeVisible();
