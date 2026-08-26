@@ -102,7 +102,7 @@ jobs:
 
       - name: Cache Maven dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
