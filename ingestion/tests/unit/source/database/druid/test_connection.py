@@ -10,10 +10,12 @@
 #  limitations under the License.
 """Unit tests for Druid connection handling.
 
-The Druid dialect (pydruid) is an optional extra absent from the unit-test
-environment, so URL parity is asserted via the connector's get_connection_url
-rather than by instantiating an engine.
+The Druid dialect (pydruid) is an optional extra that may be absent from the
+unit-test environment, so URL parity is asserted via the connector's
+get_connection_url rather than by instantiating an engine.
 """
+
+import pytest
 
 from metadata.generated.schema.entity.services.connections.database.druidConnection import (
     DruidConnection as DruidConnectionConfig,
@@ -48,3 +50,30 @@ def test_get_connection_url_with_basic_auth():
         DruidConnection.get_connection_url(connection)
         == "druid://openmetadata_user:openmetadata_password@localhost:8082/druid/v2/sql"
     )
+
+
+@pytest.mark.parametrize(
+    ("scheme", "expected_url"),
+    [
+        (DruidScheme.druid, "druid://localhost:8082/druid/v2/sql"),
+        (DruidScheme.druid_http, "druid+http://localhost:8082/druid/v2/sql"),
+        (DruidScheme.druid_https, "druid+https://localhost:8082/druid/v2/sql"),
+    ],
+)
+def test_get_connection_url_honours_every_scheme(scheme, expected_url):
+    connection = DruidConnectionConfig(scheme=scheme, hostPort="localhost:8082")
+    assert DruidConnection.get_connection_url(connection) == expected_url
+
+
+@pytest.mark.parametrize("scheme", list(DruidScheme))
+def test_every_scheme_maps_to_an_installed_dialect(scheme):
+    """A scheme the schema accepts but SQLAlchemy cannot resolve fails at engine creation.
+
+    pydruid registers druid, druid.http and druid.https as entry points; this pins the
+    enum to what is actually installed instead of to a hardcoded list.
+    """
+    pytest.importorskip("pydruid")
+    from sqlalchemy.engine.url import make_url
+
+    connection = DruidConnectionConfig(scheme=scheme, hostPort="localhost:8082")
+    assert make_url(DruidConnection.get_connection_url(connection)).get_dialect() is not None
