@@ -17,28 +17,28 @@ import type {
 import { render, screen } from '@testing-library/react';
 import OMBooleanWidget from './OMBooleanWidget';
 
-const baseProps: Partial<BooleanWidgetProps> = {
+const baseProps = {
   value: false,
   setValue: jest.fn(),
   readonly: false,
-  field: {} as any,
-  fieldDefinition: {} as any,
+  field: {},
+  fieldDefinition: {},
   fieldSrc: 'value' as FieldSource,
   operator: 'equal',
-  config: {} as any,
+  config: {},
   placeholder: '',
   widgetId: 'test',
-};
+} as unknown as BooleanWidgetProps;
 
 describe('OMBooleanWidget', () => {
   it('renders a toggle', () => {
-    render(<OMBooleanWidget {...(baseProps as BooleanWidgetProps)} />);
+    render(<OMBooleanWidget {...baseProps} />);
 
     expect(screen.getByRole('switch')).toBeInTheDocument();
   });
 
   it('reflects the value prop', () => {
-    render(<OMBooleanWidget {...(baseProps as BooleanWidgetProps)} value />);
+    render(<OMBooleanWidget {...baseProps} value />);
 
     expect(screen.getByRole('switch')).toBeChecked();
   });

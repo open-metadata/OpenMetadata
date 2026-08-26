@@ -75,11 +75,11 @@ const baseProps = {
   ],
   useAsyncSearch: false,
   showSearch: false,
-  field: {} as any,
-  fieldDefinition: {} as any,
+  field: {},
+  fieldDefinition: {},
   fieldSrc: 'value' as const,
   operator: 'select_equals',
-  config: {} as any,
+  config: {},
   widgetId: 'test',
 } as unknown as SelectWidgetProps;
 

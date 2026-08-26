@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type {
+  NumberWidgetProps,
+  TextWidgetProps,
+} from '@react-awesome-query-builder/ui';
 import { fireEvent, render, screen } from '@testing-library/react';
 import OMNumberWidget from './OMNumberWidget';
 import OMTextWidget from './OMTextWidget';
@@ -20,13 +24,13 @@ const baseProps = {
   setValue: jest.fn(),
   readonly: false,
   // minimal required props from AbstractWidgetProps
-  field: {} as any,
-  fieldDefinition: {} as any,
+  field: {},
+  fieldDefinition: {},
   fieldSrc: 'value',
   operator: 'equal',
-  config: {} as any,
+  config: {},
   widgetId: 'test',
-} as any;
+} as unknown as TextWidgetProps;
 
 describe('OMTextWidget', () => {
   it('renders an input with the given value', () => {
@@ -55,7 +59,12 @@ describe('OMTextWidget', () => {
 
 describe('OMNumberWidget', () => {
   it('renders a number input', () => {
-    render(<OMNumberWidget {...baseProps} value={42} />);
+    render(
+      <OMNumberWidget
+        {...(baseProps as unknown as NumberWidgetProps)}
+        value={42}
+      />
+    );
 
     expect(screen.getByDisplayValue('42')).toBeInTheDocument();
   });

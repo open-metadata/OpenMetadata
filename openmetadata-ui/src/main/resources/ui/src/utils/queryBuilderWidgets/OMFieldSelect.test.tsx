@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { Config } from '@react-awesome-query-builder/ui';
 import { render, screen } from '@testing-library/react';
 import OMConjs from './OMConjs';
 import OMFieldSelect from './OMFieldSelect';
@@ -38,7 +39,7 @@ const fieldProps = {
   readonly: false,
   placeholder: 'Select field',
   errorText: '',
-  config: {} as any,
+  config: {} as Config,
 };
 
 const conjsProps = {
