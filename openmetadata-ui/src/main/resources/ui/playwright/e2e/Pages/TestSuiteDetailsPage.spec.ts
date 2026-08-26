@@ -119,7 +119,18 @@ test(
     await test.step('Search test cases on the details page', async () => {
       const searchInput = page.getByTestId('test-suite-test-case-search');
 
-      await searchInput.fill(testCaseName1 ?? '');
+      await Promise.all([
+        page.waitForResponse((response) => {
+          const responseUrl = new URL(response.url());
+
+          return (
+            responseUrl.pathname.includes(
+              '/api/v1/dataQuality/testCases/search/list'
+            ) && responseUrl.searchParams.get('q') === testCaseName1
+          );
+        }),
+        searchInput.fill(testCaseName1 ?? ''),
+      ]);
 
       await expect(page.getByTestId(testCaseName1 ?? '')).toBeVisible();
     });
