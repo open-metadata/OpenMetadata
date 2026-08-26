@@ -17,10 +17,10 @@ import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateViewPermissions } from '../../utils/permission';
-import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 
 const policy = new PolicyClass();
 const policy2 = new PolicyClass();

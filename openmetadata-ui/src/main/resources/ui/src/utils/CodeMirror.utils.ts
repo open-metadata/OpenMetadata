@@ -19,24 +19,24 @@ import { python } from '@codemirror/lang-python';
 import { sql } from '@codemirror/lang-sql';
 import { yaml } from '@codemirror/lang-yaml';
 import {
-    bracketMatching,
-    defaultHighlightStyle,
-    foldGutter,
-    indentUnit,
-    StreamLanguage,
-    syntaxHighlighting
+  bracketMatching,
+  defaultHighlightStyle,
+  foldGutter,
+  indentUnit,
+  StreamLanguage,
+  syntaxHighlighting,
 } from '@codemirror/language';
 import { java } from '@codemirror/legacy-modes/mode/clike';
 import { EditorState, Extension } from '@codemirror/state';
 import {
-    drawSelection,
-    dropCursor,
-    EditorView,
-    highlightActiveLine,
-    highlightActiveLineGutter,
-    keymap,
-    lineNumbers,
-    placeholder as placeholderExtension
+  drawSelection,
+  dropCursor,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+  placeholder as placeholderExtension,
 } from '@codemirror/view';
 import { isUndefined } from 'lodash';
 import { CSMode } from '../enums/codemirror.enum';

@@ -20,6 +20,7 @@ import {
 } from '@playwright/test';
 import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
+import { CODE_EDITOR, getCodeEditorText } from '../../../utils/codeEditor';
 import {
   getApiContext,
   redirectToHomePage,
@@ -40,7 +41,6 @@ import {
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
-import { CODE_EDITOR, getCodeEditorText } from '../../../utils/codeEditor';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   name = '';

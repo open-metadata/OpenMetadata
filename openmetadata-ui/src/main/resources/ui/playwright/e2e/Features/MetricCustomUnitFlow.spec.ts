@@ -13,6 +13,7 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { typeInCodeEditor } from '../../utils/codeEditor';
 import {
   clickOutside,
   descriptionBox,
@@ -25,7 +26,6 @@ import {
   updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
-import { typeInCodeEditor } from '../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

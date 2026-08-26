@@ -29,6 +29,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
+import { CODE_EDITOR_CONTENT } from './codeEditor';
 import {
   clickOutside,
   descriptionBox,
@@ -43,7 +44,6 @@ import {
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
-import { CODE_EDITOR_CONTENT } from './codeEditor';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';

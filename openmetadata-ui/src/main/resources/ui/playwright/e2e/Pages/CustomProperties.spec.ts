@@ -71,6 +71,7 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
+import { CODE_EDITOR_SCROLLER, typeInCodeEditor } from '../../utils/codeEditor';
 import {
   clickOutside,
   createNewPage,
@@ -116,7 +117,6 @@ import {
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
-import { CODE_EDITOR_SCROLLER, typeInCodeEditor } from '../../utils/codeEditor';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

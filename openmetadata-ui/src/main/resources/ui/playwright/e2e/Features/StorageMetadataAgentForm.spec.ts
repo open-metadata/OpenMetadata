@@ -13,9 +13,15 @@
 import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import {
+  CODE_EDITOR,
+  CODE_EDITOR_LINE,
+  CODE_EDITOR_PLACEHOLDER,
+  fillCodeEditor,
+  getCodeEditorText,
+} from '../../utils/codeEditor';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { CODE_EDITOR, CODE_EDITOR_LINE, CODE_EDITOR_PLACEHOLDER, fillCodeEditor, getCodeEditorText } from '../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -20,11 +20,11 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
-import { clickCodeEditor } from '../../../utils/codeEditor';
 
 const table = new TableClass();
 const testClassification = new ClassificationClass();

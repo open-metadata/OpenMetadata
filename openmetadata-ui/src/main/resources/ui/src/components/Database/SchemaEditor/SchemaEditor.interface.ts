@@ -14,8 +14,8 @@
 import { Extension } from '@codemirror/state';
 import { ReactNode } from 'react';
 import {
-    CodeMirrorOptions,
-    Mode
+  CodeMirrorOptions,
+  Mode,
 } from '../../../interface/codemirror.interface';
 
 export type { Mode };

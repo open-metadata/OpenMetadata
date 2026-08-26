@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { CODE_EDITOR_CONTENT, CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { CODE_EDITOR_CONTENT, CODE_EDITOR_LINE } from '../../utils/codeEditor';
 
 const table = {
   term: 'dim___reserved__colon____reserved__arrow__address',

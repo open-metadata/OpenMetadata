@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import {
   clickOutside,
   createNewPage,
@@ -21,7 +22,6 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
-import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

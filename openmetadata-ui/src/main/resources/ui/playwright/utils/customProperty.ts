@@ -25,6 +25,11 @@ import {
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
+  CODE_EDITOR,
+  CODE_EDITOR_CONTENT,
+  typeInCodeEditor,
+} from './codeEditor';
+import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -36,11 +41,6 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
-import {
-  CODE_EDITOR,
-  CODE_EDITOR_CONTENT,
-  typeInCodeEditor,
-} from './codeEditor';
 
 export enum CustomPropertyType {
   STRING = 'String',

@@ -13,6 +13,7 @@
 import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import {
   createNewPage,
   getApiContext,
@@ -24,7 +25,6 @@ import {
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { deleteTestCase, submitTestCaseForm } from '../../../utils/testCases';
-import { clickCodeEditor } from '../../../utils/codeEditor';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

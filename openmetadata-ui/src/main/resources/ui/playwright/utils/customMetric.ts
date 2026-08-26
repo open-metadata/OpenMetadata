@@ -16,12 +16,12 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
+import { clickCodeEditor } from './codeEditor';
 import { toastNotification } from './common';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from './dataQuality';
-import { clickCodeEditor } from './codeEditor';
 
 type CustomMetricDetails = {
   page: Page;

@@ -13,9 +13,9 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
+import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import { clickOutside, descriptionBox, uuid } from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
-import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 
 export const updateMetricType = async (page: Page, metric: string) => {
   await page.click(`[data-testid="edit-metric-type-button"]`);
