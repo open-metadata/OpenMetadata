@@ -1,16 +1,25 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntityLineage;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -57,6 +66,21 @@ public class GetEntityTool implements McpTool {
   private static final String SCHEMA_DEFINITION_TRUNCATED_KEY = "schemaDefinitionTruncated";
   private static final String SQL_TRUNCATED_KEY = "sqlTruncated";
 
+  private static final String ENTITIES_PARAM = "entities";
+  private static final char REFERENCE_SEPARATOR = ':';
+  private static final int MAX_BATCH = 10;
+  private static final String BAD_REFERENCE_MESSAGE =
+      "Expected 'entityType:fqn', e.g. 'table:svc.db.schema.orders'";
+
+  private static final String INCLUDE_PARAM = "include";
+  private static final String INCLUDE_LINEAGE = "lineage";
+  private static final String INCLUDE_QUALITY = "quality";
+  private static final String TEST_SUITE_KEY = "testSuite";
+  private static final String CERTIFICATION_KEY = "certification";
+
+  /** Two hops. The second one is what tells a caller whether a lone neighbour starts a chain. */
+  private static final int REACH_DEPTH = 2;
+
   private static final String COLUMN_OFFSET_PARAM = "columnOffset";
   private static final String COLUMN_LIMIT_PARAM = "columnLimit";
   private static final String TOTAL_COLUMNS_KEY = "totalColumns";
@@ -101,8 +125,108 @@ public class GetEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String entityType = (String) params.get("entityType");
-    String fqn = (String) params.get("fqn");
+    List<String> batch = McpParams.getStringList(params, ENTITIES_PARAM);
+    Map<String, Object> result;
+    if (batch.isEmpty()) {
+      result =
+          readOne(
+              authorizer,
+              securityContext,
+              params,
+              (String) params.get("entityType"),
+              (String) params.get("fqn"));
+    } else {
+      result = readMany(authorizer, securityContext, params, batch);
+    }
+    return result;
+  }
+
+  /**
+   * Reads up to {@link #MAX_BATCH} entities in one call instead of one call each.
+   *
+   * <p>Each entity resolves on its own, so an unknown type, a missing asset or a denied permission
+   * returns an {@code error} entry for that entity rather than failing the whole call.
+   */
+  private Map<String, Object> readMany(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      List<String> batch) {
+    List<Map<String, Object>> entities = new ArrayList<>();
+    for (String reference : batch.subList(0, Math.min(batch.size(), MAX_BATCH))) {
+      entities.add(readBatchEntry(authorizer, securityContext, params, reference));
+    }
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("entities", entities);
+    result.put("requested", batch.size());
+    result.put("returned", entities.size());
+    if (batch.size() > MAX_BATCH) {
+      result.put(
+          McpResponseTrim.MESSAGE_KEY,
+          String.format(
+              "%d entities requested, %d returned. Ask for at most %d per call.",
+              batch.size(), entities.size(), MAX_BATCH));
+    }
+    return result;
+  }
+
+  /** One batch entry, with its own failure contained to itself. */
+  private Map<String, Object> readBatchEntry(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      String reference) {
+    Map<String, Object> entry;
+    EntityRef parsed = parseReference(reference);
+    if (parsed == null) {
+      entry = batchError(reference, BAD_REFERENCE_MESSAGE);
+    } else {
+      try {
+        entry = readOne(authorizer, securityContext, params, parsed.entityType(), parsed.fqn());
+      } catch (Exception e) {
+        LOG.warn("Batch read failed for {}: {}", reference, e.getMessage());
+        entry = batchError(reference, McpResponseTrim.safeMessage(e));
+      }
+    }
+    return entry;
+  }
+
+  record EntityRef(String entityType, String fqn) {}
+
+  /**
+   * Splits {@code entityType:fqn} on the first colon only, because an FQN can contain colons.
+   * Returns null when unparseable, so the caller can report it per entity.
+   */
+  @VisibleForTesting
+  static EntityRef parseReference(String reference) {
+    EntityRef parsed = null;
+    if (reference != null) {
+      int separator = reference.indexOf(REFERENCE_SEPARATOR);
+      boolean parseable = separator > 0 && separator < reference.length() - 1;
+      if (parseable) {
+        String type = reference.substring(0, separator).trim();
+        String fqn = reference.substring(separator + 1).trim();
+        if (!type.isEmpty() && !fqn.isEmpty()) {
+          parsed = new EntityRef(type, fqn);
+        }
+      }
+    }
+    return parsed;
+  }
+
+  private static Map<String, Object> batchError(String reference, String message) {
+    Map<String, Object> entry = new LinkedHashMap<>();
+    entry.put("requested", reference);
+    entry.put(McpResponseTrim.ERROR_KEY, message);
+    return entry;
+  }
+
+  private Map<String, Object> readOne(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      String entityType,
+      String fqn) {
     // Authorize by FQN so entity-scoped tag/owner/domain policies are evaluated, not just the
     // resource-type permission.
     authorizer.authorize(
@@ -113,14 +237,243 @@ public class GetEntityTool implements McpTool {
     int columnOffset =
         Math.max(0, McpParams.getInt(params, COLUMN_OFFSET_PARAM, DEFAULT_COLUMN_OFFSET));
     int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
-    String fields = "*";
     Map<String, Object> entityData =
-        JsonUtils.getMap(Entity.getEntityByName(entityType, fqn, fields, null));
+        JsonUtils.getMap(Entity.getEntityByName(entityType, fqn, "*", null));
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
     // stays under the dispatch-level size cap instead of being replaced by an empty stub.
     Map<String, Object> cleaned = cleanEntityResponse(entityData);
-    return applyColumnWindow(cleaned, columnOffset, columnLimit);
+    resolveCertification(cleaned);
+    Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
+    addIncludes(
+        windowed,
+        new IncludeContext(authorizer, securityContext, entityType, fqn),
+        McpParams.getStringList(params, INCLUDE_PARAM));
+    return windowed;
+  }
+
+  /**
+   * Folds lineage and test health into this response, so the caller does not spend a call on each.
+   * Both are cheap in-process reads.
+   *
+   * <p>Each section degrades on its own: if one fails, its slot carries a note and the entity read
+   * still succeeds.
+   */
+  /**
+   * What an include section needs to fetch and authorize its own data. Each section reaches a
+   * different entity than {@link #readOne} authorized - lineage the neighbours, quality the test
+   * suite - so each carries the caller's identity.
+   */
+  private record IncludeContext(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      String entityType,
+      String fqn) {}
+
+  private static void addIncludes(
+      Map<String, Object> result, IncludeContext ctx, List<String> include) {
+    if (nullOrEmpty(include)) {
+      return;
+    }
+    if (include.contains(INCLUDE_LINEAGE)) {
+      result.put(INCLUDE_LINEAGE, section(() -> neighbours(ctx), INCLUDE_LINEAGE, ctx.fqn()));
+    }
+    if (include.contains(INCLUDE_QUALITY)) {
+      result.put(INCLUDE_QUALITY, section(() -> quality(result, ctx), INCLUDE_QUALITY, ctx.fqn()));
+    }
+  }
+
+  /** Runs one include section, converting a failure into a note instead of losing the whole read. */
+  private static Object section(Supplier<Object> supplier, String name, String fqn) {
+    Object value;
+    try {
+      value = supplier.get();
+    } catch (Exception e) {
+      LOG.warn("include={} failed for {}: {}", name, fqn, e.getMessage());
+      value = Map.of("unavailable", McpResponseTrim.safeMessage(e));
+    }
+    return value;
+  }
+
+  /**
+   * Immediate neighbours, plus whether the graph continues past them. {@code get_entity_lineage} is
+   * still the tool for depth and edge detail.
+   *
+   * <p>Reads two hops once and decides "is there more" from which edges touch the root. Probing
+   * each neighbour instead means looking it up under the root's entity type, which fails whenever a
+   * neighbour is a different type - a table feeding a dashboard, say.
+   */
+  private static Map<String, Object> neighbours(IncludeContext ctx) {
+    // The subject context applies the caller's domain restrictions
+    // (LineageRepository.pruneLineageByDomain). Without it they see neighbours they cannot access.
+    EntityLineage lineage =
+        Entity.getLineageRepository()
+            .getByName(
+                ctx.entityType(),
+                ctx.fqn(),
+                REACH_DEPTH,
+                REACH_DEPTH,
+                getSubjectContext(ctx.securityContext()));
+    UUID root = rootId(lineage, ctx.fqn());
+    Map<UUID, EntityReference> index = indexNodes(lineage);
+    Map<String, Object> summary = new LinkedHashMap<>();
+    addDirection(summary, root, index, lineage.getUpstreamEdges(), true);
+    addDirection(summary, root, index, lineage.getDownstreamEdges(), false);
+    summary.put("note", reachNote(continuesAnywhere(summary)));
+    return summary;
+  }
+
+  /** Neighbours whose edge touches the root, and whether any edge in that direction does not. */
+  @VisibleForTesting
+  static void addDirection(
+      Map<String, Object> summary,
+      UUID root,
+      Map<UUID, EntityReference> index,
+      List<Edge> edges,
+      boolean upstream) {
+    List<String> immediate = new ArrayList<>();
+    boolean continues = false;
+    for (Edge edge : nullOrEmpty(edges) ? List.<Edge>of() : edges) {
+      UUID near = upstream ? edge.getToEntity() : edge.getFromEntity();
+      UUID far = upstream ? edge.getFromEntity() : edge.getToEntity();
+      if (root.equals(near)) {
+        addEndpoint(immediate, index, far);
+      } else {
+        continues = true;
+      }
+    }
+    summary.put(upstream ? "upstream" : "downstream", immediate);
+    summary.put(upstream ? "hasMoreUpstream" : "hasMoreDownstream", continues);
+  }
+
+  private static boolean continuesAnywhere(Map<String, Object> summary) {
+    return Boolean.TRUE.equals(summary.get("hasMoreUpstream"))
+        || Boolean.TRUE.equals(summary.get("hasMoreDownstream"));
+  }
+
+  /**
+   * The entity's own id, which every reach decision is measured against. Throwing when it is absent
+   * lets {@link #section} report it, rather than guessing the flags.
+   */
+  private static UUID rootId(EntityLineage lineage, String fqn) {
+    EntityReference entity = lineage.getEntity();
+    if (entity == null || entity.getId() == null) {
+      throw new IllegalStateException("Lineage for '" + fqn + "' carries no root entity");
+    }
+    return entity.getId();
+  }
+
+  private static Map<UUID, EntityReference> indexNodes(EntityLineage lineage) {
+    Map<UUID, EntityReference> index = new HashMap<>();
+    if (!nullOrEmpty(lineage.getNodes())) {
+      lineage.getNodes().forEach(node -> index.put(node.getId(), node));
+    }
+    return index;
+  }
+
+  /**
+   * Says whether the graph continues past the immediate neighbours. Without it a single upstream is
+   * ambiguous between "that is everything" and "that is the first of several hops".
+   */
+  private static String reachNote(boolean continues) {
+    return continues
+        ? "Immediate neighbours only, and the graph continues beyond them. Use get_entity_lineage"
+            + " for the full depth."
+        : "Immediate neighbours only - and this is the complete graph; nothing lies beyond these."
+            + " A further get_entity_lineage call would add only edge detail.";
+  }
+
+  private static void addEndpoint(List<String> names, Map<UUID, EntityReference> index, UUID id) {
+    EntityReference ref = index.get(id);
+    if (ref != null
+        && ref.getFullyQualifiedName() != null
+        && !names.contains(ref.getFullyQualifiedName())) {
+      names.add(ref.getFullyQualifiedName());
+    }
+  }
+
+  /**
+   * Test health for the entity's suite. The entity carries the suite reference but not its
+   * pass/fail counts, so answering "are the tests passing?" otherwise costs another call.
+   */
+  private static Object quality(Map<String, Object> entity, IncludeContext ctx) {
+    Object suiteRef = entity.get(TEST_SUITE_KEY);
+    Object result = Map.of("note", "No test suite is attached to this entity.");
+    if (suiteRef instanceof Map<?, ?> ref && ref.get("fullyQualifiedName") != null) {
+      String suiteFqn = ref.get("fullyQualifiedName").toString();
+      // A test suite is its own entity with its own policies, so being able to see the table it is
+      // attached to does not imply the right to read it.
+      ctx.authorizer()
+          .authorize(
+              ctx.securityContext(),
+              new OperationContext(Entity.TEST_SUITE, VIEW_ALL),
+              new ResourceContext<>(Entity.TEST_SUITE, null, suiteFqn));
+      Map<String, Object> suite =
+          JsonUtils.getMap(
+              Entity.getEntityByName(Entity.TEST_SUITE, suiteFqn, "*", Include.NON_DELETED));
+      Map<String, Object> health = new LinkedHashMap<>();
+      health.put("testSuite", suiteFqn);
+      health.put("summary", withNeverRun(suite.get("summary")));
+      // columnTestSummary counts tests per column but does not name them. The suite already has
+      // per-test names and statuses, so pass those through instead of forcing another call.
+      Object perTest = suite.get("testCaseResultSummary");
+      if (perTest instanceof List<?> list && !list.isEmpty()) {
+        health.put("tests", list);
+      }
+      result = health;
+    }
+    return result;
+  }
+
+  /**
+   * Resolves certification expiry here too, not only in search hits. This tool used to return
+   * {@code expiryDate} as epoch millis next to {@code state: "Confirmed"}, so a lapsed badge read as
+   * a live one unless the caller converted the timestamp by hand.
+   */
+  private static void resolveCertification(Map<String, Object> entity) {
+    Object certification = entity.get(CERTIFICATION_KEY);
+    if (certification != null) {
+      entity.put(
+          CERTIFICATION_KEY,
+          McpResponseTrim.slimCertification(certification, System.currentTimeMillis()));
+    }
+  }
+
+  /**
+   * Adds the bucket the raw summary cannot express: tests that exist but have never run.
+   *
+   * <p>The summary counts success/failed/aborted/queued against a total. When nothing has run, every
+   * bucket is zero while total is 13 - which reads as "13 tests, no failures, healthy" and is the
+   * opposite of the truth.
+   */
+  @VisibleForTesting
+  static Object withNeverRun(Object rawSummary) {
+    Object result = rawSummary;
+    if (rawSummary instanceof Map<?, ?> summary) {
+      Map<String, Object> annotated = new LinkedHashMap<>();
+      summary.forEach((key, value) -> annotated.put(String.valueOf(key), value));
+      // Queued does not count as executed: a queued test has produced no verdict, so counting it
+      // would let a suite that is only waiting to run report neverRun: 0. This also matches
+      // AIContextMarkdown.appendCoverageVerdict, so both tools give the same verdict.
+      int executed =
+          intOf(annotated.get("success"))
+              + intOf(annotated.get("failed"))
+              + intOf(annotated.get("aborted"));
+      int neverRun = Math.max(0, intOf(annotated.get("total")) - executed);
+      annotated.put("neverRun", neverRun);
+      if (neverRun > 0 && executed == 0) {
+        annotated.put(
+            McpResponseTrim.MESSAGE_KEY,
+            "No test has ever executed on this suite. Zero failures here means unverified, not"
+                + " healthy.");
+      }
+      result = annotated;
+    }
+    return result;
+  }
+
+  private static int intOf(Object value) {
+    return value instanceof Number number ? number.intValue() : 0;
   }
 
   /**
