@@ -470,7 +470,7 @@ const ContextCenterMemoriesPage: FC = () => {
           return prev;
         });
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, handleViewMemory, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
