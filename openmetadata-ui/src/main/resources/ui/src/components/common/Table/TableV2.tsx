@@ -1060,7 +1060,11 @@ const TableV2 = <T extends object>(
       </div>
 
       <div
-        className="tw:flex tw:flex-col tw:w-full"
+        // `tw:relative` anchors the loading overlay below. Without it the
+        // overlay's `inset-0` resolves against the viewport instead of the
+        // table, so it dims the whole page and centres the spinner wherever
+        // the viewport happens to be rather than over the rows it is masking.
+        className="tw:relative tw:flex tw:flex-col tw:w-full"
         data-testid={dataTestId}
         style={scrollStyle}>
         {isLoading && (
