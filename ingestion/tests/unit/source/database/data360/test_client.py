@@ -49,9 +49,7 @@ def test_get_returns_response_on_success():
 
 
 def test_get_returns_none_and_warns_on_resource_not_found():
-    client = _client(
-        side_effect=SalesforceResourceNotFound("session", 404, "resource", "content")
-    )
+    client = _client(side_effect=SalesforceResourceNotFound("session", 404, "resource", "content"))
     log_warning = MagicMock()
     result = _get(client=client, path="ssot/data-spaces", metadata_type="Dataspaces", log_warning=log_warning)
     assert result is None

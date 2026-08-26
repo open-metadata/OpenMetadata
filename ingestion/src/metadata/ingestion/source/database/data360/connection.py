@@ -12,7 +12,6 @@
 Salesforce Data 360 connection handler
 """
 
-
 from simple_salesforce.api import Salesforce
 
 from metadata.generated.schema.entity.automations.workflow import (

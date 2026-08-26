@@ -70,9 +70,7 @@ MOCK_DATA360PIPELINE_CONFIG = {
 
 def _build_source() -> Data360PipelineSource:
     with (
-        patch(
-            "metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"
-        ),
+        patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360PIPELINE_CONFIG)
@@ -102,9 +100,7 @@ class TestData360PipelineSourceCreate:
             },
         }
         with (
-            patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"
-            ),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
             patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
         ):
             config = OpenMetadataWorkflowConfig.model_validate(config_without_db_service)
@@ -129,9 +125,7 @@ class TestData360PipelineSourceCreate:
             },
         }
         with (
-            patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"
-            ),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
             patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
             pytest.raises(InvalidWorkflowException),
         ):
@@ -143,9 +137,7 @@ class TestData360PipelineSourceCreate:
 
     def test_lineage_create_succeeds_with_db_service_name(self):
         with (
-            patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"
-            ),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
             patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
         ):
             config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360PIPELINE_CONFIG)

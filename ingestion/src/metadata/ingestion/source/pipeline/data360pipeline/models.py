@@ -51,7 +51,7 @@ class DataCloudPipelineDetails(ABC):
 class UserInfo(BaseModel):
     id: str | None = None
     name: str | None = None
-    profilePhotoUrl: str | None = None
+    profilePhotoUrl: str | None = None  # noqa: N815
 
 
 class DataSpaceInfo(BaseModel):
@@ -60,46 +60,46 @@ class DataSpaceInfo(BaseModel):
 
 
 class DataSource(BaseModel):
-    sourceApiName: str | None = None
+    sourceApiName: str | None = None  # noqa: N815
     type: str | None = None
 
 
 class Frequency(BaseModel):
-    refreshDayOfMonth: list[str | None] | list[int | None] | None = None
+    refreshDayOfMonth: list[str | None] | list[int | None] | None = None  # noqa: N815
     hours: list[str | None] | list[int | None] | None = None
-    frequencyType: str | None = None
+    frequencyType: str | None = None  # noqa: N815
 
 
 class RefreshConfig(BaseModel):
-    refreshMode: str | None = None
+    refreshMode: str | None = None  # noqa: N815
     frequency: Frequency | None = None
-    hasHeaders: bool | None = None
-    isAccelerationEnabled: bool | None = None
-    shouldFetchImmediately: bool | None = None
-    shouldTreatMissingFilesAsFailures: bool | None = None
+    hasHeaders: bool | None = None  # noqa: N815
+    isAccelerationEnabled: bool | None = None  # noqa: N815
+    shouldFetchImmediately: bool | None = None  # noqa: N815
+    shouldTreatMissingFilesAsFailures: bool | None = None  # noqa: N815
 
 
 class Mapping(BaseModel):
-    sourceFieldName: str | None = None
-    targetFieldName: str | None = None
+    sourceFieldName: str | None = None  # noqa: N815
+    targetFieldName: str | None = None  # noqa: N815
     formula: str | None = None
 
 
 class ConnectorDetails(BaseModel):
     name: str | None = None
-    sourceObject: str | None = None
+    sourceObject: str | None = None  # noqa: N815
     type: str | None = None
 
 
 class ConnectorInfo(BaseModel):
-    connectorType: str | None = None
-    connectorDetails: ConnectorDetails | None = None
+    connectorType: str | None = None  # noqa: N815
+    connectorDetails: ConnectorDetails | None = None  # noqa: N815
     capabilities: dict[str, Any] | None = None
 
 
 class DataLakeFieldInfo(BaseModel):
-    dataType: str | None = None
-    isPrimaryKey: bool | None = None
+    dataType: str | None = None  # noqa: N815
+    isPrimaryKey: bool | None = None  # noqa: N815
     label: str | None = None
     name: str | None = None
     format: str | None = None
@@ -107,11 +107,11 @@ class DataLakeFieldInfo(BaseModel):
 
 class DataLakeObjectInfo(BaseModel):
     name: str | None = None
-    dataSpaceInfo: list[DataSpaceInfo] | None = None
+    dataSpaceInfo: list[DataSpaceInfo] | None = None  # noqa: N815
     capabilities: dict[str, Any] | None = None
     category: str | None = None
-    dataLakeFieldInfoRepresentation: list[DataLakeFieldInfo] | None = None
-    eventDateTimeFieldName: str | None = None
+    dataLakeFieldInfoRepresentation: list[DataLakeFieldInfo] | None = None  # noqa: N815
+    eventDateTimeFieldName: str | None = None  # noqa: N815
     fields: list[DataLakeFieldInfo] | None = None
     id: str | None = None
     label: str | None = None
@@ -119,12 +119,12 @@ class DataLakeObjectInfo(BaseModel):
 
 
 class AdvancedAttributes(BaseModel):
-    importDirectory: str | None = ""
-    fileName: str | None = ""
-    parentDirectory: str | None = ""
+    importDirectory: str | None = ""  # noqa: N815
+    fileName: str | None = ""  # noqa: N815
+    parentDirectory: str | None = ""  # noqa: N815
     delimiter: str | None = ""
-    driveLibraryId: str | None = ""
-    fileType: str | None = ""
+    driveLibraryId: str | None = ""  # noqa: N815
+    fileType: str | None = ""  # noqa: N815
     schema: str | None = ""
     database: str | None = ""
     object: str | None = ""
@@ -137,22 +137,22 @@ class SourceField(BaseModel):
 
 
 class DataStreamDetails(BaseModel, DataCloudPipelineDetails):
-    advancedAttributes: AdvancedAttributes | None = None
+    advancedAttributes: AdvancedAttributes | None = None  # noqa: N815
     capabilities: dict[str, Any] | None = None
-    connectorInfo: ConnectorInfo | None = None
-    dataAccessMode: str | None = None
-    dataLakeObjectInfo: DataLakeObjectInfo | None = None
-    dataSource: str | None = None
-    dataStreamType: str | None = None
-    isEnabled: bool | None = None
+    connectorInfo: ConnectorInfo | None = None  # noqa: N815
+    dataAccessMode: str | None = None  # noqa: N815
+    dataLakeObjectInfo: DataLakeObjectInfo | None = None  # noqa: N815
+    dataSource: str | None = None  # noqa: N815
+    dataStreamType: str | None = None  # noqa: N815
+    isEnabled: bool | None = None  # noqa: N815
     label: str | None = None
-    lastRunStatus: str | None = None
-    lastRefreshDate: str | None = None
+    lastRunStatus: str | None = None  # noqa: N815
+    lastRefreshDate: str | None = None  # noqa: N815
     mappings: list[Mapping] | None = None
     name: str | None = None
-    recordId: str | None = None
-    refreshConfig: RefreshConfig | None = None
-    sourceFields: list[SourceField] | None = None
+    recordId: str | None = None  # noqa: N815
+    refreshConfig: RefreshConfig | None = None  # noqa: N815
+    sourceFields: list[SourceField] | None = None  # noqa: N815
     status: str | None = None
 
     model_config = ConfigDict(extra="ignore")
@@ -177,49 +177,49 @@ class DataStreamDetails(BaseModel, DataCloudPipelineDetails):
 
 
 class Dimension(BaseModel):
-    apiName: str | None = None
-    creationType: str | None = None
-    dataSource: DataSource | None = None
-    dataType: str | None = None
-    dateGranularity: str | None = None
-    displayName: str | None = None
-    fieldRole: str | None = None
+    apiName: str | None = None  # noqa: N815
+    creationType: str | None = None  # noqa: N815
+    dataSource: DataSource | None = None  # noqa: N815
+    dataType: str | None = None  # noqa: N815
+    dateGranularity: str | None = None  # noqa: N815
+    displayName: str | None = None  # noqa: N815
+    fieldRole: str | None = None  # noqa: N815
     formula: str | None = None
 
 
 class Measure(BaseModel):
-    apiName: str | None = None
-    creationType: str | None = None
-    dataSource: DataSource | None = None
-    dataType: str | None = None
-    displayName: str | None = None
-    fieldAggregationType: str | None = None
-    fieldRole: str | None = None
+    apiName: str | None = None  # noqa: N815
+    creationType: str | None = None  # noqa: N815
+    dataSource: DataSource | None = None  # noqa: N815
+    dataType: str | None = None  # noqa: N815
+    displayName: str | None = None  # noqa: N815
+    fieldAggregationType: str | None = None  # noqa: N815
+    fieldRole: str | None = None  # noqa: N815
     formula: str | None = None
 
 
 class CalculatedInsightDetails(BaseModel, DataCloudPipelineDetails):
-    apiName: str | None = None
-    calculatedInsightStatus: str | None = None
-    creationType: str | None = None
-    dataSpace: str | None = None
-    definitionStatus: str | None = None
-    definitionType: str | None = None
+    apiName: str | None = None  # noqa: N815
+    calculatedInsightStatus: str | None = None  # noqa: N815
+    creationType: str | None = None  # noqa: N815
+    dataSpace: str | None = None  # noqa: N815
+    definitionStatus: str | None = None  # noqa: N815
+    definitionType: str | None = None  # noqa: N815
     description: str | None = None
     dimensions: list[Dimension] | None = None
-    displayName: str | None = None
+    displayName: str | None = None  # noqa: N815
     expression: str | None = None
-    isEnabled: bool | None = None
-    lastCalcInsightStatusDateTime: str | None = None
-    lastCalcInsightStatusErrorCode: str | None = None
-    lastRunDateTime: str | None = None
-    lastRunStatus: str | None = None
-    lastRunStatusDateTime: str | None = None
-    lastRunStatusErrorCode: str | None = None
+    isEnabled: bool | None = None  # noqa: N815
+    lastCalcInsightStatusDateTime: str | None = None  # noqa: N815
+    lastCalcInsightStatusErrorCode: str | None = None  # noqa: N815
+    lastRunDateTime: str | None = None  # noqa: N815
+    lastRunStatus: str | None = None  # noqa: N815
+    lastRunStatusDateTime: str | None = None  # noqa: N815
+    lastRunStatusErrorCode: str | None = None  # noqa: N815
     measures: list[Measure] | None = None
-    publishScheduleEndDate: str | None = None
-    publishScheduleInterval: str | None = None
-    publishScheduleStartDateTime: str | None = None
+    publishScheduleEndDate: str | None = None  # noqa: N815
+    publishScheduleInterval: str | None = None  # noqa: N815
+    publishScheduleStartDateTime: str | None = None  # noqa: N815
 
     model_config = ConfigDict(extra="ignore")
 
@@ -244,13 +244,13 @@ class CalculatedInsightDetails(BaseModel, DataCloudPipelineDetails):
 
 class ActionUrls(BaseModel):
     action: str | None = None
-    refreshStatusAction: str | None = None
-    retryAction: str | None = None
+    refreshStatusAction: str | None = None  # noqa: N815
+    retryAction: str | None = None  # noqa: N815
 
 
 class Field(BaseModel):
-    isPrimaryKey: bool | None = None
-    keyQualifierField: str | None = None
+    isPrimaryKey: bool | None = None  # noqa: N815
+    keyQualifierField: str | None = None  # noqa: N815
     label: str | None = None
     name: str | None = None
     type: str | None = None
@@ -258,11 +258,11 @@ class Field(BaseModel):
 
 class OutputDataObject(BaseModel):
     category: str | None = None
-    createdDate: str | None = None
+    createdDate: str | None = None  # noqa: N815
     fields: list[Field] | None = None
     id: str | None = None
     label: str | None = None
-    lastModifiedDate: str | None = None
+    lastModifiedDate: str | None = None  # noqa: N815
     name: str | None = None
     status: str | None = None
     type: str | None = None
@@ -270,8 +270,8 @@ class OutputDataObject(BaseModel):
 
 class Definition(BaseModel):
     expression: str | None = None
-    outputDataObjects: list[OutputDataObject] | None = None
-    targetDlo: str | None = None
+    outputDataObjects: list[OutputDataObject] | None = None  # noqa: N815
+    targetDlo: str | None = None  # noqa: N815
     type: str | None = None
     version: str | None = None
     nodes: dict | None = None
@@ -280,30 +280,30 @@ class Definition(BaseModel):
 
 class DataTransformRun(BaseModel):
     duration: int | None = 0
-    endTime: str | None = None
-    startTime: str | None = None
+    endTime: str | None = None  # noqa: N815
+    startTime: str | None = None  # noqa: N815
     status: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
 
 class DataTransformDetails(BaseModel, DataCloudPipelineDetails):
-    actionUrls: ActionUrls | None = None
-    createdBy: UserInfo | None = None
-    createdDate: str | None = None
-    creationType: str | None = None
+    actionUrls: ActionUrls | None = None  # noqa: N815
+    createdBy: UserInfo | None = None  # noqa: N815
+    createdDate: str | None = None  # noqa: N815
+    creationType: str | None = None  # noqa: N815
     definition: Definition | None = None
     id: str | None = None
     label: str | None = None
-    lastModifiedBy: UserInfo | None = None
-    lastModifiedDate: str | None = None
-    lastRunDate: str | None = None
-    lastRunStatus: str | None = None
+    lastModifiedBy: UserInfo | None = None  # noqa: N815
+    lastModifiedDate: str | None = None  # noqa: N815
+    lastRunDate: str | None = None  # noqa: N815
+    lastRunStatus: str | None = None  # noqa: N815
     name: str | None = None
     status: str | None = None
     type: str | None = None
     url: str | None = None
-    dataSpaceName: str | None = None
+    dataSpaceName: str | None = None  # noqa: N815
     description: str | None = None
 
     model_config = ConfigDict(extra="ignore")

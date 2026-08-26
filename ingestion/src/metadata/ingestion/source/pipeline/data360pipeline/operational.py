@@ -119,9 +119,7 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
         """Yields all active pipeline objects with minimal fields for status ingestion."""
         self.pagination_limit = self.config.serviceConnection.root.config.paginationLimit
         self.existing_pipelines_set: set = set()
-        for pipeline in self.metadata.list_all_entities(
-            entity=Pipeline, params={"service": self.config.serviceName}
-        ):
+        for pipeline in self.metadata.list_all_entities(entity=Pipeline, params={"service": self.config.serviceName}):
             self.existing_pipelines_set.add(pipeline.name.root)
         yield from self._get_datastreams()
         yield from self._get_calculated_insights()
@@ -139,9 +137,7 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
                 return status_type
         return StatusType.Pending
 
-    def _create_pipeline_status_request(
-        self, pipeline_name: str, status: StatusType, start_time, end_time
-    ):
+    def _create_pipeline_status_request(self, pipeline_name: str, status: StatusType, start_time, end_time):
         if start_time and end_time:
             pipeline_fqn = f"{self.config.serviceName}.{pipeline_name}"
             task_status = TaskStatus(
@@ -150,14 +146,8 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
                 startTime=start_time,
                 endTime=end_time,
             )
-            pipeline_status = PipelineStatus(
-                timestamp=start_time, executionStatus=status, taskStatus=[task_status]
-            )
-            return Either(
-                right=OMetaPipelineStatus(
-                    pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
-                )
-            )
+            pipeline_status = PipelineStatus(timestamp=start_time, executionStatus=status, taskStatus=[task_status])
+            return Either(right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status))
         return None
 
     def yield_data_transform_status(self, pipeline_details: DataTransformDetails):
@@ -204,7 +194,7 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
         """Yields pipeline run status records for all Data 360 pipeline types."""
         try:
             if pipeline_details.get_name() not in self.existing_pipelines_set:
-                raise ResourceNotFoundException(
+                raise ResourceNotFoundException(  # noqa: TRY301
                     f"Could not find {pipeline_details.get_metadata_type()} pipeline for {pipeline_details.get_name()}"
                 )
             if isinstance(pipeline_details, DataTransformDetails):
@@ -214,7 +204,7 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
             elif isinstance(pipeline_details, DataStreamDetails):
                 yield from self.yield_datastream_status(pipeline_details)
             else:
-                raise ResourceNotFoundException(
+                raise ResourceNotFoundException(  # noqa: TRY301
                     f"Unknown pipeline type {pipeline_details.get_metadata_type()} for {pipeline_details.get_name()}"
                 )
         except ResourceNotFoundException as exc:

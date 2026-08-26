@@ -77,9 +77,7 @@ class Data360PipelineSource(PipelineServiceSource):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: Data360PipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, Data360PipelineConnection):
-            raise InvalidSourceException(
-                f"Expected Data360PipelineConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected Data360PipelineConnection, but got {connection}")
         return cls(config, metadata)
 
     def _filter_inactive_pipeline(self, name: str, status: str, pipeline_type: str) -> bool:
@@ -141,17 +139,15 @@ class Data360PipelineSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: DataCloudPipelineDetails) -> str:
         return pipeline_details.get_name()
 
-    def _get_life_cycle(self, createdDate, updatedDate):
-        if createdDate and updatedDate:
+    def _get_life_cycle(self, created_date, updated_date):
+        if created_date and updated_date:
             return LifeCycle(
-                updated=AccessDetails(timestamp=self.get_timestamp(updatedDate)),
-                created=AccessDetails(timestamp=self.get_timestamp(createdDate)),
+                updated=AccessDetails(timestamp=self.get_timestamp(updated_date)),
+                created=AccessDetails(timestamp=self.get_timestamp(created_date)),
             )
         return None
 
-    def _get_create_pipeline_request(
-        self, pipeline_details: DataCloudPipelineDetails
-    ) -> CreatePipelineRequest:
+    def _get_create_pipeline_request(self, pipeline_details: DataCloudPipelineDetails) -> CreatePipelineRequest:
         common_args = {
             "name": pipeline_details.get_name(),
             "displayName": pipeline_details.get_display_name(),
@@ -178,14 +174,12 @@ class Data360PipelineSource(PipelineServiceSource):
             )
         elif isinstance(pipeline_details, DataTransformDetails):
             common_args["lifeCycle"] = self._get_life_cycle(
-                createdDate=pipeline_details.createdDate,
-                updatedDate=pipeline_details.lastModifiedDate,
+                created_date=pipeline_details.createdDate,
+                updated_date=pipeline_details.lastModifiedDate,
             )
         return CreatePipelineRequest(**common_args)
 
-    def yield_pipeline(
-        self, pipeline_details: DataCloudPipelineDetails
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: DataCloudPipelineDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """Converts a Data 360 object into a Pipeline entity."""
         try:
             pipeline_request = self._get_create_pipeline_request(pipeline_details)
@@ -200,14 +194,10 @@ class Data360PipelineSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_status(
-        self, _: DataCloudPipelineDetails
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, _: DataCloudPipelineDetails) -> Iterable[Either[OMetaPipelineStatus]]:
         """Implemented in the operational ingestion source."""
 
-    def yield_pipeline_lineage_details(
-        self, _: DataCloudPipelineDetails
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, _: DataCloudPipelineDetails) -> Iterable[Either[AddLineageRequest]]:
         """Implemented in the lineage ingestion source."""
 
     def yield_tag(
@@ -232,9 +222,7 @@ class Data360PipelineSource(PipelineServiceSource):
                 )
             )
 
-    def get_source_url(
-        self, host: str | None, datastream_id: str | None
-    ) -> str | None:
+    def get_source_url(self, host: str | None, datastream_id: str | None) -> str | None:
         """Builds the Salesforce UI deep-link URL for a DataStream."""
         try:
             if host and datastream_id:
@@ -254,10 +242,7 @@ class Data360PipelineSource(PipelineServiceSource):
 
     def get_timestamp(self, date_time: str) -> int | None:
         if date_time and str(date_time).lower() != "null":
-            return (
-                int(datetime.fromisoformat(str(date_time).replace("Z", "+00:00")).timestamp())
-                * 1000
-            )
+            return int(datetime.fromisoformat(str(date_time).replace("Z", "+00:00")).timestamp()) * 1000
         return None
 
     def log_warning(self, msg: str) -> None:

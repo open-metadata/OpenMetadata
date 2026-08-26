@@ -98,8 +98,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
         )
         if not source.service_connection.data360DbServiceName:
             raise InvalidWorkflowException(
-                "Please provide the Data360 database service name in the service "
-                "connection to extract lineage."
+                "Please provide the Data360 database service name in the service connection to extract lineage."
             )
         return source
 
@@ -150,9 +149,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             table=dc_obj_name,
         )
         if not table_entity:
-            raise ResourceNotFoundException(
-                f"Could not find {object_type} {dc_obj_name} Table Entity in OpenMetadata"
-            )
+            raise ResourceNotFoundException(f"Could not find {object_type} {dc_obj_name} Table Entity in OpenMetadata")
         return table_entity[0]
 
     def _get_pipeline_entity(self, pipeline_details: DataCloudPipelineDetails) -> Pipeline:
@@ -162,9 +159,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             service_name=self.config.serviceName,
             pipeline_name=pipeline_details.get_name(),
         )
-        pipeline_entity = self.metadata.es_search_from_fqn(
-            entity_type=Pipeline, fqn_search_string=fqn_string
-        )
+        pipeline_entity = self.metadata.es_search_from_fqn(entity_type=Pipeline, fqn_search_string=fqn_string)
         if not pipeline_entity:
             raise ResourceNotFoundException(
                 f"Could not find {pipeline_details.get_metadata_type()} pipeline entity for {pipeline_details.get_name()}"
@@ -196,9 +191,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 parent_container="*",
                 container_name=pipeline_details.advancedAttributes.fileName,
             )
-            source_entity = self.metadata.es_search_from_fqn(
-                entity_type=Container, fqn_search_string=fqn_string
-            )
+            source_entity = self.metadata.es_search_from_fqn(entity_type=Container, fqn_search_string=fqn_string)
         elif connector_type == ConnectionTypesConstant.SALESFORCE_DOT_COM:
             connector_name = pipeline_details.connectorInfo.connectorDetails.name
             sfdc_service_name = self.service_mapping.get(connector_name)
@@ -234,9 +227,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             f"Could not find source entity for datastream {pipeline_details.get_name()}. Details: {source_details}"
         )
 
-    def _get_column_lineage(
-        self, pipeline_details: DataStreamDetails, from_entity: Table, to_entity: Table
-    ) -> list:
+    def _get_column_lineage(self, pipeline_details: DataStreamDetails, from_entity: Table, to_entity: Table) -> list:
         column_lineages = []
         for mapping in pipeline_details.mappings or []:
             if mapping.sourceFieldName and mapping.targetFieldName:
@@ -270,9 +261,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
         )
         if not parser.parser or not parser.source_tables:
             reason = parser.query_parsing_failure_reason or f"Tables not present in query: {query}"
-            raise QueryParseException(
-                f"LineageParser failed to parse query for {name}: {reason}"
-            )
+            raise QueryParseException(f"LineageParser failed to parse query for {name}: {reason}")
         return parser
 
     def _extract_column_lineage(self, parser: LineageParser, name: str):
@@ -291,9 +280,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 source_col = col_lineage[0]
                 target_col = col_lineage[-1]
                 if source_col.parent is None or isinstance(source_col.parent, SubQuery):
-                    self.log_warning(
-                        f"Source column {source_col.raw_name} has no parent table — skipping."
-                    )
+                    self.log_warning(f"Source column {source_col.raw_name} has no parent table — skipping.")
                     continue
                 source_table = source_col.parent.raw_name
                 entry = column_lineage_map.setdefault(source_table, [])
@@ -302,11 +289,9 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 self.log_warning(f"Error processing column lineage entry: {exc} — skipping.")
         return column_lineage_map
 
-    def _create_column_lineage(
-        self, raw_column_lineage: list, source_table: Table, target_table: Table
-    ) -> list:
+    def _create_column_lineage(self, raw_column_lineage: list, source_table: Table, target_table: Table) -> list:
         result = []
-        for src_col, tgt_col in (raw_column_lineage or []):
+        for src_col, tgt_col in raw_column_lineage or []:
             src_fqn = get_column_fqn(source_table, src_col)
             tgt_fqn = get_column_fqn(target_table, tgt_col)
             if src_fqn and tgt_fqn:
@@ -376,9 +361,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 f"Missing 'dataLakeObjectInfo' for datastream '{pipeline_details.get_name()}'."
             )
         if not pipeline_details.dataLakeObjectInfo.dataSpaceInfo:
-            raise ResourceNotFoundException(
-                f"Missing 'dataSpace' for datastream '{pipeline_details.get_name()}'."
-            )
+            raise ResourceNotFoundException(f"Missing 'dataSpace' for datastream '{pipeline_details.get_name()}'.")
         for dataspace in pipeline_details.dataLakeObjectInfo.dataSpaceInfo:
             try:
                 dlo_entity = self._get_dc_object_table_entity(
@@ -417,9 +400,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     "fields": set(node["parameters"].get("fields", [])),
                 }
 
-        output_nodes = {
-            k: v for k, v in nodes.items() if v.get("action", "").startswith("output")
-        }
+        output_nodes = {k: v for k, v in nodes.items() if v.get("action", "").startswith("output")}
 
         lineage: dict = {}
         for output_node, output_data in output_nodes.items():
@@ -451,27 +432,21 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     name = node.get("parameters", {}).get("sampleDetails", {}).get("dataspace")
                     if name is not None:
                         return name
-        raise ResourceNotFoundException(
-            f"Missing 'dataSpace' for DataTransform '{pipeline_details.get_name()}'."
-        )
+        raise ResourceNotFoundException(f"Missing 'dataSpace' for DataTransform '{pipeline_details.get_name()}'.")
 
     def _process_batch_data_transform(self, pipeline_details: DataTransformDetails):
         if not pipeline_details.definition:
             return
         pipeline = self._get_pipeline_entity(pipeline_details)
         try:
-            lineage = self.build_batch_data_transform_lineage(
-                nodes=pipeline_details.definition.nodes or {}
-            )
+            lineage = self.build_batch_data_transform_lineage(nodes=pipeline_details.definition.nodes or {})
         except (KeyError, AttributeError, TypeError) as exc:
             self.log_warning(f"Error building lineage for batch transform {pipeline_details.get_name()}: {exc}")
             return
         dataspace_name = self._get_data_transform_dataspace_name(pipeline_details)
         for target_name, source_names in lineage.items():
             try:
-                target_table = self._get_dc_object_table_entity(
-                    dc_obj_name=target_name, dataspace_name=dataspace_name
-                )
+                target_table = self._get_dc_object_table_entity(dc_obj_name=target_name, dataspace_name=dataspace_name)
                 for source_name, col_lineage_map in source_names.items():
                     try:
                         source_table = self._get_dc_object_table_entity(
@@ -509,9 +484,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             query=pipeline_details.definition.expression,
         )
         target_objects = pipeline_details.definition.outputDataObjects or []
-        source_tables, target_tables = self._process_objects(
-            source_objects, target_objects, dataspace_name
-        )
+        source_tables, target_tables = self._process_objects(source_objects, target_objects, dataspace_name)
         for source_table in source_tables:
             for target_table in target_tables:
                 col_lineage = self._create_column_lineage(
@@ -597,12 +570,8 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                         f"Lineage between DLO {dlo_name} and DMO {dmo_table.fullyQualifiedName.root} is not ACTIVE ({edge_status})"
                     )
                     continue
-                dlo_table = self._get_dc_object_table_entity(
-                    dc_obj_name=dlo_name, dataspace_name=dataspace_name
-                )
-                col_lineages = self.get_column_lineage(
-                    dlo_table, dmo_table, dmo_mapping.get("fieldMappings", [])
-                )
+                dlo_table = self._get_dc_object_table_entity(dc_obj_name=dlo_name, dataspace_name=dataspace_name)
+                col_lineages = self.get_column_lineage(dlo_table, dmo_table, dmo_mapping.get("fieldMappings", []))
                 lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
                 if col_lineages:
                     lineage_details.columnsLineage = col_lineages
@@ -626,9 +595,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 entity=Table,
                 params={"database": database_fqn, "databaseSchema": schema_fqn},
             ):
-                yield from self.get_dlo_dmo_lineage(
-                    dmo_table=dmo_table, dataspace_name=database.name.root
-                )
+                yield from self.get_dlo_dmo_lineage(dmo_table=dmo_table, dataspace_name=database.name.root)
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: DataCloudPipelineDetails

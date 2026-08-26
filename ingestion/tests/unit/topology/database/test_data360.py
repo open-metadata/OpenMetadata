@@ -126,9 +126,7 @@ MOCK_CI_DETAILS = {
 
 def _build_source() -> Data360Source:
     with (
-        patch(
-            "metadata.ingestion.source.database.data360.metadata.Data360Source.test_connection"
-        ),
+        patch("metadata.ingestion.source.database.data360.metadata.Data360Source.test_connection"),
         patch("metadata.ingestion.source.database.data360.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360_CONFIG)
@@ -213,10 +211,13 @@ class TestData360Source:
 
     def test_get_tables_name_and_type_records_failed_schema_instead_of_raising(self):
         source = _build_source()
-        with patch(
-            "metadata.ingestion.source.database.data360.metadata.get_metadata_by_type",
-            side_effect=RuntimeError("No response from Data 360 API"),
-        ), patch("metadata.utils.fqn.build", return_value="local_data360.customer_360.Data Lake Objects"):
+        with (
+            patch(
+                "metadata.ingestion.source.database.data360.metadata.get_metadata_by_type",
+                side_effect=RuntimeError("No response from Data 360 API"),
+            ),
+            patch("metadata.utils.fqn.build", return_value="local_data360.customer_360.Data Lake Objects"),
+        ):
             tables = list(source.get_tables_name_and_type() or [])
         assert tables == []
         assert "local_data360.customer_360.Data Lake Objects" in source.failed_schema_fqns
@@ -225,32 +226,28 @@ class TestData360Source:
     def test_should_skip_schema_deletion_for_failed_schemas_only(self):
         source = _build_source()
         source.failed_schema_fqns = {"local_data360.customer_360.Data Lake Objects"}
-        assert source._should_skip_schema_deletion(
-            "local_data360.customer_360.Data Lake Objects"
-        )
-        assert not source._should_skip_schema_deletion(
-            "local_data360.customer_360.Data Model Objects"
-        )
+        assert source._should_skip_schema_deletion("local_data360.customer_360.Data Lake Objects")
+        assert not source._should_skip_schema_deletion("local_data360.customer_360.Data Model Objects")
 
     def test_mark_tables_as_deleted_skips_schemas_with_failed_discovery(self):
         source = _build_source()
         source.failed_schema_fqns = {"local_data360.customer_360.Data Lake Objects"}
-        with patch.object(
-            source,
-            "_get_filtered_schema_names",
-            return_value=[
-                "local_data360.customer_360.Data Lake Objects",
-                "local_data360.customer_360.Data Model Objects",
-            ],
-        ), patch(
-            "metadata.ingestion.source.database.database_service.delete_entity_from_source"
-        ) as mock_delete:
+        with (
+            patch.object(
+                source,
+                "_get_filtered_schema_names",
+                return_value=[
+                    "local_data360.customer_360.Data Lake Objects",
+                    "local_data360.customer_360.Data Model Objects",
+                ],
+            ),
+            patch("metadata.ingestion.source.database.database_service.delete_entity_from_source") as mock_delete,
+        ):
             mock_delete.return_value = []
             list(source.mark_tables_as_deleted())
         assert mock_delete.call_count == 1
         assert (
-            mock_delete.call_args.kwargs["params"]["databaseSchema"]
-            == "local_data360.customer_360.Data Model Objects"
+            mock_delete.call_args.kwargs["params"]["databaseSchema"] == "local_data360.customer_360.Data Model Objects"
         )
 
     def test_get_columns(self):
@@ -266,11 +263,7 @@ class TestData360Source:
         table_fqn = "local_data360.customer_360.Data Lake Objects.account_dll"
         source.table_map[table_fqn] = dict(MOCK_DLO_TABLE)
         with patch("metadata.utils.fqn.build", return_value=table_fqn):
-            results = list(
-                source.yield_table(
-                    ("account_dll", MetadataTypesConstant.DATA_LAKE_OBJECT)
-                )
-            )
+            results = list(source.yield_table(("account_dll", MetadataTypesConstant.DATA_LAKE_OBJECT)))
         assert len(results) == 1
         assert results[0].left is None
         request = results[0].right
@@ -289,11 +282,7 @@ class TestData360Source:
                 return_value=MOCK_CI_DETAILS,
             ),
         ):
-            results = list(
-                source.yield_table(
-                    ("revenue_cio", MetadataTypesConstant.CALCULATED_INSIGHT)
-                )
-            )
+            results = list(source.yield_table(("revenue_cio", MetadataTypesConstant.CALCULATED_INSIGHT)))
         assert len(results) == 1
         request = results[0].right
         assert request is not None
@@ -308,11 +297,7 @@ class TestData360Source:
         source = _build_source()
         # No entry registered in table_map -> AttributeError on `.get` against None.
         with patch("metadata.utils.fqn.build", return_value="missing.fqn"):
-            results = list(
-                source.yield_table(
-                    ("does_not_exist", MetadataTypesConstant.DATA_LAKE_OBJECT)
-                )
-            )
+            results = list(source.yield_table(("does_not_exist", MetadataTypesConstant.DATA_LAKE_OBJECT)))
         assert len(results) == 1
         assert results[0].right is None
         error = results[0].left

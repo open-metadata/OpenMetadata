@@ -14,7 +14,7 @@ Salesforce Data 360 metadata ingestion source
 
 import traceback
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -29,9 +29,6 @@ from metadata.generated.schema.entity.services.connections.database.data360Conne
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
-)
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -70,6 +67,11 @@ from metadata.utils.filters import filter_by_database, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
+if TYPE_CHECKING:
+    from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+        DatabaseServiceMetadataPipeline,
+    )
+
 logger = ingestion_logger()
 
 DATA360_TABLE_TYPE_MAP = {
@@ -88,9 +90,7 @@ class Data360Source(DatabaseServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
 
@@ -106,15 +106,11 @@ class Data360Source(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict: Any, metadata: OpenMetadata, pipeline_name: str | None = None
-    ) -> "Data360Source":
+    def create(cls, config_dict: Any, metadata: OpenMetadata, pipeline_name: str | None = None) -> "Data360Source":
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: Data360Connection = config.serviceConnection.root.config
         if not isinstance(connection, Data360Connection):
-            raise InvalidSourceException(
-                f"Expected Data360Connection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected Data360Connection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
@@ -126,17 +122,13 @@ class Data360Source(DatabaseServiceSource):
         )
         for dataspace in dataspaces:
             dataspace_name = dataspace.get(ResponseConstant.NAME)
-            if filter_by_database(
-                self.source_config.databaseFilterPattern, dataspace_name
-            ):
+            if filter_by_database(self.source_config.databaseFilterPattern, dataspace_name):
                 self.status.filter(dataspace_name, "Database Filtered Out")
                 continue
             self.dataspace_map[dataspace_name] = dataspace
             yield dataspace_name
 
-    def yield_database_tag(
-        self, database_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields classification tags derived from the dataspace status."""
         try:
             dataspace = self.dataspace_map.get(database_name)
@@ -163,9 +155,7 @@ class Data360Source(DatabaseServiceSource):
                 )
             )
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """Yields a CreateDatabaseRequest for each dataspace."""
         try:
             dataspace = self.dataspace_map.get(database_name)
@@ -181,9 +171,7 @@ class Data360Source(DatabaseServiceSource):
                         Constant.TAG_CLASSIFICATION_NAME,
                         self.source_config.includeTags,
                     ),
-                    service=FullyQualifiedEntityName(
-                        self.context.get().database_service
-                    ),
+                    service=FullyQualifiedEntityName(self.context.get().database_service),
                 )
             )
         except Exception as exc:
@@ -203,9 +191,7 @@ class Data360Source(DatabaseServiceSource):
             Constant.CALCULATED_INSIGHTS,
         ]
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """Yields a CreateDatabaseSchemaRequest for each DataCloud object category."""
         try:
             yield Either(
@@ -275,22 +261,14 @@ class Data360Source(DatabaseServiceSource):
                 schema_name=schema_name,
                 table_name=table_name,
             )
-            filter_value = (
-                table_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else table_name
-            )
-            if filter_by_table(
-                self.config.sourceConfig.config.tableFilterPattern, filter_value
-            ):
+            filter_value = table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name
+            if filter_by_table(self.config.sourceConfig.config.tableFilterPattern, filter_value):
                 self.status.filter(table_fqn, "Table Filtered Out")
                 continue
             self.table_map[table_fqn] = datacloud_object
             yield table_name, metadata_type
 
-    def yield_table(
-        self, table_name_and_type: tuple[str, str]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[CreateTableRequest]]:
         """Yields a CreateTableRequest for each DataCloud object."""
         try:
             table_name, table_type = table_name_and_type
@@ -312,18 +290,12 @@ class Data360Source(DatabaseServiceSource):
                     table[Constant.TABLE_PARTITION] = get_table_partition(
                         partition_by=table.get(ResponseConstant.PARTITION_BY)
                     )
-                ci_details = get_calculated_insight_by_name(
-                    self.client, table_name, self.log_warning
-                )
+                ci_details = get_calculated_insight_by_name(self.client, table_name, self.log_warning)
                 if ci_details:
-                    ci_expression = SqlQuery(
-                        root=ci_details.get(ResponseConstant.EXPRESSION)
-                    )
+                    ci_expression = SqlQuery(root=ci_details.get(ResponseConstant.EXPRESSION))
                     description = ci_details.get(ResponseConstant.DESCRIPTION)
             else:
-                table[Constant.TABLE_CONSTRAINTS] = get_table_constraints(
-                    table.get(ResponseConstant.PRIMARY_KEYS, [])
-                )
+                table[Constant.TABLE_CONSTRAINTS] = get_table_constraints(table.get(ResponseConstant.PRIMARY_KEYS, []))
                 category = table.get(ResponseConstant.CATEGORY)
                 table[Constant.TAGS] = get_tag_labels(
                     self.metadata,
@@ -371,14 +343,10 @@ class Data360Source(DatabaseServiceSource):
                 Column(
                     name=column[ResponseConstant.NAME],
                     displayName=column[ResponseConstant.DISPLAY_NAME],
-                    dataType=ColumnTypeParser.get_column_type(
-                        column[ResponseConstant.TYPE]
-                    ),
+                    dataType=ColumnTypeParser.get_column_type(column[ResponseConstant.TYPE]),
                     tags=get_tag_labels(
                         self.metadata,
-                        [column.get(Constant.FIELD_TYPE)]
-                        if column.get(Constant.FIELD_TYPE)
-                        else [],
+                        [column.get(Constant.FIELD_TYPE)] if column.get(Constant.FIELD_TYPE) else [],
                         Constant.TAG_CLASSIFICATION_NAME,
                         self.source_config.includeTags,
                     ),
@@ -388,9 +356,7 @@ class Data360Source(DatabaseServiceSource):
             )
         return columns
 
-    def yield_table_tags(
-        self, table_name_and_type: tuple[str, str]
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_table_tags(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields classification tags for non-CIO table types."""
         try:
             table_name, table_type = table_name_and_type

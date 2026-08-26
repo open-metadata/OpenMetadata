@@ -164,9 +164,7 @@ def get_metadata_by_type(
     )
 
 
-def get_calculated_insight_by_name(
-    client: Salesforce, entity_name: str, log_warning: Callable
-) -> dict | None:
+def get_calculated_insight_by_name(client: Salesforce, entity_name: str, log_warning: Callable) -> dict | None:
     """Fetches a single Calculated Insight definition by name."""
     return _get(
         client=client,
@@ -187,9 +185,7 @@ def get_datastreams(client: Salesforce, pagination_limit: int, log_warning: Call
     )
 
 
-def get_calculated_insights(
-    client: Salesforce, pagination_limit: int, log_warning: Callable
-) -> list:
+def get_calculated_insights(client: Salesforce, pagination_limit: int, log_warning: Callable) -> list:
     """Fetches all Calculated Insights from Data 360."""
     return _run_paginator(
         client=client,
@@ -200,9 +196,7 @@ def get_calculated_insights(
     )
 
 
-def get_dmo_mappings(
-    client: Salesforce, dataspace_name: str, dmo_name: str, log_warning: Callable
-) -> dict | None:
+def get_dmo_mappings(client: Salesforce, dataspace_name: str, dmo_name: str, log_warning: Callable) -> dict | None:
     """Fetches DataModelObject field mappings for lineage."""
     return _get(
         client=client,
@@ -213,9 +207,7 @@ def get_dmo_mappings(
     )
 
 
-def get_datatransforms(
-    client: Salesforce, pagination_limit: int, log_warning: Callable
-) -> list:
+def get_datatransforms(client: Salesforce, pagination_limit: int, log_warning: Callable) -> list:
     """Fetches all data transforms from Data 360 (server-side cap of 20 per page)."""
     capped_limit = min(20, pagination_limit)
     return _run_paginator(
@@ -227,9 +219,7 @@ def get_datatransforms(
     )
 
 
-def get_data_transform_run_history(
-    client: Salesforce, name: str, limit: int, log_warning: Callable
-) -> dict | None:
+def get_data_transform_run_history(client: Salesforce, name: str, limit: int, log_warning: Callable) -> dict | None:
     """Fetches the run history for a specific data transform."""
     return _get(
         client=client,
