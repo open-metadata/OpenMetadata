@@ -84,9 +84,16 @@ const TestDefinitionTable = ({
   const loadingSkeletons = useMemo(
     () => (
       <div className="tw:p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          // eslint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no stable identity
-          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
+        {Array.from(
+          { length: 5 },
+          (_, i) => `test-definition-skeleton-${i}`
+        ).map((skeletonKey) => (
+          <Skeleton
+            className="tw:mb-2"
+            height={40}
+            key={skeletonKey}
+            width="100%"
+          />
         ))}
       </div>
     ),

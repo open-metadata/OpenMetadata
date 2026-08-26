@@ -117,16 +117,16 @@ function AgentsStatusWidget({
 
         <Row gutter={[16, 16]}>
           {isLoading
-            ? Array(8)
-                .fill(null)
-                .map((_, index) => (
-                  // eslint-disable-next-line react/no-array-index-key -- skeleton placeholders
-                  <Col key={index} span={6}>
-                    <Card className="agent-status-card">
-                      <Skeleton.Input active />
-                    </Card>
-                  </Col>
-                ))
+            ? Array.from(
+                { length: 8 },
+                (_, index) => `agent-skeleton-${index}`
+              ).map((skeletonKey) => (
+                <Col key={skeletonKey} span={6}>
+                  <Card className="agent-status-card">
+                    <Skeleton.Input active />
+                  </Card>
+                </Col>
+              ))
             : agentsInfo.map((agent) => (
                 <Col key={agent.label} span={6}>
                   <Card

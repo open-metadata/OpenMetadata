@@ -1301,13 +1301,14 @@ export const getAlertExtraInfo = (
   if (alertEventCountsLoading) {
     return (
       <>
-        {new Array(3).fill(null).map((_, id) => (
-          // eslint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no stable identity
-          <Fragment key={id}>
-            <Divider className="self-center" type="vertical" />
-            <Skeleton.Button active className="extra-info-skeleton" />
-          </Fragment>
-        ))}
+        {Array.from({ length: 3 }, (_, id) => `alert-skeleton-${id}`).map(
+          (skeletonKey) => (
+            <Fragment key={skeletonKey}>
+              <Divider className="self-center" type="vertical" />
+              <Skeleton.Button active className="extra-info-skeleton" />
+            </Fragment>
+          )
+        )}
       </>
     );
   }

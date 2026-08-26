@@ -139,12 +139,14 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     if (loading) {
       return (
         <Collapse className="recent-events-collapse" expandIconPosition="end">
-          {Array.from({ length: 5 }).map((_, index) => (
+          {Array.from(
+            { length: 5 },
+            (_, index) => `alert-event-skeleton-${index}`
+          ).map((skeletonKey) => (
             <Panel
               data-testid="skeleton-loading-panel"
               header={<Skeleton active paragraph={false} />}
-              // eslint-disable-next-line react/no-array-index-key -- static skeleton placeholders, no stable identity
-              key={index}
+              key={skeletonKey}
             />
           ))}
         </Collapse>
