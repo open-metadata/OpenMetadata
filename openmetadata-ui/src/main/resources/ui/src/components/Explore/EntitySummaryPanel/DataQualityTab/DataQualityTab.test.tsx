@@ -660,8 +660,8 @@ describe('DataQualityTab', () => {
       const failedButtons = screen.getAllByTestId('test-failed');
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
-      );
-      fireEvent.click(failedButtonWithZeroCount!);
+      ) as HTMLElement;
+      fireEvent.click(failedButtonWithZeroCount);
 
       // Wait for the component to re-render with the filtered results
       await waitFor(() => {

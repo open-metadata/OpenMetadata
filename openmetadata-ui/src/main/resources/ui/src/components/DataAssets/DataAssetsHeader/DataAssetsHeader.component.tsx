@@ -1056,14 +1056,15 @@ export const DataAssetsHeader = ({
                   )}
                 </div>
                 {(() => {
+                  const tableCertification = (dataAsset as Table).certification;
                   const certValue = (
                     <div
                       className="tw:text-sm tw:font-medium tw:text-primary"
                       data-testid="certification-value">
-                      {(dataAsset as Table).certification ? (
+                      {tableCertification ? (
                         <CertificationTag
                           showName
-                          certification={(dataAsset as Table).certification!}
+                          certification={tableCertification}
                         />
                       ) : (
                         NO_DATA_PLACEHOLDER
