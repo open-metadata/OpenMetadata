@@ -41,7 +41,7 @@ const CertificationTag = ({
           <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
         }
         iconValue={iconURL}
-        imageClassName='tw:h-3.5 tw:w-3.5'
+        imageClassName="tw:h-3.5 tw:w-3.5"
         size={defaultIconSize}
       />
     );

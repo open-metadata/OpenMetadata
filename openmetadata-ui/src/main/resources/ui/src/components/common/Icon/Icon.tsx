@@ -75,9 +75,7 @@ export const Icon: FC<IconProps> = ({
   }
 
   return (
-    <span
-      className={className}
-      >
+    <span className={className}>
       {loadState === 'loading' && (
         <Skeleton height={size} variant="circular" width={size} />
       )}

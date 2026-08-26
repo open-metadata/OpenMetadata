@@ -13,8 +13,8 @@
 
 import {
   Toggle,
-  TooltipTrigger,
   Tooltip as UTTooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { Link } from 'react-router-dom';
