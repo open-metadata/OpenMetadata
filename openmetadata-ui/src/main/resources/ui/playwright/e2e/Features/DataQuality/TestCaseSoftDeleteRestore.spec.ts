@@ -109,7 +109,6 @@ test.describe(
       await expect(page.getByTestId('edit-description')).toHaveCount(0);
       await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
 
-      await page.getByTestId('tab-expand-button').click();
       for (const widgetTestId of [
         'tags-container',
         'glossary-container',
