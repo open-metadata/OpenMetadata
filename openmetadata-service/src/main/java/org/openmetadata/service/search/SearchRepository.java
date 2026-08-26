@@ -147,6 +147,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
@@ -454,6 +455,9 @@ public class SearchRepository {
           Entity.SECURITY_SERVICE,
           Entity.API_SERVICE,
           Entity.DRIVE_SERVICE);
+
+  private static final Set<String> QUERY_DOMAIN_SOURCE_TYPES =
+      Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
@@ -2051,6 +2055,8 @@ public class SearchRepository {
         entityReference.getType(),
         List.of(entityReference.getId()),
         listOrEmpty(entity.getDomains()));
+    reindexQueriesForDomainSource(
+        entityReference.getType(), entityReference.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -2965,17 +2971,19 @@ public class SearchRepository {
   }
 
   private boolean isCertificationUpdated(ChangeDescription change) {
-    return Stream.concat(
-            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
-            change.getFieldsDeleted().stream())
-        .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
+    return hasFieldChange(change, CERTIFICATION_FIELD);
   }
 
   private boolean isStyleUpdated(ChangeDescription change) {
-    return Stream.concat(
-            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
-            change.getFieldsDeleted().stream())
-        .anyMatch(fieldChange -> FIELD_STYLE.equals(fieldChange.getName()));
+    return hasFieldChange(change, FIELD_STYLE);
+  }
+
+  private boolean hasFieldChange(ChangeDescription change, String fieldName) {
+    return change != null
+        && Stream.concat(
+                Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+                change.getFieldsDeleted().stream())
+            .anyMatch(fieldChange -> fieldName.equals(fieldChange.getName()));
   }
 
   private AssetCertification getCertificationFromEntity(EntityInterface entity) {
@@ -3009,6 +3017,8 @@ public class SearchRepository {
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
       EntityInterface entity) {
+
+    reindexQueriesForDomainChange(entityType, changeDescription, entity);
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
       String indexName = getWriteIndexName(indexMapping);
@@ -3091,6 +3101,27 @@ public class SearchRepository {
               new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
         }
       }
+    }
+  }
+
+  private void reindexQueriesForDomainChange(
+      String entityType, ChangeDescription changeDescription, EntityInterface entity) {
+    if (hasFieldChange(changeDescription, FIELD_DOMAINS)) {
+      reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void reindexQueriesForDomainSource(String entityType, UUID entityId, String entityFqn) {
+    if (QUERY_DOMAIN_SOURCE_TYPES.contains(entityType)) {
+      final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);
+      final List<EntityReference> queries =
+          repository.getQueriesForDomainSource(entityType, entityId, entityFqn);
+      deferIfFlushScopeActive(
+          () -> updateEntitiesByReference(queries),
+          "reindexQueriesForDomainChange",
+          entityId.toString(),
+          entityFqn,
+          entityType);
     }
   }
 
@@ -3780,7 +3811,9 @@ public class SearchRepository {
             JsonUtils.convertValue(
                 fieldChange.getNewValue(),
                 new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        fieldAddParams.put(FIELD_DOMAINS, entity.getDomains());
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+        scriptTxt.append("ctx._source.domains = params.domains;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
         Map<String, Object> doc = JsonUtils.getMap(entity);

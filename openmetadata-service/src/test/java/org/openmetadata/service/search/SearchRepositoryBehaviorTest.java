@@ -2011,8 +2011,14 @@ class SearchRepositoryBehaviorTest {
   @Test
   void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityReference queryDomain =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("analytics");
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
+    when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
 
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -2041,11 +2047,13 @@ class SearchRepositoryBehaviorTest {
     assertTrue(script.contains("ctx._source.description = params.description;"));
     assertTrue(script.contains("ctx._source.usageSummary = params.usageSummary;"));
     assertTrue(script.contains("ctx._source.queryUsedIn = params.queryUsedIn;"));
+    assertTrue(script.contains("ctx._source.domains = params.domains;"));
     assertEquals(1234L, params.get("updatedAt"));
     assertEquals("Updated query description", params.get(Entity.FIELD_DESCRIPTION));
     assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
+    assertEquals(List.of(queryDomain), params.get(Entity.FIELD_DOMAINS));
   }
 
   @Test

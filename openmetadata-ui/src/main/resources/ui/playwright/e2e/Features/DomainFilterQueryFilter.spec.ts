@@ -13,6 +13,7 @@
 
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { Query } from '../../../src/generated/entity/data/query';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -20,6 +21,7 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import {
   getApiContext,
   redirectToExplorePage,
@@ -48,6 +50,36 @@ const test = base.extend<{ page: Page }>({
     await afterAction();
   },
 });
+
+const expectQueryVisibleForDomain = async (
+  page: Page,
+  table: TableClass,
+  domain: Domain,
+  queryText: string
+) => {
+  await table.visitEntityPage(page);
+  await selectDomainFromNavbar(page, domain.responseData);
+
+  const queryResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryFilter = url.searchParams.get('query_filter') ?? '';
+
+    return (
+      url.pathname.endsWith('/api/v1/search/query') &&
+      url.searchParams.get('index')?.includes('query') === true &&
+      queryFilter.includes(domain.responseData.fullyQualifiedName ?? '')
+    );
+  });
+  const queriesTab = page.getByTestId('table_queries');
+
+  await expect(queriesTab).toBeEnabled();
+  await queriesTab.click();
+  expect((await queryResponse).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.getByTestId('query-card').filter({ hasText: queryText })
+  ).toBeVisible();
+};
 
 test.describe('Domain Filter - User Behavior Tests', () => {
   test.slow(true);
@@ -78,6 +110,83 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await domainTable.delete(apiContext);
       await nonDomainTable.delete(apiContext);
       await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Queries should inherit every associated table domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const firstDomain = new Domain();
+    const secondDomain = new Domain();
+    const firstTable = new TableClass();
+    const secondTable = new TableClass();
+    const queryText = `select query_domain_inheritance_${Date.now()}`;
+    let queryId: string | undefined;
+
+    try {
+      await firstDomain.create(apiContext);
+      await secondDomain.create(apiContext);
+      await firstTable.create(apiContext);
+      await secondTable.create(apiContext);
+      await firstTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: firstDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+      await secondTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: secondDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
+
+      const response = await apiContext.post('/api/v1/queries', {
+        data: {
+          query: queryText,
+          queryUsedIn: [
+            { id: firstTable.entityResponseData.id, type: 'table' },
+            { id: secondTable.entityResponseData.id, type: 'table' },
+          ],
+          queryDate: Date.now(),
+          service: firstTable.serviceResponseData.name,
+        },
+      });
+      queryId = (await okJson<Query>(response, 'create multi-table query')).id;
+
+      await redirectToHomePage(page);
+      await expectQueryVisibleForDomain(
+        page,
+        firstTable,
+        firstDomain,
+        queryText
+      );
+      await expectQueryVisibleForDomain(
+        page,
+        secondTable,
+        secondDomain,
+        queryText
+      );
+    } finally {
+      if (queryId) {
+        await apiContext.delete(
+          `/api/v1/queries/${queryId}?recursive=true&hardDelete=true`
+        );
+      }
+      await firstTable.delete(apiContext);
+      await secondTable.delete(apiContext);
+      await firstDomain.delete(apiContext);
+      await secondDomain.delete(apiContext);
       await afterAction();
     }
   });

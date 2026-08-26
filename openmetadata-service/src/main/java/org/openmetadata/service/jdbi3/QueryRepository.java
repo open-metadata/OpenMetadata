@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.USER;
 
 import jakarta.ws.rs.core.Response;
@@ -13,11 +14,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -41,6 +47,8 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USERS_FIELD = "users";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
+  private static final Set<String> QUERY_DOMAIN_SOURCE_TYPES =
+      Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA);
 
   public QueryRepository() {
     super(
@@ -69,8 +77,21 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   public void setFields(Query entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     entity.setQueryUsedIn(
-        fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
+        needsQueryUsage(fields) ? getQueryUsage(entity) : entity.getQueryUsedIn());
     entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
+  }
+
+  @Override
+  protected void setInheritedFields(Query query, EntityUtil.Fields fields) {
+    setInheritedFields(List.of(query), fields);
+  }
+
+  @Override
+  protected void setInheritedFields(List<Query> queries, EntityUtil.Fields fields) {
+    if (fields.contains(FIELD_DOMAINS) && !nullOrEmpty(queries)) {
+      final Map<UUID, Table> tablesById = loadTablesWithDomains(queries);
+      queries.forEach(query -> query.setDomains(QueryDomainInheritance.resolve(query, tablesById)));
+    }
   }
 
   @Override
@@ -125,7 +146,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   private void fetchAndSetQueryUsage(List<Query> queries, EntityUtil.Fields fields) {
-    if (!fields.contains(QUERY_USED_IN_FIELD) || queries == null || queries.isEmpty()) {
+    if (!needsQueryUsage(fields) || queries == null || queries.isEmpty()) {
       return;
     }
 
@@ -150,6 +171,32 @@ public class QueryRepository extends EntityRepository<Query> {
           List<EntityReference> usage = queryUsageMap.getOrDefault(query.getId(), List.of());
           query.setQueryUsedIn(usage);
         });
+  }
+
+  private boolean needsQueryUsage(EntityUtil.Fields fields) {
+    return fields.contains(QUERY_USED_IN_FIELD) || fields.contains(FIELD_DOMAINS);
+  }
+
+  private Map<UUID, Table> loadTablesWithDomains(List<Query> queries) {
+    final Set<UUID> tableIds = getUsedTableIds(queries);
+    Map<UUID, Table> result = Map.of();
+    if (!tableIds.isEmpty()) {
+      final TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+      final List<Table> tables =
+          repository.getDao().findEntitiesByIds(new ArrayList<>(tableIds), Include.ALL);
+      repository.setFieldsInBulk(new EntityUtil.Fields(Set.of(FIELD_DOMAINS)), tables);
+      result = tables.stream().collect(Collectors.toMap(Table::getId, Function.identity()));
+    }
+    return result;
+  }
+
+  private Set<UUID> getUsedTableIds(List<Query> queries) {
+    return queries.stream()
+        .flatMap(query -> listOrEmpty(query.getQueryUsedIn()).stream())
+        .filter(reference -> Entity.TABLE.equals(reference.getType()))
+        .map(EntityReference::getId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
   }
 
   private void fetchAndSetQueryUsers(List<Query> queries, EntityUtil.Fields fields) {
@@ -190,6 +237,53 @@ public class QueryRepository extends EntityRepository<Query> {
     return queryEntity == null
         ? Collections.emptyList()
         : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
+  }
+
+  public List<EntityReference> getQueriesForTables(List<UUID> tableIds) {
+    final List<UUID> queryIds = getQueryIdsForTables(tableIds);
+    final List<EntityReference> queries =
+        queryIds.isEmpty()
+            ? List.of()
+            : Entity.getEntityReferencesByIds(Entity.QUERY, queryIds, Include.NON_DELETED);
+    return List.copyOf(queries);
+  }
+
+  private List<UUID> getQueryIdsForTables(List<UUID> tableIds) {
+    List<UUID> queryIds = List.of();
+    if (!nullOrEmpty(tableIds)) {
+      final List<String> ids = tableIds.stream().map(UUID::toString).toList();
+      queryIds =
+          daoCollection
+              .relationshipDAO()
+              .findToBatch(ids, Relationship.MENTIONED_IN.ordinal(), Entity.TABLE, Entity.QUERY)
+              .stream()
+              .map(CollectionDAO.EntityRelationshipObject::getToId)
+              .map(UUID::fromString)
+              .distinct()
+              .toList();
+    }
+    return queryIds;
+  }
+
+  public List<EntityReference> getQueriesForDomainSource(
+      String sourceType, UUID sourceId, String sourceFqn) {
+    final List<UUID> tableIds = getTableIdsForDomainSource(sourceType, sourceId, sourceFqn);
+    return getQueriesForTables(tableIds);
+  }
+
+  private List<UUID> getTableIdsForDomainSource(
+      String sourceType, UUID sourceId, String sourceFqn) {
+    List<UUID> tableIds = List.of();
+    if (Entity.TABLE.equals(sourceType)) {
+      tableIds = List.of(sourceId);
+    } else if (QUERY_DOMAIN_SOURCE_TYPES.contains(sourceType) && !nullOrEmpty(sourceFqn)) {
+      final TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+      tableIds =
+          repository.getDao().listDescendantIdFqnByPrefixNonDeleted(sourceFqn).stream()
+              .map(pair -> pair.id)
+              .toList();
+    }
+    return tableIds;
   }
 
   @Override
@@ -314,7 +408,7 @@ public class QueryRepository extends EntityRepository<Query> {
                 Relationship.MENTIONED_IN));
 
     // Populate Fields
-    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
+    populateQueryUsageAndDomains(query);
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
         getQueryChangeEvent(
@@ -338,7 +432,7 @@ public class QueryRepository extends EntityRepository<Query> {
     }
 
     // Populate Fields
-    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
+    populateQueryUsageAndDomains(query);
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
         getQueryChangeEvent(
@@ -355,6 +449,13 @@ public class QueryRepository extends EntityRepository<Query> {
     query.setIncrementalChangeDescription(changeEvent.getChangeDescription());
     query.setChangeDescription(changeEvent.getChangeDescription());
     postUpdate(query, query);
+  }
+
+  private void populateQueryUsageAndDomains(Query query) {
+    EntityUtil.Fields fields =
+        new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD + "," + FIELD_DOMAINS);
+    setFieldsInternal(query, fields);
+    setInheritedFields(query, fields);
   }
 
   private ChangeEvent getQueryChangeEvent(
@@ -410,6 +511,7 @@ public class QueryRepository extends EntityRepository<Query> {
                 deleted,
                 EntityUtil.entityReferenceMatch);
             storeQueryUsedIn(updated.getId(), added, deleted);
+            populateQueryUsageAndDomains(updated);
           });
       compareAndUpdate(
           "processedLineage",
