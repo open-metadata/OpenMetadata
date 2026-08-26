@@ -13,7 +13,7 @@
 
 import { lazy, useMemo } from 'react';
 import { Route } from 'react-router-dom';
-import { APP_ROUTER_ROUTES } from '../../../../constants/router.constants';
+import { ROUTES } from '../../../../constants/constants';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
@@ -24,12 +24,11 @@ import KeepAliveRoutes, {
 import { useAllAppModules } from '../sharedAppModules';
 import { useSyncActiveModule } from '../state/useActiveModule';
 
-// The app-mode shell owns its own /404, mirroring the classic
-// `AuthenticatedRoutes`. Without an explicit element the catch-all fallback's
-// `Navigate → /404` (from OSS/Collate `AuthenticatedAppRouter`) has nothing to
-// render and the page goes blank.
-const PageNotFound = withPageSuspenseFallback(
-  lazy(() => import('../../../../pages/PageNotFound/PageNotFound'))
+// The app-mode shell owns its own /404 so an unknown URL lands on the branded
+// AI not-found page (testid `ai-not-found-page`) instead of the fallback
+// router's `Navigate → /404` resolving to nothing and going blank.
+const AINotFoundPage = withPageSuspenseFallback(
+  lazy(() => import('../AINotFoundPage/AINotFoundPage'))
 );
 
 /**
@@ -83,7 +82,7 @@ export const AppModeRoutes = () => {
   return (
     <AppShell>
       <KeepAliveRoutes routes={routes}>
-        <Route element={<PageNotFound />} path={APP_ROUTER_ROUTES.NOT_FOUND} />
+        <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
         {fallback ? (
           <Route element={fallback.element} path="/*" />
         ) : (
