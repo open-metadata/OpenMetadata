@@ -87,6 +87,11 @@ const serializeTimeInterval = (
   return isEmptyExtensionValue(interval) ? undefined : interval;
 };
 
+export const hasPopulatedTableRows = (value: unknown) =>
+  isRecord(value) &&
+  Array.isArray(value.rows) &&
+  value.rows.some((row) => isRecord(row) && Object.values(row).some(Boolean));
+
 const serializeTableValue = (raw: unknown): unknown =>
   hasPopulatedTableRows(raw) ? raw : undefined;
 
@@ -216,11 +221,6 @@ export const serializeExtensionValue = (
 export const filterPopulatedTableRows = <T extends Record<string, unknown>>(
   rows: T[]
 ) => rows.filter((row) => Object.values(row).some(Boolean));
-
-export const hasPopulatedTableRows = (value: unknown) =>
-  isRecord(value) &&
-  Array.isArray(value.rows) &&
-  value.rows.some((row) => isRecord(row) && Object.values(row).some(Boolean));
 
 export const getCustomPropertyEntityPathname = (entityType: string) => {
   const entityPathEntries = Object.entries(ENTITY_PATH);

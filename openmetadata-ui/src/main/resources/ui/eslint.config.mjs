@@ -26,6 +26,7 @@ import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 
 export default [
   // Base recommended configs
@@ -176,7 +177,10 @@ export default [
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-use-before-define': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — safe reorders
+      // where possible, documented disables for mutual-recursion / derived-below
+      // cases. Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-use-before-define': 'error',
       'no-unused-expressions': 'off',
       '@typescript-eslint/no-unused-expressions': [
         'error',
@@ -193,7 +197,11 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
       // for no longer reproduces — verified running against this config, where
@@ -348,7 +356,11 @@ export default [
       'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
       'react/no-unstable-nested-components': 'warn', // 25 across 23 files
       'react/no-danger': 'warn', // 0 in sample
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
+      // removed / narrowed where safe, documented disables where the value is
+      // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
+      // (that would change throw-on-null to silent undefined). Promoted to error.
+      '@typescript-eslint/no-non-null-assertion': 'error',
 
       // Import architecture and request fan-out. These are warnings while the
       // measured legacy backlog is worked down; they are reporting-only and do
@@ -434,6 +446,7 @@ export default [
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     plugins: {
+      'openmetadata-playwright': openMetadataPlaywright,
       playwright,
     },
     rules: {
@@ -496,6 +509,14 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+
+      // A facet aggregation wait must name the value it is waiting for, not just
+      // the endpoint or field: a dropdown fires one aggregation when it opens and
+      // one per typed search, so a wait that names neither can resolve off the
+      // wrong one and run the test ahead of the request it queued (#31859). Warn
+      // rather than error while the remaining 27 call sites are migrated to
+      // playwright/utils/searchAggregation.ts.
+      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
 
       // Playwright rules — aspirational (warn): existing violations to fix over time
       'playwright/missing-playwright-await': 'warn',
