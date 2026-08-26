@@ -32,7 +32,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <div>
           {title && <span>{title}</span>}
           {showCloseButton && (
-            <button data-testid="close-modal-button" onClick={onClose} />
+            <button
+              aria-label="Close"
+              data-testid="close-modal-button"
+              onClick={onClose}
+            />
           )}
           {children}
         </div>

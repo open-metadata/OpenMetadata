@@ -28,7 +28,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: ReactNode;
     onClick?: () => void;
   }) => (
-    <div data-testid="name-cell" onClick={onClick}>
+    <div data-testid="name-cell" role="presentation" onClick={onClick}>
       {children}
     </div>
   ),
@@ -69,7 +69,9 @@ describe('useDomainTableColumns', () => {
     const { result } = renderHook(() => useDomainTableColumns());
 
     render(
-      <div onClick={rowClick}>{result.current.renderCell(DOMAIN, 'name')}</div>
+      <div role="presentation" onClick={rowClick}>
+        {result.current.renderCell(DOMAIN, 'name')}
+      </div>
     );
     fireEvent.click(screen.getByText('Engineering'));
 

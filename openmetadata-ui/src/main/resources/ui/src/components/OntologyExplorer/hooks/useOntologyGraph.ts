@@ -517,10 +517,12 @@ export function useOntologyGraph({
       if (!comboId) {
         return;
       }
-      if (!nodesByCombo.has(comboId)) {
-        nodesByCombo.set(comboId, []);
+      let comboNodes = nodesByCombo.get(comboId);
+      if (!comboNodes) {
+        comboNodes = [];
+        nodesByCombo.set(comboId, comboNodes);
       }
-      nodesByCombo.get(comboId)!.push(node);
+      comboNodes.push(node);
     });
 
     const updates: NodeData[] = [];
@@ -664,10 +666,12 @@ export function useOntologyGraph({
       if (!comboId) {
         return;
       }
-      if (!nodesByCombo.has(comboId)) {
-        nodesByCombo.set(comboId, []);
+      let comboNodes = nodesByCombo.get(comboId);
+      if (!comboNodes) {
+        comboNodes = [];
+        nodesByCombo.set(comboId, comboNodes);
       }
-      nodesByCombo.get(comboId)!.push(node);
+      comboNodes.push(node);
     });
 
     const updates: NodeData[] = [];

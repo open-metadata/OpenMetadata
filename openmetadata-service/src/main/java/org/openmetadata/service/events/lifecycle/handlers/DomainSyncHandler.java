@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
@@ -41,6 +42,13 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
 
   private static final Set<String> SKIP_ENTITY_TYPES =
       Set.of(Entity.TASK, Entity.THREAD, Entity.DOMAIN);
+
+  @Override
+  public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+    return eventType == EventType.ENTITY_UPDATED
+        && changeDescription != null
+        && (findDomainsChange(changeDescription) != null || hasDomainsRemoved(changeDescription));
+  }
 
   @Override
   public void onEntityUpdated(

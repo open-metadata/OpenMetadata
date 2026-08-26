@@ -58,6 +58,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -112,6 +113,8 @@ export enum SettingType {
  *
  * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
  * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ *
+ * Fingerprints of bundled resources successfully applied during server startup.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -671,6 +674,22 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Timestamp when the fingerprints were last persisted.
+     */
+    appliedAt?: number;
+    /**
+     * Fingerprint of the search index templates.
+     */
+    searchTemplateFingerprint?: string;
+    /**
+     * Fingerprint of the bundled seed data and type schemas.
+     */
+    seedDataFingerprint?: string;
+    /**
+     * Server version that produced these fingerprints.
+     */
+    serverVersion?: string;
 }
 
 export interface AllowedFieldValueBoostFields {

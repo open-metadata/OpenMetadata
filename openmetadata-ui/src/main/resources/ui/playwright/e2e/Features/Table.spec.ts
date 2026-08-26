@@ -23,7 +23,6 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
-  escapeESReservedCharacters,
   getFirstRowColumnLink,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
@@ -111,9 +110,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       return (
         responseUrl.pathname.includes(
           '/api/v1/dataQuality/testCases/search/list'
-        ) &&
-        (responseUrl.searchParams.get('q') ?? '') ===
-          `*${escapeESReservedCharacters(searchTerm)}*`
+        ) && (responseUrl.searchParams.get('q') ?? '') === searchTerm
       );
     });
 
@@ -176,10 +173,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       return (
         responseUrl.pathname.includes(
           '/api/v1/dataQuality/testCases/search/list'
-        ) &&
-        (responseUrl.searchParams.get('q') ?? '').includes(
-          escapeESReservedCharacters(noMatchSearch)
-        )
+        ) && (responseUrl.searchParams.get('q') ?? '').includes(noMatchSearch)
       );
     });
     await page.locator('[data-testid="searchbar-component"] input').click();

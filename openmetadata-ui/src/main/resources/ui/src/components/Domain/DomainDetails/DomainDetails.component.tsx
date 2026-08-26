@@ -326,6 +326,7 @@ const DomainDetails = ({
       // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
     if (activeKey !== activeTab) {
       if (onActiveTabChange) {
         onActiveTabChange(activeKey as EntityTabs);
@@ -765,6 +766,7 @@ const DomainDetails = ({
         const newFqn = domain.parent
           ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
           : newName.trim();
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
         navigate(getDomainDetailsPath(newFqn, activeTab));
       }
     } catch {
@@ -908,6 +910,7 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
         activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
