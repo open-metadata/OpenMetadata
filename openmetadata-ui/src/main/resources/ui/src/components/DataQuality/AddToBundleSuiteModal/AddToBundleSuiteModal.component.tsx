@@ -149,7 +149,7 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
           showCloseButton
           title={t('label.add-test-cases-to-bundle-suite')}
           onClose={onCancel}>
-          <Dialog.Content>
+          <Dialog.Content className="tw:min-h-45">
             <Select
               allowClear
               showSearch
