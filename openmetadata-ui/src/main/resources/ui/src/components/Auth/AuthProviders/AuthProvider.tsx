@@ -308,12 +308,16 @@ export const AuthProvider = ({
   const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
-    // Clear persona selection before the async SSO call so it is always
-    // erased even when invokeLogout() throws (no try/catch here).
-    clearPersonaSession();
+    try {
+      // Let SSO complete the logout process. Swallow failures so local
+      // cleanup always runs — a rejected OIDC end-session call must not
+      // leave the user half-logged-out with a stale persona session key.
+      await authenticatorRef.current?.invokeLogout();
+    } catch {
+      // SSO logout failed; proceed with local cleanup anyway
+    }
 
-    // Let SSO complete the logout process
-    await authenticatorRef.current?.invokeLogout();
+    clearPersonaSession();
 
     setIsAuthenticated(false);
 
