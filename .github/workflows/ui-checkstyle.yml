@@ -372,7 +372,21 @@ jobs:
             exit 1
           fi
 
-          yarn organize-imports:cli $CHANGED_FILES
+          # organize-imports resolves each argument against the TypeScript
+          # project and aborts with "Could not find source file" on anything
+          # that is not in it — so a .json in the list kills the whole step.
+          # The trigger above deliberately includes eslint-suppressions.json,
+          # package.json and the handbook .md, because a change to any of them
+          # must run the guardrails. That makes the crash certain rather than
+          # likely: a PR push lists only what that push touched, but the merge
+          # queue lists everything the PR changes against main — always
+          # including the suppressions file. Filter here, as the src step
+          # does. eslint and prettier handle JSON and Markdown fine, so they
+          # keep the full list.
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx)$/ { printf "%s ", $0 }')
+          if [ -n "$TS_FILES" ]; then
+            yarn organize-imports:cli $TS_FILES
+          fi
           yarn lint:base --fix $CHANGED_FILES
           yarn pretty:base --write $CHANGED_FILES
           if [ -n "$(git status --porcelain)" ]; then
