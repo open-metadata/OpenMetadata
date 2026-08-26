@@ -128,11 +128,8 @@ export const WorkflowExecutionHistory: React.FC = () => {
         title: t('label.execution-date'),
         dataIndex: 'startedAt',
         key: 'executionDate',
-        render: (startedAt: number | undefined) => (
-          <div className="tw:text-center">
-            {startedAt ? formatDateTime(startedAt) : '-'}
-          </div>
-        ),
+        render: (startedAt: number | undefined) =>
+          startedAt ? formatDateTime(startedAt) : '-',
       },
       {
         title: t('label.status'),
@@ -179,7 +176,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
             value = '-';
           }
 
-          return <div className="tw:text-center">{value}</div>;
+          return value;
         },
       },
     ],
