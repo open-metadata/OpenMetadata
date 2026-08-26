@@ -4,10 +4,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import org.openmetadata.schema.EntityInterface;
 
 public class TestNamespace {
   private static final String RUN_ID = UUID.randomUUID().toString().replaceAll("-", "");
+  private static final AtomicLong UNIQUE_SHORT_ID_SEQUENCE = new AtomicLong();
+  private static final String SHORT_ID_SEQUENCE_FORMAT = "%08x";
   private final String classId;
   private String methodId;
   private String cachedShortPrefix;
@@ -82,16 +85,11 @@ public class TestNamespace {
     return shortPrefix() + "_" + base;
   }
 
-  /**
-   * Generate a unique short ID for each call. Use this when creating multiple independent entities
-   * within the same test method that need different names (e.g., multiple tables).
-   */
+  /** Generates a JVM-unique 16-character ID for compact entity names. */
   public String uniqueShortId() {
-    String shortRun = RUN_ID.substring(0, 8);
-    String methodHash =
-        methodId != null ? Integer.toHexString(Math.abs(methodId.hashCode()) % 0xFFFF) : "0";
-    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 4);
-    return shortRun + methodHash + uniqueSuffix;
+    final String shortRun = RUN_ID.substring(0, 8);
+    final long sequence = UNIQUE_SHORT_ID_SEQUENCE.getAndIncrement();
+    return shortRun + SHORT_ID_SEQUENCE_FORMAT.formatted(sequence);
   }
 
   public String runTagKey() {
