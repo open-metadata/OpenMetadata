@@ -842,7 +842,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // /api/v1/lineage silently sent the unchanged columnsLineage array
     // back to the server — so the removed edge reappeared on refresh.
     // The pattern here is: act via UI → reload → re-assert against a
-    // fresh /api/v1/lineage/getLineage response.
+    // fresh /api/v1/lineage/scene response.
     const sourceTable = new TableClass();
     const targetTable = new TableClass();
 
@@ -915,7 +915,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         // Reload to prove the server actually dropped the edge, not just
         // that local state was optimistically updated.
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload();
         await lineageRes;
 
@@ -955,7 +955,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await editLineageClick(page);
 
         // removeColumnLineage reloads and re-asserts against a fresh
-        // getLineage response internally — that reload is the assertion
+        // scene response internally — that reload is the assertion
         // that would have failed before the fix.
         await removeColumnLineage(page, sourceCol, targetCol);
       } finally {

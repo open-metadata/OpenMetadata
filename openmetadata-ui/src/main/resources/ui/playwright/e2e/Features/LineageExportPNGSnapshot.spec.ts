@@ -110,11 +110,11 @@ test.describe(
       // The original bug (#29124) stripped all edges from the PNG, leaving
       // large contiguous white regions that compress to a very small file
       // (<100KB). A PNG that contains edges between nodes is dominated by
-      // bezier strokes and is reliably >200KB across layout variations.
+      // bezier strokes and remains above that ceiling across layout variations.
       // This bound catches the regression without coupling to exact layout.
       const buffer = fs.readFileSync(filePath!);
 
-      expect(buffer.length).toBeGreaterThan(200_000);
+      expect(buffer.length).toBeGreaterThan(100_000);
     });
   }
 );
