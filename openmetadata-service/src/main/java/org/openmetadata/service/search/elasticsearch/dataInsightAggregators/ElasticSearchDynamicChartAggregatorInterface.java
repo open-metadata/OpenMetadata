@@ -7,7 +7,6 @@ import es.co.elastic.clients.elasticsearch._types.aggregations.DateHistogramBuck
 import es.co.elastic.clients.elasticsearch._types.aggregations.FilterAggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.SingleMetricAggregateBase;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
-import es.co.elastic.clients.elasticsearch._types.aggregations.ValueCountAggregate;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -373,21 +372,6 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
   }
 
   private void addProcessedSubResult(
-      ValueCountAggregate aggregation,
-      List<DataInsightCustomChartResult> diChartResults,
-      String key,
-      String group,
-      boolean isTimeStamp,
-      String metric) {
-    double value = aggregation.value();
-    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
-      DataInsightCustomChartResult diChartResult =
-          getDIChartResult(value, key, group, isTimeStamp, metric);
-      diChartResults.add(diChartResult);
-    }
-  }
-
-  private void addProcessedSubResult(
       CardinalityAggregate aggregation,
       List<DataInsightCustomChartResult> diChartResults,
       String key,
@@ -409,6 +393,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String group,
       boolean isTimeStamp,
       String metric) {
+    // Covers value_count as well: ValueCountAggregate extends this type, so both bind here.
     // avg/min/max over a bucket the metric filter emptied return a null value, not NaN.
     // Unboxing that throws, and the whole chart request dies with a 500.
     Double value = aggregation.value();
