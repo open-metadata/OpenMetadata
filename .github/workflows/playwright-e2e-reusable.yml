@@ -401,7 +401,7 @@ jobs:
         id: restore-distribution
         # Actions cache isolates PR writes to the PR merge ref. PRs may read a
         # default-branch entry, but cannot replace the cache used by main/nightly.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.DISTRIBUTION_CACHE_DIR }}
           key: playwright-distribution-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.distribution }}
@@ -431,7 +431,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -484,7 +484,7 @@ jobs:
       - name: Save OpenMetadata distribution cache
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.DISTRIBUTION_CACHE_DIR }}
           key: playwright-distribution-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.distribution }}
@@ -610,7 +610,7 @@ jobs:
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -641,7 +641,7 @@ jobs:
       # failure must not fail planning — shards self-install as a fallback.
       - name: Seed Playwright browser cache
         continue-on-error: true
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -758,7 +758,7 @@ jobs:
         id: restore-fixture
         # The content hash excludes the commit SHA so compatible main/nightly
         # fixtures can be reused across commits. Cache ref scoping keeps PR saves isolated.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
@@ -781,7 +781,7 @@ jobs:
       - name: Restore ingestion image cache
         id: restore-ingestion
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
@@ -911,7 +911,7 @@ jobs:
       # plan-playwright job's yarn cache step.
       - name: Restore yarn package cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -938,7 +938,7 @@ jobs:
       # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1115,7 +1115,7 @@ jobs:
       - name: Save golden fixture cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
@@ -1123,7 +1123,7 @@ jobs:
       - name: Save ingestion image cache
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
@@ -1299,7 +1299,7 @@ jobs:
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1324,7 +1324,7 @@ jobs:
       # Restore-only — same churn rationale as the yarn cache above.
       - name: Restore Playwright browser cache
         id: restore-browser
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1782,7 +1782,7 @@ jobs:
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}

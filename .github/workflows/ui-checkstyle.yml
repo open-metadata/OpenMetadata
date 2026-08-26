@@ -136,7 +136,7 @@ jobs:
       # reused; saving here would duplicate ~700 MB per run and evict main-scoped
       # caches. The main-scoped copy is saved by populate-playwright-apt-cache.yml.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_WORKING_DIRECTORY)) }}
