@@ -11,7 +11,20 @@
  *  limitations under the License.
  */
 
-export interface DestinationFormItemV2Props {
-  isViewMode?: boolean;
-  isRequired?: boolean;
-}
+import { isValidEmailAddress } from './DestinationConfigField.utils';
+
+describe('DestinationConfigField utils', () => {
+  it.each(['alerts@example.com', 'data.quality+prod@example.co.uk'])(
+    'accepts the valid email address %s',
+    (email) => {
+      expect(isValidEmailAddress(email)).toBe(true);
+    }
+  );
+
+  it.each(['alerts', 'alerts@', '@example.com', 'alerts @example.com'])(
+    'rejects the invalid email address %s',
+    (email) => {
+      expect(isValidEmailAddress(email)).toBe(false);
+    }
+  );
+});

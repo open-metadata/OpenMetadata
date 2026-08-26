@@ -11,13 +11,6 @@
  *  limitations under the License.
  */
 
-import { Destination } from '../../../../generated/events/eventSubscription';
+import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 
-export interface DestinationSelectItemV2Props {
-  selectorKey: number;
-  id: number;
-  remove: (index: number) => void;
-  destinationsWithStatus?: Destination[];
-  isDestinationStatusLoading: boolean;
-  isViewMode?: boolean;
-}
+export const isValidEmailAddress = (email: string) => EMAIL_REG_EX.test(email);

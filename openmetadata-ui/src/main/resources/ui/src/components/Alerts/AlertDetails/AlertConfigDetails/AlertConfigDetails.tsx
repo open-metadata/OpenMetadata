@@ -41,7 +41,7 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge from '../../DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './alert-config-details.less';
@@ -200,7 +200,7 @@ function AlertConfigDetails({
           <Divider dashed type="vertical" />
         </Col>
         <Col span={24}>
-          <DestinationFormItem isViewMode />
+          <DestinationFormItemFormBridge isViewMode />
         </Col>
         {!isEmpty(extraFormWidgets) && (
           <>

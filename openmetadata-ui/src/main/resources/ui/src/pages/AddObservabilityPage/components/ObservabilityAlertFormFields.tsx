@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge from '../../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -101,7 +101,7 @@ function ObservabilityAlertFormFields({
             <Divider dashed type="vertical" />
           </Col>
           <Col span={24}>
-            <DestinationFormItem />
+            <DestinationFormItemFormBridge />
           </Col>
 
           {!isEmpty(extraFormWidgets) && (

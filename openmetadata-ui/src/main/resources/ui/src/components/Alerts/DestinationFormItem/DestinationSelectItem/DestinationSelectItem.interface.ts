@@ -16,7 +16,7 @@ import { Destination } from '../../../../generated/events/eventSubscription';
 export interface DestinationSelectItemProps {
   selectorKey: number;
   id: number;
-  remove: (index: number | number[]) => void;
+  remove: (index: number) => void;
   destinationsWithStatus?: Destination[];
   isDestinationStatusLoading: boolean;
   isViewMode?: boolean;

@@ -27,7 +27,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge from '../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
@@ -398,7 +398,7 @@ const AddNotificationPage = () => {
                             <Divider dashed type="vertical" />
                           </Col>
                           <Col span={24}>
-                            <DestinationFormItem />
+                            <DestinationFormItemFormBridge />
                           </Col>
 
                           {!isEmpty(extraFormWidgets) && (

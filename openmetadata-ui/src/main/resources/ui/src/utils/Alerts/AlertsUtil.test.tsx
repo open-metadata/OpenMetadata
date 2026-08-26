@@ -44,8 +44,6 @@ import {
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getFieldByArgumentType,
   getFqnSearchIndexes,
   searchEntity,
@@ -769,50 +767,6 @@ describe('getFieldByArgumentType tests', () => {
     const selectDiv = screen.queryByText('AsyncSelect');
 
     expect(selectDiv).toBeNull();
-  });
-
-  it('getDestinationConfigField should return advanced configurations for webhook type', async () => {
-    const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
-      <></>
-    );
-
-    render(field);
-
-    const secretKeyInput = screen.getByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeInTheDocument();
-
-    fireEvent.click(secretKeyInput);
-
-    expect(
-      await screen.findByTestId('webhook-4-headers-list')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('webhook-4-query-params-list')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
-  });
-
-  it('getDestinationConfigField should not return advanced configurations for other type', () => {
-    const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
-
-    render(field);
-
-    const secretKeyInput = screen.queryByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeNull();
-  });
-
-  it('getConnectionTimeoutField should return the connection timeout field', () => {
-    const field = getConnectionTimeoutField();
-
-    render(field);
-
-    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
-
-    const input = screen.getByTestId('connection-timeout-input');
-
-    expect(input).toHaveValue(10);
   });
 });
 
