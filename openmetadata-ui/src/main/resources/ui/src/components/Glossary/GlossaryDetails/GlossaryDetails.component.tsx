@@ -18,7 +18,6 @@ import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../../constants/Glossary.contant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -90,7 +89,7 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeGlossary: glossary } = useGlossaryStore();
+  const { activeGlossary: glossary, termsStatusFilter } = useGlossaryStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -130,9 +129,14 @@ const GlossaryDetails = ({
   }, [glossary.fullyQualifiedName]);
 
   // Terms tab badge: count direct children filtered to the same entityStatus the
-  // table defaults to, via limit=0 (count-only, no row fetch) — glossary.termCount /
+  // table is currently using, via limit=0 (count-only, no row fetch) — glossary.termCount /
   // childrenCount count all nested descendants with no status filter, so they can
-  // disagree with what the table actually lists.
+  // disagree with what the table actually lists. termsStatusFilter is seeded in
+  // useGlossary.store with the table's own default filter (not undefined), so once
+  // the table has mounted and pushed its live filter via setTermsStatusFilter (see
+  // GlossaryTermTab.component.tsx), a genuinely-undefined value here means the user
+  // explicitly selected All statuses (no filter) — not "not yet published" — so it
+  // must be passed straight through, not defaulted.
   useEffect(() => {
     const fqn = glossary.fullyQualifiedName;
     if (!fqn) {
@@ -147,7 +151,7 @@ const GlossaryDetails = ({
           fqn,
           0,
           undefined,
-          DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(',')
+          termsStatusFilter
         );
         if (isMounted) {
           setTermCount(paging.total ?? 0);
@@ -164,7 +168,7 @@ const GlossaryDetails = ({
     return () => {
       isMounted = false;
     };
-  }, [glossary.fullyQualifiedName, termsRefreshTrigger]);
+  }, [glossary.fullyQualifiedName, termsRefreshTrigger, termsStatusFilter]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

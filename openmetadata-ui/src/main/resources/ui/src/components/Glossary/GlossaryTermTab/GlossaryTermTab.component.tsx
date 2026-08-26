@@ -138,6 +138,16 @@ const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
 
+// Single source of truth for the 'all' sentinel handling, shared between the
+// table's own fetch and the value pushed to useGlossaryStore's
+// termsStatusFilter so the two never drift.
+const getEntityStatusParamFromSelection = (
+  selectedStatus: string[]
+): string | undefined =>
+  selectedStatus.includes('all')
+    ? undefined
+    : selectedStatus.filter((status) => status !== 'all').join(',');
+
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -152,6 +162,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     onAddGlossaryTerm,
     onEditGlossaryTerm,
     refreshGlossaryTerms,
+    setTermsStatusFilter,
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
@@ -310,9 +321,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       let pagingResponse: Paging | undefined;
 
       const isStatusFilterActive = !selectedStatus.includes('all');
-      const entityStatusParam = isStatusFilterActive
-        ? selectedStatus.filter((s) => s !== 'all').join(',')
-        : undefined;
+      const entityStatusParam =
+        getEntityStatusParamFromSelection(selectedStatus);
 
       // Use search API if search term is present
       if (searchTerm) {
@@ -1720,6 +1730,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
       fetchAllTerms();
     }
+    // Outside the guard above (which only exists to skip a redundant fetch on
+    // first mount / glossary switch, since another effect already fetches
+    // then) so the count badge's store value always reflects the current
+    // committed filter, including the initial default on mount/remount.
+    setTermsStatusFilter(getEntityStatusParamFromSelection(selectedStatus));
   }, [searchTerm, selectedStatus]);
 
   // Check if this is due to search or filter returning no results

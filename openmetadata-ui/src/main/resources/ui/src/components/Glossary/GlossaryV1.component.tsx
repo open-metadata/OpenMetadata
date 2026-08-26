@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../constants/Glossary.contant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -113,6 +114,7 @@ const GlossaryV1 = ({
     insertNewGlossaryTermToChildTerms,
     termsLoading,
     setTermsLoading,
+    setTermsStatusFilter,
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
@@ -401,12 +403,18 @@ const GlossaryV1 = ({
       setGlossaryChildTerms([]);
       setAfterCursor(undefined);
       setHasMore(true);
+      // Reset the live Terms-table status filter back to its default so a
+      // stale filter from a previously-viewed glossary/term can't flash on
+      // the new page's badge before its own GlossaryTermTab mounts and
+      // pushes a fresh value.
+      setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
       initializeGlossary();
     }
 
     // Cleanup on unmount
     return () => {
       setGlossaryChildTerms([]);
+      setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
     };
   }, [id, isGlossaryActive, isVersionsView, action]);
 

@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
+import { useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermChildrenCountBadge from './GlossaryTermChildrenCountBadge.component';
 
 jest.mock('../../../rest/glossaryAPI', () => ({
@@ -25,9 +26,13 @@ const mockGetFirstLevelGlossaryTermsPaginated =
 describe('GlossaryTermChildrenCountBadge', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useGlossaryStore.setState({ termsStatusFilter: undefined } as never);
   });
 
   it('requests a status-filtered, count-only page of direct children', async () => {
+    useGlossaryStore.setState({
+      termsStatusFilter: 'Approved,Draft,In Review',
+    } as never);
     mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
       data: [],
       paging: { total: 2 },
@@ -51,6 +56,9 @@ describe('GlossaryTermChildrenCountBadge', () => {
   });
 
   it('renders the filtered paging.total once the fetch resolves', async () => {
+    useGlossaryStore.setState({
+      termsStatusFilter: 'Approved,Draft,In Review',
+    } as never);
     mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
       data: [],
       paging: { total: 2 },
@@ -177,5 +185,109 @@ describe('GlossaryTermChildrenCountBadge', () => {
     });
 
     expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the live termsStatusFilter from useGlossaryStore when set', async () => {
+    useGlossaryStore.setState({
+      termsStatusFilter: 'Approved,Draft,In Review,Rejected',
+    } as never);
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      render(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+        />
+      );
+    });
+
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+      'Test Glossary.Product Category',
+      0,
+      undefined,
+      'Approved,Draft,In Review,Rejected'
+    );
+  });
+
+  // useGlossary.store seeds termsStatusFilter with the default filter string,
+  // so a genuinely undefined termsStatusFilter here only happens once the
+  // table has mounted and the user explicitly selected "All" statuses and
+  // saved — it must NOT be defaulted, since that would silently re-apply a
+  // filter the user just turned off and disagree with what the (now
+  // unfiltered) table shows.
+  it('sends no entityStatus filter when termsStatusFilter is undefined (user selected All statuses)', async () => {
+    useGlossaryStore.setState({ termsStatusFilter: undefined } as never);
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 9 },
+    });
+
+    await act(async () => {
+      render(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+        />
+      );
+    });
+
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+      'Test Glossary.Product Category',
+      0,
+      undefined,
+      undefined
+    );
+    expect(await screen.findByTestId('filter-count')).toHaveTextContent('9');
+  });
+
+  it('re-fetches when termsStatusFilter changes, e.g. after the table status filter is saved', async () => {
+    useGlossaryStore.setState({
+      termsStatusFilter: 'Approved,Draft,In Review',
+    } as never);
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 3 },
+    });
+
+    let renderResult: ReturnType<typeof render>;
+    await act(async () => {
+      renderResult = render(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+        />
+      );
+    });
+
+    expect(await screen.findByTestId('filter-count')).toHaveTextContent('3');
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(1);
+
+    mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 7 },
+    });
+
+    await act(async () => {
+      useGlossaryStore.setState({ termsStatusFilter: 'Approved' } as never);
+      renderResult.rerender(
+        <GlossaryTermChildrenCountBadge
+          isActive
+          fqn="Test Glossary.Product Category"
+        />
+      );
+    });
+
+    expect(await screen.findByTestId('filter-count')).toHaveTextContent('7');
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenLastCalledWith(
+      'Test Glossary.Product Category',
+      0,
+      undefined,
+      'Approved'
+    );
+    expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
   });
 });

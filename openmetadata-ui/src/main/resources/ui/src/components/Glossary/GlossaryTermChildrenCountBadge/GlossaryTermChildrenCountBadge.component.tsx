@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { useEffect, useState } from 'react';
-import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../../constants/Glossary.contant';
 import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
+import { useGlossaryStore } from '../useGlossary.store';
 
 interface GlossaryTermChildrenCountBadgeProps {
   fqn?: string;
@@ -27,6 +27,10 @@ interface GlossaryTermChildrenCountBadgeProps {
 // Fetches the direct-children count with the same entityStatus filter the Terms table
 // applies (`directChildrenOf` + `limit=0`), so the tab badge always matches what the
 // table actually lists instead of the unfiltered, all-descendants `childrenCount` field.
+// The filter itself comes from useGlossaryStore's termsStatusFilter, kept live by
+// GlossaryTermTab (see its getEntityStatusParamFromSelection effect) — a genuinely
+// undefined value there means the user explicitly selected All statuses (no filter),
+// so it is passed straight through here, not defaulted.
 const GlossaryTermChildrenCountBadge = ({
   fqn,
   initialCount,
@@ -34,6 +38,7 @@ const GlossaryTermChildrenCountBadge = ({
   refreshTrigger,
 }: GlossaryTermChildrenCountBadgeProps) => {
   const [childrenCount, setChildrenCount] = useState(initialCount ?? 0);
+  const { termsStatusFilter } = useGlossaryStore();
 
   useEffect(() => {
     if (!fqn) {
@@ -48,7 +53,7 @@ const GlossaryTermChildrenCountBadge = ({
           fqn,
           0,
           undefined,
-          DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(',')
+          termsStatusFilter
         );
         if (isMounted) {
           setChildrenCount(paging.total ?? 0);
@@ -65,7 +70,7 @@ const GlossaryTermChildrenCountBadge = ({
     return () => {
       isMounted = false;
     };
-  }, [fqn, refreshTrigger]);
+  }, [fqn, refreshTrigger, termsStatusFilter]);
 
   return <>{getCountBadge(childrenCount, '', isActive)}</>;
 };
