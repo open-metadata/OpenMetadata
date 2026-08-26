@@ -37,14 +37,19 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.RollbackEntityImpl.RejectionOutcome;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class RollbackEntityImplTest {
   private static final String REVIEWER = "reviewer";
@@ -86,6 +91,107 @@ class RollbackEntityImplTest {
     assertNull(outcome.toVersion());
     assertEquals(EntityStatus.REJECTED, patched.getEntityStatus());
     assertEquals("pending definition", patched.getDescription());
+  }
+
+  @Test
+  void rejectionSkipsUnreviewedVersionThatInheritedApprovedStatus() {
+    UUID metricId = UUID.randomUUID();
+    Metric approved = reviewedMetric(metricId, 0.2, REVIEWER, "approved definition");
+    Metric unreviewed = reviewedMetric(metricId, 0.3, "author", "pending definition");
+    Metric current =
+        reviewedMetric(metricId, 0.4, "author", "pending definition")
+            .withEntityStatus(EntityStatus.IN_REVIEW);
+    EntityRepository<Metric> repository = repositoryWithHistory(current, approved, unreviewed);
+
+    RejectionOutcome outcome = rollbackEntity.applyRejection(repository, current, REVIEWER);
+
+    Metric patched = capturedPatchedMetric(repository, current);
+    assertEquals(0.2, outcome.toVersion());
+    assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
+    assertEquals("approved definition", patched.getDescription());
+  }
+
+  @Test
+  void rejectionRecognizesRecordedApprovalTransition() {
+    UUID metricId = UUID.randomUUID();
+    Metric approved =
+        reviewedMetric(metricId, 0.2, "former-reviewer", "approved definition")
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName(Entity.FIELD_ENTITY_STATUS)
+                                .withNewValue(EntityStatus.APPROVED.value()))));
+    Metric current =
+        reviewedMetric(metricId, 0.3, "author", "pending definition")
+            .withEntityStatus(EntityStatus.IN_REVIEW);
+    EntityRepository<Metric> repository = repositoryWithHistory(current, approved);
+
+    RejectionOutcome outcome = rollbackEntity.applyRejection(repository, current, REVIEWER);
+
+    assertEquals(0.2, outcome.toVersion());
+    assertEquals(
+        "approved definition", capturedPatchedMetric(repository, current).getDescription());
+  }
+
+  @Test
+  void rejectionKeepsApprovedVersionAuthoredByTeamReviewer() {
+    UUID metricId = UUID.randomUUID();
+    EntityReference reviewerTeam =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEAM).withName("reviewers");
+    Metric approved =
+        metric(metricId, 0.2, EntityStatus.APPROVED, "team-approved definition")
+            .withUpdatedBy("team-member")
+            .withReviewers(List.of(reviewerTeam));
+    Metric current =
+        metric(metricId, 0.3, EntityStatus.IN_REVIEW, "pending definition")
+            .withUpdatedBy("author")
+            .withReviewers(List.of(reviewerTeam));
+    EntityRepository<Metric> repository = repositoryWithHistory(current, approved);
+    SubjectContext reviewerContext = mock(SubjectContext.class);
+
+    try (MockedStatic<SubjectContext> subjectContexts = mockStatic(SubjectContext.class)) {
+      subjectContexts
+          .when(() -> SubjectContext.getSubjectContext("team-member"))
+          .thenReturn(reviewerContext);
+      when(reviewerContext.isReviewer(List.of(reviewerTeam))).thenReturn(true);
+
+      RejectionOutcome outcome = rollbackEntity.applyRejection(repository, current, REVIEWER);
+
+      assertEquals(0.2, outcome.toVersion());
+      assertEquals(
+          "team-approved definition", capturedPatchedMetric(repository, current).getDescription());
+    }
+  }
+
+  @Test
+  void rejectionSkipsTeamReviewerVersionWhenHistoricalAuthorNoLongerExists() {
+    UUID metricId = UUID.randomUUID();
+    Metric olderApproved = metric(metricId, 0.1, EntityStatus.APPROVED, "approved definition");
+    EntityReference reviewerTeam =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEAM).withName("reviewers");
+    Metric unavailableAuthor =
+        metric(metricId, 0.2, EntityStatus.APPROVED, "unverified definition")
+            .withUpdatedBy("deleted-member")
+            .withReviewers(List.of(reviewerTeam));
+    Metric current =
+        metric(metricId, 0.3, EntityStatus.IN_REVIEW, "pending definition")
+            .withReviewers(List.of(reviewerTeam));
+    EntityRepository<Metric> repository =
+        repositoryWithHistory(current, olderApproved, unavailableAuthor);
+
+    try (MockedStatic<SubjectContext> subjectContexts = mockStatic(SubjectContext.class)) {
+      subjectContexts
+          .when(() -> SubjectContext.getSubjectContext("deleted-member"))
+          .thenThrow(EntityNotFoundException.byMessage("deleted user"));
+
+      RejectionOutcome outcome = rollbackEntity.applyRejection(repository, current, REVIEWER);
+
+      assertEquals(0.1, outcome.toVersion());
+      assertEquals(
+          "approved definition", capturedPatchedMetric(repository, current).getDescription());
+    }
   }
 
   @Test
@@ -161,6 +267,17 @@ class RollbackEntityImplTest {
         .withVersion(version)
         .withEntityStatus(status)
         .withDescription(description);
+  }
+
+  private Metric reviewedMetric(UUID id, double version, String updatedBy, String description) {
+    return metric(id, version, EntityStatus.APPROVED, description)
+        .withUpdatedBy(updatedBy)
+        .withReviewers(
+            List.of(
+                new EntityReference()
+                    .withType(Entity.USER)
+                    .withName(REVIEWER)
+                    .withFullyQualifiedName(REVIEWER)));
   }
 
   private void injectField(Object target, String fieldName, Object value) throws Exception {

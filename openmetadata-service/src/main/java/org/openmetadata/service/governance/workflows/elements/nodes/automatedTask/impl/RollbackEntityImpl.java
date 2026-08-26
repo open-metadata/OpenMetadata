@@ -26,15 +26,20 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class RollbackEntityImpl implements JavaDelegate {
@@ -90,7 +95,7 @@ public class RollbackEntityImpl implements JavaDelegate {
     for (Double version : earlierVersions) {
       EntityInterface versionEntity =
           repository.getVersion(currentEntity.getId(), version.toString());
-      if (isApproved(versionEntity)) {
+      if (isApprovedBaseline(versionEntity)) {
         approvedVersion = Optional.of(new ApprovedVersion(version, versionEntity));
         break;
       }
@@ -152,8 +157,61 @@ public class RollbackEntityImpl implements JavaDelegate {
     return version;
   }
 
-  private boolean isApproved(EntityInterface entity) {
-    return entity.getEntityStatus() == EntityStatus.APPROVED;
+  private boolean isApprovedBaseline(EntityInterface entity) {
+    // A non-reviewer edit inherits Approved until its asynchronous workflow marks it In Review.
+    // Only an actual approval event (or reviewer-authored change) is safe to restore later.
+    boolean isApproved = entity.getEntityStatus() == EntityStatus.APPROVED;
+    boolean hasDurableApproval =
+        nullOrEmpty(entity.getReviewers())
+            || recordsApprovalTransition(entity)
+            || wasUpdatedByReviewer(entity);
+    return isApproved && hasDurableApproval;
+  }
+
+  private boolean recordsApprovalTransition(EntityInterface entity) {
+    ChangeDescription change = entity.getIncrementalChangeDescription();
+    if (change == null) {
+      change = entity.getChangeDescription();
+    }
+    List<FieldChange> updatedFields = change == null ? List.of() : change.getFieldsUpdated();
+    return !nullOrEmpty(updatedFields) && updatedFields.stream().anyMatch(this::setsApprovedStatus);
+  }
+
+  private boolean setsApprovedStatus(FieldChange change) {
+    return Entity.FIELD_ENTITY_STATUS.equals(change.getName())
+        && EntityStatus.APPROVED.value().equals(String.valueOf(change.getNewValue()));
+  }
+
+  private boolean wasUpdatedByReviewer(EntityInterface entity) {
+    List<EntityReference> reviewers = entity.getReviewers();
+    String updatedBy = entity.getUpdatedBy();
+    boolean isReviewer = false;
+    if (!nullOrEmpty(reviewers) && !nullOrEmpty(updatedBy)) {
+      isReviewer = reviewers.stream().anyMatch(reviewer -> matchesUser(reviewer, updatedBy));
+      if (!isReviewer && reviewers.stream().anyMatch(this::isTeam)) {
+        isReviewer = belongsToReviewerTeam(updatedBy, reviewers);
+      }
+    }
+    return isReviewer;
+  }
+
+  private boolean matchesUser(EntityReference reviewer, String user) {
+    return Entity.USER.equals(reviewer.getType())
+        && (user.equals(reviewer.getName()) || user.equals(reviewer.getFullyQualifiedName()));
+  }
+
+  private boolean isTeam(EntityReference reviewer) {
+    return Entity.TEAM.equals(reviewer.getType());
+  }
+
+  private boolean belongsToReviewerTeam(String user, List<EntityReference> reviewers) {
+    boolean isReviewer = false;
+    try {
+      isReviewer = SubjectContext.getSubjectContext(user).isReviewer(reviewers);
+    } catch (EntityNotFoundException exception) {
+      LOG.debug("[RollbackEntity] Historical reviewer '{}' no longer exists", user);
+    }
+    return isReviewer;
   }
 
   private void restoreToApprovedVersion(
