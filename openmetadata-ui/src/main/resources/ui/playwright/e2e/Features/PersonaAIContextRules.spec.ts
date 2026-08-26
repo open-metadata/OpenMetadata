@@ -67,7 +67,9 @@ const test = base.extend<{ adminPage: Page }>({
 // container that actually holds a combobox — the pre-migration
 // `.rule--field .ant-select` selector filtered these out implicitly.
 const comboboxField = (scope: Page | Locator, className: string): Locator =>
-  scope.locator(className).filter({ has: scope.locator('input[role="combobox"]') });
+  scope
+    .locator(className)
+    .filter({ has: scope.locator('input[role="combobox"]') });
 
 const navigateToAIContextTab = async (page: Page) => {
   await navigateToPersonaSettings(page);

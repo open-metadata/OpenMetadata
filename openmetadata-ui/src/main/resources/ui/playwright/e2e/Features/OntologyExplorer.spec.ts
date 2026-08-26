@@ -305,7 +305,6 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
     });
 
-
     test('should display layout options in settings panel', async ({
       page,
     }) => {
