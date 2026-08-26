@@ -312,7 +312,13 @@ describe('OntologyExplorerPage', () => {
 
     act(() => explorerProps?.onGlossariesChange?.([glossary]));
     fireEvent.click(screen.getByTestId('ontology-glossary-menu-trigger'));
-    fireEvent.click(screen.getByTestId(glossary.id));
+    const glossaryMenuItem = screen.getByRole('menuitemradio', {
+      name: /CustomerLifecycle/,
+    });
+
+    expect(glossaryMenuItem).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(glossaryMenuItem);
     fireEvent.click(screen.getByTestId('ontology-add-concept'));
 
     expect(

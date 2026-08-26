@@ -135,10 +135,11 @@ describe('JSONLogicSearchClassBase', () => {
           },
         },
       };
-      const result = (dateWidget as ExtendedWidget).jsonLogic!.call(
-        mockContext,
-        mockDate
-      );
+      const result = (
+        (dateWidget as ExtendedWidget).jsonLogic as NonNullable<
+          ExtendedWidget['jsonLogic']
+        >
+      ).call(mockContext, mockDate);
 
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThan(0);
@@ -156,10 +157,11 @@ describe('JSONLogicSearchClassBase', () => {
           },
         },
       };
-      const result2 = (dateWidget as ExtendedWidget).jsonLogicImport!.call(
-        mockContext2,
-        timestamp
-      );
+      const result2 = (
+        (dateWidget as ExtendedWidget).jsonLogicImport as NonNullable<
+          ExtendedWidget['jsonLogicImport']
+        >
+      ).call(mockContext2, timestamp);
 
       expect(typeof result2).toBe('string');
       expect(result2).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   Globe01,
@@ -21,14 +21,7 @@ import {
   Share07,
 } from '@untitledui/icons';
 import classNames from 'classnames';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { createPortal } from 'react-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
@@ -83,6 +76,11 @@ const SUBMODE_TAB_CLASS =
   'tw:flex tw:items-center tw:justify-center tw:rounded-[7px] tw:border-0 tw:px-[13px] tw:py-1.5 ' +
   'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:transition-colors ' +
   'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600';
+const ALL_GLOSSARIES_KEY = 'all-glossaries';
+
+const GlossaryMenuIcon = ({ className }: { className?: string }) => (
+  <Globe01 aria-hidden="true" className={className} />
+);
 
 function getStatCount(stats: string[], label: string): string {
   const normalizedLabel = label.toLocaleLowerCase();
@@ -150,49 +148,11 @@ const OntologyExplorerPage: React.FC = () => {
   const [pendingGlossaryName, setPendingGlossaryName] = useState<string>();
   const [explorerRevision, setExplorerRevision] = useState(0);
   const [generatedQuery, setGeneratedQuery] = useState<string>();
-  const [isGlossaryMenuOpen, setIsGlossaryMenuOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [conceptDraft, setConceptDraft] = useState<{
     defaultGlossaryId?: string;
     id: string;
   }>();
-  const glossaryMenuRef = useRef<HTMLDivElement>(null);
-  const glossaryMenuPanelRef = useRef<HTMLDivElement>(null);
-  const [glossaryMenuAnchor, setGlossaryMenuAnchor] = useState<{
-    left: number;
-    top: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!isGlossaryMenuOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      const insideTrigger = glossaryMenuRef.current?.contains(target);
-      const insidePanel = glossaryMenuPanelRef.current?.contains(target);
-      if (!insideTrigger && !insidePanel) {
-        setIsGlossaryMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsGlossaryMenuOpen(false);
-      }
-    };
-    const handleReposition = () => setIsGlossaryMenuOpen(false);
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', handleReposition);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', handleReposition);
-    };
-  }, [isGlossaryMenuOpen]);
 
   const handleStatsChange = useCallback((newStats: string[]) => {
     setStats(newStats);
@@ -418,137 +378,75 @@ const OntologyExplorerPage: React.FC = () => {
             className="tw:h-[22px] tw:w-px tw:bg-quaternary"
           />
 
-          <div className="tw:relative tw:shrink-0" ref={glossaryMenuRef}>
-            <Button
-              noTextPadding
-              aria-expanded={isGlossaryMenuOpen}
-              aria-haspopup="menu"
-              className={classNames(
-                'tw:flex tw:items-center tw:gap-[7px] tw:rounded-lg tw:border tw:border-secondary',
-                'tw:bg-primary tw:px-[11px] tw:py-1.5 tw:font-body tw:text-xs tw:leading-normal',
-                'tw:font-medium tw:text-secondary tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1',
-                'tw:focus-visible:outline-brand-600'
-              )}
-              color="tertiary"
-              data-selected-glossary-id={selectedGlossaryId ?? ''}
-              data-testid="ontology-glossary-menu-trigger"
-              iconLeading={
-                <Globe01
-                  aria-hidden="true"
-                  className="tw:size-3.5 tw:text-fg-tertiary"
-                />
-              }
-              iconTrailing={
-                <ChevronDown
-                  aria-hidden="true"
-                  className="tw:size-[13px] tw:text-fg-quaternary"
-                />
-              }
-              onClick={() =>
-                setIsGlossaryMenuOpen((open) => {
-                  const next = !open;
-                  if (next && glossaryMenuRef.current) {
-                    const rect =
-                      glossaryMenuRef.current.getBoundingClientRect();
-                    setGlossaryMenuAnchor({
-                      left: rect.left,
-                      top: rect.bottom + 4,
-                    });
+          <div className="tw:relative tw:shrink-0">
+            <Dropdown.Root>
+              <Button
+                noTextPadding
+                className={classNames(
+                  'tw:flex tw:items-center tw:gap-[7px] tw:rounded-lg tw:border tw:border-secondary',
+                  'tw:bg-primary tw:px-[11px] tw:py-1.5 tw:font-body tw:text-xs tw:leading-normal',
+                  'tw:font-medium tw:text-secondary tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1',
+                  'tw:focus-visible:outline-brand-600'
+                )}
+                color="tertiary"
+                data-selected-glossary-id={selectedGlossaryId ?? ''}
+                data-testid="ontology-glossary-menu-trigger"
+                iconLeading={
+                  <Globe01
+                    aria-hidden="true"
+                    className="tw:size-3.5 tw:text-fg-tertiary"
+                  />
+                }
+                iconTrailing={
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="tw:size-[13px] tw:text-fg-quaternary"
+                  />
+                }>
+                <span className="tw:max-w-52 tw:truncate tw:font-semibold">
+                  {selectedGlossaryLabel}
+                </span>
+              </Button>
+              <Dropdown.Popover className="tw:w-60" placement="bottom left">
+                <Dropdown.Menu
+                  aria-label={t('label.glossary-plural')}
+                  selectedKeys={
+                    new Set([selectedGlossaryId ?? ALL_GLOSSARIES_KEY])
                   }
+                  onAction={(key) =>
+                    setSelectedGlossaryId(
+                      key === ALL_GLOSSARIES_KEY ? undefined : String(key)
+                    )
+                  }>
+                  <Dropdown.Item
+                    addon={`${glossaries.length} ${t(
+                      'label.glossary-plural'
+                    ).toLocaleLowerCase()}`}
+                    icon={GlossaryMenuIcon}
+                    id={ALL_GLOSSARIES_KEY}
+                    label={allGlossariesLabel}
+                    textValue={allGlossariesLabel}
+                  />
+                  {glossaries.map((glossary) => {
+                    const label = glossary.displayName ?? glossary.name;
 
-                  return next;
-                })
-              }>
-              <span className="tw:max-w-52 tw:truncate tw:font-semibold">
-                {selectedGlossaryLabel}
-              </span>
-            </Button>
-
-            {isGlossaryMenuOpen && glossaryMenuAnchor
-              ? createPortal(
-                  <div
-                    aria-label={t('label.glossary-plural')}
-                    className={classNames(
-                      'tw:fixed tw:z-[80] tw:max-h-[calc(100vh-5rem)] tw:w-60 tw:overflow-y-auto tw:rounded-lg',
-                      'tw:border tw:border-secondary tw:bg-primary tw:p-1.5 tw:shadow-lg'
-                    )}
-                    ref={glossaryMenuPanelRef}
-                    role="menu"
-                    style={{
-                      left: glossaryMenuAnchor.left,
-                      top: glossaryMenuAnchor.top,
-                    }}>
-                    <Button
-                      noTextPadding
-                      aria-checked={!selectedGlossaryId}
-                      className={classNames(
-                        'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:px-2.5 tw:py-2 tw:text-left',
-                        'tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:*:data-text:flex tw:*:data-text:min-w-0',
-                        'tw:*:data-text:flex-1 tw:*:data-text:items-center tw:*:data-text:gap-2',
-                        selectedGlossaryId
-                          ? 'tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
-                          : 'tw:bg-brand-primary tw:text-brand-secondary'
-                      )}
-                      color="tertiary"
-                      iconLeading={
-                        <Globe01 aria-hidden="true" className="tw:size-3.5" />
-                      }
-                      role="menuitemradio"
-                      onClick={() => {
-                        setSelectedGlossaryId(undefined);
-                        setIsGlossaryMenuOpen(false);
-                      }}>
-                      <span className="tw:min-w-0 tw:flex-1 tw:truncate">
-                        {allGlossariesLabel}
-                      </span>
-                      <span className="tw:text-xs tw:leading-normal tw:font-medium tw:text-quaternary">
-                        {glossaries.length}{' '}
-                        {t('label.glossary-plural').toLocaleLowerCase()}
-                      </span>
-                    </Button>
-                    {glossaries.map((glossary) => {
-                      const isSelected = glossary.id === selectedGlossaryId;
-
-                      return (
-                        <Button
-                          noTextPadding
-                          aria-checked={isSelected}
-                          className={classNames(
-                            'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:px-2.5 tw:py-2 tw:text-left',
-                            'tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:*:data-text:flex tw:*:data-text:min-w-0',
-                            'tw:*:data-text:flex-1 tw:*:data-text:items-center tw:*:data-text:gap-2',
-                            isSelected
-                              ? 'tw:bg-brand-primary tw:text-brand-secondary'
-                              : 'tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
-                          )}
-                          color="tertiary"
-                          data-testid={glossary.id}
-                          iconLeading={
-                            <Globe01
-                              aria-hidden="true"
-                              className="tw:size-3.5"
-                            />
-                          }
-                          key={glossary.id}
-                          role="menuitemradio"
-                          onClick={() => {
-                            setSelectedGlossaryId(glossary.id);
-                            setIsGlossaryMenuOpen(false);
-                          }}>
-                          <span className="tw:min-w-0 tw:flex-1 tw:truncate">
-                            {glossary.displayName ?? glossary.name}
-                          </span>
-                          <span className="tw:text-xs tw:leading-normal tw:font-medium tw:text-quaternary">
-                            {glossary.termCount ?? 0}{' '}
-                            {t('label.term-plural').toLocaleLowerCase()}
-                          </span>
-                        </Button>
-                      );
-                    })}
-                  </div>,
-                  document.body
-                )
-              : null}
+                    return (
+                      <Dropdown.Item
+                        addon={`${glossary.termCount ?? 0} ${t(
+                          'label.term-plural'
+                        ).toLocaleLowerCase()}`}
+                        data-testid={glossary.id}
+                        icon={GlossaryMenuIcon}
+                        id={glossary.id}
+                        key={glossary.id}
+                        label={label}
+                        textValue={label}
+                      />
+                    );
+                  })}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           </div>
 
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:justify-center">
