@@ -54,8 +54,6 @@ public class PatchEntityTool implements McpTool {
   private static final Set<String> GUARDED_ARRAYS =
       Set.of("owners", "tags", "reviewers", "domains", "experts", "dataProducts");
 
-  private static final String GUARDED_FIELDS = "owners,tags,domains";
-
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
@@ -172,14 +170,15 @@ public class PatchEntityTool implements McpTool {
    */
   private static List<String> populatedAmong(String entityType, String fqn, List<String> fields) {
     List<String> populated = new ArrayList<>();
+    List<String> wanted = fields.stream().distinct().toList();
     try {
+      // Ask for exactly the arrays this patch overwrites. A fixed field list would silently stop
+      // covering an array added to GUARDED_ARRAYS later: unrequested fields come back empty, which
+      // reads as "nothing to lose" and waves the patch through.
       EntityInterface current =
-          Entity.getEntityByName(entityType, fqn, GUARDED_FIELDS, Include.NON_DELETED);
+          Entity.getEntityByName(entityType, fqn, String.join(",", wanted), Include.NON_DELETED);
       Map<String, Object> asMap = JsonUtils.getMap(current);
-      fields.stream()
-          .distinct()
-          .filter(field -> holdsEntries(asMap.get(field)))
-          .forEach(populated::add);
+      wanted.stream().filter(field -> holdsEntries(asMap.get(field))).forEach(populated::add);
     } catch (Exception e) {
       // The entity is read only to describe what would be lost. If that read fails, the patch is
       // still the caller's to make - let the write itself report the real problem.

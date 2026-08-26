@@ -13,8 +13,12 @@ import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -31,6 +35,8 @@ class PatchEntityGuardTest {
 
   private static final String TYPE = "table";
   private static final String FQN = "svc.db.schema.orders";
+
+  private final ArgumentCaptor<String> fields = ArgumentCaptor.forClass(String.class);
 
   private static JsonArray patch(String json) {
     return Json.createReader(new StringReader(json)).readArray();
@@ -134,6 +140,37 @@ class PatchEntityGuardTest {
                 "[{\"op\":\"replace\",\"path\":\"/owners\",\"value\":[{\"id\":\"x\"}]}]",
                 Map.of("confirmReplace", true),
                 owned()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"owners", "tags", "reviewers", "domains", "experts", "dataProducts"})
+  void everyGuardedArrayIsActuallyFetchedBeforeItIsJudged(String field) {
+    // The guard has to READ the array to know it holds anything. Naming six arrays but requesting
+    // three meant reviewers, experts and dataProducts came back empty, read as "nothing to lose",
+    // and were wiped silently - the exact loss the guard exists to stop.
+    DataProduct stored = new DataProduct().withName("orders");
+    stored.setExperts(List.of(new EntityReference().withName("alice").withType("user")));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(anyString(), anyString(), fields.capture(), any()))
+          .thenReturn(stored);
+      try {
+        PatchEntityTool.guardArrayReplacement(
+            TYPE,
+            FQN,
+            patch("[{\"op\":\"replace\",\"path\":\"/" + field + "\",\"value\":[]}]"),
+            Map.of());
+      } catch (IllegalArgumentException expected) {
+        // Refusing is fine - what matters is which fields were requested.
+      }
+      assertTrue(
+          fields.getValue().contains(field),
+          "the guard judged '"
+              + field
+              + "' without asking for it; requested: "
+              + fields.getValue());
+    }
   }
 
   @Test
