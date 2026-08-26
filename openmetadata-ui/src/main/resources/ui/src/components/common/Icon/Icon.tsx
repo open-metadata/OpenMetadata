@@ -28,7 +28,7 @@ export const Icon: FC<IconProps> = ({
   fallback = null,
   size = 24,
   className = '',
-  wrapperStyle,
+  imageClassName = '',
   imageStyle = {},
   strokeWidth = 1.5,
   alt = 'icon',
@@ -62,9 +62,9 @@ export const Icon: FC<IconProps> = ({
   if (IconComponent) {
     return (
       <IconComponent
-        className={className}
+        className={imageClassName}
         size={size}
-        style={{ strokeWidth, ...wrapperStyle, ...imageStyle }}
+        style={{ strokeWidth, ...imageStyle }}
       />
     );
   }
@@ -74,13 +74,16 @@ export const Icon: FC<IconProps> = ({
   }
 
   return (
-    <span className={className} style={wrapperStyle}>
+    <span
+      className={className}
+      >
       {loadState === 'loading' && (
         <Skeleton height={size} variant="circular" width={size} />
       )}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         alt={alt}
+        className={imageClassName}
         data-testid="icon-image"
         ref={imgRef}
         src={getTagImageSrc(iconValue)}

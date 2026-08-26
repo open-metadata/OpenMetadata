@@ -147,10 +147,10 @@ const TagsV1 = ({
 
     return (
       <Icon
+        className='tw:mr-4 tw:shrink-0'
         fallback={startIcon}
         iconValue={tag.style?.iconURL}
         size={12}
-        wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
       />
     );
   }, [hideIcon, tag.style?.iconURL, startIcon]);

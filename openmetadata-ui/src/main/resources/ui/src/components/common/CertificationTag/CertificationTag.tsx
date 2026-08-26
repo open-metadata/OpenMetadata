@@ -37,11 +37,11 @@ const CertificationTag = ({
     return (
       <Icon
         alt={`certification: ${name}`}
-        className="certification-img"
         fallback={
           <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
         }
         iconValue={iconURL}
+        imageClassName='tw:h-3.5 tw:w-3.5'
         size={defaultIconSize}
       />
     );
