@@ -83,6 +83,22 @@ const buildIncidentRow = (
   };
 };
 
+/**
+ * The fixture row every severity assertion below is made against: index 0 is
+ * built without a `severity`, so it renders the "No Severity" placeholder this
+ * spec is about. Addressing it by name keeps each locator resolving to exactly
+ * one element — a positional locator would quietly pick whichever chip the DOM
+ * happened to order first, and would keep passing if the row under test stopped
+ * rendering one at all.
+ */
+const NO_SEVERITY_ROW = 'pw_locale_incident_0';
+
+const getIncidentRow = (page: Page, name: string) =>
+  page
+    .getByTestId(INCIDENT_TABLE_TEST_ID)
+    .locator('tbody tr')
+    .filter({ hasText: name });
+
 // The scenario the issue reports: freshly-raised incidents, every row unassigned
 // and all but one without a severity, so both placeholders render at full length.
 const REPORTED_INCIDENTS = {
@@ -131,7 +147,9 @@ const openIncidentManager = async (
   await page.goto(`/incident-manager?lng=${locale}`);
 
   await expect(page.getByTestId(INCIDENT_TABLE_TEST_ID)).toBeVisible();
-  await expect(page.getByTestId(SEVERITY_CHIP_TEST_ID).first()).toBeVisible();
+  await expect(
+    getIncidentRow(page, NO_SEVERITY_ROW).getByTestId(SEVERITY_CHIP_TEST_ID)
+  ).toBeVisible();
 
   // Every assertion here is a text measurement, so the web fonts have to be
   // resolved first — fallback metrics shift column widths by a few px.
@@ -170,7 +188,7 @@ const pinNav = async (page: Page, navExpanded: boolean) => {
  * passing while measuring the wrong box if it ever gained padding.
  */
 const getSeverityChip = (page: Page) =>
-  page.getByTestId(SEVERITY_CHIP_TEST_ID).first();
+  getIncidentRow(page, NO_SEVERITY_ROW).getByTestId(SEVERITY_CHIP_TEST_ID);
 
 const getTableContainerWidth = (page: Page) =>
   page
@@ -205,10 +223,7 @@ test.describe('Incident Manager table in a long-string locale', () => {
       EXPANDED_NAV_CONTAINER_WIDTH
     );
 
-    const assigneeCell = page
-      .getByTestId(INCIDENT_TABLE_TEST_ID)
-      .locator('tbody tr')
-      .first()
+    const assigneeCell = getIncidentRow(page, NO_SEVERITY_ROW)
       .locator('td')
       .filter({ has: page.getByTestId('assignee') });
 
@@ -287,8 +302,16 @@ test.describe('Incident Manager status chips in a long-string locale', () => {
 
     const statusLabels = page.locator('[data-testid$="-status-label"]');
 
-    await expect(statusLabels.first()).toBeVisible();
     await expect(statusLabels).toHaveCount(4);
+
+    // `toHaveCount` waits for attachment, not for layout. A label that never
+    // laid out measures 0/0, which reads as "not clipped" below, so establish
+    // that all four rendered before drawing conclusions from their widths.
+    const widths = await statusLabels.evaluateAll((elements) =>
+      elements.map((element) => element.clientWidth)
+    );
+
+    expect(widths.filter((width) => width === 0)).toEqual([]);
 
     const clipped = await statusLabels.evaluateAll((elements) =>
       elements
@@ -323,9 +346,9 @@ test.describe('Incident Manager table in a short-string locale', () => {
     }) => {
       await pinNav(page, navExpanded);
 
-      const severityLabel = page
-        .getByTestId(SEVERITY_CHIP_LABEL_TEST_ID)
-        .first();
+      const severityLabel = getIncidentRow(page, NO_SEVERITY_ROW).getByTestId(
+        SEVERITY_CHIP_LABEL_TEST_ID
+      );
 
       await expect(severityLabel).toBeVisible();
 
