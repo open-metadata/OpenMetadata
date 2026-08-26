@@ -19,7 +19,7 @@ import {
 } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getResourcePermission } from '../../../../rest/permissionAPI';
-import { FEED_DELETE_ACCESS_QUERY_KEY } from '../constants/aiCacheKeys.constants';
+import { FEED_DELETE_ACCESS_QUERY_KEY } from '../inbox.constants';
 
 /**
  * Preflights the current user's evaluated `feed` resource permission

@@ -17,7 +17,7 @@ import { useInboxActivity } from './useInboxActivity';
 import {
   InboxDateRange,
   InboxScope,
-} from '../components/InboxPage/inbox.utils';
+} from './inbox.utils';
 
 export interface InboxCounts {
   activityCount: number;

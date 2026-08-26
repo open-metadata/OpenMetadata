@@ -24,7 +24,7 @@ import {
   getFeedTimestamp,
   InboxDateRange,
   InboxScope,
-} from '../components/InboxPage/inbox.utils';
+} from './inbox.utils';
 
 export const INBOX_ACTIVITY_QUERY_KEY = 'inbox-activity';
 
