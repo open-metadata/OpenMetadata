@@ -356,6 +356,8 @@ export interface RequestConnection {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -1169,6 +1171,8 @@ export interface Connection {
      *
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
+     *
+     * NATS authentication method. Leave empty for anonymous authentication.
      *
      * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
@@ -1985,8 +1989,27 @@ export interface Connection {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2533,6 +2556,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch topics that matches the pattern.
  *
+ * Regex to only fetch subjects/streams that match the pattern.
+ *
  * Regex exclude pipelines.
  *
  * Regex to filter MuleSoft applications by name.
@@ -2690,6 +2715,14 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
  * Choose between Prefect Cloud or a self-hosted Prefect Server.
  *
  * Authentication configuration for Prefect Cloud.
@@ -2729,6 +2762,8 @@ export interface AuthenticationType {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     *
+     * Token for NATS authentication.
      */
     token?: string;
     /**
@@ -2767,6 +2802,8 @@ export interface AuthenticationType {
      * Password to access the service.
      *
      * Password to authenticate with SAP S/4HANA.
+     *
+     * Password for NATS authentication.
      *
      * Elastic Search Password for Login
      *
@@ -2821,6 +2858,8 @@ export interface AuthenticationType {
      *
      * Username to authenticate with SAP S/4HANA.
      *
+     * Username for NATS authentication.
+     *
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
@@ -2844,6 +2883,10 @@ export interface AuthenticationType {
      * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
      */
     tokenEndpoint?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
     /**
      * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
      */
@@ -3416,6 +3459,8 @@ export enum KafkaSecurityProtocol {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for Prefect API connection.
  *
@@ -4174,6 +4219,8 @@ export enum ConnectionScheme {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for Prefect API connection.
  *
@@ -4976,6 +5023,8 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -5242,6 +5291,7 @@ export enum AirflowConnectionType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",
