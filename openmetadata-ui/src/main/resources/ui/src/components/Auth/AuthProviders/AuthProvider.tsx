@@ -494,20 +494,23 @@ export const AuthProvider = ({
     }
   };
 
-  useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current.updateRenewToken(
-        authenticatorRef.current?.renewIdToken
-      );
-      // After every refresh success, start timer again
-      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
-    }
-  }, [authenticatorRef.current?.renewIdToken]);
+  // Renewer registration for TokenService moved into each authenticator's
+  // own mount effect (BasicAuthAuthenticator, GenericAuthenticator,
+  // OidcAuthenticator, MsalAuthenticator, OktaAuthenticator,
+  // Auth0Authenticator). The previous ref-deps effect here
+  // (`[authenticatorRef.current?.renewIdToken]`) never re-ran after the
+  // lazy authenticator finished loading because ref changes don't
+  // schedule re-renders — so on cold-load the first 401 raced ahead of
+  // the registration and TokenService.refreshToken() returned null
+  // without ever firing the `/api/v1/auth/refresh` HTTP call.
+  // `updateRefreshSuccessCallback(startTokenExpiryTimer)` is registered
+  // from the main mount effect below because that timer callback lives
+  // in this component's closure.
 
   // When the tab becomes visible after being backgrounded, browsers may have
   // throttled or suspended the proactive renewal timer. Check token freshness
-  // immediately and refresh if expired, or reschedule the timer with the
-  // correct remaining time.
+  // immediately and refresh only when the token is actually stale; otherwise
+  // just reschedule the timer with the correct remaining time.
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') {
@@ -515,21 +518,27 @@ export const AuthProvider = ({
       }
       try {
         const token = await getOidcToken();
-        const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
-
-        // eslint-disable-next-line no-console
-        console.debug(
-          '[VisibilityHandler] token length:',
-          token?.length,
-          'isExpired:',
-          isExpired,
-          'timeoutExpiry:',
-          timeoutExpiry,
-          'hasTokenService:',
-          !!tokenService.current
-        );
-
-        if (isExpired || timeoutExpiry <= 0) {
+        // No token in storage (user is on /signin, or just logged out).
+        // Firing tokenService.refreshToken() here would still invoke the
+        // renewer (e.g. OIDC signinSilent → hidden iframe to the IdP) on
+        // every tab focus — pure IdP-side noise for a signed-out session.
+        if (!token) {
+          return;
+        }
+        const { exp, isExpired, timeoutExpiry } =
+          extractDetailsFromToken(token);
+        // A missing / non-positive `exp` means the token is opaque, not a
+        // JWT at all, or spec-violating. extractDetailsFromToken returns
+        // `isExpired: true` for the jwt-decode-throws branch AND
+        // `isExpired: false, timeoutExpiry: 0` for the isNil(exp) branch —
+        // neither is signal we can act on, so leave the token in place and
+        // let the next real 401 drive a refresh via the axios interceptor.
+        // MUST come before the isExpired branch — otherwise opaque tokens
+        // would fire refresh() on every tab focus.
+        if (typeof exp !== 'number' || exp <= 0) {
+          return;
+        }
+        if (isExpired) {
           const newToken = await tokenService.current?.refreshToken();
           // Post-refresh reauth: if the user was bounced to signin by an
           // earlier failed call, a successful refresh must re-run the
@@ -539,12 +548,24 @@ export const AuthProvider = ({
           if (newToken && !useApplicationStore.getState().isAuthenticated) {
             await getLoggedInUserDetails();
           }
-        } else {
-          startTokenExpiryTimer();
+
+          return;
         }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('[VisibilityHandler] error:', error);
+        // Only near-expiry (within the pre-expiry buffer) should proactively
+        // refresh here. `timeoutExpiry === 0` exactly captures that case
+        // once we've ruled out invalid exp above.
+        if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
+          const newToken = await tokenService.current?.refreshToken();
+          if (newToken && !useApplicationStore.getState().isAuthenticated) {
+            await getLoggedInUserDetails();
+          }
+
+          return;
+        }
+        startTokenExpiryTimer();
+      } catch {
+        // Storage read errors fall through: the next real 401 will drive
+        // the refresh via the axios interceptor.
       }
     };
 
@@ -918,6 +939,10 @@ export const AuthProvider = ({
     fetchAuthConfig();
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
+    // Timer restart after a successful cross-tab refresh — the callback
+    // itself lives in this component's closure, so we register it here
+    // rather than from each authenticator.
+    tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
 
     return cleanup;
   }, []);

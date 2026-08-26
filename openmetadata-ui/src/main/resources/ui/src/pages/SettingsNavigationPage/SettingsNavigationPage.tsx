@@ -79,15 +79,16 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         if (data[i].key === key) {
           return callback(data[i], i, data);
         }
-        if (data[i].children) {
-          loop(data[i].children!, key, callback);
+        const children = data[i].children;
+        if (children) {
+          loop(children, key, callback);
         }
       }
     };
     const tempData = cloneDeep(treeData);
 
     // Find dragObject
-    let dragObj: TreeDataNode;
+    let dragObj!: TreeDataNode;
     loop(tempData, dragKey, (item, index, arr) => {
       arr.splice(index, 1);
       dragObj = item;
@@ -102,17 +103,17 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
       });
     } else {
       let ar: TreeDataNode[] = [];
-      let i: number;
+      let i = 0;
       loop(tempData, dropKey, (_item, index, arr) => {
         ar = arr;
         i = index;
       });
       if (dropPosition === -1) {
         // Drop on the top of the drop node
-        ar.splice(i!, 0, dragObj!);
+        ar.splice(i, 0, dragObj);
       } else {
         // Drop on the bottom of the drop node
-        ar.splice(i! + 1, 0, dragObj!);
+        ar.splice(i + 1, 0, dragObj);
       }
     }
 
@@ -147,7 +148,11 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.navigation'),
+        })}>
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader

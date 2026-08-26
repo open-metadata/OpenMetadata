@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -25,8 +26,6 @@ import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComp
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
-import { EntityType } from '../../enums/entity.enum';
-import type { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
 import type { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -37,10 +36,16 @@ import {
   AnnouncementEntity,
   getActiveAnnouncements,
 } from '../../rest/announcementsAPI';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
+} from '../../rest/queries/docStoreQuery';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
 import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import type { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -75,18 +80,60 @@ const MyDataPage = () => {
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getDefaultLandingPageLayout
-  );
-
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
-  const [personaPreferences, setPersonaPreferences] = useState<
-    PersonaPreferences[]
-  >([]);
+
+  const personaFqn = personaDocFqn(selectedPersona);
+
+  const { data: docData, isPending: isDocPending } = useQuery({
+    queryKey: docStoreQueryKey(personaFqn ?? ''),
+    queryFn: docStoreQueryFn(personaFqn ?? ''),
+    enabled: !!personaFqn,
+    retry: false,
+    staleTime: PERSONA_DOC_STALE_TIME,
+  });
+
+  // hasMounted flips once after the first paint so the skeleton always shows on
+  // first render, deferring widget loaders until after that paint.  Without this
+  // guard a user with no persona gets isLoading=false immediately, exposing
+  // widget loaders to Playwright's waitForAllLoadersToDisappear too early.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+  const isLoading = !hasMounted || (!!personaFqn && isDocPending);
+
+  const personaPreferences = useMemo<PersonaPreferences[]>(
+    () => docData?.data?.personPreferences ?? [],
+    [docData]
+  );
+
+  const layout = useMemo<Array<WidgetConfig>>(() => {
+    if (!docData || !selectedPersona) {
+      return getDefaultLandingPageLayout();
+    }
+    const pageData = getPersonaPage(docData, PageType.LandingPage);
+    const customizedLayout = Array.isArray(pageData?.layout)
+      ? (pageData.layout as WidgetConfig[])
+      : [];
+    const filteredLayout = customizedLayout
+      .filter(
+        (widget: WidgetConfig) =>
+          !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+          !isEmpty(widget.config)
+      )
+      .map((widget: WidgetConfig) => ({
+        ...widget,
+        w: getConstrainedWidgetWidth(widget.w),
+        h: 3,
+      }));
+
+    return isEmpty(filteredLayout)
+      ? getDefaultLandingPageLayout()
+      : filteredLayout;
+  }, [docData, selectedPersona]);
   const storageData = useMemo(
     () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
     []
@@ -118,49 +165,6 @@ const MyDataPage = () => {
     return userPersonaBackgroundColor ?? adminPersonaBackgroundColor;
   }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
 
-  const fetchDocument = async () => {
-    setIsLoading(true);
-
-    try {
-      if (selectedPersona) {
-        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
-        const docData = await getDocumentByFQN(pageFQN);
-
-        setPersonaPreferences(docData.data?.personPreferences ?? []);
-
-        const pageData = docData.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.LandingPage
-        ) ?? { layout: [], pageType: PageType.LandingPage };
-
-        const filteredLayout = pageData.layout
-          .filter(
-            (widget: WidgetConfig) =>
-              !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
-              !isEmpty(widget.config)
-          )
-          .map((widget: WidgetConfig) => {
-            return {
-              ...widget,
-              w: getConstrainedWidgetWidth(widget.w),
-              h: 3,
-            };
-          });
-
-        setLayout(
-          isEmpty(filteredLayout)
-            ? getDefaultLandingPageLayout()
-            : filteredLayout
-        );
-      } else {
-        setLayout(getDefaultLandingPageLayout());
-      }
-    } catch {
-      setLayout(getDefaultLandingPageLayout());
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const updateWelcomeScreen = (show: boolean) => {
     if (loggedInUserName) {
       const arr = storageData ? storageData.split(',') : [];
@@ -171,10 +175,6 @@ const MyDataPage = () => {
     }
     setShowWelcomeScreen(show);
   };
-
-  useEffect(() => {
-    fetchDocument();
-  }, [selectedPersona]);
 
   useEffect(() => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);

@@ -68,31 +68,29 @@ export const OwnerLabel = ({
     }, [owners]);
 
   const ownerElementsNonCompactView = useMemo(() => {
-    if (!isCompactView) {
-      if (showLabel || onUpdate) {
-        return (
-          <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
-            {showLabel && (
-              <Typography
-                as="span"
-                className={classNames(className, 'tw:mb-0 tw:text-brand-700')}
-                size="text-sm"
-                weight="medium">
-                {placeHolder ?? t('label.owner-plural')}
-              </Typography>
-            )}
-            {onUpdate && (
-              <UserTeamSelectableList
-                hasPermission={Boolean(hasPermission)}
-                multiple={multiple}
-                owner={owners}
-                tooltipText={tooltipText}
-                onUpdate={onUpdate}
-              />
-            )}
-          </div>
-        );
-      }
+    if (!isCompactView && (showLabel || onUpdate)) {
+      return (
+        <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
+          {showLabel && (
+            <Typography
+              as="span"
+              className={classNames(className, 'tw:mb-0 tw:text-brand-700')}
+              size="text-sm"
+              weight="medium">
+              {placeHolder ?? t('label.owner-plural')}
+            </Typography>
+          )}
+          {onUpdate && (
+            <UserTeamSelectableList
+              hasPermission={Boolean(hasPermission)}
+              multiple={multiple}
+              owner={owners}
+              tooltipText={tooltipText}
+              onUpdate={onUpdate}
+            />
+          )}
+        </div>
+      );
     }
 
     return null;

@@ -18,8 +18,10 @@ import {
   ContextSection,
   PersonaContextDefinition,
 } from '../../../src/generated/type/personaContextDefinition';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { selectOption } from '../../utils/advancedSearch';
 import {
   getDefaultAdminAPIContext,
   toastNotification,
@@ -31,8 +33,20 @@ import {
 } from '../../utils/persona';
 
 const persona = new PersonaClass();
+const dbService = new DatabaseServiceClass();
 const RULE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATED_RULE_ID = '44444444-4444-4444-8444-444444444444';
+
+// Reusable rule fixture for tests that only need a visible rule card to exist
+// (cache-state tests, edit-discard test). Keeps the inline mock objects DRY.
+const PROBE_RULE: ContextRule = {
+  entityType: EntityType.TABLE,
+  id: RULE_ID,
+  matchedCount: 142,
+  maxAssets: 50,
+  name: 'Probe rule',
+  sections: [ContextSection.Description],
+};
 
 interface PersonaContextDocument {
   bytes: number;
@@ -270,12 +284,38 @@ const openPersonaContext = async (page: Page) => {
   await expect(page.getByTestId('persona-ai-context')).toBeVisible();
 };
 
+/**
+ * Layered on top of mockPersonaContextApi to override only the main GET.
+ * Must be called AFTER mockPersonaContextApi — Playwright evaluates routes
+ * LIFO, so this handler is checked first. route.fallback() delegates
+ * everything else (rules, document, preview) to the underlying mock.
+ */
+const overrideAiContextGet = async (
+  page: Page,
+  personaId: string,
+  definition: PersonaContextDefinition
+) => {
+  const basePath = `/api/v1/personas/${personaId}/aiContext`;
+  await page.route(`**${basePath}`, async (route) => {
+    if (route.request().method() !== 'GET') {
+      return route.fallback();
+    }
+
+    return route.fulfill({
+      body: JSON.stringify(definition),
+      contentType: 'application/json',
+      status: 200,
+    });
+  });
+};
+
 test.describe.serial('Persona AI Context', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       browser
     );
     await persona.create(apiContext);
+    await dbService.create(apiContext);
     await afterAction();
   });
 
@@ -284,6 +324,7 @@ test.describe.serial('Persona AI Context', () => {
       browser
     );
     await persona.delete(apiContext);
+    await dbService.delete(apiContext);
     await afterAction();
   });
 
@@ -1217,5 +1258,476 @@ test.describe.serial('Persona AI Context', () => {
     ).postDataJSON() as ContextRule;
 
     expect(recoveredRule).toMatchObject({ name: 'Recovered rule' });
+  });
+
+  // When "Custom Properties" is chosen as the filter field the rule builder must
+  // load the entity's custom properties and show them in the sub-field selector.
+  // Before the fix, RuleQueryBuilderField never fetched custom properties so the
+  // sub-field dropdown always showed "No data".
+  test('Custom Properties filter sub-fields load instead of showing No data', async ({
+    adminPage,
+  }) => {
+    // Intercept the custom-properties endpoint used by RuleQueryBuilderField on mount
+    // and return a single predictable enum property for "table".
+    await adminPage.route(
+      '**/api/v1/metadata/types/customProperties',
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            table: [
+              {
+                name: 'pw-context-enum-prop',
+                type: 'enum',
+                customPropertyConfig: { config: ['option-a', 'option-b'] },
+              },
+            ],
+          }),
+        });
+      }
+    );
+
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('add-context-condition').click();
+    await adminPage
+      .locator('.rule--field .ant-select')
+      .first()
+      .waitFor({ state: 'visible' });
+
+    await selectOption(
+      adminPage,
+      adminPage.locator('.rule--field .ant-select').first(),
+      'Custom Properties',
+      true
+    );
+
+    // The sub-field selector must appear — click it and verify our mocked property
+    // is listed and "No data" is absent.
+    const subFieldSelect = adminPage.locator('.rule--field .ant-select').last();
+    await subFieldSelect.click();
+    const dropdown = adminPage.locator('.ant-select-dropdown:visible').first();
+    await dropdown.waitFor({ state: 'visible' });
+    await expect(dropdown).toContainText('pw-context-enum-prop');
+    await expect(dropdown).not.toContainText('No data');
+
+    await adminPage.keyboard.press('Escape');
+  });
+
+  // Regression guard for the hasUnfinishedRule bug exercising the async-dropdown
+  // (Service Is) path. The "Description Contains" test in the spec above uses a
+  // plain text input and cannot catch regressions in the dropdown-value widget
+  // branch (e.g. value stored in a different shape or key).
+  test('fully-completed Service Is condition allows save', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+
+    // The "Service Is" value dropdown calls /api/v1/search/aggregate with
+    // field=service — it aggregates over TABLE documents, not service entities.
+    // Because dbService has no tables, its name never appears in that
+    // aggregation regardless of how long we wait. Mock the endpoint so the
+    // dropdown returns immediately with the test service name.
+    await adminPage.route('**/api/v1/search/aggregate**', async (route) => {
+      // EntityFields.SERVICE = 'service.displayName.keyword'; the autocomplete
+      // sends field=service.displayName.keyword as a query param.
+      const url = new URL(route.request().url());
+      if (url.searchParams.get('field') === 'service.displayName.keyword') {
+        return route.fulfill({
+          contentType: 'application/json',
+          status: 200,
+          body: JSON.stringify({
+            aggregations: {
+              'sterms#service.displayName.keyword': {
+                buckets: [{ key: dbService.entity.name, doc_count: 1 }],
+              },
+            },
+          }),
+        });
+      }
+
+      return route.fallback();
+    });
+
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('service-is-regression-test');
+
+    await adminPage.getByTestId('add-context-condition').click();
+    await adminPage
+      .locator('.rule--field .ant-select')
+      .first()
+      .waitFor({ state: 'visible' });
+
+    await selectOption(
+      adminPage,
+      adminPage.locator('.rule--field .ant-select').first(),
+      'Service',
+      true
+    );
+
+    const operatorLocator = adminPage
+      .locator('.rule--operator .ant-select')
+      .first();
+    await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
+    await selectOption(adminPage, operatorLocator, 'Is', false);
+
+    const valueSelect = adminPage.locator('.rule--widget .ant-select').first();
+    await valueSelect.waitFor({ state: 'visible' });
+
+    await selectOption(adminPage, valueSelect, dbService.entity.name, true);
+
+    const saveRequest = adminPage.waitForRequest(
+      (req) =>
+        req.url().includes('/aiContext/rules') &&
+        req.method() === 'POST' &&
+        req.postDataJSON()?.name === 'service-is-regression-test'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+
+    // The filter error must NOT appear — the condition is fully complete.
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).not.toBeVisible();
+    await saveRequest;
+  });
+
+  // Verifies that unchecking a section checkbox removes it from the sections
+  // array in the POST body. The default sections for Table include Description
+  // (see PERSONA_CONTEXT_DEFAULT_SECTIONS in PersonaAIContext.constants.ts).
+  test('unchecking a section removes it from the save payload', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('sections-payload-test');
+
+    // Scope to the drawer so we don't accidentally match checkboxes elsewhere.
+    const drawer = adminPage.getByRole('dialog');
+    const descriptionCheckbox = drawer.getByRole('checkbox', {
+      name: 'Description',
+    });
+    await descriptionCheckbox.waitFor({ state: 'visible' });
+    await expect(descriptionCheckbox).toBeChecked();
+    await descriptionCheckbox.uncheck();
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    expect(createdRule.sections ?? []).not.toContain(
+      ContextSection.Description
+    );
+    // Save closes the drawer and the new card appears in the list.
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'sections-payload-test' })
+    ).toBeVisible();
+  });
+
+  test('rule description is included in the save payload', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('description-payload-test');
+    await adminPage
+      .getByTestId('context-rule-description')
+      .locator('textarea')
+      .fill('Guides the AI toward operational metrics only');
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    expect(createdRule.description).toBe(
+      'Guides the AI toward operational metrics only'
+    );
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'description-payload-test' })
+    ).toBeVisible();
+  });
+
+  // SearchClassBase maps GLOSSARY_TERM → glossary_term_search_index → path
+  // ExplorePageTabs.GLOSSARY = 'glossaries', so the href must contain
+  // /explore/glossaries when Glossary Term is the selected entity type.
+  test('View in Explore link href reflects the selected entity type', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+
+    const exploreLink = adminPage.getByRole('link', {
+      name: 'View in Explore',
+    });
+    // Default entity type is Table.
+    await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
+
+    // Switch to Glossary Term — href must change to the glossaries tab.
+    await adminPage.getByTestId('context-rule-entity-type').click();
+    await adminPage
+      .getByRole('listbox')
+      .getByText('Glossary Term', { exact: true })
+      .click();
+    await expect(exploreLink).toHaveAttribute('href', /\/explore\/glossaries/);
+
+    await adminPage.keyboard.press('Escape');
+  });
+
+  test('preview modal closes via the Close button', async ({ adminPage }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      PROBE_RULE,
+    ]);
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('preview-persona-context').click();
+    const modal = adminPage.getByTestId('persona-context-preview-modal');
+    await expect(modal).toBeVisible();
+
+    // CloseButton from @openmetadata/ui-core-components renders with
+    // aria-label="Close" by default (close-button.tsx line 37).
+    await modal.getByRole('button', { name: 'Close' }).click();
+    await expect(modal).toBeHidden();
+  });
+
+  // overrideAiContextGet must be called AFTER mockPersonaContextApi so that
+  // Playwright's LIFO route evaluation checks our override first; route.fallback()
+  // delegates rules / document / preview to the underlying mock.
+
+  test('stale cache state shows the stale badge on the settings card', async ({
+    adminPage,
+  }) => {
+    const personaId = persona.responseData.id as string;
+    await mockPersonaContextApi(adminPage, personaId, [PROBE_RULE]);
+    await overrideAiContextGet(adminPage, personaId, {
+      cacheState: CacheState.Stale,
+      cacheTtlMinutes: 30,
+      characterBudget: 400000,
+      enabled: true,
+      rules: [PROBE_RULE],
+    });
+    await openPersonaContext(adminPage);
+
+    await expect(
+      adminPage
+        .getByTestId('persona-ai-context-settings-card')
+        .getByText('stale', { exact: true })
+    ).toBeVisible();
+  });
+
+  test('failed cache state shows the failed badge and the compilation error', async ({
+    adminPage,
+  }) => {
+    const ERROR_MESSAGE = 'Query timed out after 30 s';
+    const personaId = persona.responseData.id as string;
+    await mockPersonaContextApi(adminPage, personaId, [PROBE_RULE]);
+    await overrideAiContextGet(adminPage, personaId, {
+      cacheState: CacheState.Failed,
+      cacheTtlMinutes: 30,
+      characterBudget: 400000,
+      enabled: true,
+      lastError: ERROR_MESSAGE,
+      rules: [PROBE_RULE],
+    });
+    await openPersonaContext(adminPage);
+
+    const settingsCard = adminPage.getByTestId(
+      'persona-ai-context-settings-card'
+    );
+    await expect(
+      settingsCard.getByText('failed', { exact: true })
+    ).toBeVisible();
+    // lastError is rendered as red text directly in the settings card
+    // (PersonaAIContext.component.tsx line 448–455).
+    await expect(settingsCard.getByText(ERROR_MESSAGE)).toBeVisible();
+  });
+
+  test('closing the edit drawer without saving leaves the rule card unchanged', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      { ...PROBE_RULE, name: 'Rule to keep unchanged' },
+    ]);
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('edit-context-rule').click();
+    await expect(adminPage.getByTestId('form-heading')).toContainText(
+      'Edit Rule'
+    );
+
+    // Modify the name but do NOT save — Escape discards the change.
+    await adminPage.getByTestId('context-rule-name').clear();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('This change must be discarded');
+    await adminPage.keyboard.press('Escape');
+
+    // Original name still visible; the unsaved name must be absent.
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'Rule to keep unchanged' })
+    ).toBeVisible();
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'This change must be discarded' })
+    ).toHaveCount(0);
+  });
+
+  test('rule card displays the matched asset count returned by the server', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      { ...PROBE_RULE, matchedCount: 57, name: 'Count display rule' },
+    ]);
+    await openPersonaContext(adminPage);
+
+    const ruleCard = adminPage
+      .getByTestId('context-rule-card')
+      .filter({ hasText: 'Count display rule' });
+    await expect(ruleCard).toBeVisible();
+    // Translation: "message.persona-context-entity-matched" →
+    // "{{count}} {{entity}} matched", e.g. "57 Tables matched".
+    await expect(ruleCard).toContainText(/57.*matched/);
+  });
+
+  // Adds two Description Contains conditions joined by OR, saves the rule,
+  // and verifies both search terms appear in the serialized queryFilter payload.
+  // All query-builder locators are scoped to the open drawer (getByRole('dialog'))
+  // to avoid matching selects on the underlying page.
+  test('compound OR conditions are serialized into the save payload', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('context-rule-name').fill('or-compound-rule');
+
+    const drawer = adminPage.getByRole('dialog');
+
+    await test.step('fill first condition: Description Contains "alpha"', async () => {
+      await adminPage.getByTestId('add-context-condition').click();
+      // After one addRule([]) there are 2 delete buttons (the existing owners
+      // rule-group's inner rule + the newly added rule).
+      await expect(
+        adminPage.getByTestId('delete-condition-button')
+      ).toHaveCount(2);
+
+      const firstField = drawer.locator('.rule--field .ant-select').first();
+      await firstField.waitFor({ state: 'visible' });
+      await selectOption(adminPage, firstField, 'Description', true);
+
+      const firstOp = drawer.locator('.rule--operator .ant-select').first();
+      await firstOp.waitFor({ state: 'visible', timeout: 5000 });
+      await selectOption(adminPage, firstOp, 'Contains', false);
+      const alphaInput = drawer
+        .locator('.rule--widget--TEXT input[type="text"]')
+        .first();
+      await alphaInput.fill('alpha');
+      // Blur to commit the value to the RAQB immutable tree before adding the
+      // second rule; without this the conjunction change may fire before the
+      // debounced tree update and lose "alpha".
+      await alphaInput.press('Tab');
+    });
+
+    await test.step('add second condition, fill it, then switch connector to OR', async () => {
+      // Add the second condition via the same custom button so both rules
+      // land in the root group (addRule([]) targets the root path).
+      // Switching to OR AFTER both conditions are filled avoids the RAQB
+      // structural change that clicking "Or" first triggers — which prepends a
+      // nested OR group and causes .last() to target the original alpha rule
+      // instead of the new empty slot, overwriting alpha with beta.
+      await adminPage.getByTestId('add-context-condition').click();
+      // 3 delete buttons: owners inner rule + alpha rule + new empty rule.
+      await expect(
+        adminPage.getByTestId('delete-condition-button')
+      ).toHaveCount(3);
+
+      const secondField = drawer.locator('.rule--field .ant-select').last();
+      await selectOption(adminPage, secondField, 'Description', true);
+
+      const secondOp = drawer.locator('.rule--operator .ant-select').last();
+      await secondOp.waitFor({ state: 'visible', timeout: 5000 });
+      await selectOption(adminPage, secondOp, 'Contains', false);
+      const betaInput = drawer
+        .locator('.rule--widget--TEXT input[type="text"]')
+        .last();
+      await betaInput.fill('beta');
+      // Blur to commit before the conjunction change fires.
+      await betaInput.press('Tab');
+
+      // Only now change the root conjunction to OR — this just flips the
+      // conjunction on the existing two-rule group without any structural
+      // change, so both alpha and beta remain in the serialized query.
+      await drawer.getByRole('button', { name: 'Or', exact: true }).click();
+    });
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).not.toBeVisible();
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    // Both terms must appear in the serialized Elasticsearch query.
+    expect(createdRule.queryFilter).toContain('alpha');
+    expect(createdRule.queryFilter).toContain('beta');
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'or-compound-rule' })
+    ).toBeVisible();
   });
 });

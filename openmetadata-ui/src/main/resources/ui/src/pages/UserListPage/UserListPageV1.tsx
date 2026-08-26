@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,6 +24,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';

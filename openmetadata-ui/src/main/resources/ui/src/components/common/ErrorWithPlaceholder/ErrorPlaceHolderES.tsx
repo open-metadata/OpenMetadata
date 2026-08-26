@@ -154,6 +154,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               i18nKey="message.refer-to-our-doc"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={DATA_DISCOVERY_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}

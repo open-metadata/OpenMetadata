@@ -48,7 +48,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -104,6 +103,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1334,15 +1334,17 @@ public class UserRepository extends EntityRepository<User> {
     userPreferencesRepository.delete(entity.getId());
     deleteSuggestionTasksForUser(entity);
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            updateIncidentAssignee(entity);
-          } catch (Exception ex) {
-            LOG.error("Error updating test case incident assignee: ", ex);
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.USER_CLEANUP,
+            entity.getFullyQualifiedName(),
+            () -> {
+              try {
+                updateIncidentAssignee(entity);
+              } catch (Exception ex) {
+                LOG.error("Error updating test case incident assignee: ", ex);
+              }
+            });
   }
 
   /**

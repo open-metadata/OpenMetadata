@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { AccessTokenResponse } from '../../../rest/auth-API';
 import { getOidcToken } from '../../SwTokenStorageUtils';
 
 const REFRESH_IN_PROGRESS_KEY = 'refreshInProgress'; // Key to track if refresh is in progress
 
-type RenewTokenCallback = () =>
-  | Promise<string>
-  | Promise<AccessTokenResponse>
-  | Promise<void>;
+// The renewer's return value is only used for a truthy check inside
+// fetchNewToken / performRefresh — the caller reads the actual refreshed
+// token back from storage (setOidcToken is a side effect of every renewer).
+// Widening to `unknown` here lets each provider's renewer return its own
+// SDK-native shape (AccessTokenResponse, RenewTokenResponse, an OIDC User,
+// void, etc.) without a per-provider cast at the registration call site.
+type RenewTokenCallback = () => Promise<unknown>;
 
 const REFRESHED_KEY = 'tokenRefreshed';
 
@@ -27,9 +29,7 @@ class TokenService {
   renewToken: RenewTokenCallback | null = null;
   refreshSuccessCallback: (() => void) | null = null;
   private static _instance: TokenService;
-  private inFlightRefresh: Promise<
-    string | AccessTokenResponse | null | void
-  > | null = null;
+  private inFlightRefresh: Promise<unknown> | null = null;
 
   constructor() {
     this.clearRefreshInProgress();
@@ -65,7 +65,7 @@ class TokenService {
     return TokenService._instance;
   }
 
-  public updateRenewToken(renewToken: RenewTokenCallback) {
+  public updateRenewToken(renewToken: RenewTokenCallback | null) {
     this.renewToken = renewToken;
   }
 
@@ -148,7 +148,7 @@ class TokenService {
     // (`resetUserDetails(true)`) and force the user to /signin on merely-slow
     // lazy-load, discarding a valid refresh credential.
     await this.awaitRenewerReady();
-    let response: string | AccessTokenResponse | null | void = null;
+    let response: unknown = null;
     if (typeof this.renewToken === 'function') {
       try {
         response = await this.renewToken();

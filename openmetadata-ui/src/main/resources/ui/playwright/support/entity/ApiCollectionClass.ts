@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -196,23 +201,24 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/apiServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/apiCollections', {
+    const service = await createOrFetch(apiContext, {
+      label: 'ApiCollectionClass.create service',
+      createPath: '/api/v1/services/apiServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    const entity = await createOrFetch(apiContext, {
+      label: 'ApiCollectionClass.create collection',
+      createPath: '/api/v1/apiCollections',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
-
-    const apiEndpointResponse = await apiContext.post('/api/v1/apiEndpoints', {
+    const apiEndpoint = await createOrFetch(apiContext, {
+      label: 'ApiCollectionClass.create endpoint',
+      createPath: '/api/v1/apiEndpoints',
+      fqnSegments: [this.service.name, this.entity.name, this.apiEndpoint.name],
       data: this.apiEndpoint,
     });
-
-    const service = await serviceResponse.json();
-    const entity = await entityResponse.json();
-    const apiEndpoint = await apiEndpointResponse.json();
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
@@ -226,17 +232,22 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const apiCollectionResponse = await apiContext.patch(
-      `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const apiCollectionResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const apiCollection = await apiCollectionResponse.json();
+    const apiCollection = await okJson(
+      apiCollectionResponse,
+      'ApiCollectionClass.patch'
+    );
 
     this.entityResponseData = apiCollection;
 

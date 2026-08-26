@@ -49,7 +49,16 @@ jest.mock('../../../../common/Badge/Badge.component', () => {
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <a {...rest} onClick={mockLinkButton}>
+    <a
+      {...rest}
+      role="button"
+      tabIndex={0}
+      onClick={mockLinkButton}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          mockLinkButton(e);
+        }
+      }}>
       {children}
     </a>
   )),
