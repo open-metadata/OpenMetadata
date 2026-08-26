@@ -346,20 +346,22 @@ public class ClassificationRepository extends EntityRepository<Classification> {
               : FullyQualifiedName.add(parentFqn, csvRecord.get(1));
       Tag existingTag =
           ((TagRepository) Entity.getEntityRepository(TAG)).findByNameOrNull(tagFqn, Include.ALL);
-      Tag tag =
-          new Tag()
-              .withClassification(classification.getEntityReference())
-              .withParent(getParentReference(printer, csvRecord, parentFqn))
-              .withName(csvRecord.get(1))
-              .withFullyQualifiedName(tagFqn)
-              .withDisplayName(csvRecord.get(2))
-              .withDescription(csvRecord.get(3))
-              .withReviewers(getReviewers(printer, csvRecord, 4))
-              .withOwners(getOwners(printer, csvRecord, 5))
-              .withEntityStatus(getTagStatus(printer, csvRecord))
-              .withStyle(getStyle(csvRecord))
-              .withDomains(getDomains(printer, csvRecord, 9))
-              .withMutuallyExclusive(getMutuallyExclusive(csvRecord, existingTag));
+      // On update, start from the stored tag so fields the CSV does not carry (recognizers,
+      // auto-classification, deprecated, ...) are retained instead of reset to their defaults.
+      // Any field added to the tag schema later is preserved automatically - no per-field handling.
+      Tag tag = existingTag != null ? existingTag : new Tag();
+      tag.withClassification(classification.getEntityReference())
+          .withParent(getParentReference(printer, csvRecord, parentFqn))
+          .withName(csvRecord.get(1))
+          .withFullyQualifiedName(tagFqn)
+          .withDisplayName(csvRecord.get(2))
+          .withDescription(csvRecord.get(3))
+          .withReviewers(getReviewers(printer, csvRecord, 4))
+          .withOwners(getOwners(printer, csvRecord, 5))
+          .withEntityStatus(getTagStatus(printer, csvRecord))
+          .withStyle(getStyle(csvRecord))
+          .withDomains(getDomains(printer, csvRecord, 9))
+          .withMutuallyExclusive(getMutuallyExclusive(csvRecord, existingTag));
 
       if (processRecord) {
         createEntity(printer, csvRecord, tag, TAG);

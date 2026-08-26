@@ -1098,4 +1098,51 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         exception.getMessage().contains("can not be modified"),
         "System classification export must be rejected: " + exception.getMessage());
   }
+
+  @Test
+  void test_importClassificationCsv_preservesNonCsvTagFields(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    String tagName = ns.prefix("autoClassTag");
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName(tagName);
+    tagRequest.setDescription("Tag with auto-classification");
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setAutoClassificationEnabled(true);
+    tagRequest.setAutoClassificationPriority(7);
+    SdkClients.adminClient().tags().create(tagRequest);
+    String tagFqn = classification.getFullyQualifiedName() + "." + tagName;
+
+    String csv =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/classifications/name/" + classification.getFullyQualifiedName() + "/export",
+                null);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/classifications/name/"
+                + classification.getFullyQualifiedName()
+                + "/import?dryRun=false",
+            csv);
+
+    Tag reimported =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tags/name/" + tagFqn + "?fields=autoClassificationEnabled",
+                null,
+                Tag.class);
+    assertEquals(
+        Boolean.TRUE,
+        reimported.getAutoClassificationEnabled(),
+        "CSV re-import must preserve autoClassificationEnabled (not in CSV columns)");
+    assertEquals(
+        7,
+        reimported.getAutoClassificationPriority(),
+        "CSV re-import must preserve autoClassificationPriority (not in CSV columns)");
+  }
 }
