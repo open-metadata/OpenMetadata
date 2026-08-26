@@ -1986,10 +1986,11 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("updatedAt") long updatedAt);
 
-    // Insert only when this (entity, requester) has no hold yet: 1 when it inserts, 0 when a hold
-    // already exists. Lets accumulate() take the lock and merge path only when there is a prior
-    // hold,
-    // so a concurrent first edit is not lost to a blind overwriting upsert.
+    // Ensure a hold row exists for this (entity, requester) without failing on a concurrent insert.
+    // accumulate() calls this before findForUpdate so the FOR UPDATE below always locks a real
+    // record rather than a gap; a gap lock on the low-population hold table deadlocks concurrent
+    // inserts. The affected-row count is deliberately not used, so the MySQL vs Postgres reporting
+    // difference for a no-op upsert does not matter.
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO pending_approval_change (entity_id, updated_by, json, updated_at) "
@@ -2002,15 +2003,15 @@ public interface CollectionDAO {
                 + "VALUES (:entityId, :updatedBy, (:json :: jsonb), :updatedAt) "
                 + "ON CONFLICT (entity_id, updated_by) DO NOTHING",
         connectionType = POSTGRES)
-    int insertIfAbsent(
+    void insertIfAbsent(
         @BindUUID("entityId") UUID entityId,
         @Bind("updatedBy") String updatedBy,
         @Bind("json") String json,
         @Bind("updatedAt") long updatedAt);
 
-    // Locks the hold row so a concurrent accumulate for the same (entity, requester) serializes
-    // behind this read-modify-write instead of racing it. Only called after insertIfAbsent reports
-    // the row exists, so FOR UPDATE always has a real row to lock.
+    // Locks the hold row for this (entity, requester). accumulate() guarantees the row exists first
+    // (via insertIfAbsent), so this always takes a record lock, never a gap lock, and concurrent
+    // edits for the same key serialize instead of deadlocking.
     @SqlQuery(
         "SELECT json FROM pending_approval_change WHERE entity_id = :entityId AND updated_by = :updatedBy FOR UPDATE")
     String findForUpdate(@BindUUID("entityId") UUID entityId, @Bind("updatedBy") String updatedBy);

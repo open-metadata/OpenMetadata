@@ -57,10 +57,11 @@ public final class PendingApprovalChangeStore {
   public record HeldRecord(ChangeDescription change, long updatedAt) {}
 
   /**
-   * Merge {@code incoming} onto this requester's existing hold atomically. The first edit is inserted
-   * in one step; only when a prior hold already exists does the merge take the locked read (SELECT
-   * FOR UPDATE) plus write path, so two concurrent edits by the same requester serialize on the row
-   * instead of racing a read-modify-write and losing one proposed change.
+   * Merge {@code incoming} onto this requester's hold in one transaction. The row is first ensured to
+   * exist (seeded with this edit when absent), then read under a lock (SELECT FOR UPDATE) and written
+   * back, so a concurrent accumulate for the same requester serializes behind this read-modify-write
+   * instead of racing it and dropping a proposed change. Seeding first keeps the lock on a real
+   * record rather than a gap, which would otherwise deadlock concurrent inserts on this table.
    */
   public static void accumulate(UUID entityId, String updatedBy, ChangeDescription incoming) {
     String incomingJson = JsonUtils.pojoToJson(incoming);
@@ -69,15 +70,13 @@ public final class PendingApprovalChangeStore {
         .useTransaction(
             handle -> {
               PendingApprovalChangeDAO dao = handle.attach(PendingApprovalChangeDAO.class);
-              if (dao.insertIfAbsent(entityId, updatedBy, incomingJson, now) == 0) {
-                String existingJson = dao.findForUpdate(entityId, updatedBy);
-                ChangeDescription existing =
-                    CommonUtil.nullOrEmpty(existingJson)
-                        ? null
-                        : JsonUtils.readValue(existingJson, ChangeDescription.class);
-                dao.upsert(
-                    entityId, updatedBy, JsonUtils.pojoToJson(merge(existing, incoming)), now);
-              }
+              dao.insertIfAbsent(entityId, updatedBy, incomingJson, now);
+              String existingJson = dao.findForUpdate(entityId, updatedBy);
+              ChangeDescription existing =
+                  CommonUtil.nullOrEmpty(existingJson)
+                      ? null
+                      : JsonUtils.readValue(existingJson, ChangeDescription.class);
+              dao.upsert(entityId, updatedBy, JsonUtils.pojoToJson(merge(existing, incoming)), now);
             });
   }
 
