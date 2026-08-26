@@ -84,7 +84,8 @@ RUN echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgre
 # Oracle Instant Client 19.x is linked against libaio.so.1, but Debian 13's
 # 64-bit time_t transition ships that library as libaio.so.1t64 (package
 # libaio1t64). Installing the package satisfies apt but not the linker, so
-# cx_Oracle fails at runtime with DPI-1047. Provide the legacy soname. The
+# python-oracledb thick mode fails at runtime with DPI-1047. Provide the legacy
+# soname. The
 # path is derived rather than hard-coded because the multiarch directory
 # differs between amd64 and arm64 builds.
 RUN set -eu; \
@@ -140,11 +141,9 @@ RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 
-# Refresh the interpreter-level pip before dropping privileges. The per-user
-# pip upgrade below only writes to ~/.local, so the base image's
-# /usr/local copy stays on disk and image scanners keep reporting it
-# (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
-RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+# Upgrade interpreter-level build tools before dropping privileges so scanners do not retain
+# the vulnerable base copies (pip CVE-2025-8869/3219/6357/8643; setuptools CVE-2026-59890).
+RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27" "setuptools>=83"
 
 USER openmetadata
 
@@ -160,12 +159,6 @@ ENV PIP_QUIET=1
 # that default and fail to compile without this; it does not relax any check
 # performed on our own code.
 ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion"
-
-# Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
-# cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
-# Pre-install cx-Oracle without build isolation to use the pinned setuptools
-RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
@@ -242,15 +235,6 @@ RUN set -eu; \
     apt-get -qq autoremove -y --purge; \
     rm -rf /var/lib/apt/lists/*
 USER openmetadata
-
-# Every source build is done, so the setuptools<81 pin above can be lifted. That pin is
-# build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
-# 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
-# what keeps scanners reporting CVE-2026-59890.
-# Keep this the LAST pip layer -- a later layer that compiles a package needing
-# pkg_resources would fail here, and the error would not look like a setuptools problem.
-RUN pip install --upgrade "setuptools>=83"
-
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
