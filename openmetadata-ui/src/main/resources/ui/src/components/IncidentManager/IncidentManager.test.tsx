@@ -626,12 +626,14 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
+    const selectBox = select.querySelector(
+      '.ant-select-selector'
+    ) as HTMLElement;
 
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');
