@@ -243,6 +243,10 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> params,
       String entityType,
       String fqn) {
+    List<String> includes = McpParams.getStringList(params, INCLUDE_PARAM);
+    if (includes.size() == 1 && includes.contains(INCLUDE_CONTENT)) {
+      return readContentOnly(authorizer, securityContext, params, entityType, fqn);
+    }
     // Authorize by FQN so entity-scoped tag/owner/domain policies are evaluated, not just the
     // resource-type permission.
     authorizer.authorize(
@@ -266,8 +270,28 @@ public class GetEntityTool implements McpTool {
     addIncludes(
         windowed,
         new IncludeContext(authorizer, securityContext, entityType, fqn, entity, options(params)),
-        McpParams.getStringList(params, INCLUDE_PARAM));
+        includes);
     return windowed;
+  }
+
+  private static Map<String, Object> readContentOnly(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      String entityType,
+      String fqn) {
+    IncludeContext authorizationContext =
+        new IncludeContext(authorizer, securityContext, entityType, fqn, null, options(params));
+    authorizeKnowledge(authorizationContext);
+    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "", Include.NON_DELETED);
+    IncludeContext contentContext =
+        new IncludeContext(
+            authorizer, securityContext, entityType, fqn, entity, authorizationContext.options());
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("entityType", entityType);
+    result.put("fullyQualifiedName", fqn);
+    result.put(INCLUDE_CONTENT, knowledgeContent(contentContext));
+    return result;
   }
 
   /**
@@ -356,11 +380,19 @@ public class GetEntityTool implements McpTool {
    * not quietly raise the bar for reading an article a caller could read yesterday.
    */
   private static Object knowledge(IncludeContext ctx) {
+    authorizeKnowledge(ctx);
+    return knowledgeContent(ctx);
+  }
+
+  private static void authorizeKnowledge(IncludeContext ctx) {
     ctx.authorizer()
         .authorize(
             ctx.securityContext(),
             new OperationContext(ctx.entityType(), VIEW_BASIC),
             new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+  }
+
+  private static Object knowledgeContent(IncludeContext ctx) {
     String query = ctx.options().query();
     Object rendered;
     if (query != null && !query.isBlank() && vectorSearchEnabled()) {

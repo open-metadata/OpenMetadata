@@ -73,6 +73,11 @@ public class DescribeEntityTypeTool implements McpTool {
     // attributes, so the caller is told the set rather than left to infer it from the two lists.
     result.put("alsoRequired", requiredFields(type));
     result.put("attributes", describe(type));
+    if (type.hasConditionalRequirements()) {
+      result.put(
+          "conditionalRequirements",
+          List.of("classification is required unless parent identifies a parent tag"));
+    }
     return result;
   }
 
@@ -97,15 +102,16 @@ public class DescribeEntityTypeTool implements McpTool {
 
   private static List<Map<String, Object>> describe(EntityCreationSpec type) {
     List<Map<String, Object>> attributes = new ArrayList<>();
-    properties(type).forEach(property -> attributes.add(describeOne(property)));
+    properties(type).forEach(property -> attributes.add(describeOne(type, property)));
     return attributes;
   }
 
-  private static Map<String, Object> describeOne(BeanPropertyDefinition property) {
+  private static Map<String, Object> describeOne(
+      EntityCreationSpec type, BeanPropertyDefinition property) {
     Map<String, Object> attribute = new LinkedHashMap<>();
     attribute.put("name", property.getName());
     attribute.put("type", typeName(property.getPrimaryType()));
-    if (isRequired(property)) {
+    if (isRequired(property) && !type.hasMcpDefault(property.getName())) {
       attribute.put("required", Boolean.TRUE);
     }
     List<String> allowed = allowedValues(property.getPrimaryType());

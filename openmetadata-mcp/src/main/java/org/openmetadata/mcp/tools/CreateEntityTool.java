@@ -13,12 +13,14 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -33,6 +35,7 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -68,7 +71,9 @@ public class CreateEntityTool implements McpTool {
     EntityInterface entity = buildEntity(type, params, userName);
     Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
 
+    applyRepositoryDefaults(entity);
     authorizeCreate(authorizer, limits, securityContext, entityType, entity);
+    RuleEngine.getInstance().evaluate(entity);
     RestUtil.PutResponse<EntityInterface> response =
         persist(authorizer, securityContext, type, entity, userName);
 
@@ -127,8 +132,52 @@ public class CreateEntityTool implements McpTool {
     EntityInterface entity = convert(type, attributes);
     applySharedFields(entity, params, userName);
     applyMcpDefaults(entity);
-    RuleEngine.getInstance().evaluate(entity);
     return entity;
+  }
+
+  private static void applyRepositoryDefaults(EntityInterface entity) {
+    if (entity instanceof Tag tag) {
+      deriveTagClassification(tag);
+    }
+  }
+
+  private static void deriveTagClassification(Tag tag) {
+    EntityReference parent = tag.getParent();
+    EntityReference classification = tag.getClassification();
+    if (parent == null) {
+      if (classification == null) {
+        throw new IllegalArgumentException(
+            "Attribute 'classification' is required for a tag unless 'parent' identifies a parent"
+                + " tag. Nothing was created.");
+      }
+      tag.setClassification(Entity.getEntityReference(classification, Include.NON_DELETED));
+      return;
+    }
+
+    EntityReference resolvedParent = Entity.getEntityReference(parent, Include.NON_DELETED);
+    tag.setParent(resolvedParent);
+    String derivedClassification =
+        FullyQualifiedName.split(resolvedParent.getFullyQualifiedName())[0];
+    if (classification == null) {
+      classification =
+          new EntityReference()
+              .withType(Entity.CLASSIFICATION)
+              .withFullyQualifiedName(derivedClassification);
+    }
+
+    EntityReference resolvedClassification =
+        Entity.getEntityReference(classification, Include.NON_DELETED);
+    if (!derivedClassification.equals(resolvedClassification.getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          "Tag classification '"
+              + resolvedClassification.getFullyQualifiedName()
+              + "' must match the root classification of parent '"
+              + resolvedParent.getFullyQualifiedName()
+              + "' (expected '"
+              + derivedClassification
+              + "'). Nothing was created.");
+    }
+    tag.setClassification(resolvedClassification);
   }
 
   private static void applySharedFields(
