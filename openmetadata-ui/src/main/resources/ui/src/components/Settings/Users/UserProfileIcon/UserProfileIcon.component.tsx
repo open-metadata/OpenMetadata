@@ -9,7 +9,7 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- */
+*/
 import { Button, Dropdown, Radio, Tag, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
@@ -24,6 +24,7 @@ import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg'
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
+import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
@@ -40,6 +41,7 @@ import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtil
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
+
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -61,7 +63,6 @@ const renderLimitedListMenuItem = ({
     listItems.length ?? 0 > sizeLimit
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
-
   const items = listItems.slice(0, sizeLimit);
 
   return isEmpty(items)
@@ -90,11 +91,16 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, selectedPersona, setSelectedPersona } =
-    useApplicationStore();
+  const {
+    currentUser,
+    selectedPersona,
+    setSelectedPersona,
+    timeFormat: globalTimeFormat,
+  } = useApplicationStore();
+  const { preferences, setPreference } = useCurrentUserPreferences();
+  const activeTimeFormat = preferences.timeFormat ?? globalTimeFormat;
   const defaultPersona = currentUser?.defaultPersona;
   const { onLogoutHandler } = useAuthProvider();
-
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = getImageWithResolutionAndFallback(
@@ -113,6 +119,13 @@ export const UserProfileIcon = () => {
   const handleSelectedPersonaChange = async (persona: EntityReference) => {
     setSelectedPersona(persona);
   };
+
+  const handleTimeFormatChange = useCallback(
+    (format: '12h' | '24h') => {
+      setPreference({ timeFormat: format });
+    },
+    [setPreference]
+  );
 
   useEffect(() => {
     if (profilePicture) {
@@ -139,11 +152,9 @@ export const UserProfileIcon = () => {
         const directPersonas = currentUser?.personas ?? [];
         const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
         const allPersonas = [...directPersonas, ...inheritedPersonas];
-
         if (currentUser?.defaultPersona) {
           allPersonas.push(currentUser.defaultPersona);
         }
-
         // Deduplicate by id
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
@@ -172,7 +183,6 @@ export const UserProfileIcon = () => {
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
             </Typography.Text>
-
             {isDefaultPersona && (
               <Tag
                 className="m-l-xs default-persona-tag"
@@ -181,7 +191,6 @@ export const UserProfileIcon = () => {
               </Tag>
             )}
           </div>
-
           <Radio checked={selectedPersona?.id === item.id} />
         </div>
       );
@@ -225,18 +234,28 @@ export const UserProfileIcon = () => {
     setIsDropdownOpen(false);
   }, []);
 
+  const timeFormatLabelRenderer = useCallback(
+    (format: '12h' | '24h', label: string) => (
+      <div
+        className="w-full d-flex items-center justify-between cursor-pointer"
+        data-testid={`time-format-${format}`}
+        onClick={() => handleTimeFormatChange(format)}>
+        <Typography.Text>{label}</Typography.Text>
+        <Radio checked={activeTimeFormat === format} />
+      </div>
+    ),
+    [activeTimeFormat, handleTimeFormatChange]
+  );
+
   const sortedPersonas = useMemo(() => {
     if (!personas?.length) {
       return [];
     }
-
     const defaultId = defaultPersona?.id;
     const selectedId = selectedPersona?.id;
-
     const others: typeof personas = [];
     let defaultMatch: typeof defaultPersona | undefined;
     let selectedMatch: typeof selectedPersona | undefined;
-
     for (const p of personas) {
       if (p.id === defaultId) {
         defaultMatch = p;
@@ -246,7 +265,6 @@ export const UserProfileIcon = () => {
         others.push(p);
       }
     }
-
     // Sort remaining personas alphabetically
     const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
 
@@ -369,6 +387,31 @@ export const UserProfileIcon = () => {
         ),
         type: 'group',
       },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'timeFormat',
+        icon: '',
+        children: [
+          {
+            key: 'time-format-12h',
+            label: timeFormatLabelRenderer('12h', t('label.12-hour')),
+          },
+          {
+            key: 'time-format-24h',
+            label: timeFormatLabelRenderer('24h', t('label.24-hour')),
+          },
+        ],
+        label: (
+          <div className="d-flex items-center gap-2">
+            <span className="font-medium text-grey-900">
+              {t('label.time-format')}
+            </span>
+          </div>
+        ),
+        type: 'group',
+      },
       ...navbarUtilClassBase.getUserProfileExtraItems(),
       {
         type: 'divider',
@@ -398,6 +441,8 @@ export const UserProfileIcon = () => {
       showAllPersona,
       sortedPersonas,
       inheritedRoles,
+      activeTimeFormat,
+      timeFormatLabelRenderer,
       t,
     ]
   );
@@ -406,7 +451,13 @@ export const UserProfileIcon = () => {
     <Dropdown
       menu={{
         items,
-        defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
+        defaultOpenKeys: [
+          'personas',
+          'roles',
+          'inheritedRoles',
+          'teams',
+          'timeFormat',
+        ],
         rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
       open={isDropdownOpen}
@@ -445,7 +496,6 @@ export const UserProfileIcon = () => {
               {getEntityName(currentUser)}
             </Typography.Text>
           </Tooltip>
-
           <Typography.Text
             data-testid="default-persona"
             ellipsis={{ tooltip: true }}>

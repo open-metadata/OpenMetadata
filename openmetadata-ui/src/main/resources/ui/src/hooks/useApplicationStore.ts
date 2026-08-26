@@ -67,6 +67,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   appPreferences: {},
   appVersion: undefined,
   rdfEnabled: false,
+  timeFormat: '12h',
 
   initializeAuthState: async () => {
     try {
@@ -217,5 +218,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setRdfEnabled: (enabled: boolean) => {
     set({ rdfEnabled: enabled });
+  },
+  setTimeFormat: (format: '12h' | '24h') => {
+    set({ timeFormat: format });
   },
 }));
