@@ -44,7 +44,9 @@ export const readPersonaSession = (): string | null => {
     return null;
   }
   try {
-    return globalThis.window.sessionStorage.getItem(SELECTED_PERSONA_SESSION_KEY);
+    return globalThis.window.sessionStorage.getItem(
+      SELECTED_PERSONA_SESSION_KEY
+    );
   } catch {
     return null;
   }
