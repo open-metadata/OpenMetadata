@@ -1,8 +1,8 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.jdbi3.TableRepository.SYSTEM_PROFILE_EXTENSION;
-import static org.openmetadata.service.jdbi3.TableRepository.TABLE_COLUMN_PROFILE_EXTENSION;
-import static org.openmetadata.service.jdbi3.TableRepository.TABLE_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;

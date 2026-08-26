@@ -63,6 +63,14 @@ class QueryParserTests(TestCase):
         clean_tables = set(self.parser_with_dialect.clean_table_list)
         self.assertEqual(clean_tables, expected_tables)
 
+    def test_clean_parser_table_list_drops_names_without_table(self):
+        """
+        An empty identifier in the query (`db.schema.""`) makes the parser return a
+        reference with no table part, which cannot be resolved into an entity later on
+        """
+        parser = LineageParser('insert into tgt.t1 select * from "my_db"."my_schema".""')
+        self.assertEqual(set(parser.clean_table_list), {"tgt.t1"})
+
     def test_bracketed_parser_table_list(self):
         expected_tables = {"test_schema.test_view", "test_table"}
         parser = LineageParser("create view [test_schema].[test_view] as select * from [test_table];")

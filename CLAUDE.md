@@ -139,6 +139,11 @@ on functionality over education. Do not add unnecessary blank lines between pros
   for repositories, Factory/Registry for dispatch, Strategy/Adapter/Observer, the ingestion
   Source→Sink pipeline, …) with the canonical class to copy each from. Extend the established pattern
   rather than inventing a parallel one.
+- `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` — **the UI folder structure and file
+  naming spec.** Read before creating any new file under `openmetadata-ui/.../ui/src/`. Layers stay
+  top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
+  `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
+  `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
 
 ### Skills (invoke by name; procedures, not rules)
 

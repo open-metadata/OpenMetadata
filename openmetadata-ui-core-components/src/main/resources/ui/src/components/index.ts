@@ -132,6 +132,7 @@ export * from './application/date-picker/range-calendar';
 export * from './application/date-picker/range-preset';
 export * from './application/empty-placeholder/empty-placeholder';
 export * from './application/modals/modal';
+export * from './application/page-layout/page-layout';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
@@ -148,6 +149,12 @@ export type {
   ToastContent,
   ShowToastOptions,
 } from './application/toast/toast-store';
+
+// Common
+export * from './common/document-title/document-title';
+
+// Page header
+export * from './application/page-header/page-header';
 
 // Foundations
 export * from './foundations/dot-icon';

@@ -90,6 +90,7 @@ import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -121,6 +122,8 @@ import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.seeding.RequiredSeedRows;
+import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
@@ -135,6 +138,8 @@ public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
       "Glossary term relation settings changed while the JSON Patch was being applied";
+  private static final String INVALID_GLOSSARY_TERM_RELATION_SETTINGS_PATCH =
+      "Invalid JSON Patch for glossary term relation settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
@@ -201,9 +206,41 @@ public class SystemRepository {
     return null;
   }
 
+  public boolean hasRequiredSeedRows(RequiredSeedRows requiredSeedRows) {
+    if (requiredSeedRows.expectedCount() == 0) {
+      return false;
+    }
+    long actualCount =
+        dao.countRequiredSeedData(
+            requiredSeedRows.bindableIdentities(SeedTable.TYPE),
+            requiredSeedRows.bindableIdentities(SeedTable.POLICY),
+            requiredSeedRows.bindableIdentities(SeedTable.ROLE),
+            requiredSeedRows.bindableIdentities(SeedTable.TASK_FORM_SCHEMA),
+            requiredSeedRows.bindableIdentities(SeedTable.DOCUMENT),
+            requiredSeedRows.bindableIdentities(SeedTable.WORKFLOW_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.EVENT_SUBSCRIPTION),
+            requiredSeedRows.bindableIdentities(SeedTable.NOTIFICATION_TEMPLATE),
+            requiredSeedRows.bindableIdentities(SeedTable.LEARNING_RESOURCE),
+            requiredSeedRows.bindableIdentities(SeedTable.TEST_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.TEST_CONNECTION_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.WEB_ANALYTIC_EVENT),
+            requiredSeedRows.bindableIdentities(SeedTable.DATA_INSIGHT_CHART),
+            requiredSeedRows.bindableIdentities(SeedTable.DATA_INSIGHT_CUSTOM_CHART),
+            requiredSeedRows.bindableIdentities(SeedTable.BOT),
+            requiredSeedRows.bindableIdentities(SeedTable.CLASSIFICATION),
+            requiredSeedRows.bindableIdentities(SeedTable.TAG),
+            requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY),
+            requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY_TERM),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_POLICY),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_FRAMEWORK),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL));
+    return actualCount == requiredSeedRows.expectedCount();
+  }
+
   private Settings prepareFetchedSettings(Settings fetchedSettings) {
     if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-      SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+      SmtpSettings emailConfig =
+          JsonUtils.convertValue(fetchedSettings.getConfigValue(), SmtpSettings.class);
       if (!nullOrEmpty(emailConfig.getPassword())) {
         emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
       }
@@ -308,21 +345,8 @@ public class SystemRepository {
 
   @Transaction
   public Response createOrUpdate(Settings setting) {
-    Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
-
-    if (oldValue != null && oldValue.getConfigType().equals(SettingsType.EMAIL_CONFIGURATION)) {
-      SmtpSettings configValue =
-          JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
-      if (configValue != null) {
-        SmtpSettings.Templates templates = configValue.getTemplates();
-        SmtpSettings newConfigValue =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (newConfigValue != null) {
-          newConfigValue.setTemplates(templates);
-          setting.setConfigValue(newConfigValue);
-        }
-      }
-    }
+    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    preserveEmailSettings(setting, oldValue);
 
     try {
       updateSetting(setting);
@@ -330,6 +354,7 @@ public class SystemRepository {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
+    prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
           .toResponse();
@@ -365,6 +390,9 @@ public class SystemRepository {
     if (expectedJson == null) {
       throw EntityNotFoundException.byName(settingName);
     }
+    Settings stored =
+        CollectionDAO.SettingsRowMapper.getSettings(
+            SettingsType.fromValue(settingName), expectedJson);
     Settings original =
         prepareFetchedSettings(
             CollectionDAO.SettingsRowMapper.getSettings(
@@ -373,8 +401,32 @@ public class SystemRepository {
     String jsonString = updated.toString();
     Object updatedConfigValue = JsonUtils.readValue(jsonString, Object.class);
     original.setConfigValue(updatedConfigValue);
+    preserveEmailSettings(original, stored);
     updateSettingIfCurrent(original, expectedJson);
+    prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  private void preserveEmailSettings(Settings updated, Settings stored) {
+    if (hasStoredEmailSettings(updated, stored)) {
+      SmtpSettings original =
+          decryptEmailSetting(JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class));
+      SmtpSettings replacement =
+          JsonUtils.convertValue(updated.getConfigValue(), SmtpSettings.class);
+      replacement.setTemplates(original.getTemplates());
+      if (replacement.getPassword() == null
+          || PasswordEntityMasker.PASSWORD_MASK.equals(replacement.getPassword())) {
+        replacement.setPassword(original.getPassword());
+      }
+      updated.setConfigValue(replacement);
+    }
+  }
+
+  private boolean hasStoredEmailSettings(Settings updated, Settings stored) {
+    return stored != null
+        && stored.getConfigValue() != null
+        && updated.getConfigType() == SettingsType.EMAIL_CONFIGURATION
+        && updated.getConfigValue() != null;
   }
 
   private Response patchGlossaryTermRelationSettings(JsonPatch patch) {
@@ -389,7 +441,7 @@ public class SystemRepository {
     try {
       patched = JsonUtils.applyPatch(current, patch);
     } catch (JsonException exception) {
-      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED, exception);
+      throw new BadRequestException(INVALID_GLOSSARY_TERM_RELATION_SETTINGS_PATCH, exception);
     }
     GlossaryTermRelationSettings updated =
         JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
@@ -1100,6 +1152,10 @@ public class SystemRepository {
     boolean reindexNeeded() {
       return !stalePending.isEmpty() || !missingIndexes.isEmpty();
     }
+
+    boolean passed() {
+      return driftComputed && !reindexNeeded() && clusterHealthy;
+    }
   }
 
   static ReindexStatus classifyReindexStatus(
@@ -1228,19 +1284,25 @@ public class SystemRepository {
   }
 
   private StepValidation getReindexStatusValidation() {
-    StepValidation step =
-        new StepValidation().withDescription(ValidationStepDescription.SEARCH_REINDEX.key);
     SearchRepository searchRepository = Entity.getSearchRepository();
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
-      SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
-      boolean healthy = status.driftComputed() && !status.reindexNeeded();
-      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
+      result = buildReindexStepValidation(computeSearchReindexStatus(searchRepository));
     } else {
       result =
-          step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
+          new StepValidation()
+              .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage("Skipped: search instance is not reachable.");
     }
     return result;
+  }
+
+  static StepValidation buildReindexStepValidation(SearchReindexStatus status) {
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+        .withPassed(status.passed())
+        .withMessage(buildReindexStatusMessage(status));
   }
 
   private SearchReindexStatus computeSearchReindexStatus(SearchRepository searchRepository) {

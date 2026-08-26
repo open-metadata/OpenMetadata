@@ -60,7 +60,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
-import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -592,7 +591,8 @@ public class PersonaContextBuilder {
       profiles =
           Entity.getCollectionDAO()
               .profilerDataTimeSeriesDao()
-              .getLatestExtensionsBatch(fqns, TableRepository.TABLE_PROFILE_EXTENSION);
+              .getLatestExtensionsBatch(
+                  fqns, CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION);
     } catch (RuntimeException exception) {
       LOG.warn("Failed to load batched persona profile summaries: {}", exception.getMessage());
       return;

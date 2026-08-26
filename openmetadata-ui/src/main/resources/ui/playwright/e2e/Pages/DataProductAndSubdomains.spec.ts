@@ -70,8 +70,8 @@ test.describe('Data Product Comprehensive Tests', () => {
 
         const domainPatch = {
           op: 'add' as const,
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         };
 
         await tieredTable.create(apiContext);
@@ -367,8 +367,8 @@ test.describe('Data Product Comprehensive Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -634,8 +634,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain1.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain1.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -646,8 +646,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain2.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain2.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -749,8 +749,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain.responseData.id, type: 'domain' }],
           },
         ],
       });

@@ -490,7 +490,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AddNotificationPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
           />

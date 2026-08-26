@@ -115,9 +115,94 @@ public class BulkOverrideMetadataIT {
         "a bot PUT must not overwrite a non-empty displayName without overrideMetadata");
   }
 
+  @Test
+  void test_botCannotOverwriteColumnDescription_withoutOverride(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_col_off", "desc", "hash-v1");
+    setColumnDescription(original, "curated column description");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_col_off", "desc", "hash-v2");
+    setColumnDescription(changed, "connector column description");
+    BulkApi.upsert("tables", List.of(changed), false, botToken);
+
+    assertEquals(
+        "curated column description",
+        columnDescription(getTable(fqn)),
+        "a bot PUT must not overwrite a non-empty column description without overrideMetadata");
+  }
+
+  @Test
+  void test_botOverwritesColumnDescription_withOverride(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_col_on", "desc", "hash-v1");
+    setColumnDescription(original, "curated column description");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_col_on", "desc", "hash-v2");
+    setColumnDescription(changed, "connector column description");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "connector column description",
+        columnDescription(getTable(fqn)),
+        "overrideMetadata=true lets a bot PUT overwrite the column description");
+  }
+
+  @Test
+  void test_overrideDoesNotBlankColumnDescription(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_col_blank", "desc", "hash-v1");
+    setColumnDescription(original, "curated column description");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    // The connector finds no comment on the column, so it omits the field from the payload.
+    CreateTable changed = table(ns, schemaFqn, "ovr_col_blank", "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "curated column description",
+        columnDescription(getTable(fqn)),
+        "overrideMetadata=true must not blank a column description when none is supplied");
+  }
+
+  @Test
+  void test_columnDisplayNamePreserved_evenWithOverride(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_col_dn", "desc", "hash-v1");
+    original.getColumns().getFirst().withDisplayName("Curated Column");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_col_dn", "desc", "hash-v2");
+    changed.getColumns().getFirst().withDisplayName("Connector Column");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "Curated Column",
+        getTable(fqn).getColumns().getFirst().getDisplayName(),
+        "overrideMetadata governs column descriptions only; a curated column displayName is "
+            + "always preserved from a bot PUT");
+  }
+
   // ===================================================================
   // HELPERS
   // ===================================================================
+
+  private void setColumnDescription(CreateTable createTable, String description) {
+    createTable.getColumns().getFirst().withDescription(description);
+  }
+
+  private String columnDescription(Table table) {
+    return table.getColumns().getFirst().getDescription();
+  }
 
   private String setupSchema(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
