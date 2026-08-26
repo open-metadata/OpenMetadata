@@ -239,6 +239,10 @@ export const WorkflowExecutionHistory: React.FC = () => {
       data-testid="workflow-execution-history">
       <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         <TableV2
+          // The table body scrolls inside the wrapper above, so the header has
+          // to be told to stick — TableV2 only sticks when asked, or when
+          // `scroll.y` gives the body its own scroller.
+          sticky
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
           data-testid="workflow-execution-history-table"
