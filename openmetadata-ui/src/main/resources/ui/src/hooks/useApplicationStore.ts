@@ -42,7 +42,12 @@ const resolvePersonaFromSession = (user: User): EntityReference | undefined => {
     ...(defaultPersona ? [defaultPersona] : []),
   ];
 
-  return allPersonas.find((p) => p.id === storedId);
+  const match = allPersonas.find((p) => p.id === storedId);
+  if (!match) {
+    clearPersonaSession();
+  }
+
+  return match;
 };
 
 const syncDomainStoreForUser = (user?: User) => {
