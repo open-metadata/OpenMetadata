@@ -356,7 +356,6 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
 
   useEffect(() => {
