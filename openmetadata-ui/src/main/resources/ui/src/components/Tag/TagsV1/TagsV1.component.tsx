@@ -147,7 +147,7 @@ const TagsV1 = ({
 
     return (
       <Icon
-        className='tw:mr-4 tw:shrink-0'
+        className='tw:mr-1 tw:shrink-0'
         fallback={startIcon}
         iconValue={tag.style?.iconURL}
         size={12}

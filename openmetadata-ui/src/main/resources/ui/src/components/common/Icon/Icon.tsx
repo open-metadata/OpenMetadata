@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Skeleton } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { FC, useEffect, useRef, useState } from 'react';
 import { getTagImageSrc, ICON_MAP, isImageUrl } from '../../../utils/IconUtils';
 import { IconProps } from './Icon.interface';
@@ -62,7 +63,7 @@ export const Icon: FC<IconProps> = ({
   if (IconComponent) {
     return (
       <IconComponent
-        className={imageClassName}
+        className={classNames(className, imageClassName)}
         size={size}
         style={{ strokeWidth, ...imageStyle }}
       />
