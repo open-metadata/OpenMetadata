@@ -68,7 +68,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -79,11 +79,11 @@
           },
           "entityType": {
             "type": "string",
-            "description": "Filter by entity type (auto-detected if not specified). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus'), testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge)."
+            "description": "Filter by entity type (auto-detected if not specified). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus': Success/Failed/Aborted once run; a test that has never executed carries no status and is flagged 'neverRun': true). IMPORTANT when finding a table's tests: a COLUMN-level test stores the column's FQN in 'entityFQN' (e.g. '...dim_address.zip'), so an exact term/terms match on the table FQN silently returns only table-level tests and a clean, wrong total. Match on 'originEntityFQN' instead - it rolls up to the tested asset for both table and column tests - or use a wildcard on 'entityFQN'., testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge)."
           },
           "queryFilter": {
             "type": "string",
-            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}}). 'fullyQualifiedName' is indexed with a lowercase normalizer, so values in 'term'/'terms' clauses must be lowercased — {\"terms\": {\"fullyQualifiedName\": [\"dailyactiveusers\"]}} matches, the original casing silently matches nothing. Combining a 'terms' clause on 'fullyQualifiedName' with 'fields' is the way to hydrate many known entities in one call."
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}}). 'fullyQualifiedName' is indexed with a lowercase normalizer, so values in 'term'/'terms' clauses must be lowercased — {\"terms\": {\"fullyQualifiedName\": [\"dailyactiveusers\"]}} matches, the original casing silently matches nothing. The SAME lowercase rule applies to 'entityFQN' and 'originEntityFQN' on test-case documents — lowercase those values too, or a term/terms clause returns a clean, wrong zero. Combining a 'terms' clause on 'fullyQualifiedName' with 'fields' is the way to hydrate many known entities in one call."
           },
           "from": {
             "type": "integer",
@@ -106,7 +106,7 @@
           },
           "fields": {
             "type": "string",
-            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, upstreamLineage, entityRelationship, aiContext (materialized structural context: columns, primaryKey, foreignKeys, frequentJoins, partitionColumns)\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns' for table column details, or 'aiContext' for the structural context (keys, joins, partitions) in the search hit itself. To read SQL that has actually run against an asset, search entityType='query' instead — 'queries' is not retrievable as a field."
+            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, upstreamLineage, entityRelationship, aiContext (materialized structural context: columns, primaryKey, foreignKeys, frequentJoins, partitionColumns)\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash, certification (the certification badge is NOT returned by default - request it explicitly when trustworthiness matters)\n\nBulk fields (columns, charts, tasks) are capped per hit and flagged with '<field>Truncated' plus '<field>Total' — search hits are for choosing between assets; use get_entity_details for the full list. Example: 'columns' for table column details, or 'aiContext' for the structural context (keys, joins, partitions) in the search hit itself. To read SQL that has actually run against an asset, search entityType='query' instead — 'queries' is not retrievable as a field.\n\nReferences (service, database, databaseSchema, owners, domains) and tags (tags, tier) are returned as fully-qualified-name STRINGS, not nested objects — pass them directly to another tool. An owner inherited from the parent database or schema is suffixed '(inherited)', so a real steward is distinguishable from a cascaded placeholder."
           },
           "includeAggregations": {
             "type": "boolean",
@@ -117,6 +117,13 @@
             "type": "integer",
             "description": "Maximum number of aggregation buckets to return per field when includeAggregations is true. Limits response size to prevent context overflow. Default is 10, maximum allowed is 50.",
             "default": 10
+          },
+          "excludeEntityTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Entity types to drop from the results, e.g. ['tableColumn']. Column documents sit inside the default 'dataAsset' scope, so a broad sweep can return mostly columns inheriting their parent's tags or certification. Excluded hits are removed and counted under 'excludedByType'."
           }
         },
         "required": [],
@@ -197,7 +204,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Metric results additionally carry 'metricExpression', 'metricType', 'granularity' and 'unitOfMeasurement' — enough to tell similarly named metrics apart (e.g. daily vs monthly active users) and shortlist the right one without fetching each candidate. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information, including custom properties ('extension'), which summaries never include. One result is returned per entity: the best-matching passage represents it.",
+      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns compact entity summaries: name, description, column NAMES (not full column definitions), and metadata. References (service, database, databaseSchema, owners, domains) and tags are returned as fully-qualified-name strings rather than nested objects, so they can be passed straight to another tool. Column name lists are capped per hit and flagged with 'columnNamesTruncated'/'totalColumns'. Use get_entity_details for full column definitions. Metric results additionally carry 'metricExpression', 'metricType', 'granularity' and 'unitOfMeasurement' — enough to tell similarly named metrics apart (e.g. daily vs monthly active users) and shortlist the right one without fetching each candidate. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information, including custom properties ('extension'), which summaries never include. One result is returned per entity: the best-matching passage represents it.",
       "parameters": {
         "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
         "type": "object",
@@ -287,7 +294,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose index/noise metadata fields are excluded. Descriptions (entity-level and per-column) are returned in FULL and are never truncated — total response size is bounded by column pagination instead. Only the raw schema DDL and dbt model SQL carry a large safety cap (~30000 characters, flagged with 'schemaDefinitionTruncated' or 'sqlTruncated' inside 'dataModel') to keep the response retrievable; realistic DDL/SQL is well under this. For wide entities (many columns), the 'columns' array is paginated: when it is capped the response sets 'columnsTruncated' with 'totalColumns', 'returnedColumns', 'columnOffset' and 'hasMoreColumns'. When 'hasMoreColumns' is true, fetch the next page by calling again with 'columnOffset' set to the previous 'columnOffset' + 'returnedColumns'; when it is false there are no further columns to retrieve.",
+      "description": "Get detailed information about one or more entities. Pass a single 'entityType' + 'fqn', or 'entities' to read up to 10 in one call - prefer that over repeated single calls when you already hold several FQNs. Includes custom properties (returned under the 'extension' field). Certification is returned with its validity already resolved, e.g. 'Certification.Gold (EXPIRED 2026-07-29)', so a lapsed badge cannot be mistaken for a live one. IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose index/noise metadata fields are excluded. Descriptions (entity-level and per-column) are returned in FULL and are never truncated — total response size is bounded by column pagination instead. Only the raw schema DDL and dbt model SQL carry a large safety cap (~30000 characters, flagged with 'schemaDefinitionTruncated' or 'sqlTruncated' inside 'dataModel') to keep the response retrievable; realistic DDL/SQL is well under this. For wide entities (many columns), the 'columns' array is paginated: when it is capped the response sets 'columnsTruncated' with 'totalColumns', 'returnedColumns', 'columnOffset' and 'hasMoreColumns'. When 'hasMoreColumns' is true, fetch the next page by calling again with 'columnOffset' set to the previous 'columnOffset' + 'returnedColumns'; when it is false there are no further columns to retrieve. Use 'include' to fold lineage and data-quality health into this call rather than following up with get_entity_lineage or a test-suite lookup.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
@@ -298,7 +305,7 @@
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of the entity. IMPORTANT: Use the exact 'fullyQualifiedName' value from search_metadata or semantic_search results. Do not attempt to construct or modify the FQN."
+            "description": "Fully qualified name of the entity. Use the exact 'fullyQualifiedName' from a search result when you have one, or a known-good FQN the user supplied. Do not assemble an FQN from parts you are guessing at."
           },
           "columnOffset": {
             "type": "integer",
@@ -307,12 +314,27 @@
           "columnLimit": {
             "type": "integer",
             "description": "Maximum number of columns to return starting at 'columnOffset'. Omit to return as many columns as fit the response size budget (columns beyond the budget are dropped and flagged with 'columnsTruncated'/'hasMoreColumns')."
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "lineage",
+                "quality"
+              ]
+            },
+            "description": "Extra sections to fold into this response instead of making another call. 'lineage' adds the immediate upstream and downstream FQNs (what feeds this asset, what breaks if it changes) plus 'hasMoreUpstream'/'hasMoreDownstream' so you can tell a complete graph from the first hop of a chain without a second call. 'quality' adds its test suite's pass/fail summary, including a 'neverRun' count so a suite whose tests have never executed is not mistaken for a clean one. When the asset has no test suite at all - the common case in a young catalog - it returns a note saying so, which is different again from a suite whose tests have not run. Each section degrades independently: if one cannot be read you get a note for that section, not a failed call. Use get_entity_lineage instead when you need lineage depth or transformation SQL."
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Read several entities in ONE call. Each item is 'entityType:fqn', e.g. 'table:sample_data.ecommerce_db.shopify.dim_address'. Maximum 10 per call. Prefer this over repeated single calls when a search returned multiple assets worth inspecting. Each entity resolves independently: an unknown type, a missing asset or a permission denial returns an 'error' entry for that one entity instead of failing the whole call. When 'entities' is used the response is {entities:[...], requested, returned}; 'include' applies to every entity."
           }
         },
-        "required": [
-          "entityType",
-          "fqn"
-        ]
+        "required": []
       }
     },
     {
@@ -600,11 +622,11 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Glossary Term name."
+            "description": "Name of the glossary. Must be unique."
           },
           "description": {
             "type": "string",
-            "description": "Glossary Term description."
+            "description": "Description of the glossary in Markdown format."
           },
           "owners": {
             "type": "array",
@@ -615,7 +637,7 @@
           },
           "reviewers": {
             "type": "array",
-            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "description": "Users or teams who review changes to terms in this glossary. Setting reviewers turns on the approval workflow: new terms enter as Draft and stay there until a reviewer approves them. Leave empty for terms to be created already Approved.",
             "items": {
               "type": "string"
             }
@@ -639,9 +661,10 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
+        "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Patches an existing Entity based on a JSONPatch. NOT for creating entities — use the matching create_* tool for that; NOT for Context Center memories — use create_context_memory. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Update an existing entity by applying a JSONPatch document (RFC 6902), exactly as the REST PATCH API takes it. Any operation on any field is allowed and is passed through as written, so a patch touches only the paths it names - see https://jsonpatch.com. THE PATH DECIDES WHETHER YOU ADD OR REPLACE, which is the easy thing to get wrong on arrays: '/owners/-' APPENDS one owner, while '/owners' REPLACES the whole list with what you supply. Same for tags, reviewers, domains, experts and dataProducts. To append: {\"op\": \"add\", \"path\": \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}. To remove one: {\"op\": \"remove\", \"path\": \"/owners/0\"}. To replace the whole list deliberately, target the array itself. If you do not know what a list currently holds, read it with get_entity_details first. Use 'replace' for a field that already has a value and 'add' for one that is absent or to extend an array. NOT for creating entities - use the matching create_* tool; NOT for Context Center memories - use create_context_memory. FIELD NAMING: array fields are plural - 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Owners and domains are entity references: {\"id\": \"<uuid>\", \"type\": \"user\"|\"team\"|\"domain\"}. A tier is a tag, e.g. {\"tagFQN\": \"Tier.Tier1\"} - so replacing '/tags' wholesale drops the asset's tier and its glossary terms along with it. Look entity UUIDs up with search or get tools before patching, and do not guess field names from prior knowledge - schema fields have been renamed over time. Call get_entity_details on the target and use only names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -655,7 +678,7 @@
           },
           "patch": {
             "type": "string",
-            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' (add/remove/replace), 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
+            "description": "The JSONPatch document, as a JSON array string. Each operation has 'op' (add, remove, replace, move, copy, test), 'path' (a JSON Pointer starting with /), and 'value' where the op needs one. Example: [{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"new description\"}]. Appending to an array uses the '-' index: [{\"op\": \"add\", \"path\": \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}]."
           }
         },
         "required": [
@@ -673,7 +696,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), and the transformation SQL in full — response size is controlled by returning fewer edges, never by cutting SQL. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. The default response is table-level and small: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql). Transformation SQL is NOT included by default because it dominates response size; an edge that has SQL is marked with 'hasSql': true, so re-call with includeSql=true only for the specific question that needs the transformation text. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -700,6 +723,11 @@
             "type": "boolean",
             "description": "Include column-level lineage mappings on each edge. Defaults to false to keep the response table-level and small. Set to true only when the user explicitly needs column-to-column lineage, as it can significantly increase response size on wide tables.",
             "default": false
+          },
+          "includeSql": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include each edge's full transformation SQL. Defaults to false: SQL is typically over 90% of a lineage response, so it is omitted unless asked for. Edges that have SQL are flagged with 'hasSql': true — request it only for those you care about."
           }
         },
         "required": [
@@ -716,13 +744,13 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Required to create lineage between two assets. Identify each endpoint by 'fqn' (preferred) or 'id', plus its 'type'.",
       "parameters": {
         "description": "Required to create lineage between two assets.",
         "type": "object",
         "properties": {
           "fromEntity": {
-            "description": "Source Entity.",
+            "description": "Source entity. Identify it by 'fqn' (preferred - this is what search results return) or by 'id'.",
             "type": "object",
             "properties": {
               "type": {
@@ -731,16 +759,19 @@
               },
               "id": {
                 "type": "string",
-                "description": "Id of the entity"
+                "description": "Id of the entity. Only needed when you do not have its fqn."
+              },
+              "fqn": {
+                "type": "string",
+                "description": "Fully qualified name of the entity, exactly as returned by search_metadata or semantic_search."
               }
             },
             "required": [
-              "type",
-              "id"
+              "type"
             ]
           },
           "toEntity": {
-            "description": "Destination Entity.",
+            "description": "Destination entity. Identify it by 'fqn' (preferred - this is what search results return) or by 'id'.",
             "type": "object",
             "properties": {
               "type": {
@@ -749,12 +780,15 @@
               },
               "id": {
                 "type": "string",
-                "description": "Id of the entity"
+                "description": "Id of the entity. Only needed when you do not have its fqn."
+              },
+              "fqn": {
+                "type": "string",
+                "description": "Fully qualified name of the entity, exactly as returned by search_metadata or semantic_search."
               }
             },
             "required": [
-              "type",
-              "id"
+              "type"
             ]
           }
         },
@@ -1279,7 +1313,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed. Responses are compact and table-level by default: node and edge details are trimmed to keep the payload within LLM context limits, while the transformation SQL on each edge is returned in full. Set 'includeColumnLineage' to true only when column-level lineage is needed.",
+      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' is 'failed' when failing tests were found ANYWHERE - either upstream or on the analysed asset itself - and 'success' when nothing is failing. Read 'rootHasFailingTests' and 'failingUpstreamNodesCount' together to tell the two apart: a root failure with zero failing upstream nodes means the problem starts here, not inherited. Downstream impact analysis runs whenever either is true. Responses are compact and table-level by default: node payloads are trimmed to identity (FQN, name, type, depth) and transformation SQL is NOT included — an edge that has SQL is flagged with 'hasSql'. Use get_entity_lineage with includeSql=true when you need the transformation text. Set 'includeColumnLineage' to true only when column-level lineage is needed. When the analysed asset's own tests are failing, the response sets 'rootHasFailingTests' and returns those failing tests and their latest results under 'rootFailingTests' — you do not need a separate testCase search to learn what is failing.",
       "parameters": {
         "type": "object",
         "properties": {

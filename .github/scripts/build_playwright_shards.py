@@ -15,9 +15,6 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-TIMING_BASELINE = (
-    Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
-)
 FULL_PROJECTS = {
     "chromium",
     "Basic",
@@ -365,18 +362,6 @@ def load_history(
     return weights, identity_weights
 
 
-def load_history_with_baseline_fallback(
-    paths: list[Path], baseline: Path = TIMING_BASELINE
-) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
-    weights, identity_weights = load_history(paths)
-    baseline_weights, baseline_identity_weights = load_history([baseline])
-    for test_id, duration in baseline_weights.items():
-        weights.setdefault(test_id, duration)
-    for identity, duration in baseline_identity_weights.items():
-        identity_weights.setdefault(identity, duration)
-    return weights, identity_weights
-
-
 def apply_history_weights(
     units: list[Unit],
     test_weights: dict[str, int],
@@ -675,11 +660,46 @@ def write_plan(
     }
 
 
+# The workflow passes one `--history` per downloaded full-run artifact and only
+# falls back to the checked-in baseline when *no* artifact could be downloaded
+# (see the `history_args` block in playwright-e2e-reusable.yml). A newly added
+# spec file exists in the baseline -- its author seeds the durations there, as
+# the stale-baseline gate below instructs -- but in no artifact yet, so a single
+# successful download silently dropped those seeded timings and the gate fired
+# on a file that *does* have history. Fold the baseline in at the lowest
+# precedence instead: an artifact weight always wins where one exists, and the
+# baseline only backfills tests no artifact has ever observed.
+CHECKED_IN_BASELINE = Path(".github/playwright/timing-baseline.json")
+
+
+def backfill_from_checked_in_baseline(
+    paths: list[Path],
+    weights: dict[str, int],
+    identity_weights: dict[tuple[str, str], int],
+) -> None:
+    baseline = next(
+        (
+            candidate
+            for candidate in (root / CHECKED_IN_BASELINE for root in SPEC_ROOT_CANDIDATES)
+            if candidate.is_file()
+        ),
+        None,
+    )
+    if baseline is None or any(path.resolve() == baseline.resolve() for path in paths):
+        return
+    fallback_weights, fallback_identity = load_history([baseline])
+    for test_id, weight in fallback_weights.items():
+        weights.setdefault(test_id, weight)
+    for identity, weight in fallback_identity.items():
+        identity_weights.setdefault(identity, weight)
+
+
 def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
-    test_weights, identity_weights = load_history_with_baseline_fallback(args.history)
+    test_weights, identity_weights = load_history(args.history)
+    backfill_from_checked_in_baseline(args.history, test_weights, identity_weights)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

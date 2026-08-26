@@ -193,10 +193,14 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
-def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(tmp_path):
+def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
+    tmp_path, monkeypatch
+):
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
-    baseline = tmp_path / "timing-baseline.json"
+    baseline = tmp_path / planner.CHECKED_IN_BASELINE
+    baseline.parent.mkdir(parents=True)
+    monkeypatch.setattr(planner, "SPEC_ROOT_CANDIDATES", (tmp_path,))
     history.write_text(
         json.dumps(
             {
@@ -234,8 +238,9 @@ def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(tmp
         )
     )
 
-    weights, identity_weights = planner.load_history_with_baseline_fallback(
-        [history], baseline
+    weights, identity_weights = planner.load_history([history])
+    planner.backfill_from_checked_in_baseline(
+        [history], weights, identity_weights
     )
 
     assert weights == {"existing-test": 200, "new-test": 700}
