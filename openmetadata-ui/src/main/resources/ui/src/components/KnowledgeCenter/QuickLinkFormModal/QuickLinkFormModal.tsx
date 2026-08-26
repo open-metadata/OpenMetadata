@@ -553,7 +553,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
           width={600}
           onClose={handleCancel}>
           <Dialog.Header title={title} />
-          <Dialog.Content className="tw:overflow-x-visible">
+          <Dialog.Content>
             <HookForm
               className="tw:flex tw:flex-col tw:gap-6"
               data-testid="quick-link-form"
