@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.apiSchema import APISchema
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
-from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
+from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel, FieldName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -323,7 +323,11 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error resolving parameter reference: {err}")
             return None
 
-    def _parse_openapi_type(self, openapi_type: Optional[object]) -> DataTypeTopic:  # noqa: UP045
+    def _parse_openapi_type(
+        self,
+        openapi_type: Optional[object],  # noqa: UP045
+        openapi_format: Optional[object] = None,  # noqa: UP045
+    ) -> DataTypeTopic:
         """
         Parse OpenAPI type string to DataTypeTopic enum.
         Shared type conversion logic used across the codebase.
@@ -337,6 +341,11 @@ class RestSource(ApiServiceSource):
 
         if not openapi_type:
             return DataTypeTopic.UNKNOWN
+
+        if openapi_type.lower() == "number" and isinstance(openapi_format, str):
+            normalized_format = openapi_format.upper()
+            if normalized_format in {"FLOAT", "DOUBLE"}:
+                return DataTypeTopic[normalized_format]
 
         # Handle INTEGER -> INT conversion
         normalized_type = "INT" if openapi_type.upper() == "INTEGER" else openapi_type.upper()
@@ -354,14 +363,12 @@ class RestSource(ApiServiceSource):
             if not param_name:
                 return None
 
-            # Get type from parameter (Swagger 2.0 format)
-            param_type = param.get("type")
-
-            # Get type from schema (OpenAPI 3.0 format)
-            if not param_type and "schema" in param:
-                param_type = param["schema"].get("type")
-
-            data_type = self._parse_openapi_type(param_type)
+            param_schema = param.get("schema", {})
+            param_type = param.get("type") or param_schema.get("type")
+            param_format = param.get("format") or (
+                param_schema.get("format") if isinstance(param_schema, dict) else None
+            )
+            data_type = self._parse_openapi_type(param_type, param_format)
 
             # Handle array items
             children = None
@@ -369,7 +376,7 @@ class RestSource(ApiServiceSource):
                 items = param.get("items") or param.get("schema", {}).get("items")
                 if items:
                     item_type = items.get("type")
-                    child_data_type = self._parse_openapi_type(item_type)
+                    child_data_type = self._parse_openapi_type(item_type, items.get("format"))
                     children = [FieldModel(name="item", dataType=child_data_type)]
 
             return FieldModel(
@@ -382,33 +389,81 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error converting parameter to field: {err}")
             return None
 
+    def _process_array_items(
+        self,
+        items: dict,
+        parent_refs: List[str],  # noqa: UP006
+    ) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+        if not items:
+            return None
+
+        items_ref = items.get("$ref")
+        if items_ref:
+            if items_ref in parent_refs:
+                logger.debug(f"Skipping array fields inside schema: {items_ref} to avoid infinite recursion")
+                return None
+
+            logger.debug(f"Processing array fields inside schema: {items_ref}")
+            children = self.process_schema_fields(items_ref, parent_refs)
+            logger.debug(f"Completed processing array fields inside schema: {items_ref}")
+            return children
+
+        properties = items.get("properties", {})
+        if properties:
+            return self._process_schema_properties(properties, parent_refs)
+
+        return [
+            FieldModel(
+                name=FieldName(root="item"),
+                dataType=self._parse_openapi_type(items.get("type"), items.get("format")),
+            )
+        ]
+
+    def _process_schema_properties(
+        self,
+        properties: dict,
+        parent_refs: List[str],  # noqa: UP006
+    ) -> List[FieldModel]:  # noqa: UP006
+        fields = []
+        for prop_name, prop_def in properties.items():
+            prop_type = prop_def.get("type")
+            children = None
+            data_type_display = None
+
+            if prop_type:
+                data_type = self._parse_openapi_type(prop_type, prop_def.get("format"))
+                if data_type == DataTypeTopic.ARRAY:
+                    children = self._process_array_items(prop_def.get("items", {}), parent_refs)
+            else:
+                data_type = DataTypeTopic.UNKNOWN
+                data_type_display = "OBJECT"
+                prop_ref = prop_def.get("$ref")
+                if prop_ref:
+                    if prop_ref not in parent_refs:
+                        children = self.process_schema_fields(prop_ref, parent_refs)
+                    else:
+                        logger.debug(f"Skipping object fields inside schema: {prop_ref} to avoid infinite recursion")
+                elif prop_def.get("properties"):
+                    children = self._process_schema_properties(prop_def["properties"], parent_refs)
+
+            description = prop_def.get("description")
+            description_obj = Markdown(root=description) if description is not None else None
+            fields.append(
+                FieldModel(
+                    name=prop_name,
+                    dataType=data_type,
+                    dataTypeDisplay=data_type_display,
+                    children=children,
+                    description=description_obj,
+                )
+            )
+
+        return fields
+
     def _process_inline_schema(self, properties: dict) -> Optional[APISchema]:  # noqa: UP045
         """Process inline schema properties (schemas without $ref)"""
         try:
-            fields = []
-            for prop_name, prop_def in properties.items():
-                prop_type = prop_def.get("type")
-
-                data_type = self._parse_openapi_type(prop_type)
-
-                # Handle array items
-                children = None
-                if data_type == DataTypeTopic.ARRAY:
-                    items = prop_def.get("items", {})
-                    if items:
-                        item_type = items.get("type")
-                        child_data_type = self._parse_openapi_type(item_type)
-                        children = [FieldModel(name="item", dataType=child_data_type)]
-
-                fields.append(
-                    FieldModel(
-                        name=prop_name,
-                        dataType=data_type,
-                        children=children,
-                        description=prop_def.get("description"),
-                    )
-                )
-
+            fields = self._process_schema_properties(properties, [])
             return APISchema(schemaFields=fields) if fields else None
         except Exception as err:
             logger.warning(f"Error processing inline schema: {err}")
@@ -499,76 +554,14 @@ class RestSource(ApiServiceSource):
                 return None
 
             parent_refs.append(schema_ref)
-            if self._parse_openapi_type(schema_fields.get("type")) == DataTypeTopic.ARRAY:
-                items_ref = schema_fields.get("items", {}).get("$ref")
-                if items_ref and items_ref not in parent_refs:
-                    fetched_fields = self.process_schema_fields(items_ref, parent_refs)
-                    parent_refs.pop()
-                    return fetched_fields
+            try:
+                if self._parse_openapi_type(schema_fields.get("type")) == DataTypeTopic.ARRAY:
+                    return self._process_array_items(schema_fields.get("items", {}), parent_refs) or []
 
-            fetched_fields = []
-            for key, val in schema_fields.get("properties", {}).items():
-                dtype = val.get("type")
-                if dtype:
-                    parsed_dtype = self._parse_openapi_type(dtype)
-                    children = None
-                    if parsed_dtype.value == DataTypeTopic.ARRAY.value:
-                        # If field of array type then parse children
-                        children_ref = val.get("items", {}).get("$ref")
-                        if children_ref:
-                            # check infinite recursion by checking pre-processed schemas(parent_refs)
-                            if children_ref not in parent_refs:
-                                logger.debug(f"Processing array fields inside schema: {children_ref}")
-                                children = self.process_schema_fields(children_ref, parent_refs)
-                                logger.debug(f"Completed processing array fields inside schema: {children_ref}")
-                            else:
-                                logger.debug(
-                                    f"Skipping array fields inside schema: {children_ref} to avoid infinite recursion"
-                                )
-                    # Extract description if available
-                    description = val.get("description")
-                    description_obj = Markdown(root=description) if description is not None else None
-
-                    fetched_fields.append(
-                        FieldModel(
-                            name=key,
-                            dataType=parsed_dtype,
-                            children=children,
-                            description=description_obj,
-                        )
-                    )
-                else:
-                    # If type of field is not defined then check for sub-schema
-                    # Check if it's `object` type field
-                    children = None
-                    if val.get("$ref"):
-                        # check infinite recursion by checking pre-processed schemas(parent_refs)
-                        if val.get("$ref") not in parent_refs:
-                            children = self.process_schema_fields(val.get("$ref"), parent_refs)
-                        else:
-                            logger.debug(
-                                f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
-                            )
-                    # Extract description if available
-                    description = val.get("description")
-                    description_obj = Markdown(root=description) if description is not None else None
-
-                    fetched_fields.append(
-                        FieldModel(
-                            name=key,
-                            dataType=DataTypeTopic.UNKNOWN,
-                            dataTypeDisplay="OBJECT",
-                            children=children,
-                            description=description_obj,
-                        )
-                    )
-            if parent_refs and (schema_ref in parent_refs):
+                return self._process_schema_properties(schema_fields.get("properties", {}), parent_refs)
+            finally:
                 parent_refs.pop()
-            return fetched_fields  # noqa: TRY300
         except Exception as err:
             warning = f"Error while processing schema fields: {err}"
             logger.warning(warning)
-            if parent_refs and (schema_ref in parent_refs):
-                parent_refs.pop()
-                logger.debug(f"Popping {schema_ref} from parent_refs due to processing error")
         return None
