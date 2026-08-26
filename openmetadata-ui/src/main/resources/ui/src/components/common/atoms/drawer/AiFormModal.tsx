@@ -268,15 +268,11 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 responsive `sm:px-6`, and tailwind-merge treats a variant class
                 as a different group from its base, so `p-0` alone leaves 24px
                 of side padding at sm and up. That padding stops the hint column
-                reaching the modal edge and steals width from the form.
-                overflow-y-hidden suppresses the Dialog.Content default
-                overflow-y-auto: each column scrolls itself, so if the outer
-                container were also allowed to scroll both columns would move
-                together instead of independently. */}
+                reaching the modal edge and steals width from the form. */}
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:flex-row tw:gap-0 tw:overflow-y-hidden tw:p-0 tw:sm:p-0'
+                  ? 'tw:flex-row tw:gap-0 tw:p-0 tw:sm:p-0'
                   : undefined
               }>
               {children}
