@@ -46,7 +46,7 @@ import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
+import { Icon as ImageIcon } from '../components/common/Icon/Icon';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -141,18 +141,16 @@ export interface DataProductDetailPageTabProps {
  * @param iconURL - Optional icon URL
  * @returns JSX element representing the icon
  */
-export const getDataProductIconByUrl = (iconURL?: string) => {
-  const iconElement = renderIcon(iconURL, {
-    size: 24,
-    className: 'tw:h-6 tw:w-6',
-  });
-
-  if (iconElement) {
-    return iconElement;
-  }
-
-  return <DefaultDataProductIcon className="data-product-default-icon" />;
-};
+export const getDataProductIconByUrl = (iconURL?: string) => (
+  <ImageIcon
+    className="tw:h-6 tw:w-6"
+    fallback={
+      <DefaultDataProductIcon className="data-product-default-icon" />
+    }
+    iconValue={iconURL}
+    size={24}
+  />
+);
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i === DetailPageWidgetKeys.DOMAIN) {
