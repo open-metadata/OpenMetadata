@@ -1803,9 +1803,10 @@ public class SearchResourceIT {
   void testSearchWithNegativeOffset(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Negative offset is invalid - Elasticsearch rejects it
+    // Negative offset is invalid client input - rejected as a 400 (InvalidRequestException),
+    // not a 500 (ApiException). See #31878.
     assertThrows(
-        org.openmetadata.sdk.exceptions.ApiException.class,
+        org.openmetadata.sdk.exceptions.InvalidRequestException.class,
         () -> client.search().query("*").index("table_search_index").from(-1).size(10).execute());
   }
 
