@@ -82,16 +82,6 @@ import {
   shouldResetTestCaseLoading,
 } from '../TestSuiteDetailsPage.utils';
 
-const shouldResetBulkRefreshLoading = (
-  didStartVisibleFetch: boolean,
-  isCurrentTestSuite: () => boolean,
-  expectedGeneration: number,
-  currentGeneration: number
-) =>
-  !didStartVisibleFetch &&
-  isCurrentTestSuite() &&
-  expectedGeneration === currentGeneration;
-
 /**
  * Data + handlers for the (bundle) test suite details page. Shared by the
  * OSS renderer (TestSuiteDetailsPage) and the AskCollate AI renderer —
@@ -113,7 +103,6 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [testCaseSearchQuery, setTestCaseSearchQuery] = useState('');
   const testCaseRequestId = useRef(0);
-  const visibleTestCaseRequestGeneration = useRef(0);
   const visibleTestCaseRequest = useRef<ListTestCaseParamsBySearch>();
   const testSuiteRequestId = useRef(0);
   const authoritativeTestCaseCount = useRef<{
@@ -356,7 +345,6 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         q: testCaseSearchQuery.trim() || undefined,
         ...param,
       };
-      visibleTestCaseRequestGeneration.current += 1;
       visibleTestCaseRequest.current = visibleRequest;
       await fetchTestCasesWithTotal(
         visibleRequest,
@@ -399,7 +387,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       authoritativeTotal: number | undefined,
       isCurrentTestSuite: () => boolean,
       targetTestSuiteId: string,
-      visibleRequestGeneration: number
+      submittedTestCaseRequestId: number
     ) => {
       if (!isCurrentTestSuite()) {
         return;
@@ -447,13 +435,12 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           );
         }
       } finally {
+        // A newer search, sort, or page request owns the shared loading state
+        // and must be allowed to clear it when that request completes.
         if (
-          shouldResetBulkRefreshLoading(
-            didStartVisibleFetch,
-            isCurrentTestSuite,
-            visibleRequestGeneration,
-            visibleTestCaseRequestGeneration.current
-          )
+          !didStartVisibleFetch &&
+          isCurrentTestSuite() &&
+          submittedTestCaseRequestId === testCaseRequestId.current
         ) {
           setIsTestCaseLoading(false);
         }
@@ -533,13 +520,9 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         return;
       }
       const submittedTestSuiteFQN = testSuiteFQN;
-      const submittedVisibleRequestGeneration =
-        visibleTestCaseRequestGeneration.current;
+      const submittedTestCaseRequestId = testCaseRequestId.current;
       const isCurrentTestSuite = () =>
         submittedTestSuiteFQN === activeTestSuiteFQN.current;
-      const isCurrentVisibleRequest = () =>
-        submittedVisibleRequestGeneration ===
-        visibleTestCaseRequestGeneration.current;
 
       try {
         await addTestCasesToLogicalTestSuiteBulk(testSuiteId, payload);
@@ -562,7 +545,10 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             testSuiteFQN,
             total: authoritativeTotal,
           };
-          if (!testCaseSearchQuery.trim() && isCurrentVisibleRequest()) {
+          if (
+            !testCaseSearchQuery.trim() &&
+            submittedTestCaseRequestId === testCaseRequestId.current
+          ) {
             handlePagingChange((currentPaging) => ({
               ...currentPaging,
               total: authoritativeTotal,
@@ -574,7 +560,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           authoritativeTotal,
           isCurrentTestSuite,
           testSuiteId,
-          submittedVisibleRequestGeneration
+          submittedTestCaseRequestId
         );
       } catch (error) {
         if (isCurrentTestSuite()) {
@@ -707,7 +693,6 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     activeTestSuiteFQN.current = testSuiteFQN;
     testCaseRequestId.current += 1;
     testSuiteRequestId.current += 1;
-    visibleTestCaseRequestGeneration.current += 1;
     visibleTestCaseRequest.current = undefined;
     authoritativeTestCaseCount.current = undefined;
     setTestCaseSearchQuery('');
