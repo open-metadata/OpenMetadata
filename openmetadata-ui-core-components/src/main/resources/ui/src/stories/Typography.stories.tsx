@@ -23,6 +23,31 @@ const meta = {
   component: Typography,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component: [
+          'Typography styles its content through the `.prose` class.',
+          '',
+          '`styles/typography.css` applies its real rules via a *descendant*',
+          'selector (`.prose :not(...)`), and every rule in that block is gated',
+          'on an element type — `p`, `h1`-`h6`, `ol`, `ul`, `li`, `blockquote`,',
+          '`a`, `code`, `pre`, `img`, `figure`, table elements. Those need a',
+          'wrapper for the rule to match, so Typography renders',
+          '`<div class="prose"><p>…</p></div>`.',
+          '',
+          '`span` and `div` are targeted by no such rule, so no wrapper is',
+          'emitted and `prose` sits on the element itself. That keeps the',
+          'computed text style identical — the element-level `.prose` layer',
+          'only sets inherited properties — while letting inline text stay',
+          'inline. A wrapper would make every `as="span"` a block element and,',
+          'when nested, produce a `<div>` inside a `<span>`.',
+          '',
+          'Ellipsis and non-default quote variants always keep the wrapper:',
+          'the former carries the truncation classes, the latter is also',
+          'styled through a descendant selector.',
+        ].join('\n'),
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof Typography>;
@@ -45,12 +70,12 @@ export const Default: Story = {
 };
 
 export const WithAsProp: Story = {
-  name: 'as prop — wraps children in inner element',
+  name: "as='p' — keeps the .prose wrapper",
   render: () => <Typography as="p">Hello</Typography>,
 };
 
 export const WithAsAndClassName: Story = {
-  name: 'as prop with className on inner element',
+  name: "as='p' with className on the rendered element",
   render: () => (
     <Typography as="p" className="font-bold text-blue-600">
       Hello with className on the inner &lt;p&gt;
@@ -177,6 +202,74 @@ export const MinimalQuote: StoryObj = {
         </blockquote>
       </Typography>
     </div>
+  ),
+};
+
+export const DomStructure: StoryObj = {
+  name: 'DOM structure — wrapper vs no wrapper',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Inspect these in the DOM panel. `span` and `div` render bare with ' +
+          '`prose` on the element; `p` and the other prose-targeted elements ' +
+          'keep the `<div class="prose">` wrapper so the descendant rules ' +
+          'still match.',
+      },
+    },
+  },
+  render: () => (
+    <div style={{ display: 'grid', gap: 16, maxWidth: 520 }}>
+      <div>
+        <code>as=&quot;span&quot;</code> → <code>&lt;span class=&quot;prose&quot;&gt;</code>
+        <div>
+          <Typography>no wrapper</Typography>
+        </div>
+      </div>
+      <div>
+        <code>as=&quot;div&quot;</code> → <code>&lt;div class=&quot;prose&quot;&gt;</code>
+        <div>
+          <Typography as="div">no wrapper</Typography>
+        </div>
+      </div>
+      <div>
+        <code>as=&quot;p&quot;</code> → <code>&lt;div class=&quot;prose&quot;&gt;&lt;p&gt;</code>
+        <div>
+          <Typography as="p">wrapper kept — .prose p sets its margins</Typography>
+        </div>
+      </div>
+      <div>
+        <code>ellipsis</code> → wrapper kept (carries the truncation classes)
+        <div style={{ width: 200 }}>
+          <Typography ellipsis>
+            wrapper kept because ellipsis needs somewhere to clip
+          </Typography>
+        </div>
+      </div>
+    </div>
+  ),
+};
+
+export const InlineFlow: StoryObj = {
+  name: 'Inline flow — text stays in the sentence',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The reason `span` drops the wrapper. A block-level wrapper would ' +
+          'push each Typography onto its own line, breaking any sentence that ' +
+          'mixes plain text with emphasised fragments — activity-feed headers ' +
+          'and form labels beside links are the common cases.',
+      },
+    },
+  },
+  render: () => (
+    <p style={{ maxWidth: 460 }}>
+      Updated by{' '}
+      <Typography className="tw:font-semibold">Alice</Typography> in{' '}
+      <Typography className="tw:font-semibold">Sales Pipeline</Typography> —
+      all three fragments share one line.
+    </p>
   ),
 };
 
