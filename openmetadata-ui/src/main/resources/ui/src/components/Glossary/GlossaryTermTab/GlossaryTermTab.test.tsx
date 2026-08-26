@@ -32,6 +32,7 @@ const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
 const mockSetGlossaryChildTerms = jest.fn();
+const mockSetTermsStatusFilter = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
@@ -201,6 +202,7 @@ const mockUseGlossaryStore = {
   onEditGlossaryTerm: mockOnEditGlossaryTerm,
   refreshGlossaryTerms: mockRefreshGlossaryTerms,
   setGlossaryChildTerms: mockSetGlossaryChildTerms,
+  setTermsStatusFilter: mockSetTermsStatusFilter,
 };
 
 jest.mock('../useGlossary.store', () => ({
@@ -573,6 +575,74 @@ describe('Test GlossaryTermTab component', () => {
         fireEvent.click(statusDropdown);
 
         expect(statusDropdown).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Status filter published via useGlossaryStore', () => {
+    beforeEach(() => {
+      mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
+    });
+
+    it('publishes the default filter on mount, naturally covering the remount-reset case', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review'
+        );
+      });
+    });
+
+    it('publishes the newly committed filter only after Save, not on every checkbox toggle', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review'
+        );
+      });
+      mockSetTermsStatusFilter.mockClear();
+
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+      fireEvent.click(
+        screen.getByTestId(`glossary-status-option-${EntityStatus.Rejected}`)
+      );
+
+      // Toggling the checkbox alone (draft state) must not publish anything.
+      expect(mockSetTermsStatusFilter).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review,Rejected'
+        );
+      });
+    });
+
+    it('publishes undefined (no filter) when "all" statuses are selected and saved', async () => {
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review'
+        );
+      });
+      mockSetTermsStatusFilter.mockClear();
+
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+      fireEvent.click(screen.getByTestId('glossary-status-option-all'));
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(undefined);
       });
     });
   });

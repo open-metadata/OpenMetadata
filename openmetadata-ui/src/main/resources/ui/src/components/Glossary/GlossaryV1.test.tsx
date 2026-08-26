@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByText, queryByText, render } from '@testing-library/react';
+import {
+  findByText,
+  queryByText,
+  render,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   mockedGlossaries,
@@ -108,17 +113,21 @@ jest.mock('../ActivityFeed/FeedEditor/FeedEditor', () => {
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((component) => component),
 }));
+const mockSetTermsStatusFilter = jest.fn();
+const mockUseGlossaryStore = jest.fn().mockImplementation(() => ({
+  activeGlossary: mockedGlossaryTerms[0],
+  updateActiveGlossary: jest.fn(),
+  setGlossaryFunctionRef: jest.fn(),
+  termsLoading: false,
+  setTermsLoading: jest.fn(),
+  glossaryChildTerms: [],
+  setGlossaryChildTerms: jest.fn(),
+  insertNewGlossaryTermToChildTerms: jest.fn(),
+  setTermsStatusFilter: mockSetTermsStatusFilter,
+}));
+
 jest.mock('./useGlossary.store', () => ({
-  useGlossaryStore: jest.fn().mockImplementation(() => ({
-    activeGlossary: mockedGlossaryTerms[0],
-    updateActiveGlossary: jest.fn(),
-    setGlossaryFunctionRef: jest.fn(),
-    termsLoading: false,
-    setTermsLoading: jest.fn(),
-    glossaryChildTerms: [],
-    setGlossaryChildTerms: jest.fn(),
-    insertNewGlossaryTermToChildTerms: jest.fn(),
-  })),
+  useGlossaryStore: (...args: unknown[]) => mockUseGlossaryStore(...args),
 }));
 
 jest.mock(
@@ -195,5 +204,53 @@ describe('Test Glossary component', () => {
 
     expect(glossaryTerm).toBeInTheDocument();
     expect(glossaryDetails).not.toBeInTheDocument();
+  });
+
+  describe('termsStatusFilter reset on active-entity change', () => {
+    const storeStateFor = (id: string) => ({
+      activeGlossary: { ...mockedGlossaryTerms[0], id },
+      updateActiveGlossary: jest.fn(),
+      setGlossaryFunctionRef: jest.fn(),
+      termsLoading: false,
+      setTermsLoading: jest.fn(),
+      glossaryChildTerms: [],
+      setGlossaryChildTerms: jest.fn(),
+      insertNewGlossaryTermToChildTerms: jest.fn(),
+      setTermsStatusFilter: mockSetTermsStatusFilter,
+    });
+
+    beforeEach(() => {
+      mockSetTermsStatusFilter.mockClear();
+    });
+
+    // GlossaryV1 resets the shared useGlossaryStore termsStatusFilter back to
+    // the table's default whenever the active glossary/term changes, so a
+    // stale filter from a previously-viewed entity can't flash on the new
+    // page's badge before its own GlossaryTermTab mounts and pushes a fresh
+    // value (mirrors the existing glossaryChildTerms reset on entity switch).
+    it('resets termsStatusFilter to the default on mount and again when the active id changes', async () => {
+      mockUseGlossaryStore.mockImplementation(() => storeStateFor('id-1'));
+
+      const { rerender } = render(<GlossaryV1 {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await findByText(document.body, /Glossary-Details component/i);
+
+      expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+        'Approved,Draft,In Review'
+      );
+
+      mockSetTermsStatusFilter.mockClear();
+      mockUseGlossaryStore.mockImplementation(() => storeStateFor('id-2'));
+
+      rerender(<GlossaryV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(mockSetTermsStatusFilter).toHaveBeenCalledWith(
+          'Approved,Draft,In Review'
+        );
+      });
+    });
   });
 });
