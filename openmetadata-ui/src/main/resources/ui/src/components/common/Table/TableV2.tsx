@@ -146,9 +146,17 @@ const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_INDENT_PX = 12;
 const EXPANDER_GUTTER_PX = 16;
 
-/** AntD's size scale mapped onto the core component's. */
+/**
+ * AntD's size scale mapped onto the core component's.
+ *
+ * `small` stays on `sm` rather than the tighter `compact`: it is what these
+ * tables have always rendered at, and dropping to `compact` changed row height
+ * and header padding together on every table that asks for it. `compact`
+ * remains available to a call site that asks for it deliberately.
+ */
 const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
-  small: 'compact',
+  compact: 'compact',
+  small: 'sm',
   middle: 'sm',
   large: 'md',
 };
