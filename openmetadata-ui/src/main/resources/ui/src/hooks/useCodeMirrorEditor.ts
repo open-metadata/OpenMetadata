@@ -53,15 +53,22 @@ export const useCodeMirrorEditor = ({
   const [internalValue, setInternalValue] = useState<string>(() =>
     getSchemaEditorValue(value, autoFormat)
   );
-  // The last value handed to the parent. An incoming value prop equal to this
-  // is the parent echoing us back, not an external update.
-  const lastEmittedRef = useRef<string>(internalValue);
+  // The last value this editor and its parent agreed on, whether we emitted it
+  // or took it in. An incoming value prop equal to this is the parent echoing
+  // us back, not an external update.
+  const lastSyncedRef = useRef<string>(internalValue);
   // An external value that arrived mid-edit, applied once the editor blurs.
   const pendingExternalRef = useRef<string | null>(null);
 
   // Option and mode objects are almost always inline literals at the call site,
   // so compare by content — a new extension array reconfigures the editor.
   const optionsKey = JSON.stringify(options ?? {});
+  // options.readOnly wins over the prop, which wins over the component default —
+  // the same precedence the extension bag below is built with. CodeMirror 5's
+  // 'nocursor' spelling is read-only too, hence the truthiness test.
+  const isReadOnly = Boolean(
+    options?.readOnly ?? readOnly ?? defaultOptions.readOnly
+  );
   const editorExtensions = useMemo(
     () => [
       ...getCodeMirrorBaseExtensions(),
@@ -90,37 +97,44 @@ export const useCodeMirrorEditor = ({
       // caret after an auto-closed bracket.
       setInternalValue(doc);
       const nextValue = getSchemaEditorValue(doc, autoFormat);
-      lastEmittedRef.current = nextValue;
+      lastSyncedRef.current = nextValue;
       onChange?.(nextValue);
     },
     [autoFormat, onChange]
   );
 
+  // Taking an external value in makes it the agreed value: without recording it,
+  // a parent that resets A -> B -> A would be ignored on the way back to A,
+  // leaving B on screen.
+  const applyExternalValue = useCallback((nextValue: string) => {
+    lastSyncedRef.current = nextValue;
+    pendingExternalRef.current = null;
+    setInternalValue(nextValue);
+  }, []);
+
   const handleBlur = useCallback(() => {
     if (pendingExternalRef.current !== null) {
-      setInternalValue(pendingExternalRef.current);
-      pendingExternalRef.current = null;
+      applyExternalValue(pendingExternalRef.current);
     }
-  }, []);
+  }, [applyExternalValue]);
 
   useEffect(() => {
     const nextValue = getSchemaEditorValue(value, autoFormat);
 
-    if (nextValue === lastEmittedRef.current) {
+    if (nextValue === lastSyncedRef.current) {
       return;
     }
 
     // A read-only editor stays focusable but has no edit to protect, so it takes
     // the update straight away rather than waiting for blur.
-    if (!readOnly && editorRef.current?.view?.hasFocus) {
+    if (!isReadOnly && editorRef.current?.view?.hasFocus) {
       pendingExternalRef.current = nextValue;
 
       return;
     }
 
-    pendingExternalRef.current = null;
-    setInternalValue(nextValue);
-  }, [value, autoFormat, readOnly]);
+    applyExternalValue(nextValue);
+  }, [value, autoFormat, isReadOnly, applyExternalValue]);
 
   return {
     editorRef,

@@ -186,13 +186,50 @@ describe('SchemaEditor component test', () => {
       expect(getEditorValue()).toBe('select 3');
     });
 
-    it('should apply a value immediately when the editor is read only', () => {
-      const { rerender } = render(<SchemaEditor {...mockProps} readOnly />);
+    it.each([
+      ['the readOnly prop', { readOnly: true }],
+      ['a readOnly option', { options: { readOnly: true } }],
+      ['a nocursor option', { options: { readOnly: 'nocursor' as const } }],
+    ])(
+      'should apply a value immediately when read only via %s',
+      (_, readOnlyProps) => {
+        const { rerender } = render(
+          <SchemaEditor {...mockProps} {...readOnlyProps} />
+        );
 
-      fireEvent.focus(screen.getByTestId('code-mirror-editor-input'));
-      rerender(<SchemaEditor {...mockProps} readOnly value="select 2" />);
+        fireEvent.focus(screen.getByTestId('code-mirror-editor-input'));
+        rerender(
+          <SchemaEditor {...mockProps} {...readOnlyProps} value="select 2" />
+        );
+
+        expect(getEditorValue()).toBe('select 2');
+      }
+    );
+
+    it('should apply a value the parent resets back to an earlier one', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
 
       expect(getEditorValue()).toBe('select 2');
+
+      // Back to the value the editor started on: the round trip must not be
+      // mistaken for an echo of something the editor emitted.
+      rerender(<SchemaEditor {...mockProps} value="select 1" />);
+
+      expect(getEditorValue()).toBe('select 1');
+    });
+
+    it('should apply a reset that arrives mid-edit once the editor blurs', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
+
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 1" />);
+      fireEvent.blur(input);
+
+      expect(getEditorValue()).toBe('select 1');
     });
 
     it('should defer a value that arrives mid-edit until blur', () => {
