@@ -277,8 +277,8 @@ export const AiFormModal: FC<AiFormModalProps> = ({
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:max-h-[calc(88vh-141px)] tw:flex-row tw:gap-0 tw:overflow-x-hidden tw:overflow-y-hidden tw:p-0 tw:sm:p-0'
-                  : 'tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto'
+                  ? 'tw:flex-row tw:gap-0 tw:overflow-x-hidden tw:overflow-y-hidden tw:p-0 tw:sm:p-0'
+                  : undefined
               }>
               {children}
             </Dialog.Content>

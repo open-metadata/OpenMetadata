@@ -55,7 +55,7 @@ export const AssetSelectionModal = ({
               treats overflow-* (shorthand) and overflow-y-* as separate
               conflict groups, so a plain overflow-hidden here wouldn't
               reliably strip that default — the axis-specific form does. */}
-          <Dialog.Content className="tw:max-h-[70vh] tw:overflow-x-hidden tw:overflow-y-hidden">
+          <Dialog.Content className="tw:overflow-x-hidden tw:overflow-y-hidden">
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}
