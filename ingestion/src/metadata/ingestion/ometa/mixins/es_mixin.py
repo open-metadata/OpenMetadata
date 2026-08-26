@@ -474,7 +474,7 @@ class ESMixin(Generic[T]):
         Get the view definition from ES
         """
 
-        from metadata.utils import fqn  # noqa: PLC0415
+        from metadata.utils import fqn
 
         query = {
             "query": {

@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,6 +36,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -344,13 +346,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Filter test case by status",
-              schema =
-                  @Schema(
-                      type = "string",
-                      allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+              description =
+                  "Filter test case by status. Can be repeated or comma separated to filter on "
+                      + "several statuses at once (e.g. `testCaseStatus=Failed&testCaseStatus=Aborted`), "
+                      + "in which case test cases matching any of the statuses are returned. "
+                      + "Values are matched case insensitively",
+              array =
+                  @ArraySchema(
+                      schema =
+                          @Schema(
+                              type = "string",
+                              allowableValues = {"Success", "Failed", "Aborted", "Queued"})))
           @QueryParam("testCaseStatus")
-          String status,
+          List<String> statuses,
       @Parameter(
               description = "Filter for test case type (e.g. column, table, all)",
               schema =
@@ -462,6 +470,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
+    String searchTerm = q;
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter =
@@ -469,11 +478,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             include,
             !nullOrEmpty(testSuiteId) ? testSuiteId.toString() : null,
             includeAllTests,
-            status,
+            validateTestCaseStatuses(statuses),
             type,
             testPlatforms,
             dataQualityDimension,
-            q,
+            searchTerm,
             includeFields,
             domain,
             tags,
@@ -498,7 +507,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         searchSortFilter,
         limit,
         offset,
-        q,
+        searchTerm,
         queryString);
   }
 
@@ -1460,6 +1469,41 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (startTimestamp != null && startTimestamp > endTimestamp) {
       throw new IllegalArgumentException("startTimestamp must be less than endTimestamp");
     }
+  }
+
+  /**
+   * Statuses can be passed as repeated query params and/or as comma separated values. They are
+   * normalized to a single comma separated string of valid {@link TestCaseStatus} values, which the
+   * filter turns into an OR (`terms`) condition.
+   */
+  private static String validateTestCaseStatuses(List<String> statuses) {
+    String joinedStatuses = null;
+    if (!nullOrEmpty(statuses)) {
+      List<String> validStatuses =
+          statuses.stream()
+              .flatMap(status -> Arrays.stream(status.split(",")))
+              .map(String::trim)
+              .filter(status -> !status.isEmpty())
+              .map(TestCaseResource::toTestCaseStatus)
+              .map(TestCaseStatus::value)
+              .distinct()
+              .toList();
+      joinedStatuses = validStatuses.isEmpty() ? null : String.join(",", validStatuses);
+    }
+    return joinedStatuses;
+  }
+
+  /** Matching is case insensitive, the status is normalized to its canonical enum value. */
+  private static TestCaseStatus toTestCaseStatus(String status) {
+    return Arrays.stream(TestCaseStatus.values())
+        .filter(candidate -> candidate.value().equalsIgnoreCase(status))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Invalid testCaseStatus '%s'. Allowed values are %s",
+                        status, Arrays.toString(TestCaseStatus.values()))));
   }
 
   private static SearchListFilter buildSearchListFilter(

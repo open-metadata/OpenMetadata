@@ -14,7 +14,7 @@
 import { Col, Form, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isEmpty, isEqual } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -34,6 +34,10 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import {
+  activateOnEnterOrSpace,
+  stopPropagationIfInteractive,
+} from '../../../utils/InteractiveTargetUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -48,7 +52,6 @@ import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.inter
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import TagsV1 from '../TagsV1/TagsV1.component';
@@ -91,7 +94,7 @@ const TagsContainerV2 = ({
     updateActiveTagDropdownKey,
   } = useGenericContext();
   const { selectedUserSuggestions } = useSuggestionsContext();
-  const [tags, setTags] = useState<TableTagsProps>();
+  const tags = useMemo(() => getFilterTags(selectedTags), [selectedTags]);
   const [internalIsEditTags, setInternalIsEditTags] = useState(false);
 
   const { isEditTags, dropdownKey } = useMemo(() => {
@@ -379,7 +382,11 @@ const TagsContainerV2 = ({
     return (
       <Space>
         {showAddTagButton ? (
-          <div onClick={handleAddClick}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={activateOnEnterOrSpace}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -428,7 +435,12 @@ const TagsContainerV2 = ({
     return (
       <Row data-testid="entity-tags">
         {showAddTagButton && (
-          <Col className="m-t-xss" onClick={handleAddClick}>
+          <Col
+            className="m-t-xss"
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={activateOnEnterOrSpace}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -477,10 +489,6 @@ const TagsContainerV2 = ({
     return null;
   }, [permission, entityType, isGlossaryType, selectedUserSuggestions]);
 
-  useEffect(() => {
-    setTags(getFilterTags(selectedTags));
-  }, [selectedTags]);
-
   if (newLook) {
     return (
       <WidgetCard
@@ -494,6 +502,7 @@ const TagsContainerV2 = ({
         {/* Since WidgetCard is another component without onClick, wrapping the content in a
             div to stop propagation */}
         <div
+          role="presentation"
           onClick={(e) => {
             e.stopPropagation();
           }}>
@@ -507,7 +516,12 @@ const TagsContainerV2 = ({
     <div
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
-      onClick={(e) => e.stopPropagation()}>
+      // Narrowed from an unconditional stopPropagation: the tag links and the add/edit buttons
+      // still keep their clicks to themselves, but the padding and the gaps between chips no
+      // longer swallow them. On a clickable row or card those dead spots made the whole tags
+      // column look unclickable.
+      role="presentation"
+      onClick={stopPropagationIfInteractive}>
       {suggestionDataRender ?? (
         <>
           {tagBody}

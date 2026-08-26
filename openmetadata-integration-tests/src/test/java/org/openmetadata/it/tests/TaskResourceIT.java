@@ -4556,4 +4556,9 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                   "workflow transitions should be available before bulk resolution");
             });
   }
+
+  // NOTE: The row-aware statusGroup + task-count tests for DAR-Granted moved to
+  // collate-integration-tests/src/test/java/io/collate/it/governance/DarStatusGroupIT.java —
+  // they need the DAR workflow + policyAgentTask handler that Collate seeds via MigrationUtil
+  // 2.0.0, so they cannot run against the OSS OpenMetadataApplication used by this file.
 }

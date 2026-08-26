@@ -75,6 +75,11 @@ test.describe(
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        linkedTable.entityResponseData.fullyQualifiedName,
+        'table_search_index'
+      );
 
       // dataConsumerPage is a per-test fixture and isn't resolved inside
       // beforeAll, so open a page against the same storage state directly.
@@ -460,8 +465,11 @@ test.describe(
         await expect(dialog).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
 
-        const row = page.getByTestId(`memory-row-${createdMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          memoryTitle,
+          createdMemoryId
+        );
         await expect(row).toBeVisible();
         await expect(row).toContainText(memoryTitle);
       });
@@ -516,8 +524,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${linkedMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          created.title,
+          linkedMemoryId
+        );
         await expect(row).toBeVisible();
         await expect(row).toContainText(table.displayName ?? table.name);
 
@@ -605,6 +616,10 @@ test.describe(
         await searchInput.fill(noMatchQuery);
         await searchPromise;
         await waitForAllLoadersToDisappear(page);
+
+        await page
+          .getByText('No matching results')
+          .waitFor({ state: 'visible' });
 
         const restoreResPromise = page.waitForResponse((res) => {
           const url = new URL(res.url());
@@ -1075,8 +1090,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
@@ -1101,8 +1119,11 @@ test.describe(
       }) => {
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.click();
 
         const dialog = page.getByRole('dialog');
@@ -1130,8 +1151,11 @@ test.describe(
       }) => {
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
@@ -1146,8 +1170,11 @@ test.describe(
         await expect(dialog).not.toBeVisible();
 
         await navigateToMemories(page);
-        const reopenedRow = page.getByTestId(`memory-row-${editMemoryId}`);
-        await reopenedRow.scrollIntoViewIfNeeded();
+        const reopenedRow = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await reopenedRow.click();
 
         const viewDialog = page.getByRole('dialog');
@@ -1190,8 +1217,11 @@ test.describe(
 
         await expect(dialog).not.toBeVisible();
 
-        const updatedRow = page.getByTestId(`memory-row-${editMemoryId}`);
-        await updatedRow.scrollIntoViewIfNeeded();
+        const updatedRow = await searchAndGetMemoryRow(
+          page,
+          newTitle,
+          editMemoryId
+        );
         await expect(updatedRow).toContainText(newTitle);
       });
 
@@ -1200,8 +1230,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
@@ -1241,15 +1274,20 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
         await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /faq/i }).click();
+        const faqOption = page.getByRole('option', { name: /faq/i });
+        await faqOption.click();
+        await faqOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${editMemoryId}`)
@@ -1268,8 +1306,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
@@ -1283,7 +1324,9 @@ test.describe(
         await editVisibilityBtn.click();
 
         await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        const privateOption = page.getByRole('option', { name: /private/i });
+        await privateOption.click();
+        await privateOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${editMemoryId}`)
@@ -1314,20 +1357,26 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
-
+        const searchResPromise = page.waitForResponse(
+          (res) => res.url().includes('/search/query') && res.status() === 200
+        );
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
         await assetSearch.fill(table.name);
+        await searchResPromise;
         await waitForAllLoadersToDisappear(page);
 
         const option = page.getByRole('option', {
@@ -1531,8 +1580,11 @@ test.describe(
         await redirectToHomePage(page);
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          SHARED_MEMORY_TITLE,
+          sharedMemoryId
+        );
         await expect(row).toBeVisible();
         await expect(row).toContainText(SHARED_MEMORY_TITLE);
       });
@@ -1558,8 +1610,11 @@ test.describe(
         await redirectToHomePage(page);
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${entityMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          ENTITY_MEMORY_TITLE,
+          entityMemoryId
+        );
         await expect(row).toBeVisible();
         await expect(row).toContainText(ENTITY_MEMORY_TITLE);
       });
@@ -1572,8 +1627,11 @@ test.describe(
         await redirectToHomePage(page);
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          SHARED_MEMORY_TITLE,
+          sharedMemoryId
+        );
         await row.click();
 
         const dialog = page.getByRole('dialog');
@@ -1713,8 +1771,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${removeAssetMemId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          created.title,
+          removeAssetMemId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');

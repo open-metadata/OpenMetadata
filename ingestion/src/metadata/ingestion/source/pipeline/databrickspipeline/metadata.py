@@ -239,11 +239,20 @@ class DatabrickspipelineSource(PipelineServiceSource):
             lookback_days = self.source_config.statusLookbackDays or 1
             cutoff_ts = int((datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp() * 1000)
             statuses: List[PipelineStatus] = []  # noqa: UP006
+            seen_start_times = set()
 
             for run in self.client.get_job_runs(job_id=pipeline_details.job_id) or []:
                 run = DBRun(**run)  # noqa: PLW2901
                 if run.start_time and run.start_time < cutoff_ts:
                     break
+                # OpenMetadata keys a pipeline status by its timestamp, so it can
+                # store only one status per start_time. Databricks' inclusive
+                # `start_time_to` pagination returns boundary runs more than once;
+                # skip already-seen start_times so the bulk upsert does not receive
+                # duplicate-timestamp rows (which the Postgres ON CONFLICT rejects).
+                if run.start_time in seen_start_times:
+                    continue
+                seen_start_times.add(run.start_time)
                 task_status = [
                     TaskStatus(
                         name=str(task.name),
@@ -347,7 +356,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             return self._databricks_services
 
         try:
-            from metadata.generated.schema.entity.services.databaseService import (  # noqa: PLC0415
+            from metadata.generated.schema.entity.services.databaseService import (
                 DatabaseService,
             )
 
@@ -513,7 +522,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             # Use ES search with wildcard pattern to find topic regardless of service
             # Pattern: *.topic_name or *."topic.with.dots"
-            from metadata.utils.elasticsearch import ES_INDEX_MAP  # noqa: PLC0415
+            from metadata.utils.elasticsearch import ES_INDEX_MAP
 
             # Quote the topic name if it contains dots
             search_topic_name = f'"{topic_name}"' if "." in topic_name else topic_name

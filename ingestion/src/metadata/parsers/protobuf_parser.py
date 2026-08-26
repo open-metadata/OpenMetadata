@@ -19,7 +19,7 @@ import shutil
 import sys
 import traceback
 from enum import Enum
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import List, Optional, Type, Union  # noqa: UP035
 
 import grpc_tools.protoc
@@ -105,11 +105,26 @@ class ProtobufParser:
         module_path = module
         return __import__(module_path, fromlist=[module])
 
+    def _get_proto_file_path(self) -> Path:
+        """Resolve the schema file path and keep it inside the interface directory."""
+        schema_name = self.config.schema_name
+        windows_schema_path = PureWindowsPath(schema_name)
+        if windows_schema_path.is_absolute() or len(windows_schema_path.parts) != 1:
+            raise ValueError(f"Invalid protobuf schema name: {schema_name}")
+
+        interface_dir = Path(self.proto_interface_dir).resolve()
+        file_path = (interface_dir / f"{schema_name}.proto").resolve()
+        if file_path.parent != interface_dir:
+            raise ValueError(f"Protobuf schema path escapes the interface directory: {schema_name}")
+        return file_path
+
     def create_proto_files(self):
         """
         Method to generate the protobuf directory and file structure
         """
         try:
+            file_path = self._get_proto_file_path()
+
             # Create a temporary directory for saving all the files if not already present
             generated_src_dir_path = Path(self.generated_src_dir)
             generated_src_dir_path.mkdir(parents=True, exist_ok=True)
@@ -117,11 +132,10 @@ class ProtobufParser:
             proto_interface_dir_path.mkdir(parents=True, exist_ok=True)
 
             # Create a .proto file under the interfaces directory with schema text
-            file_path = f"{self.proto_interface_dir}/{self.config.schema_name}.proto"
-            with open(file_path, "w", encoding="UTF-8") as file:  # noqa: PTH123
+            with file_path.open("w", encoding="UTF-8") as file:
                 file.write(self.config.schema_text)
             proto_path = "generated=" + self.proto_interface_dir
-            return proto_path, file_path  # noqa: TRY300
+            return proto_path, str(file_path)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")

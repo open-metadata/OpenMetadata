@@ -22,7 +22,7 @@ env:
   UI_COVERAGE_DIRECTORY: openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 concurrency:
   group: yarn-coverage-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   check-changes:
     runs-on: ubuntu-latest
@@ -54,6 +54,13 @@ jobs:
   ui-coverage-tests:
     needs: check-changes
     runs-on: ubuntu-latest
+    outputs:
+      # Parsed from the scanner log: passed | failed | error. Only "failed" (a real
+      # New Code gate failure) blocks; "error" means Sonar never returned a verdict
+      # (upload error / rate limit / timeout) and must not fail the required check.
+      sonar_gate_status: ${{ steps.sonar_pr_scan.outputs.gate_status }}
+      # Exposed so the gate can tell "scanner never ran" apart from "gate passed".
+      sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
@@ -77,14 +84,18 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          # Disabling shallow clone is recommended for improving relevancy of reporting.
-          # Use partial clone (blob:none) to avoid downloading every blob in history —
-          # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
+          allow-unsafe-pr-checkout: true
           fetch-depth: 0
-          filter: blob:none
+          # Sonar git blame runs only on the pull_request_target scan below, and blame
+          # needs blob contents to drive PR New Code detection. A partial clone
+          # (blob:none) left blobs missing, which forced sonar.scm.disabled=true and made
+          # SonarCloud report the whole tree as "new code". So do a full clone only on PR
+          # runs; keep the blob:none optimization for merge_group / workflow_dispatch,
+          # which never run the Sonar scan.
+          filter: ${{ github.event_name != 'pull_request_target' && 'blob:none' || '' }}
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -140,9 +151,18 @@ jobs:
         run: npm install -g sonarqube-scanner@^4.3.0
         id: npm_install_sonar_scanner
       - name: SonarCloud Scan On PR
+        id: sonar_pr_scan
+        # The quality gate is a required PR check, so a failing scan must not kill
+        # this job before the coverage comment is posted — ui-sonar-gate below turns
+        # the parsed verdict into the check contributors see. The gate verdict is read
+        # from the scanner log (not the exit code) so a real New Code failure can be
+        # told apart from an upload error / rate limit / timeout, which never returns a
+        # "QUALITY GATE STATUS" line and must not block the required check.
+        continue-on-error: true
         if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
+          set +e
           sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
           -Dproject.settings=sonar-project.properties \
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
@@ -151,7 +171,20 @@ jobs:
           -Dsonar.pullrequest.github.repository=OpenMetadata \
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
           -Dsonar.pullrequest.provider=github \
-          -Dsonar.scm.disabled=true
+          -Dsonar.qualitygate.wait=true \
+          -Dsonar.qualitygate.timeout=600 2>&1 | tee sonar-output.log
+          scan_rc=${PIPESTATUS[0]}
+          if grep -q "QUALITY GATE STATUS: PASSED" sonar-output.log; then
+            status=passed
+          elif grep -q "QUALITY GATE STATUS: FAILED" sonar-output.log; then
+            status=failed
+          else
+            status=error
+          fi
+          echo "gate_status=$status" >> "$GITHUB_OUTPUT"
+          echo "sonar-scanner exit=$scan_rc, gate_status=$status"
+          # Never fail the step: ui-sonar-gate decides red/green from gate_status.
+          exit 0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
@@ -185,3 +218,63 @@ jobs:
             echo "Coverage check failed with status: $result"
             exit 1
           fi
+
+  # Sonar "Clean as You Code" gate, reported through a job that ALWAYS runs.
+  #
+  # Do not make SonarCloud's own check required instead: the scan is gated
+  # behind dorny/paths-filter and the "safe to test" label, so a PR with no UI
+  # changes never produces that check and would block forever waiting on it —
+  # the exact failure mode the ui-coverage shim above exists to avoid.
+  #
+  # The gate itself is configured in SonarCloud (conditions on New Code only),
+  # so legacy debt can never fail a PR. See docs/ui-code-quality-gate.md.
+  ui-sonar-gate:
+    if: always()
+    needs: [ui-coverage-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Sonar quality gate
+        run: |
+          job="${{ needs.ui-coverage-tests.result }}"
+          status="${{ needs.ui-coverage-tests.outputs.sonar_gate_status }}"
+          event="${{ github.event_name }}"
+
+          # Skipped means no UI paths changed. Pass, exactly like ui-coverage —
+          # a required check that never completes blocks the PR forever.
+          if [[ "$job" == "skipped" ]]; then
+            echo "No UI changes — Sonar gate not applicable."
+            exit 0
+          fi
+          if [[ "$job" != "success" ]]; then
+            echo "Upstream coverage job ended with '$job'; the gate could not be evaluated."
+            exit 1
+          fi
+
+          # push / merge_group never run the PR scan, so there is no verdict to gate.
+          if [[ "$event" != "pull_request_target" ]]; then
+            echo "Sonar PR scan does not apply to '$event' — nothing to gate."
+            exit 0
+          fi
+
+          # Only a real New Code gate FAILURE blocks the required check. An "error"
+          # (Sonar returned no verdict: upload error / rate limit / timeout / scanner
+          # install flake) is infra, not a code problem — warn and stay green.
+          case "$status" in
+            passed)
+              echo "✔ Sonar quality gate passed on new code."
+              ;;
+            failed)
+              echo "✖ Sonar quality gate FAILED on new code."
+              echo ""
+              echo "Every condition is scoped to the lines this PR adds — the legacy"
+              echo "backlog is never in scope. Open the SonarCloud link on this PR and"
+              echo "work the New Code tab. See docs/ui-code-quality-gate.md."
+              exit 1
+              ;;
+            *)
+              echo "⚠ Sonar did not return a gate verdict (status: '${status:-none}')."
+              echo "  Likely a report-upload error, SonarCloud rate limit, or timeout —"
+              echo "  not a code issue. Not blocking the required check; re-run to get a"
+              echo "  fresh verdict if needed."
+              ;;
+          esac

@@ -41,6 +41,7 @@ import {
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   suggestions,
   userMentionItemWithAvatar,
@@ -173,16 +174,19 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = searchClassBase.getEntityIcon(item.type ?? '');
-
-        const iconString = ReactDOMServer.renderToString(icon ?? <></>);
+        const iconString = ReactDOMServer.renderToString(
+          searchClassBase.getEntityIconWithBg(
+            item.type ?? '',
+            EntityIconSize.Size14
+          )
+        );
 
         const typeSpan = !breadcrumbEle
           ? `<span class="text-grey-muted text-xs">${item.type}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${iconString}</div>
+          ${iconString}
           <div>
             ${breadcrumbEle}
             <div class="d-flex flex-col">
@@ -217,17 +221,18 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
           blotName: 'link-mention',
           onOpen: () => {
-            toggleMentionList(false);
+            toggleMentionList(true);
           },
           onClose: () => {
-            toggleMentionList(true);
+            // Defer so the Enter that picks a mention still sees the list open in
+            // handleKeyDown (quill-mention closes it before React's onKeyDown).
+            setTimeout(() => toggleMentionList(false), 0);
           },
           onSelect: (
-            item: Record<string, any>,
+            item: Record<string, unknown>,
 
-            insertItem: (item: Record<string, any>) => void
+            insertItem: (item: Record<string, unknown>) => void
           ) => {
-            toggleMentionList(true);
             insertItem(item);
           },
           source: debounce(userSuggestionRenderer, 300),

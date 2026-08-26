@@ -14,7 +14,7 @@
 @import '../../../../styles/variables.less';
 
 .right-panel-heading {
-  margin-bottom: 8px !important;
+  margin-bottom: var(--om-space-8) !important;
   color: @text-grey-muted;
 }
 
@@ -23,7 +23,7 @@
 }
 
 .right-panel-list-item {
-  padding: 12px 24px;
+  padding: var(--om-space-12) var(--om-space-24);
 
   &:hover {
     background-color: @grey-1;
@@ -55,13 +55,13 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    padding: 0px;
+    padding: 0;
     overflow: hidden;
   }
 
   .my-task-header {
     flex-shrink: 0;
-    padding: 12px 20px;
+    padding: var(--om-space-12) var(--om-space-20);
     border-bottom: 1px solid @grey-15;
   }
 
@@ -75,7 +75,7 @@
 
   .entity-list-body {
     flex: 1;
-    padding: 20px 20px 0 20px;
+    padding: var(--om-space-20) var(--om-space-20) 0 var(--om-space-20);
     margin: 0;
     overflow-y: auto;
     min-height: 0;
@@ -87,8 +87,8 @@
     margin-top: auto;
     width: 100%;
     background-color: var(--tw-color-bg-primary);
-    border-bottom-right-radius: 12px;
-    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: var(--om-radius-xl);
+    border-bottom-left-radius: var(--om-radius-xl);
   }
 
   .ant-dropdown-menu-item {
@@ -124,13 +124,13 @@
   }
 
   .widget-header-menu {
-    padding: 8px;
-    border-radius: 12px;
+    padding: var(--om-space-8);
+    border-radius: var(--om-radius-xl);
   }
 }
 
 .entity-icon {
   width: 40px;
   height: 40px;
-  margin-right: 8px;
+  margin-right: var(--om-space-8);
 }

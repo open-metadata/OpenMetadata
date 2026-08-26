@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 .inline-error-container {
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
 
   .truncated-text {
     display: -webkit-box;
@@ -28,53 +28,53 @@
   }
 
   .alert-icon {
-    font-size: 16px;
+    font-size: var(--om-font-size-md);
     height: 16px;
     width: 16px;
   }
 
   .error-icon {
-    color: #ff4e27;
+    color: var(--om-legacy-color-ff4e27);
   }
 
   .warning-icon {
-    color: #ff7c50;
+    color: var(--om-legacy-color-ff7c50);
   }
 
   .success-icon {
-    color: #43a047;
+    color: var(--om-legacy-color-43a047);
   }
 
   .info-icon {
-    color: #3ca2f4;
+    color: var(--om-legacy-color-3ca2f4);
   }
 
   .default-icon {
-    color: #555f6d;
+    color: var(--om-legacy-color-555f6d);
   }
 
   &.error-alert {
-    border-color: #cb2531;
-    background-color: #fcf0f1;
+    border-color: var(--om-legacy-color-cb2531);
+    background-color: var(--om-legacy-color-fcf0f1);
   }
 
   &.warning-alert {
-    border-color: #f59638;
-    background-color: #fff5eb;
+    border-color: var(--om-legacy-color-f59638);
+    background-color: var(--om-legacy-color-fff5eb);
   }
 
   &.success-alert {
-    border-color: #1d7c4d;
-    background-color: #f4fbf7;
+    border-color: var(--om-legacy-color-1d7c4d);
+    background-color: var(--om-legacy-color-f4fbf7);
   }
 
   &.info-alert {
-    border-color: #3062d4;
-    background-color: #f5f8ff;
+    border-color: var(--om-legacy-color-3062d4);
+    background-color: var(--om-color-blue-dark-25);
   }
 
   &.default-alert {
-    border-color: #cfd6dd;
-    background-color: #f5f7f9;
+    border-color: var(--om-legacy-color-cfd6dd);
+    background-color: var(--om-legacy-color-f5f7f9);
   }
 }

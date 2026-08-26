@@ -98,6 +98,7 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -150,6 +151,7 @@ export const DataAssetsHeader = ({
   onCertificationUpdate,
   onStyleUpdate,
   disableRunAgentsButtonMessage,
+  breadcrumbData,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -356,6 +358,34 @@ export const DataAssetsHeader = ({
       ),
     [entityType, dataAsset, entityName, parentContainers]
   );
+
+  const breadcrumbItems = useMemo(() => {
+    if (breadcrumbData?.length) {
+      return breadcrumbData.map((link, index) => ({
+        label: link.name,
+        href:
+          index < breadcrumbData.length - 1 && link.url
+            ? String(link.url)
+            : undefined,
+      }));
+    }
+
+    return [
+      ...(entityType === EntityType.METRIC ? [getGlossaryHomeCrumb(t)] : []),
+      ...breadcrumbs.map((link) => ({
+        label: link.name,
+        href: !isCustomizedView && link.url ? String(link.url) : undefined,
+      })),
+      { label: entityName },
+    ];
+  }, [
+    breadcrumbData,
+    breadcrumbs,
+    entityName,
+    entityType,
+    isCustomizedView,
+    t,
+  ]);
 
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
@@ -688,18 +718,9 @@ export const DataAssetsHeader = ({
               <HeaderBreadcrumb
                 autoCollapse
                 className="tw:mb-0"
-                items={[
-                  ...breadcrumbs.map((link) => ({
-                    label: link.name,
-                    href:
-                      !isCustomizedView && link.url
-                        ? String(link.url)
-                        : undefined,
-                  })),
-                  { label: entityName },
-                ]}
+                items={breadcrumbItems}
                 showHome={false}
-                size="sm"
+                size="xs"
               />
             </TitleBreadcrumbSkeleton>
           </div>
@@ -1035,14 +1056,15 @@ export const DataAssetsHeader = ({
                   )}
                 </div>
                 {(() => {
+                  const tableCertification = (dataAsset as Table).certification;
                   const certValue = (
                     <div
                       className="tw:text-sm tw:font-medium tw:text-primary"
                       data-testid="certification-value">
-                      {(dataAsset as Table).certification ? (
+                      {tableCertification ? (
                         <CertificationTag
                           showName
-                          certification={(dataAsset as Table).certification!}
+                          certification={tableCertification}
                         />
                       ) : (
                         NO_DATA_PLACEHOLDER

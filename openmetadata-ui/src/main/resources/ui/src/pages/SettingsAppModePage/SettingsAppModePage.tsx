@@ -25,6 +25,7 @@ import {
   PersonaPreferences,
 } from '../../generated/type/personaPreferences';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 
 interface Props {
@@ -74,7 +75,11 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
   if (!hasNonDefaultMode) {
     return (
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings App Mode Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.app-mode'),
+        })}>
         <div data-testid="app-mode-unavailable-placeholder">
           <ErrorPlaceHolder
             className="m-t-lg"
@@ -90,12 +95,16 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings App Mode Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.app-mode'),
+        })}>
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
-              personaName={t('label.customize-your-app-mode')}
+              personaName={getEntityName(personaDetails)}
               onReset={handleReset}
               onSave={handleSave}
             />

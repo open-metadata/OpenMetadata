@@ -16,8 +16,8 @@
   box-shadow: @box-shadow-surface-default;
   border: 1px solid @grey-15;
   background-color: @blue-22;
-  padding: 20px;
-  border-radius: 12px;
+  padding: var(--om-space-20);
+  border-radius: var(--om-radius-xl);
 
   .customize-page-header {
     border: 0.5px solid @primary-3;
@@ -26,12 +26,12 @@
 
 .customize-marketplace-content {
   background-color: var(--tw-color-bg-primary);
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
 }
 
 .customize-marketplace-bg {
   position: relative;
-  padding: 30px;
+  padding: var(--om-space-30);
 
   &::before {
     content: '';
@@ -41,14 +41,14 @@
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;
-    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
-    z-index: 0;
+    mask-image: linear-gradient(to bottom, var(--om-color-black) 60%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, var(--om-color-black) 60%, transparent 100%);
+    z-index: var(--om-z-0);
   }
 
   > * {
     position: relative;
-    z-index: 1;
+    z-index: var(--om-z-1);
   }
 }
 
@@ -56,10 +56,10 @@
   cursor: move;
   width: 41px;
   height: 40px;
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
   border: 1px solid @border-color-1;
   color: @black;
-  font-size: 18px;
+  font-size: var(--om-font-size-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,11 +70,11 @@
 }
 
 .marketplace-customize-widgets {
-  margin-top: 24px;
+  margin-top: var(--om-space-24);
   user-select: none;
 
   .react-grid-item.react-grid-placeholder {
     background-color: @announcement-background-dark;
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
   }
 }

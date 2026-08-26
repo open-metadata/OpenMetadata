@@ -14,8 +14,9 @@ Tableau source module
 
 # pylint: disable=too-many-lines
 import traceback
+from collections import defaultdict
 from datetime import datetime
-from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Set  # noqa: UP035
 
 from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
@@ -70,6 +71,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
@@ -82,6 +84,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     DatasourceField,
     TableAndQuery,
     TableauDashboard,
+    UpstreamColumn,
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -104,6 +107,7 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_l
 logger = ingestion_logger()
 
 TABLEAU_TAG_CATEGORY = "TableauTags"
+TABLEAU_FIELD_TYPE_DISPLAY = "Tableau Field"
 
 
 class TableauSource(DashboardServiceSource):
@@ -370,17 +374,48 @@ class TableauSource(DashboardServiceSource):
             )
 
     @staticmethod
-    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def _build_upstream_column_map(data_model: DataSource) -> Dict[str, Set[str]]:  # noqa: UP006
         """
-        Get fqn of column if exist in table entity
+        Map each physical upstream column id to the data model column names (Tableau field ids)
+        that consume it.
         """
-        if not data_model_entity:
-            return None
+        upstream_column_map = defaultdict(set)
+        for field in data_model.fields or []:
+            for column in field.upstreamColumns or []:
+                if column:
+                    upstream_column_map[column.id].add(truncate_column_name(field.id))
+        return upstream_column_map
+
+    @staticmethod
+    def _get_data_model_column_fqn(
+        data_model_entity: DashboardDataModel,
+        column_id: str,
+        field_names: Set[str],  # noqa: UP006
+    ) -> List[str]:  # noqa: UP006
+        """
+        Resolve a physical upstream column to the data model columns that consume it.
+
+        A field mirroring a single same-named column carries no child, so it is matched by its own
+        name. A field fanning out to several columns keeps children named after the upstream column
+        ids. Resolving per consuming field yields exactly one target for each of them, so a column
+        is never linked to both a field and that same field's child.
+
+        Child names are stored truncated (``get_child_columns``), so the incoming id is truncated
+        the same way before matching. Comparing the raw id would miss every child built from an id
+        over the limit and silently fall back to the parent column.
+        """
         columns = []
-        for tbl_column in data_model_entity.columns:
-            for child_column in tbl_column.children or []:
-                if column.lower() == child_column.name.root.lower():
-                    columns.append(child_column.fullyQualifiedName.root)  # noqa: PERF401
+        if data_model_entity:
+            child_column_name = truncate_column_name(column_id)
+            for data_model_column in data_model_entity.columns or []:
+                if model_str(data_model_column.name) not in field_names:
+                    continue
+                child_column_fqns = [
+                    model_str(child_column.fullyQualifiedName)
+                    for child_column in data_model_column.children or []
+                    if child_column_name.casefold() == model_str(child_column.name).casefold()
+                ]
+                columns.extend(child_column_fqns or [model_str(data_model_column.fullyQualifiedName)])
         return columns
 
     # pylint: disable=arguments-differ
@@ -389,7 +424,7 @@ class TableauSource(DashboardServiceSource):
         upstream_table: UpstreamTable,
         table_entity: Table,
         data_model_entity: DashboardDataModel,
-        upstream_col_set: Set[str],  # noqa: UP006
+        upstream_column_map: Dict[str, Set[str]],  # noqa: UP006
     ) -> List[ColumnLineage]:  # noqa: UP006
         """
         Get the column lineage from the fields
@@ -397,15 +432,23 @@ class TableauSource(DashboardServiceSource):
         column_lineage = []
         try:
             for column in upstream_table.columns or []:
-                if column.id in upstream_col_set:
-                    from_column = get_column_fqn(table_entity=table_entity, column=column.name)
-                    to_columns = self._get_data_model_column_fqn(
-                        data_model_entity=data_model_entity,
-                        column=column.id,
-                    )
-                    for to_column in to_columns:
-                        if from_column and to_column:
-                            column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))  # noqa: PERF401
+                field_names = upstream_column_map.get(column.id)
+                if not field_names or not column.name:
+                    continue
+                from_column = get_column_fqn(table_entity=table_entity, column=column.name)
+                to_columns = self._get_data_model_column_fqn(
+                    data_model_entity=data_model_entity,
+                    column_id=column.id,
+                    field_names=field_names,
+                )
+                for to_column in to_columns:
+                    if from_column and to_column:
+                        column_lineage.append(  # noqa: PERF401
+                            ColumnLineage(
+                                fromColumns=[FullyQualifiedEntityName(from_column)],
+                                toColumn=FullyQualifiedEntityName(to_column),
+                            )
+                        )
             return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
@@ -461,20 +504,28 @@ class TableauSource(DashboardServiceSource):
         Method to create the lineage between table and datamodels in tableau
         """
         try:
-            upstream_col_set = {
-                column.id
-                for field in upstream_data_model.fields
-                for column in field.upstreamColumns
-                if column is not None
-            }
+            upstream_column_map = self._build_upstream_column_map(data_model=upstream_data_model)
             for table in datamodel.upstreamTables or []:
                 om_tables = self._get_database_tables(db_service_prefix, table)
+                if not om_tables and not table.name:
+                    # Tableau withholds table and database names from accounts without
+                    # Catalog permissions and leaves only the identifiers, so there is
+                    # nothing left to look the table up by. The GetSourceTables check
+                    # runs at the start of every ingestion as well as from Test Connection,
+                    # and reports the cause once per run, so this only records which data
+                    # models lost their upstream.
+                    logger.debug(
+                        "Could not build lineage for data model [%s]. Tableau did not return a "
+                        "name for its source table [%s].",
+                        model_str(upstream_data_model_entity.fullyQualifiedName),
+                        table.luid or table.id,
+                    )
                 for om_table_and_query in om_tables or []:
                     column_lineage = self._get_column_lineage(
                         table,
                         om_table_and_query.table,
                         upstream_data_model_entity,
-                        upstream_col_set,
+                        upstream_column_map,
                     )
                     yield self._get_add_lineage_request(
                         to_entity=upstream_data_model_entity,
@@ -779,13 +830,8 @@ class TableauSource(DashboardServiceSource):
         """
         Close the connection for tableau
         """
-        try:
-            self.client.sign_out()
-        except ConnectionError as err:
-            logger.debug(f"Error closing connection - {err}")
-
         self.metadata.compute_percentile(Dashboard, self.today)
-        self.metadata.close()
+        super().close()
 
     def _get_table_entities_from_api(
         self,
@@ -1017,6 +1063,28 @@ class TableauSource(DashboardServiceSource):
                 logger.warning(f"Error to process datamodel nested column: {exc}")
         return columns
 
+    @staticmethod
+    def _get_mirrored_upstream_column(field: DatasourceField) -> Optional[UpstreamColumn]:  # noqa: UP045
+        """
+        A plain Tableau ColumnField wraps exactly one physical column and keeps its name, so
+        nesting that column renders an identical-looking duplicate row in the data model. Return
+        the mirrored column so the field can absorb its type instead of nesting it.
+
+        A CalculatedField is never a mirror even when it happens to reference a single same-named
+        column: its value is a transformation, so the physical column stays visible as a child and
+        its ``remoteType`` must not be reported as the field's own type. ``formula`` is only
+        populated by the ``... on CalculatedField`` fragment, which makes it the field-type marker.
+        """
+        mirrored_column = None
+        upstream_columns = [column for column in field.upstreamColumns or [] if column]
+        if not field.formula and len(upstream_columns) == 1:
+            upstream_column = upstream_columns[0]
+            field_name = field.name or field.id
+            upstream_column_name = upstream_column.name or upstream_column.id
+            if field_name.casefold() == upstream_column_name.casefold():
+                mirrored_column = upstream_column
+        return mirrored_column
+
     def get_column_info(self, data_source: DataSource) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """
         Args:
@@ -1032,15 +1100,22 @@ class TableauSource(DashboardServiceSource):
                     formula_text = f"**Formula:** `{field.formula}`"
                     description = f"{description}\n\n{formula_text}" if description else formula_text
                 parsed_fields = {
-                    "dataTypeDisplay": "Tableau Field",
+                    "dataTypeDisplay": TABLEAU_FIELD_TYPE_DISPLAY,
                     "dataType": DataType.RECORD,
                     "name": truncate_column_name(field.id),
                     "displayName": field.name if field.name else field.id,
                     "description": description or None,
                 }
-                child_columns = self.get_child_columns(field=field)
-                if child_columns:
-                    parsed_fields["children"] = child_columns
+                mirrored_column = self._get_mirrored_upstream_column(field=field)
+                if mirrored_column:
+                    parsed_fields["dataTypeDisplay"] = mirrored_column.remoteType or DataType.UNKNOWN.value
+                    parsed_fields["dataType"] = ColumnTypeParser.get_column_type(mirrored_column.remoteType)
+                    if mirrored_column.remoteType == DataType.ARRAY.value:
+                        parsed_fields["arrayDataType"] = DataType.UNKNOWN
+                else:
+                    child_columns = self.get_child_columns(field=field)
+                    if child_columns:
+                        parsed_fields["children"] = child_columns
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())

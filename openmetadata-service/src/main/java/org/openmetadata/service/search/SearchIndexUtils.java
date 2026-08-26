@@ -565,13 +565,23 @@ public final class SearchIndexUtils {
       if (tagFQN == null || labelType == null) {
         continue;
       }
-      String tagSource = labelType.value();
+      String tagSource = resolveTagSource(tag, labelType);
       Map<String, Integer> bucket =
           tagFQN.startsWith("Tier.")
               ? tagAndTierSources.getTierSources()
               : tagAndTierSources.getTagSources();
       bucket.merge(tagSource, 1, Integer::sum);
     }
+  }
+
+  // AI-bot-applied tags count as Generated regardless of labelType, mirroring
+  // getDescriptionSource. Applier is recorded per-tag in appliedBy (set server-side).
+  private static String resolveTagSource(TagLabel tag, TagLabel.LabelType labelType) {
+    String tagSource = labelType.value();
+    if (tag.getAppliedBy() != null && AI_BOTS.contains(tag.getAppliedBy())) {
+      tagSource = TagLabel.LabelType.GENERATED.value();
+    }
+    return tagSource;
   }
 
   private static void processEntityTagSources(

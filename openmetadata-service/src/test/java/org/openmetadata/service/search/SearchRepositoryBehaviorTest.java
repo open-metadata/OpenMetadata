@@ -138,6 +138,14 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
           .build();
 
+  private static final IndexMapping MLMODEL_SERVICE_MAPPING =
+      IndexMapping.builder()
+          .indexName("mlmodel_service_search_index")
+          .alias("mlModelService")
+          .childAliases(List.of("mlmodel"))
+          .indexMappingFile("/elasticsearch/%s/mlmodel_service_index_mapping.json")
+          .build();
+
   private static final IndexMapping DATABASE_MAPPING =
       IndexMapping.builder()
           .indexName("database_search_index")
@@ -223,6 +231,7 @@ class SearchRepositoryBehaviorTest {
                 Map.entry(Entity.DOMAIN, DOMAIN_MAPPING),
                 Map.entry(Entity.DATA_PRODUCT, DATA_PRODUCT_MAPPING),
                 Map.entry(Entity.DATABASE_SERVICE, DATABASE_SERVICE_MAPPING),
+                Map.entry(Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
                 Map.entry(Entity.TAG, TABLE_MAPPING),
                 Map.entry(Entity.GLOSSARY_TERM, TABLE_MAPPING),
                 Map.entry(Entity.GLOSSARY, TABLE_MAPPING),
@@ -255,6 +264,7 @@ class SearchRepositoryBehaviorTest {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
         EntityRepository<?> mockRepo = mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
+        doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forEntity(entityType));
@@ -384,6 +394,20 @@ class SearchRepositoryBehaviorTest {
   void getIndexOrAliasNameResolvesEntitySpecificAliasToCanonicalIndex() {
     assertEquals("cluster_table_search_index", repository.getIndexOrAliasName("table"));
     assertEquals("cluster_domain_search_index", repository.getIndexOrAliasName("domain"));
+  }
+
+  /**
+   * When an entity's {@code entityIndexMap} key differs from its {@code alias} (the mlModel service
+   * key is {@code mlmodelService} but its alias is {@code mlModelService}), a query for the alias
+   * must still resolve to the single canonical index. Without alias resolution the token misses the
+   * by-key lookup, passes through as a raw ES alias, and fans out to every index that carries it —
+   * for {@code mlModelService} that includes {@code mlmodel_search_index}, so the response leaks
+   * mlModel assets alongside the services.
+   */
+  @Test
+  void getIndexOrAliasNameResolvesEntityAliasWhenKeyCasingDiffers() {
+    assertEquals(
+        "cluster_mlmodel_service_search_index", repository.getIndexOrAliasName("mlModelService"));
   }
 
   /**
@@ -538,6 +562,28 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntityIndexDeletesStaleDocumentForNonIndexableEntity() throws IOException {
+    UUID entityId = UUID.randomUUID();
+    Table entity = mock(Table.class);
+    when(entity.getEntityReference())
+        .thenReturn(
+            new EntityReference()
+                .withId(entityId)
+                .withType(Entity.TABLE)
+                .withName("private-memory"));
+    when(entity.getId()).thenReturn(entityId);
+    when(entity.getFullyQualifiedName()).thenReturn("svc.db.schema.private-memory");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(entity);
+
+    repository.createEntityIndex(entity);
+
+    verify(searchClient).deleteEntity("cluster_table_search_index", entityId.toString());
+    verify(searchClient, never())
+        .createEntity(any(String.class), any(String.class), any(String.class));
+  }
+
+  @Test
   void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
     UUID entityId = UUID.randomUUID();
     EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
@@ -576,11 +622,60 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
+      throws IOException {
+    EntityInterface hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    EntityInterface visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(hidden);
+    when(searchClient.isClientAvailable()).thenReturn(false);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.createEntitiesIndex(List.of(hidden, visible));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  visible.getId().toString(),
+                  visible.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  hidden.getId().toString(),
+                  hidden.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"),
+          never());
+    }
+  }
+
+  @Test
   void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
     EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
     EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, broken))
         .thenThrow(new IllegalStateException("cannot index broken entity"));
+    when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
+        .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
+
+    repository.createEntitiesIndex(List.of(broken, valid));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
+    assertEquals(1, docsCaptor.getValue().size());
+    assertEquals(
+        valid.getId().toString(), docsCaptor.getValue().getFirst().keySet().iterator().next());
+  }
+
+  @Test
+  void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
+    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    when(broken.getEntityReference())
+        .thenThrow(new IllegalStateException("cannot resolve entity reference"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
         .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
 
@@ -2432,7 +2527,7 @@ class SearchRepositoryBehaviorTest {
     when(context.getParentAliases(any()))
         .thenAnswer(invocation -> List.of("parent_" + invocation.getArgument(0)));
 
-    doNothing()
+    doReturn(true)
         .doThrow(new RuntimeException("boom"))
         .when(recreateIndexHandler)
         .finalizeReindex(any(EntityReindexContext.class), eq(true));
@@ -2463,9 +2558,10 @@ class SearchRepositoryBehaviorTest {
         .updateChildren(
             SearchClient.GLOBAL_SEARCH_ALIAS,
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                "domain.id", domain.getId().toString()),
+                "domains.id", domain.getId().toString()),
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT,
+                Map.of("id", domain.getId().toString())));
     verify(searchClient)
         .deleteEntityByFields(
             List.of("cluster_domain_search_index"),
@@ -2990,6 +3086,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchBySourceUrl("https://src")).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
+    when(searchClient.getEntityTypeCounts(request, "global", subjectContext)).thenReturn(response);
     when(searchClient.getQueryCostRecords("service")).thenReturn(queryCostResult);
 
     assertSame(response, repository.previewSearch(request, subjectContext, null));
@@ -3001,6 +3098,9 @@ class SearchRepositoryBehaviorTest {
     assertSame(response, repository.searchBySourceUrl("https://src"));
     assertSame(response, repository.aggregate(aggregationRequest));
     assertSame(response, repository.getEntityTypeCounts(request, "global"));
+    // The subject-aware overload is what SearchResource calls, so a ContextMemory count matches
+    // what the same caller sees in the listing instead of being capped at org-wide memories.
+    assertSame(response, repository.getEntityTypeCounts(request, "global", subjectContext));
     assertSame(queryCostResult, repository.getQueryCostRecords("service"));
   }
 
@@ -3398,6 +3498,7 @@ class SearchRepositoryBehaviorTest {
             Entity.DOMAIN,
             Entity.DATA_PRODUCT,
             Entity.DATABASE_SERVICE,
+            Entity.MLMODEL_SERVICE,
             Entity.TAG,
             Entity.GLOSSARY_TERM,
             Entity.GLOSSARY,

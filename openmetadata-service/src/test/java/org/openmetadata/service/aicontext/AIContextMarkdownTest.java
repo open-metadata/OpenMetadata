@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
@@ -497,6 +498,26 @@ class AIContextMarkdownTest {
     assertTrue(markdown.toString().contains("### Schema"));
     assertTrue(markdown.toString().contains("Orders placed by customers."));
     assertFalse(markdown.toString().contains("Foreign Keys"));
+  }
+
+  @Test
+  void render_emitsMetricDefinitionFromGenericAssetContext() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("metric")
+            .withFullyQualifiedName("MonthlyActiveUsers")
+            .withAssetContext(
+                new AssetContext()
+                    .withGeneric(
+                        new GenericAssetContext()
+                            .withDefinition("SELECT COUNT(DISTINCT user_id) FROM events")));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("# Definition"), "missing Definition heading");
+    assertTrue(
+        markdown.contains("```sql\nSELECT COUNT(DISTINCT user_id) FROM events\n```"),
+        "missing metric expression block");
   }
 
   private String render() {

@@ -128,6 +128,7 @@ export const DataProductDomainWidget = () => {
       <DomainLabelV2
         showDomainHeading
         isClearable={false}
+        multiple={false}
         onUpdate={handleDomainUpdate}
       />
 

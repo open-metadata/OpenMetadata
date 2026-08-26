@@ -16,7 +16,7 @@
 .sso-doc-panel {
   display: flex;
   flex-direction: column;
-  padding-top: 24px;
+  padding-top: var(--om-space-24);
   .entity-summary-in-docs {
     display: none;
   }
@@ -24,7 +24,7 @@
     display: flex;
     align-items: center;
     gap: @padding-xs;
-    padding: 0 24px 24px;
+    padding: 0 var(--om-space-24) var(--om-space-24);
 
     .sso-provider-icon {
       display: flex;
@@ -34,10 +34,10 @@
 
     .sso-provider-title {
       margin: 0;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
       line-height: @size-lg;
-      font-size: 18px;
+      font-size: var(--om-font-size-lg);
     }
   }
 }

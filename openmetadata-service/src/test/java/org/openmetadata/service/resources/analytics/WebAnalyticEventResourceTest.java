@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.analytics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.analytics.CustomEvent;
@@ -24,24 +23,6 @@ import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 
 class WebAnalyticEventResourceTest {
-
-  @Test
-  void removeNullCharactersReturnsNullForNullInput() {
-    assertNull(WebAnalyticEventResource.removeNullCharacters(null));
-  }
-
-  @Test
-  void removeNullCharactersReturnsSameStringWhenNoNulPresent() {
-    String input = "Settings/Preferences/Health Check";
-    assertEquals(input, WebAnalyticEventResource.removeNullCharacters(input));
-  }
-
-  @Test
-  void removeNullCharactersStripsAllNulCharacters() {
-    String input = "Unexpected executed migrations [2.0.0]\n\u0000\u0000tail";
-    String expected = "Unexpected executed migrations [2.0.0]\ntail";
-    assertEquals(expected, WebAnalyticEventResource.removeNullCharacters(input));
-  }
 
   @Test
   void sanitizeCustomEventStripsNulFromUserSuppliedFields() {

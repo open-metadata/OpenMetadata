@@ -185,7 +185,7 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -240,7 +240,7 @@ export interface PipelineConnection {
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Choose between database connection or REST API connection to fetch metadata from
      * Airflow.
@@ -257,6 +257,9 @@ export interface ConfigObject {
      *
      * Spline REST Server Host & Port.
      *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
+     *
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
@@ -269,6 +272,8 @@ export interface ConfigObject {
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -330,9 +335,14 @@ export interface ConfigObject {
     /**
      * Fivetran API Limit For Pagination.
      */
-    limit?:     number;
+    limit?: number;
+    /**
+     * SSL Configuration for Prefect API connection.
+     */
     sslConfig?: Config;
     /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      */
@@ -394,8 +404,10 @@ export interface ConfigObject {
     sourcePythonClass?: string;
     /**
      * Choose between different authentication types for Databricks.
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      */
-    authType?:            AuthenticationType;
+    authType?:            Authentication;
     connectionArguments?: { [key: string]: any };
     /**
      * Connection timeout in seconds.
@@ -594,8 +606,15 @@ export interface PurpleAuthentication {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
+ *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
  */
-export interface AuthenticationType {
+export interface Authentication {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
@@ -623,6 +642,23 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
+    /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     */
+    apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
 }
 
 /**
@@ -829,6 +865,8 @@ export enum KafkaSecurityProtocol {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -1667,6 +1705,7 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
     SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",

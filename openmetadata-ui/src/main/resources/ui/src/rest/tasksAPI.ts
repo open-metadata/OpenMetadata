@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosResponse } from 'axios';
+import { AxiosHeaders, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import {
@@ -347,7 +347,26 @@ export const editTaskComment = async (
   const response = await APIClient.patch<
     { message: string },
     AxiosResponse<Task>
-  >(`${BASE_URL}/${taskId}/comments/${commentId}`, { message });
+  >(
+    `${BASE_URL}/${taskId}/comments/${commentId}`,
+    { message },
+    {
+      // This endpoint consumes application/json, but the shared client's request
+      // interceptor forces application/json-patch+json on every PATCH. transformRequest
+      // runs after the interceptors, so reset the content type here or the server 415s.
+      transformRequest: [
+        (payload, headers) => {
+          (headers as AxiosHeaders).set(
+            'Content-Type',
+            'application/json',
+            true
+          );
+
+          return JSON.stringify(payload);
+        },
+      ],
+    }
+  );
 
   return response.data;
 };

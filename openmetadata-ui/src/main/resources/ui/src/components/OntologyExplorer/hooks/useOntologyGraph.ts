@@ -517,10 +517,12 @@ export function useOntologyGraph({
       if (!comboId) {
         return;
       }
-      if (!nodesByCombo.has(comboId)) {
-        nodesByCombo.set(comboId, []);
+      let comboNodes = nodesByCombo.get(comboId);
+      if (!comboNodes) {
+        comboNodes = [];
+        nodesByCombo.set(comboId, comboNodes);
       }
-      nodesByCombo.get(comboId)!.push(node);
+      comboNodes.push(node);
     });
 
     const updates: NodeData[] = [];
@@ -664,10 +666,12 @@ export function useOntologyGraph({
       if (!comboId) {
         return;
       }
-      if (!nodesByCombo.has(comboId)) {
-        nodesByCombo.set(comboId, []);
+      let comboNodes = nodesByCombo.get(comboId);
+      if (!comboNodes) {
+        comboNodes = [];
+        nodesByCombo.set(comboId, comboNodes);
       }
-      nodesByCombo.get(comboId)!.push(node);
+      comboNodes.push(node);
     });
 
     const updates: NodeData[] = [];
@@ -1444,7 +1448,9 @@ export function useOntologyGraph({
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
-        graph.draw();
+        graph.draw().catch(() => {
+          // fire-and-forget paint; graph may be destroyed if tab was changed
+        });
 
         return;
       } catch {
@@ -1607,7 +1613,9 @@ export function useOntologyGraph({
       if (newEdges.length > 0) {
         graph.addEdgeData(newEdges);
       }
-      graph.draw();
+      graph.draw().catch(() => {
+        // fire-and-forget paint; graph may be destroyed if tab was changed
+      });
 
       return;
     }
@@ -1624,7 +1632,9 @@ export function useOntologyGraph({
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
-        graph.draw();
+        graph.draw().catch(() => {
+          // fire-and-forget paint; graph may be destroyed if tab was changed
+        });
       } catch {
         // ignore
       }
@@ -1739,6 +1749,9 @@ export function useOntologyGraph({
         if (cancelled) {
           return;
         }
+        if (graph.destroyed) {
+          return;
+        }
         await graph.draw();
 
         if (cancelled) {
@@ -1750,6 +1763,9 @@ export function useOntologyGraph({
         }
         recomputeGraphBounds();
         emitPagePositions(graph);
+      } catch {
+        // Swallow rejections from graph.draw() that arrive after the graph was
+        // destroyed (tab navigation while a draw was in flight).
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;

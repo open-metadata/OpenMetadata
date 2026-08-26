@@ -29,6 +29,7 @@ export type CSVExportWebsocketResponse = {
 
 export type CSVExportJob = {
   fileName: string;
+  statusUnavailable?: boolean;
 } & Partial<CSVExportWebsocketResponse> &
   CSVExportResponse;
 

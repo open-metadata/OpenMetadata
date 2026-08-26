@@ -20,7 +20,7 @@
   max-width: fit-content;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--om-space-4);
   flex-wrap: nowrap;
   white-space: nowrap;
   border: 1px solid;
@@ -28,9 +28,9 @@
   &.success {
     color: @green-10;
     background-color: @green-9;
-    border: 1px solid #ffffff;
-    font-weight: 500;
-    font-size: 12px;
+    border: 1px solid var(--om-color-white);
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
     line-height: 20px;
     border-radius: @border-rad-md;
     padding: @padding-xss @padding-xs;
@@ -41,10 +41,10 @@
   &.failed {
     color: @red-10;
     background-color: @red-9;
-    font-weight: 500;
-    font-size: 12px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
     line-height: 20px;
-    border: 1px solid #ffffff;
+    border: 1px solid var(--om-color-white);
     border-radius: @border-rad-md;
     padding: @padding-xss @padding-xs;
   }
@@ -57,12 +57,12 @@
   }
 
   &.aborted {
-    color: #a84c3d;
+    color: var(--om-legacy-color-a84c3d);
     background-color: @alert-warning-bg;
-    font-weight: 500;
-    font-size: 12px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
     line-height: 20px;
-    border: 1px solid #ffffff;
+    border: 1px solid var(--om-color-white);
     border-radius: @border-rad-md;
     padding: @padding-xss @padding-xs;
   }
@@ -72,9 +72,9 @@
     background-color: @grey-9;
     border-radius: @border-rad-md;
     padding: @padding-xss @padding-xs;
-    border: 1px solid #ffffff;
-    font-weight: 500;
-    font-size: 12px;
+    border: 1px solid var(--om-color-white);
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-xs);
     line-height: 20px;
   }
 
@@ -116,13 +116,13 @@
   }
 
   svg {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
   }
 }
 
 .status-badge-label {
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-xs);
   line-height: 20px;
 }
 

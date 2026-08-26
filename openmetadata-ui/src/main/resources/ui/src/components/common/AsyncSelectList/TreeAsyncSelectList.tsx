@@ -79,6 +79,7 @@ interface TreeAsyncSelectListProps
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
   dropdownMatchSelectWidth?: boolean | number;
+  getPopupContainer?: TreeSelectProps['getPopupContainer'];
 }
 
 interface ExtendedTreeNode {
@@ -497,6 +498,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       {...(isMultiSelect
         ? { treeCheckable: true, treeCheckStrictly: true }
         : { allowClear: true })}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the tag selector when it opens
       autoFocus={open}
       className={classNames('async-select-list', {
         'new-chip-style': newLook,

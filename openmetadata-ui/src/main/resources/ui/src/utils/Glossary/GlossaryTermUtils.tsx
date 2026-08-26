@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { kebabCase } from 'lodash';
 import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
@@ -19,6 +20,7 @@ import type {
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
@@ -112,6 +114,25 @@ export const getGlossaryTermDetailPageTabs = (
     setPreviewAsset,
   } = props;
 
+  // Draft / In Review terms can still reach Approved, so use the actionable
+  // Terminal states (Rejected, Deprecated, Archived,
+  // will not, so use status-neutral copy that does not promise approval.
+  const glossaryTermStatus = glossaryTerm.entityStatus ?? EntityStatus.Approved;
+  const isTermPendingApproval =
+    glossaryTermStatus === EntityStatus.Draft ||
+    glossaryTermStatus === EntityStatus.InReview;
+  const assetsAddDisabledKey = isTermPendingApproval
+    ? 'message.assets-add-disabled-term-status'
+    : 'message.assets-add-restricted-term-status';
+  const assetsAddDisabledMessage =
+    glossaryTermStatus === EntityStatus.Approved
+      ? undefined
+      : i18n.t(assetsAddDisabledKey, {
+          status: i18n.t(`label.${kebabCase(glossaryTermStatus)}`, {
+            defaultValue: glossaryTermStatus,
+          }),
+        });
+
   return [
     {
       label: (
@@ -142,7 +163,7 @@ export const getGlossaryTermDetailPageTabs = (
             key: EntityTabs.GLOSSARY_TERMS,
             children: (
               <GlossaryTermTab
-                className="p-md glossary-term-table-container"
+                className="glossary-term-table-container"
                 isGlossary={false}
               />
             ),
@@ -168,6 +189,7 @@ export const getGlossaryTermDetailPageTabs = (
                   className: 'glossary-term-resizable-panel-container',
                   children: (
                     <AssetsTabs
+                      addDisabledMessage={assetsAddDisabledMessage}
                       assetCount={assetCount}
                       entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
                       isSummaryPanelOpen={Boolean(previewAsset)}

@@ -271,7 +271,7 @@ class DataFrameColumnParser:
     ):
         """Return the dataframe to use for parsing"""
 
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
 
         if not isinstance(data_frame, list):
             return data_frame
@@ -390,9 +390,9 @@ class GenericDataFrameColumnParser:
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
                             # as literal_eval will fail for string
-                            from datetime import datetime  # noqa: PLC0415
+                            from datetime import datetime
 
-                            from dateutil.parser import ParserError, parse  # noqa: PLC0415
+                            from dateutil.parser import ParserError, parse
 
                             try:
                                 dtype_ = "int64"
@@ -500,7 +500,7 @@ class GenericDataFrameColumnParser:
             json_column (pandas.Series): column with 100 sample rows.
                 Sample rows will be used to infer children.
         """
-        from pandas import Series  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from pandas import Series  # pylint: disable=import-outside-toplevel
 
         json_column = cast(Series, json_column)  # noqa: TC006
 
@@ -559,7 +559,7 @@ class ParquetDataFrameColumnParser:
     """Given a dataframe object generated from a parquet file, parse the columns and return a list of Column objects."""
 
     def __init__(self, data_frame: "DataFrame"):  # noqa: F821
-        import pyarrow as pa  # noqa: PLC0415
+        import pyarrow as pa
 
         self._data_formats = {
             **dict.fromkeys(
@@ -598,7 +598,7 @@ class ParquetDataFrameColumnParser:
         """
         method to process column details for parquet files
         """
-        import pyarrow as pa  # noqa: PLC0415, TC002
+        import pyarrow as pa  # noqa: TC002
 
         schema: List[pa.Field] = self._arrow_table.schema  # noqa: UP006
         columns = []
@@ -670,7 +670,7 @@ class ParquetDataFrameColumnParser:
         Args:
             column (pa.Field): pa column
         """
-        import pyarrow as pa  # noqa: PLC0415
+        import pyarrow as pa
 
         if isinstance(
             column.type,

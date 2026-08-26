@@ -39,7 +39,7 @@ jobs:
           swap-storage: true
           docker-images: false
       - name: Check out the Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Prepare for Docker Build&Push
         id: prepare

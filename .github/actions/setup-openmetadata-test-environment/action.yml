@@ -48,7 +48,7 @@ inputs:
     required: false
     default: "false"
   install-test-dependencies:
-    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
+    # ingestion[all], ingestion[test], sqlalchemy-redshift/ibmi,
     # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
     # workflows that invoke Python on the runner. Playwright E2E workflows drive
     # the browser and let the ingestion Docker container run its own installs, so
@@ -93,6 +93,7 @@ runs:
 
     # ---- Setup Python Test Environment -------------------------------------------
     - name: Setup Python ${{ inputs.python-version }}
+      id: setup-python
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-python@v6
       with:
@@ -102,10 +103,34 @@ runs:
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: astral-sh/setup-uv@v7
 
+    # Cache the ingestion Python venv across runs. Key on the *resolved*
+    # Python patch version (setup-python may resolve "3.10" to a different
+    # tool-cache path after a runner-image bump — old venv shebangs would
+    # then dangle) plus hashFiles of the ingestion dep manifests and this
+    # action file so a package change or install-script edit invalidates
+    # cleanly. Intentionally no restore-keys: a partial restore would keep
+    # dependencies deleted from the manifest, letting tests silently
+    # import undeclared packages. Cache miss = fresh install, always.
+    # Skipped in fast-mode / lightweight-ingestion — those consumers restore
+    # a pre-seeded fixture and never touch the venv.
+    - name: Cache ingestion Python venv
+      id: cache-python-venv
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: env
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
+
     - name: Generate Models
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
-        python3 -m venv env
+        # Belt-and-suspenders: even with the resolved-patch key above, if
+        # the restored venv's interpreter can't run, rebuild from scratch
+        # rather than fail Generate Models with an opaque shebang error.
+        if [ ! -x env/bin/python ] || ! env/bin/python --version >/dev/null 2>&1; then
+          rm -rf env
+          python3 -m venv env
+        fi
         source env/bin/activate
         sudo make install_antlr_cli
         uv pip install "${{ github.workspace }}/ingestion[dev]"
@@ -116,9 +141,7 @@ runs:
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
-        uv pip install "setuptools<81"
-        uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-        uv pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox

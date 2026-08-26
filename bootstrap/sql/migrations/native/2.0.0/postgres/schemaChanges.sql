@@ -460,3 +460,89 @@ SET json = jsonb_set(
 WHERE serviceType = 'DatabricksPipeline'
   AND json #> '{connection,config,token}' IS NOT NULL
   AND NOT jsonb_exists(json #> '{connection,config}', 'authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX IF NOT EXISTS idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT NOT NULL,
+    PRIMARY KEY (userId)
+);
+
+-- Index the FQN-hash prefix scan behind the table hard-delete profiler purge (issue #27041).
+--
+-- TableRepository.entitySpecificCleanup purges a hard-deleted table's column profiles through
+-- ProfilerDataTimeSeriesDAO before the table can be recreated. The purge matches
+--   entityFQNHash LIKE '<table hash>.%'
+-- because column profiles are keyed by the *column* FQN, not the table FQN. The only persistent
+-- index with entityFQNHash leading is the 1.1.5 unique constraint
+-- (entityFQNHash, extension, operation, timestamp); it uses the default operator class and the
+-- column inherits the database default collation (en_US.UTF-8 on managed Postgres / RDS), neither
+-- of which qualifies the planner to use it for LIKE 'prefix%'. The 1.9.9 migration did create
+-- idx_pdts_entityFQNHash_prefix, but that was a migration-time helper and the same script drops it
+-- again, so nothing persistent covers this predicate today.
+--
+-- Without this index every table hard delete costs at least one sequential scan of
+-- profiler_data_time_series, and a recursive service delete costs one per table. Measured on
+-- postgres:15 (lc_collate=en_US.utf8) with 300k rows / 211 MB, using the exact statement the DAO
+-- issues (JDBC binds the prefix as text):
+--   before: Parallel Seq Scan, 24.174 ms, 11112 buffers   (terminal batch, prefix matches nothing)
+--   after : Index Scan,         0.056 ms,     3 buffers
+--   before: Seq Scan,          16.579 ms,  3701 buffers   (first batch, prefix matches 3000 rows)
+--   after : Bitmap Heap Scan,   8.647 ms,  1006 buffers
+-- Index size 2776 kB against a 211 MB table.
+--
+-- Why text_pattern_ops and not varchar_pattern_ops:
+-- entityFQNHash is VARCHAR(768), so varchar_pattern_ops is the type-matched choice on paper. In
+-- practice the planner normalises `varchar LIKE text` — which is what every JDBC setString bind
+-- produces — by casting the column, giving `(entityfqnhash)::text ~~ ...`. text_pattern_ops matches
+-- that cast expression on every version; the 1.13.0 fqnHash pass documents an environment where
+-- varchar_pattern_ops was silently unused and the table seq-scanned. This file follows the same
+-- opclass as the idx_*_fqnhash_pattern family for that reason.
+--
+-- Built CONCURRENTLY so the migration takes no write lock, matching the 1.11.0 idx_tag_usage_* and
+-- 1.13.0 idx_*_fqnhash_pattern pattern. Each statement runs outside an implicit transaction, which
+-- the native migration runner supports.
+--
+-- OPERATOR RUNBOOK — interrupted CONCURRENTLY builds.
+-- An interrupted CREATE INDEX CONCURRENTLY leaves an INVALID index behind, and `IF NOT EXISTS`
+-- would then no-op against it forever. Detect and remediate:
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid
+--      AND c.relname = 'idx_profiler_data_time_series_fqnhash_pattern';
+--   DROP INDEX CONCURRENTLY idx_profiler_data_time_series_fqnhash_pattern;
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '2.0.0'
+--      AND sqlstatement LIKE '%idx\_profiler\_data\_time\_series\_fqnhash\_pattern%' ESCAPE '\';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiler_data_time_series_fqnhash_pattern
+    ON profiler_data_time_series (entityFQNHash text_pattern_ops);

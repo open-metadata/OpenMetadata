@@ -64,8 +64,8 @@ class AvroDataFrameReader(DataFrameReader):
         Stream Avro records in batches from a file-like object.
         Uses fastavro for streaming support.
         """
-        import fastavro  # noqa: PLC0415
-        from pandas import DataFrame  # noqa: PLC0415
+        import fastavro
+        from pandas import DataFrame
 
         batch = []
         for record in fastavro.reader(file_obj):
@@ -79,11 +79,11 @@ class AvroDataFrameReader(DataFrameReader):
     @staticmethod
     def _get_avro_columns(file_obj) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Extract columns from Avro schema without reading all records."""
-        import json  # noqa: PLC0415
+        import json
 
-        import fastavro  # noqa: PLC0415
+        import fastavro
 
-        from metadata.parsers.avro_parser import parse_avro_schema  # noqa: PLC0415
+        from metadata.parsers.avro_parser import parse_avro_schema
 
         try:
             reader = fastavro.reader(file_obj)
@@ -93,8 +93,10 @@ class AvroDataFrameReader(DataFrameReader):
                     writer_schema = json.dumps(reader.writer_schema)
 
                 return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
-        except Exception as warn:
-            logger.warning(f"Error reading Avro schema: {warn}")
+        except Exception as exc:  # pylint: disable=broad-except
+            # Only the exception type is safe at WARNING: decoder errors can quote the file
+            # payload. See issue #24798.
+            logger.warning("Error reading Avro schema: %s", type(exc).__name__)
             logger.debug(traceback.format_exc())
         return None
 
@@ -126,7 +128,7 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from GCS without loading entire file into memory."""
-        from gcsfs import GCSFileSystem  # noqa: PLC0415
+        from gcsfs import GCSFileSystem
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -143,7 +145,7 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from Azure without loading entire file into memory."""
-        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
+        from adlfs import AzureBlobFileSystem
 
         storage_options = return_azure_storage_options(self.config_source)
         adlfs_fs = AzureBlobFileSystem(

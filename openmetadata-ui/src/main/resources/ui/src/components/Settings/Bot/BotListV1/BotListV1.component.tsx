@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -54,6 +53,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
@@ -367,8 +367,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    await getResourceLimit('bot', true, true);
-    await reloadBotMap();
+    await Promise.all([getResourceLimit('bot', true, true), reloadBotMap()]);
     fetchBots(showDeleted);
   }, [selectedUser, reloadBotMap]);
 
@@ -441,6 +440,7 @@ const BotListV1 = ({
             size="small"
             onClick={handleShowDeletedBots}
           />
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
           <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
         </Space>
       </Col>
@@ -482,6 +482,7 @@ const BotListV1 = ({
               id="switch-deleted"
               onClick={handleShowDeletedBots}
             />
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
             <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>
 

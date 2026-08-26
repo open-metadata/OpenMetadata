@@ -56,7 +56,6 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
   OPEN_METADATA,
@@ -90,6 +89,7 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { DriveServiceType } from '../../generated/entity/services/driveService';
+import { AgentType } from '../../generated/entity/services/ingestionPipelines/agentType';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
@@ -139,6 +139,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -162,14 +163,12 @@ import {
   getEditConnectionPath,
   getServiceDetailsPath,
   getServiceVersionPath,
-  getSettingPath,
 } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
   getServiceDisplayNameQueryFilter,
-  getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -297,8 +296,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
-  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
-    useState(false);
+  // Seeded to match `isLoading` above: the fetch is kicked off from an effect that waits on the
+  // airflow status, so a `false` seed lets the agents tab read an empty list as "no agents".
+  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] = useState(
+    !isOpenMetadataService
+  );
   const [isServiceLoading, setIsServiceLoading] = useState(true);
   const [isFilesLoading, setIsFilesLoading] = useState(true);
   const [isSpreadsheetsLoading, setIsSpreadsheetsLoading] = useState(true);
@@ -323,7 +325,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [statusFilter, setStatusFilter] = useState<
     Array<{ key: string; label: string }>
   >([]);
-  const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
+  // Seeded true for the same reason as `isIngestionPipelineLoading`: the list is fetched from an
+  // effect, and a `false` seed shows the widget's "no agents" placeholder before the first fetch.
+  const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(true);
   const [collateAgentsList, setCollateAgentsList] = useState<
     CollateAgentAutomation[]
   >([]);
@@ -556,6 +560,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchCollateAgentsList = useCallback(
     async (_paging?: Omit<Paging, 'total'>) => {
+      // A deleted service has no live automations and the endpoint 404s on it, so asking only
+      // produces an error toast on a page the user opened deliberately.
+      if (deleted) {
+        setCollateAgentsList([]);
+        handleCollateAgentPagingChange({ total: 0 });
+        // Nothing will be fetched, so release the seeded loading flag rather than
+        // leaving the widget on placeholder cards forever.
+        setIsCollateAgentLoading(false);
+
+        return;
+      }
       try {
         setIsCollateAgentLoading(true);
         // AutoPilot creates at most one automation per template, so the list is
@@ -570,7 +585,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(false);
       }
     },
-    [decodedServiceFQN, handleCollateAgentPagingChange]
+    [decodedServiceFQN, handleCollateAgentPagingChange, deleted]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -585,7 +600,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           serviceFilter: decodedServiceFQN,
           serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
-          pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
+          agentType: AgentType.Metadata,
           limit,
         });
 
@@ -752,11 +767,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include, permissions.dashboard]
   );
 
-  // Fetch Data Model count to show it in tab label
+  // Fetch Data Model count to show it in tab label. This owns `dataModelPaging`
+  // only — `isServiceLoading` and the entity paging belong to `getOtherDetails`,
+  // and driving them from here left the entity tab's table spinning forever
+  // because this effect re-runs on every tab change.
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
@@ -766,7 +783,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        handlePagingChange(pagingObject);
+        setDataModelPaging(pagingObject);
       }
     },
     [decodedServiceFQN, include]
@@ -1381,10 +1398,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (isSoftDelete?: boolean) => {
       if (!isSoftDelete) {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       }
     },
@@ -1593,8 +1607,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [decodedServiceFQN, serviceCategory]);
 
+  // Deliberately not gated on the airflow status: pipelines are OpenMetadata entities, so the list
+  // and its run history are readable whether or not the pipeline service answers. Only the actions
+  // on them need that status — see `useAgentActionAvailability`.
   useEffect(() => {
-    if (isAirflowAvailable && !isOpenMetadataService) {
+    if (!isOpenMetadataService) {
       isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
         ? getAllIngestionWorkflows(
             {},
@@ -1602,21 +1619,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [
-    isAirflowAvailable,
-    searchText,
-    ingestionPageSize,
-    statusFilter,
-    typeFilter,
-  ]);
+  }, [searchText, ingestionPageSize, statusFilter, typeFilter]);
 
   useEffect(() => {
     if (isCollateAIWidgetSupported) {
       fetchCollateAgentsList({
         limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
       });
+    } else {
+      // The widget is not rendered for this service category, so nothing will fetch —
+      // release the seeded loading flag.
+      setIsCollateAgentLoading(false);
     }
-  }, [collateAgentPageSize]);
+  }, [collateAgentPageSize, isCollateAIWidgetSupported]);
 
   useEffect(() => {
     fetchWorkflowInstanceStates();
@@ -1635,20 +1650,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
         await fetchCollateAgentsList({
           limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
         });
-      } else {
-        setSearchText('');
+      } else if (isEmpty(searchText)) {
         await getAllIngestionWorkflows(
           {},
           ingestionPagingCursor?.pageSize ?? ingestionPageSize
         );
+      } else {
+        // Refresh means "re-read what I am looking at", so a live search is re-run rather than
+        // discarded. Clearing it instead would both wipe the user's filter and cost two requests,
+        // since the effect keyed on `searchText` fetches as well.
+        await searchPipelines(searchText, currentIngestionPage);
       }
     },
     [
       collateAgentPagingCursor,
       collateAgentPageSize,
+      currentIngestionPage,
       getAllIngestionWorkflows,
       ingestionPagingCursor,
       ingestionPageSize,
+      searchPipelines,
+      searchText,
     ]
   );
 

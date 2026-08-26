@@ -14,7 +14,6 @@ import {
   Box,
   Button,
   FormField,
-  HintText,
   HookForm,
   Input,
 } from '@openmetadata/ui-core-components';
@@ -77,7 +76,9 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
         {({ field, fieldState }) => (
           <>
             <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the URL input when the embed link popover opens
               autoFocus
+              hint={fieldState.error?.message}
               inputDataTestId="embed-input"
               isInvalid={fieldState.invalid}
               placeholder={
@@ -89,9 +90,6 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
               onBlur={field.onBlur}
               onChange={field.onChange}
             />
-            {fieldState.error && (
-              <HintText isInvalid>{fieldState.error.message}</HintText>
-            )}
           </>
         )}
       </FormField>

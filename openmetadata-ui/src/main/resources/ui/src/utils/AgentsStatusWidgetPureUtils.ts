@@ -105,10 +105,11 @@ const sumStep = (steps: AutomationRunStep[], field: keyof AutomationRunStep) =>
 
 /**
  * Rolls the run's per-step summaries into the `jobStats` the agent cards read.
- * `records` is the processed-asset count the run history also shows, so it feeds
- * both the success and total buckets; errors and warnings sum across steps.
- * Returns undefined when the run carries no steps, leaving the counts blank
- * rather than showing zeros.
+ * `records` counts what the run processed successfully, so the total is that plus
+ * the failures — feeding `records` into both buckets made `success + failed`
+ * exceed `total` and any success rate compute as a flat 100%. Errors and warnings
+ * sum across steps because each step raises its own. Returns undefined when the
+ * run carries no steps, leaving the counts blank rather than showing zeros.
  */
 const buildSuccessContext = (
   steps: AutomationRunStep[]
@@ -117,13 +118,14 @@ const buildSuccessContext = (
     return undefined;
   }
   const records = sumStep(steps, 'records');
+  const errors = sumStep(steps, 'errors');
 
   return {
     stats: {
       jobStats: {
-        totalRecords: records,
+        totalRecords: records + errors,
         successRecords: records,
-        failedRecords: sumStep(steps, 'errors'),
+        failedRecords: errors,
         warningRecords: sumStep(steps, 'warnings'),
       },
     },

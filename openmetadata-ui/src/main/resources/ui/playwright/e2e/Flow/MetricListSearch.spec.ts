@@ -125,6 +125,12 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await waitForAllLoadersToDisappear(page);
 
+      // matchName is globally unique, so the server-side search settles to
+      // exactly one row. Asserting the settled count first avoids racing React
+      // Query's keepPreviousData, which briefly keeps the full (pre-search) list
+      // rendered during the refetch — the source of the flake on the negative
+      // otherName assertion below.
+      await expect(page.getByTestId('metric-name')).toHaveCount(1);
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();

@@ -22,6 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +39,8 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import {
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -72,6 +75,7 @@ const WorkflowsPage = () => {
     total: 0,
   });
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowName, setWorkflowName] = useState('');
   const [description, setDescription] = useState('');
@@ -162,7 +166,7 @@ const WorkflowsPage = () => {
         setLoading(true);
 
         const params: WorkflowDefinitionsParams = {
-          limit: PAGE_SIZE_MEDIUM,
+          limit: pageSize,
           ...cursor,
         };
 
@@ -184,13 +188,14 @@ const WorkflowsPage = () => {
         setLoading(false);
       }
     },
-    []
+    [pageSize]
   );
 
   const handlePageChange = useCallback(
-    ({ currentPage: page, cursorType }: PagingHandlerParams) => {
-      if (cursorType) {
-        getWorkflows(page, { [cursorType]: paging[cursorType] });
+    ({ cursorType, currentPage: page }: PagingHandlerParams) => {
+      const cursor = cursorType ? paging[cursorType] : undefined;
+      if (cursorType && cursor) {
+        getWorkflows(page, { [cursorType]: cursor });
       }
     },
     [getWorkflows, paging]
@@ -277,7 +282,7 @@ const WorkflowsPage = () => {
   const isWorkflowsEmpty = workflows.length === 0;
 
   const emptyPlaceholder = (
-    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl">
       <EmptyPlaceholder
         actions={
           allowCreateWorkflow
@@ -303,15 +308,15 @@ const WorkflowsPage = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className="workflow-page"
+      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
       mainContainerClassName="workflow-page-layout"
-      pageContainerStyle={isAiMode ? {} : { paddingLeft: 0, paddingRight: 0 }}
       pageTitle={t('label.workflow-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
       <div
-        className={`tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:my-4${
-          isAiMode ? '' : ' tw:mx-6'
-        }`}>
+        className={classNames(
+          'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
+          { 'tw:mx-2': !isAiMode }
+        )}>
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}
@@ -326,13 +331,14 @@ const WorkflowsPage = () => {
                 showHome={false}
               />
             }
-            className="tw:mb-5"
+            className="tw:mb-0!"
+            padding="comfortable"
             subtitle={t('message.workflow-subtitle')}
             title={t('label.workflow-plural')}
             variant="gradient"
           />
         ) : (
-          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:mb-4">
+          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:justify-between">
               <PageHeader
                 data={{
@@ -350,9 +356,9 @@ const WorkflowsPage = () => {
         {isWorkflowsEmpty ? (
           emptyPlaceholder
         ) : (
-          <div className="tw:px-6 tw:pt-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:justify-between">
-            <div className="tw:mb-4 tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
-              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
+          <div className="tw:flex tw:flex-1 tw:min-h-0 tw:flex-col">
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-primary tw:px-6 tw:pt-4">
+              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
                 {workflows.map((workflow) => (
                   <WorkflowCard
                     data={workflow}
@@ -362,19 +368,23 @@ const WorkflowsPage = () => {
                 ))}
               </div>
             </div>
-            {paging.total > PAGE_SIZE_MEDIUM && (
-              <div
-                className="tw:flex tw:justify-center tw:px-6 tw:py-3 tw:border-t tw:border-border-secondary tw:bg-primary"
-                data-testid="workflows-pagination">
-                <NextPrevious
-                  currentPage={currentPage}
-                  isLoading={loading}
-                  pageSize={PAGE_SIZE_MEDIUM}
-                  paging={paging}
-                  pagingHandler={handlePageChange}
-                />
-              </div>
-            )}
+            <div
+              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-primary tw:px-6 tw:py-3"
+              data-testid="workflows-pagination">
+              <NextPrevious
+                currentPage={currentPage}
+                isLoading={loading}
+                pageSize={pageSize}
+                pageSizeOptions={[
+                  PAGE_SIZE_BASE,
+                  PAGE_SIZE_MEDIUM,
+                  PAGE_SIZE_LARGE,
+                ]}
+                paging={paging}
+                pagingHandler={handlePageChange}
+                onShowSizeChange={setPageSize}
+              />
+            </div>
           </div>
         )}
       </div>

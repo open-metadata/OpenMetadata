@@ -111,6 +111,7 @@ const RecentlyViewedCarousel = ({
       slidesToShow={10}>
       {recentlyViewData.map((data, index) => (
         <div
+          aria-label={data.name}
           className={classNames('customise-recently-viewed-data', {
             disabled,
           })}
@@ -118,7 +119,12 @@ const RecentlyViewedCarousel = ({
           key={index}
           role="button"
           tabIndex={0}
-          onClick={() => navigateToEntity(data)}>
+          onClick={() => navigateToEntity(data)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              navigateToEntity(data);
+            }
+          }}>
           <div
             className="recent-item d-flex flex-col items-center gap-3"
             key={data.name}>

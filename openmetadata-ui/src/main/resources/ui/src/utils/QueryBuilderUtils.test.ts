@@ -254,6 +254,53 @@ describe('getEntityTypeAggregationFilter', () => {
     },
   };
 
+  it('should return the original filter unchanged when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    expect(result).toEqual(baseQueryFilter);
+  });
+
+  it('should not inject entityType.keyword term into the filter when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    const firstMustBlock = (
+      result.query?.bool?.must as QueryFieldInterface[]
+    )?.[0];
+    const innerMust = firstMustBlock?.bool?.must as QueryFieldInterface[];
+
+    const hasEntityTypeKeyword = innerMust?.some(
+      (item) => item.term?.['entityType.keyword'] !== undefined
+    );
+
+    expect(hasEntityTypeKeyword).toBe(false);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and must array is empty', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+    const result = getEntityTypeAggregationFilter(queryFilter, EntityType.ALL);
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and query is empty', () => {
+    const emptyFilter = {} as QueryFilterInterface;
+    const result = getEntityTypeAggregationFilter(emptyFilter, EntityType.ALL);
+
+    expect(result).toEqual(emptyFilter);
+  });
+
   it('should add entity type to the first must block', () => {
     const result = getEntityTypeAggregationFilter(
       { ...baseQueryFilter },
@@ -510,8 +557,8 @@ describe('buildExploreUrlParams', () => {
   it('should return valid JSON strings', () => {
     const result = buildExploreUrlParams(mockTree, mockQFilter);
 
-    expect(() => JSON.parse(result.queryFilter!)).not.toThrow();
-    expect(() => JSON.parse(result.quickFilter!)).not.toThrow();
+    expect(() => JSON.parse(result.queryFilter as string)).not.toThrow();
+    expect(() => JSON.parse(result.quickFilter as string)).not.toThrow();
   });
 
   it('should produce params that can be URL encoded with proper separators', () => {
@@ -528,8 +575,10 @@ describe('buildExploreUrlParams', () => {
     const decoded = new URLSearchParams(queryString);
 
     expect(decoded.get('mode')).toBe('edit');
-    expect(JSON.parse(decoded.get('queryFilter')!)).toEqual(mockTree);
-    expect(JSON.parse(decoded.get('quickFilter')!)).toEqual(mockQFilter);
+    expect(JSON.parse(decoded.get('queryFilter') as string)).toEqual(mockTree);
+    expect(JSON.parse(decoded.get('quickFilter') as string)).toEqual(
+      mockQFilter
+    );
   });
 
   it('should work correctly when only queryFilter is present with other params', () => {

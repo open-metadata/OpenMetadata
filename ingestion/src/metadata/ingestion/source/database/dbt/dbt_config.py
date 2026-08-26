@@ -21,9 +21,11 @@ from functools import singledispatch
 from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 import requests
+from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
+from metadata.core.connections.test_connection.aws import aws_error_code
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
 )
@@ -53,7 +55,6 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
-from metadata.utils.s3_utils import list_s3_objects
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
@@ -230,8 +231,8 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
     dbt_run_results = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.ingestion.connections.source_api_client import TrackedREST  # noqa: PLC0415
-        from metadata.ingestion.ometa.client import ClientConfig  # noqa: PLC0415
+        from metadata.ingestion.connections.source_api_client import TrackedREST
+        from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -260,25 +261,53 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
 
         try:
             response = client.get(f"/accounts/{account_id}/runs", data=params_data)
-        except Exception as exc:
-            error_msg = str(exc).lower()
-            if "401" in error_msg or "unauthorized" in error_msg:
+        except APIError as exc:
+            if exc.code == 401:
                 raise DBTConfigException(
                     "Invalid dbt Cloud auth token. Please verify your token has "
                     "'Account Viewer' permissions and is not expired."
                 ) from exc
-            if "404" in error_msg:
+            if exc.code == 404:
                 raise DBTConfigException(
                     f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
                 ) from exc
-            if "connection" in error_msg or "timeout" in error_msg:
+            raise DBTConfigException(f"dbt Cloud API error {exc.code}: {exc}") from exc
+        except RestTransportError as exc:
+            raise DBTConfigException(
+                f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. "
+                "Please verify the URL is correct and accessible."
+            ) from exc
+        except requests.HTTPError as exc:
+            # The REST client only raises APIError for a body with a top-level "code" key.
+            # dbt Cloud nests it under "status", and an SSO gateway or proxy may answer with
+            # HTML that has no "code" at all - those reach here as a bare HTTPError, and the
+            # status line is the only thing left to classify on.
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code in (401, 403):
                 raise DBTConfigException(
-                    f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. "
-                    "Please verify the URL is correct and accessible."
+                    "Invalid dbt Cloud auth token. Please verify your token has "
+                    "'Account Viewer' permissions and is not expired."
+                ) from exc
+            if status_code == 404:
+                raise DBTConfigException(
+                    f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
                 ) from exc
             raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
+        except Exception as exc:
+            raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
 
-        if not response or not response.get("data"):
+        # The client returns None for an error body it cannot classify, and can surface a raw
+        # Response on paths that bypass JSON decoding. Neither carries usable run data.
+        if not isinstance(response, dict):
+            raise DBTConfigException(  # noqa: TRY301
+                f"No usable response from dbt Cloud for account '{account_id}'. The API returned "
+                "an error the client could not classify, so the status was not preserved. "
+                "Possible causes: the account ID is wrong, the project or job ID is wrong, the "
+                "auth token is invalid, expired, or lacks 'Account Viewer' permission, or dbt "
+                "Cloud rate-limited the request and every retry was exhausted."
+            )
+
+        if not response.get("data"):
             filter_info = []
             if project_id:
                 filter_info.append(f"project ID '{project_id}'")
@@ -488,33 +517,80 @@ def download_dbt_files(
         raise DBTConfigException(f"No valid dbt manifest.json found. {error_details}")
 
 
+def _get_s3_client(config: DbtS3Config):
+    try:
+        client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
+    except (NoCredentialsError, PartialCredentialsError) as exc:
+        raise DBTConfigException(
+            "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
+        ) from exc
+    except ClientError as exc:
+        if aws_error_code(exc) in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+            raise DBTConfigException(
+                "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
+            ) from exc
+        raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
+    return client
+
+
+def _list_s3_buckets(client, bucket_name: str | None) -> list[dict]:
+    if bucket_name:
+        return [{"Name": bucket_name}]
+    try:
+        buckets = client.list_buckets()["Buckets"]
+    except ClientError as exc:
+        if aws_error_code(exc) == "AccessDenied":
+            raise DBTConfigException(
+                "Access denied when listing S3 buckets. Please check your IAM permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
+    return buckets
+
+
+def _iter_s3_object_keys(client, kwargs: dict) -> Iterable[str]:
+    """
+    Paginated listing of S3 object keys that lets botocore errors propagate.
+
+    metadata.utils.s3_utils.list_s3_objects catches every exception and only logs it, so a
+    wrong bucket name or a missing IAM permission reaches the caller as an empty listing and
+    is then reported as "no dbt artifacts found". dbt needs the original error to tell the
+    user which of the two it is, so it drives the paginator itself.
+    """
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(**kwargs):
+        for obj in page.get("Contents", []):
+            yield obj["Key"]
+
+
+def _get_s3_blob_grouped(client, current_bucket: str, kwargs: dict):
+    try:
+        blob_grouped = get_blobs_grouped_by_dir(blobs=_iter_s3_object_keys(client, kwargs))
+    except ClientError as exc:
+        error_code = aws_error_code(exc)
+        if error_code == "NoSuchBucket":
+            raise DBTConfigException(
+                f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
+            ) from exc
+        if error_code == "AccessDenied":
+            raise DBTConfigException(
+                f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+    return blob_grouped
+
+
 @get_dbt_details.register
 def _(config: DbtS3Config):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-
-        try:
-            client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
-        except Exception as exc:
-            error_msg = str(exc).lower()
-            if "credentials" in error_msg or "accessdenied" in error_msg:
-                raise DBTConfigException(
-                    "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
-                ) from exc
-            raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
-
-        if not bucket_name:
-            try:
-                buckets = client.list_buckets()["Buckets"]
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "accessdenied" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        "Access denied when listing S3 buckets. Please check your IAM permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
-        else:
-            buckets = [{"Name": bucket_name}]
+        client = _get_s3_client(config)
+        buckets = _list_s3_buckets(client, bucket_name)
 
         for bucket in buckets:
             current_bucket = bucket["Name"]
@@ -523,19 +599,7 @@ def _(config: DbtS3Config):
                 kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
             logger.debug(f"Listing S3 objects in s3://{current_bucket}/{prefix or ''}")
-            try:
-                blob_grouped = get_blobs_grouped_by_dir(blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs)))
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "nosuchbucket" in error_msg:
-                    raise DBTConfigException(
-                        f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
-                    ) from exc
-                if "accessdenied" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+            blob_grouped = _get_s3_blob_grouped(client, current_bucket, kwargs)
 
             if not blob_grouped:
                 prefix_path = prefix or ""
@@ -564,8 +628,8 @@ def _(config: DbtGcsConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         # pylint: disable=import-outside-toplevel
-        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError  # noqa: PLC0415
-        from google.cloud import storage  # noqa: PLC0415
+        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
+        from google.cloud import storage
 
         try:
             set_google_credentials(gcp_credentials=config.dbtSecurityConfig, single_project=True)
@@ -641,57 +705,88 @@ def _(config: DbtGcsConfig):
         raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")  # noqa: B904
 
 
+def _get_azure_client(config: DbtAzureConfig):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import AzureError, ClientAuthenticationError
+
+    try:
+        client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+    except ClientAuthenticationError as auth_exc:
+        raise DBTConfigException(
+            "Azure authentication failed. Please verify your credentials and permissions."
+        ) from auth_exc
+    except AzureError as azure_exc:
+        raise DBTConfigException(
+            "Failed to initialize Azure client. Please check your Azure configuration."
+        ) from azure_exc
+    return client
+
+
+def _list_azure_containers(client):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
+
+    try:
+        container_dicts = list(client.list_containers())
+        container_clients = [client.get_container_client(container["name"]) for container in container_dicts]
+    except ClientAuthenticationError as exc:
+        raise DBTConfigException("Access denied when listing Azure containers. Please check your permissions.") from exc
+    except HttpResponseError as exc:
+        if exc.status_code == 403:
+            raise DBTConfigException(
+                "Access denied when listing Azure containers. Please check your permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+    return container_clients
+
+
+def _get_azure_container_client(client, bucket_name: str):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import (
+        ClientAuthenticationError,
+        HttpResponseError,
+        ResourceNotFoundError,
+    )
+
+    try:
+        container_client = client.get_container_client(bucket_name)
+        # Verify container exists by attempting to get properties
+        container_client.get_container_properties()
+    except ResourceNotFoundError as exc:
+        raise DBTConfigException(
+            f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
+        ) from exc
+    except ClientAuthenticationError as exc:
+        raise DBTConfigException(
+            f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
+        ) from exc
+    except HttpResponseError as exc:
+        if exc.status_code == 404:
+            raise DBTConfigException(
+                f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
+            ) from exc
+        if exc.status_code == 403:
+            raise DBTConfigException(
+                f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
+    return container_client
+
+
 @get_dbt_details.register
 def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        # pylint: disable=import-outside-toplevel
-        from azure.core.exceptions import AzureError, ClientAuthenticationError  # noqa: PLC0415
-
-        try:
-            client = AzureClient(config.dbtSecurityConfig).create_blob_client()
-        except ClientAuthenticationError as auth_exc:
-            logger.error(
-                f"Failed to authenticate with Azure: {str(auth_exc)}. "  # noqa: RUF010
-                "Please check your Azure credentials and permissions."
-            )
-            raise DBTConfigException(
-                "Azure authentication failed. Please verify your credentials and permissions."
-            ) from auth_exc
-        except AzureError as azure_exc:
-            logger.error(f"Failed to create Azure client: {str(azure_exc)}")  # noqa: RUF010
-            raise DBTConfigException(
-                "Failed to initialize Azure client. Please check your Azure configuration."
-            ) from azure_exc
+        client = _get_azure_client(config)
 
         if not bucket_name:
-            try:
-                container_dicts = list(client.list_containers())
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "authorization" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        "Access denied when listing Azure containers. Please check your permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
-            containers = [client.get_container_client(container["name"]) for container in container_dicts]
+            containers = _list_azure_containers(client)
         else:
-            try:
-                container_client = client.get_container_client(bucket_name)
-                # Verify container exists by attempting to get properties
-                container_client.get_container_properties()
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "not found" in error_msg or "does not exist" in error_msg:
-                    raise DBTConfigException(
-                        f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
-                    ) from exc
-                if "authorization" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
-            containers = [container_client]
+            containers = [_get_azure_container_client(client, bucket_name)]
 
         for container_client in containers:
             container_name = container_client.container_name

@@ -92,7 +92,11 @@
     "tableFilterPattern": {
       "title": "Default Table Filter Pattern",
       "description": "Regex to only include/exclude tables that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^(?:.*\\.)?mv_tbl__.*__\\d+$"]
+      }
     },
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",

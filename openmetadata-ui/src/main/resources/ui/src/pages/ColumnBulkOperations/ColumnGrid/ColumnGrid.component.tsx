@@ -98,7 +98,7 @@ import { stringToDOMElement } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
-import { ColumnGridTableRow } from './components/ColumnGridTableRow';
+import ColumnGridRow from './components/ColumnGridRow';
 import {
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
@@ -442,8 +442,10 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             {t('label.tag-plural')}
           </Typography>
           <AsyncSelectList
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabling select autofocus
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={classificationTagOptions}
             key={`tags-${drawerKey}`}
             mode="multiple"
@@ -500,6 +502,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           </Typography>
           <TreeAsyncSelectList
             hasNoActionButtons
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={glossaryTermOptions}
             key={`glossaryTerms-${drawerKey}`}
             open={false}
@@ -1279,6 +1282,26 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       }
 
+      const structExpandHandler = () => {
+        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
+        if (isExpanded) {
+          scrollToRowIdRef.current = entity.id;
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.delete(entity.id);
+
+            return newSet;
+          });
+        } else {
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.add(entity.id);
+
+            return newSet;
+          });
+        }
+      };
+
       if (entity.isStructChild) {
         const hasChildren = entity.children && entity.children.length > 0;
         const nestedCount = entity.children?.length ?? 0;
@@ -1286,28 +1309,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           nestedCount > 0
             ? `${entity.columnName} (${nestedCount})`
             : entity.columnName;
-
-        const structExpandHandler = () => {
-          const isExpanded = columnGridListing.expandedStructRows.has(
-            entity.id
-          );
-          if (isExpanded) {
-            scrollToRowIdRef.current = entity.id;
-            columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-              const newSet = new Set(prev);
-              newSet.delete(entity.id);
-
-              return newSet;
-            });
-          } else {
-            columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-              const newSet = new Set(prev);
-              newSet.add(entity.id);
-
-              return newSet;
-            });
-          }
-        };
 
         const isStructExpanded = columnGridListing.expandedStructRows.has(
           entity.id
@@ -1352,26 +1353,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ? `${entity.columnName} (${nestedCount})`
           : entity.columnName;
 
-      const occurrenceExpandHandler = () => {
-        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
-        if (isExpanded) {
-          scrollToRowIdRef.current = entity.id;
-          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-            const newSet = new Set(prev);
-            newSet.delete(entity.id);
-
-            return newSet;
-          });
-        } else {
-          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-            const newSet = new Set(prev);
-            newSet.add(entity.id);
-
-            return newSet;
-          });
-        }
-      };
-
       const isOccurrenceExpanded = columnGridListing.expandedStructRows.has(
         entity.id
       );
@@ -1391,7 +1372,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   />
                 }
                 size="sm"
-                onClick={occurrenceExpandHandler}
+                onClick={structExpandHandler}
               />
             ) : null}
           </div>
@@ -1936,50 +1917,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   handleSelectRef.current = selectWithDescendants;
 
   // Set up data table with custom row component
-  const CustomTableRow = useCallback(
-    (props: Record<string, unknown>) => {
-      const { entity, isSelected, tableColumns } = props as {
-        entity: ColumnGridRowData;
-        isSelected: boolean;
-        tableColumns: { id: string }[];
-      };
-
-      const isChildRow = Boolean(entity.parentId || entity.isStructChild);
-      const isParentExpanded =
-        columnGridListing.expandedRows.has(entity.id) ||
-        columnGridListing.expandedStructRows.has(entity.id);
-      const showParentChildColors = isChildRow || isParentExpanded;
-
-      return (
-        <ColumnGridTableRow
-          columnWidthPercent={COLUMN_WIDTH_PERCENT}
-          entity={entity}
-          isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
-          isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
-          isSelected={isSelected}
-          renderColumnNameCell={renderColumnNameCellFinal}
-          renderDescriptionCell={renderDescriptionCellAdapter}
-          renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
-          renderPathCell={renderPathCellAdapter}
-          renderTagsCell={renderTagsCellAdapter}
-          showParentChildColors={showParentChildColors}
-          tableColumns={tableColumns}
-        />
-      );
-    },
-    [
-      columnGridListing.expandedRows,
-      columnGridListing.expandedStructRows,
-      pendingRefetchRowIds,
-      recentlyUpdatedRowIds,
-      renderColumnNameCellFinal,
-      renderPathCellAdapter,
-      renderDescriptionCellAdapter,
-      renderTagsCellAdapter,
-      renderGlossaryTermsCellAdapter,
-    ]
-  );
-
   // Filter entities to show only selected ones when viewSelectedOnly is true
   const filteredEntities = useMemo(() => {
     if (viewSelectedOnly) {
@@ -2123,7 +2060,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             handleTableSelectionChange(keys as Set<string>);
           }
         }}>
-        <Table.Header columns={tableColumns}>
+        <Table.Header className="tw:bg-transparent" columns={tableColumns}>
           {(column) => (
             <Table.Head
               id={column.id}
@@ -2169,13 +2106,26 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               );
             }
 
+            const isChildRow = Boolean(entity.parentId || entity.isStructChild);
+            const isParentExpanded =
+              columnGridListing.expandedRows.has(entity.id) ||
+              columnGridListing.expandedStructRows.has(entity.id);
+
             return (
-              <CustomTableRow
+              <ColumnGridRow
+                columnWidthPercent={COLUMN_WIDTH_PERCENT}
                 entity={entity}
+                isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
+                isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
                 isSelected={columnGridListing.isSelected(entity.id)}
                 key={entity.id}
+                renderColumnNameCell={renderColumnNameCellFinal}
+                renderDescriptionCell={renderDescriptionCellAdapter}
+                renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
+                renderPathCell={renderPathCellAdapter}
+                renderTagsCell={renderTagsCellAdapter}
+                showParentChildColors={isChildRow || isParentExpanded}
                 tableColumns={tableColumns}
-                onSelect={columnGridListing.handleSelect}
               />
             );
           }}
@@ -2191,8 +2141,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       columnGridListing.loading,
       columnGridListing.isSelected,
       t,
-      columnGridListing.handleSelect,
-      CustomTableRow,
+      columnGridListing.expandedRows,
+      columnGridListing.expandedStructRows,
+      pendingRefetchRowIds,
+      recentlyUpdatedRowIds,
+      renderColumnNameCellFinal,
+      renderPathCellAdapter,
+      renderDescriptionCellAdapter,
+      renderTagsCellAdapter,
+      renderGlossaryTermsCellAdapter,
     ]
   );
 
@@ -2541,7 +2498,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </div>
 
       {/* Table Container - Same structure as DomainListPage */}
-      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary">
+      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary">
         {!showEmptyOnboarding && (
           <div className="tw:flex tw:flex-col tw:gap-4 tw:px-6 tw:py-4 tw:border-b tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">

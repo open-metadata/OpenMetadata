@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
@@ -94,6 +95,7 @@ jest.mock(
         return (
           <div>
             <div>ConnectionConfigForm</div>
+            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input
               data-testid="connection-field"
               type="text"
@@ -351,6 +353,18 @@ describe('EditConnectionFormPage component', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it('should hand the scroll to the full-width panel, not the centred form body', async () => {
+    // Otherwise the blank margins beside the form belong to an overflow:hidden ancestor and the
+    // wheel does nothing there.
+    await act(async () => {
+      render(<EditConnectionFormPage {...mockProps} />);
+    });
+
+    const { firstPanel } = (ResizablePanels as jest.Mock).mock.calls[0][0];
+
+    expect(firstPanel.allowScroll).toBe(true);
   });
 
   it('should show loader while fetching service details', async () => {

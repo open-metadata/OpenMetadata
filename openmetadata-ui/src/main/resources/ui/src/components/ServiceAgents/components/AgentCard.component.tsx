@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Card,
+  Skeleton,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
@@ -33,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { useScheduleDescriptionTexts } from '../../../hooks/useScheduleDescriptionTexts';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
@@ -72,6 +74,7 @@ const AgentCard: FC<AgentCardProps> = ({
   onRunDetails,
 }) => {
   const { t } = useTranslation();
+  const { isPending, isUnavailable } = useAgentActionAvailability();
   const { descriptionFirstPart, descriptionSecondPart } =
     useScheduleDescriptionTexts(agent.schedule);
   const scheduleText = [descriptionFirstPart, descriptionSecondPart]
@@ -101,6 +104,8 @@ const AgentCard: FC<AgentCardProps> = ({
     ) : (
       <Database01 size={15} />
     );
+  // Runs read oldest-to-newest, so the latest one is the rightmost dot.
+  const latestRunIndex = agent.recentRuns.length - 1;
 
   return (
     <Card
@@ -201,16 +206,6 @@ const AgentCard: FC<AgentCardProps> = ({
                     </strong>
                   </span>
                 )}
-                {isFailed && agent.failStep && (
-                  <Metric
-                    icon={<AlertCircle size={15} />}
-                    label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                      'label.before-error'
-                    )}`}
-                    tone="error"
-                    value={`${t('label.failed-at')} ${agent.failStep}`}
-                  />
-                )}
               </>
             )}
           </Box>
@@ -227,9 +222,13 @@ const AgentCard: FC<AgentCardProps> = ({
               <Box className="tw:gap-1">
                 {agent.recentRuns.map((run, index) => (
                   <button
+                    aria-label={t('message.run-status-click-details', {
+                      status: t(RUN_META[run.status].labelKey),
+                    })}
                     className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
                       RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
-                    }${index === 0 ? '' : ' tw:opacity-[0.55]'}`}
+                    }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
+                    data-run-status={run.status}
                     data-testid="agent-run-dot"
                     key={run.id}
                     title={t('message.run-status-click-details', {
@@ -277,9 +276,10 @@ const AgentCard: FC<AgentCardProps> = ({
           </Box>
         )}
 
-        {/* actions */}
+        {/* actions — Diagnose opens the run history, which is read from OpenMetadata's own
+            tables, so it stays available while the pipeline service does not answer */}
         <Box align="center" className="tw:shrink-0 tw:gap-2">
-          {isFailed ? (
+          {isFailed && (
             <Button
               className="tw:font-semibold"
               color="primary"
@@ -289,35 +289,54 @@ const AgentCard: FC<AgentCardProps> = ({
               onClick={() => onRunDetails(agent)}>
               {t('label.diagnose')}
             </Button>
+          )}
+          {isPending ? (
+            <span
+              aria-busy
+              aria-label={t('label.loading')}
+              aria-live="polite"
+              className="tw:flex tw:items-center tw:gap-2"
+              data-testid="agent-card-actions-skeleton"
+              role="status">
+              <Skeleton height={32} variant="rounded" width={88} />
+              <Skeleton className="tw:size-8.5" variant="rounded" />
+            </span>
           ) : (
-            <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
-              color="secondary"
-              data-testid="logs-button"
-              iconLeading={<AlignLeft size={15} />}
-              size="sm"
-              onClick={() => onLogs(agent)}>
-              {t('label.log-plural')}
-            </Button>
+            <>
+              {!isFailed && (
+                <Button
+                  className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+                  color="secondary"
+                  data-testid="logs-button"
+                  iconLeading={<AlignLeft size={15} />}
+                  isDisabled={isUnavailable}
+                  size="sm"
+                  onClick={() => onLogs(agent)}>
+                  {t('label.log-plural')}
+                </Button>
+              )}
+              {canRunAgent(agent, permissions) && (
+                <Button
+                  className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+                  color="secondary"
+                  data-testid="run-agent-button"
+                  iconLeading={<PlayIcon height={14} width={14} />}
+                  isDisabled={isUnavailable}
+                  size="sm"
+                  onClick={() => onRun(agent)}>
+                  {t('label.run')}
+                </Button>
+              )}
+              <AgentOverflowMenu
+                allowedActions={allowedActions}
+                enabled={agent.enabled}
+                isDisabled={isUnavailable}
+                permissions={permissions}
+                status={agent.status}
+                onAction={(action) => onAction(action, agent)}
+              />
+            </>
           )}
-          {canRunAgent(agent, permissions) && (
-            <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
-              color="secondary"
-              data-testid="run-agent-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
-              size="sm"
-              onClick={() => onRun(agent)}>
-              {t('label.run')}
-            </Button>
-          )}
-          <AgentOverflowMenu
-            allowedActions={allowedActions}
-            enabled={agent.enabled}
-            permissions={permissions}
-            status={agent.status}
-            onAction={(action) => onAction(action, agent)}
-          />
         </Box>
       </Box>
     </Card>

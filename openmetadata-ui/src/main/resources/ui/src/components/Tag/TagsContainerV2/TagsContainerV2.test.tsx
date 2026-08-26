@@ -35,9 +35,23 @@ jest.mock('../TagsSelectForm/TagsSelectForm.component', () => {
   });
 });
 
-jest.mock('../TagsViewer/TagsViewer', () =>
-  jest.fn().mockImplementation(() => <div data-testid="tags-viewer" />)
-);
+// Renders a portaled link alongside its normal output, standing in for the "+n more" popover:
+// antd mounts overlay content in `document.body`, so it is a React-tree descendant whose clicks
+// bubble through the container while being a DOM sibling of it.
+jest.mock('../TagsViewer/TagsViewer', () => {
+  const { createPortal } = jest.requireActual('react-dom');
+
+  return jest.fn().mockImplementation(() => (
+    <div data-testid="tags-viewer">
+      {createPortal(
+        <a data-testid="portaled-tag-link" href="/tag/PII">
+          PII
+        </a>,
+        document.body
+      )}
+    </div>
+  ));
+});
 
 jest.mock('../TagsV1/TagsV1.component', () =>
   jest.fn().mockImplementation(() => <div data-testid="tags-v1" />)
@@ -133,7 +147,10 @@ const renderTagsContainerInsideClickableParent = (props: {
 
   return render(
     <MemoryRouter>
-      <div data-testid="clickable-parent" onClick={props.onParentClick}>
+      <div
+        data-testid="clickable-parent"
+        role="presentation"
+        onClick={props.onParentClick}>
         <TagsContainerV2
           permission
           showInlineEditButton
@@ -308,7 +325,11 @@ describe('TagsContainerV2 click propagation', () => {
     capturedOnSubmit = undefined;
   });
 
-  it('does not bubble container clicks to a clickable ancestor', () => {
+  // These two used to assert the opposite. Swallowing every click in the container also swallowed
+  // the ones on its padding and on the gaps between chips, so on a clickable row or card the whole
+  // tags column became a dead zone and the surface read as broken. Only the inner controls — the
+  // tag links, the add/edit buttons, "+n more" — keep their clicks now.
+  it('bubbles a click on the container itself to a clickable ancestor', () => {
     const onParentClick = jest.fn();
     renderTagsContainerInsideClickableParent({
       selectedTags: [personalDataTag],
@@ -318,10 +339,10 @@ describe('TagsContainerV2 click propagation', () => {
 
     fireEvent.click(screen.getByTestId('tags-container'));
 
-    expect(onParentClick).not.toHaveBeenCalled();
+    expect(onParentClick).toHaveBeenCalledTimes(1);
   });
 
-  it('does not bubble glossary container clicks to a clickable ancestor', () => {
+  it('bubbles a click on the glossary container itself to a clickable ancestor', () => {
     const onParentClick = jest.fn();
     renderTagsContainerInsideClickableParent({
       selectedTags: [],
@@ -331,6 +352,21 @@ describe('TagsContainerV2 click propagation', () => {
     });
 
     fireEvent.click(screen.getByTestId('glossary-container'));
+
+    expect(onParentClick).toHaveBeenCalledTimes(1);
+  });
+
+  // The guard runs on the container, but the popover's content lives in `document.body`. A DOM
+  // containment check treats it as foreign and lets the click through to the card behind it.
+  it('keeps a click on portaled popover content from reaching the ancestor', () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    fireEvent.click(screen.getByTestId('portaled-tag-link'));
 
     expect(onParentClick).not.toHaveBeenCalled();
   });

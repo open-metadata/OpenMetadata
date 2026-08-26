@@ -766,6 +766,28 @@ test.describe(
 
         expect(responseData).toHaveProperty('jobId');
         expect(responseData).toHaveProperty('message');
+
+        // The job id has to name a background_jobs row. A UUID here would mean the
+        // export ran on a local executor, whose result only that server can serve.
+        expect(responseData.jobId).toMatch(/^\d+$/);
+      });
+
+      // The completion event only reaches sockets held by the server that ran the
+      // job, so the download must not depend on it arriving.
+      await test.step('Export completes and downloads the result', async () => {
+        const download = await page.waitForEvent('download', {
+          timeout: 120_000,
+        });
+
+        expect(download.suggestedFilename()).toContain('audit_logs_');
+
+        const stream = await download.createReadStream();
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk as Uint8Array);
+        }
+
+        expect(Buffer.concat(chunks).toString('utf-8').trim()).toMatch(/^\[/);
       });
     });
 

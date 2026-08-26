@@ -27,6 +27,7 @@ import {
 import type { QueuedToast } from 'react-aria-components';
 import { useContext } from 'react';
 import type { ToastContent, ToastVariant } from './toast-store';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 
 const variantConfig: Record<
@@ -65,6 +66,7 @@ interface ToastProps {
 }
 
 export const Toast = ({ toast }: ToastProps) => {
+  const { t } = useCoreTranslation();
   const state = useContext(UNSTABLE_ToastStateContext);
   const { variant = 'default', message: messageOrNode } = toast.content;
   const config = variantConfig[variant];
@@ -81,6 +83,7 @@ export const Toast = ({ toast }: ToastProps) => {
         'tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150'
       )}
       data-testid="alert-bar"
+      data-variant={variant}
       toast={toast}>
       <span className="tw:mt-0.5 tw:flex tw:shrink-0" data-testid="alert-icon">
         <Icon
@@ -97,7 +100,7 @@ export const Toast = ({ toast }: ToastProps) => {
       </span>
       {showClose && state && (
         <Button
-          aria-label="Close"
+          aria-label={t('label.close', 'Close')}
           className="tw:-mr-1 tw:mt-0.5 tw:ml-1 tw:flex tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"
           data-testid="alert-icon-close"
           slot="close"

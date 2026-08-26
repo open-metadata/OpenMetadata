@@ -13,10 +13,15 @@
 Map Types to convert/cast mssql related data types to relevant data types
 """
 
-from sqlalchemy import NVARCHAR, TEXT
+from typing import Any
 
+import sqlalchemy
+from sqlalchemy import NVARCHAR, TEXT
+from sqlalchemy.sql.sqltypes import TypeEngine
+
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.profiler.orm.converter.common import CommonMapTypes
-from metadata.profiler.orm.registry import CustomImage, CustomTypes, DataType
+from metadata.profiler.orm.registry import CustomImage, CustomTypes
 
 cast_dict = {
     CustomImage: "VARBINARY(max)",
@@ -30,9 +35,21 @@ class MssqlMapTypes(CommonMapTypes):
     Mssql type mapper
     """
 
-    def __init__(self) -> None:
-        self._TYPE_MAP.update(
-            {
-                DataType.TIMESTAMP: CustomTypes.TIMESTAMP.value,
-            }
-        )
+    _TYPE_MAP_OVERRIDE = {  # noqa: RUF012
+        DataType.TIMESTAMP: CustomTypes.TIMESTAMP.value,
+        DataType.MONEY: sqlalchemy.NUMERIC,
+        DataType.BIT: sqlalchemy.BOOLEAN,
+    }
+    _TYPE_MAP = {  # noqa: RUF012
+        **CommonMapTypes._TYPE_MAP,
+        **_TYPE_MAP_OVERRIDE,
+    }
+
+    @staticmethod
+    def map_sqa_to_om_types() -> dict[TypeEngine, set[DataType]]:
+        """returns an ORM type"""
+        # Derived from _TYPE_MAP_OVERRIDE so the forward and reverse maps cannot drift.
+        mapping: dict[Any, set[DataType]] = dict(CommonMapTypes.map_sqa_to_om_types())
+        for om_type, sqa_type in MssqlMapTypes._TYPE_MAP_OVERRIDE.items():
+            mapping[sqa_type] = mapping.get(sqa_type, set()) | {om_type}
+        return mapping

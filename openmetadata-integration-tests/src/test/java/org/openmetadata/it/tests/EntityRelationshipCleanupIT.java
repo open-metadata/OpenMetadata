@@ -15,8 +15,10 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -86,9 +88,8 @@ public class EntityRelationshipCleanupIT {
   @Test
   void dryRun_reportsOrphansButDeletesNothing(TestNamespace ns) {
     String marker = "ITDRYRUN_" + ns.uniqueShortId();
+    List<String> seededFromIds = seedOrphans(marker, SEEDED_ORPHANS);
     try {
-      seedOrphans(marker, SEEDED_ORPHANS);
-
       EntityRelationshipCleanup.EntityCleanupResult result =
           new EntityRelationshipCleanup(Entity.getCollectionDAO(), true).performCleanup(25);
 
@@ -98,7 +99,7 @@ public class EntityRelationshipCleanupIT {
       assertEquals(0, result.getRelationshipsDeleted(), "dry run must not delete anything");
       assertEquals(SEEDED_ORPHANS, orphanCount(marker), "dry run must leave seeded orphans intact");
     } finally {
-      deleteOrphans(marker);
+      deleteByFromIds(seededFromIds);
     }
   }
 
@@ -163,16 +164,21 @@ public class EntityRelationshipCleanupIT {
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
   }
 
-  private void seedOrphans(String marker, int count) {
+  /** Returns the {@code fromId} of every seeded row, so cleanup can delete them via from_index. */
+  private List<String> seedOrphans(String marker, int count) {
+    List<String> fromIds = new ArrayList<>();
     for (int i = 0; i < count; i++) {
+      String fromId = UUID.randomUUID().toString();
       insertOrphan(
-          UUID.randomUUID().toString(),
+          fromId,
           UUID.randomUUID().toString(),
           Entity.DATABASE_SCHEMA,
           Entity.TABLE,
           Relationship.CONTAINS.ordinal(),
           marker);
+      fromIds.add(fromId);
     }
+    return fromIds;
   }
 
   private void insertOrphan(
@@ -194,14 +200,21 @@ public class EntityRelationshipCleanupIT {
                     .execute());
   }
 
-  private void deleteOrphans(String marker) {
+  /**
+   * Deletes by {@code fromId} rather than by the marker in {@code relationType}. No index leads with
+   * relationType, so a DELETE filtered on it full-scans entity_relationship and, under InnoDB
+   * REPEATABLE READ, next-key-locks every row it touches - deadlocking against the other suites
+   * concurrently writing relationships. from_index keeps the lock footprint to the seeded rows.
+   */
+  private void deleteByFromIds(List<String> fromIds) {
     TestSuiteBootstrap.getJdbi()
         .useHandle(
-            handle ->
-                handle
-                    .createUpdate("DELETE FROM entity_relationship WHERE relationType = :m")
-                    .bind("m", marker)
-                    .execute());
+            handle -> {
+              PreparedBatch batch =
+                  handle.prepareBatch("DELETE FROM entity_relationship WHERE fromId = :f");
+              fromIds.forEach(fromId -> batch.bind("f", fromId).add());
+              batch.execute();
+            });
   }
 
   private void deleteByFromId(String fromId) {

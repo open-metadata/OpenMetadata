@@ -99,7 +99,10 @@ import {
   TaskPayload,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import { formatIsoDuration } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  formatDate,
+  formatIsoDuration,
+} from '../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
@@ -231,6 +234,10 @@ const DAR_FIELD_ICONS: Record<string, string> = {
 
 const DAR_FIELD_FORMATTERS: Record<string, (value: unknown) => string> = {
   duration: (value) => formatIsoDuration(String(value ?? '')),
+  // Show the expiry as a human date (matching the DAR detail drawer) instead of
+  // the raw epoch number the schema field would otherwise render.
+  expirationDate: (value) =>
+    value == null || value === '' ? '--' : formatDate(Number(value)) || '--',
 };
 
 const ASSIGNEES_COLLAPSED_COUNT = 5;
@@ -613,6 +620,7 @@ export const TaskTabNew = ({
       label: (
         <span
           data-testid={`task-action-menu-item-${item.key}`}
+          role="presentation"
           onClick={
             onItemClick
               ? (event) => {

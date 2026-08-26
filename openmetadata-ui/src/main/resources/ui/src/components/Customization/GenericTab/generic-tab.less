@@ -18,7 +18,7 @@
 
   .react-grid-item {
     background: transparent;
-    transition: all 200ms ease;
+    transition: all var(--om-duration-200) ease;
     transition-property: left, top;
 
     .ant-card.ant-card-bordered {
@@ -41,11 +41,25 @@
     border-radius: @border-rad-sm;
     border: 1px solid @grey-15;
     box-shadow: 0px 0px 0px 4px @grey-100;
-    box-shadow: 0px 1px 2px 0px #0a0d120d;
+    box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-051);
 
     > .dynamic-height-widget > .left-panel-content {
       // Keep padding in the observed content so its height is fully reserved.
       padding: @padding-md;
+    }
+  }
+
+  // `flat` variant: drop the left-panel frame card so the sole widget stands on
+  // its own (used by Domain & Data Product docs, which only hold the Description).
+  // Also drop the frame's inner padding so the widget lines up flush with the
+  // tabs (left) and the right panel (top) instead of being inset by the frame gap.
+  &.flat-left-panel > #KnowledgePanel\.LeftPanel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    > .dynamic-height-widget > .left-panel-content {
+      padding: 0;
     }
   }
 }

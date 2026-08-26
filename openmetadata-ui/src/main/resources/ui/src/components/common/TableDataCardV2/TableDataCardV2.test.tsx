@@ -21,9 +21,8 @@ jest.mock('../../../utils/TablePureUtils', () => ({
     .mockImplementation((value = 0) => `${value} value`),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/EntityServiceIconUtils', () => ({
   getServiceIcon: jest.fn(),
-  getEntityIcon: jest.fn().mockReturnValue(<p>icon</p>),
 }));
 
 jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {

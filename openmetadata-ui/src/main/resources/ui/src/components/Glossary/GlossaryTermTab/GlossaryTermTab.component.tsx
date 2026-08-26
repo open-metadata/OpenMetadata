@@ -32,7 +32,6 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -116,6 +115,10 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -133,7 +136,7 @@ const WorkflowHistory = withSuspenseFallback(
 
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
-const GLOSSARY_TABLE_SCROLL = { y: 'calc(100vh - 350px)' };
+const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
@@ -142,7 +145,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const fetchRequestSeqRef = useRef(0);
-  const [containerWidth, setContainerWidth] = useState(0);
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -654,10 +656,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return null;
   }, [isGlossary, activeGlossary]);
 
-  const tableColumnsWidth = useMemo(
-    () => glossaryTermTableColumnsWidth(containerWidth, permissions.Create),
-    [permissions.Create, containerWidth]
-  );
+  const tableColumnsWidth = useMemo(() => glossaryTermTableColumnsWidth(), []);
 
   const updateGlossaryTermStatus = (
     terms: ModifiedGlossary[],
@@ -1026,6 +1025,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         title: t('label.action-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+        width: 120,
         render: (_, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 
@@ -1709,13 +1709,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
-  useEffect(() => {
-    if (!tableContainerRef.current) {
-      return;
-    }
-    setContainerWidth(tableContainerRef.current.offsetWidth);
-  }, []);
-
   // Trigger new fetch when search term or status filter changes
   useEffect(() => {
     if (
@@ -1799,7 +1792,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <>
               <TableCard.Root size="sm">
                 <Table
-                  resizableColumns
                   columns={columns}
                   containerClassName="glossary-terms-table drop-over-background"
                   data-testid="glossary-terms-table"
@@ -1828,7 +1820,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             // This keeps the search bar and filters visible
             <TableCard.Root size="sm">
               <Table
-                resizableColumns
                 columns={columns}
                 containerClassName="glossary-terms-table"
                 data-testid="glossary-terms-table"

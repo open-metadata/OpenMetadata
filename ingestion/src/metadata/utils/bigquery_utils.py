@@ -66,7 +66,7 @@ def get_bigquery_client(
             scopes=scopes,
             lifetime=lifetime,
         )
-    from google.cloud import bigquery  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    from google.cloud import bigquery  # pylint: disable=import-outside-toplevel
 
     return bigquery.Client(credentials=credentials, project=project_id, location=location)
 
