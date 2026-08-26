@@ -25,7 +25,10 @@ import {
   SubscriptionCategory,
 } from '../../../generated/events/eventSubscription';
 import { testAlertDestination } from '../../../rest/alertsAPI';
-import { getFormattedDestinations } from '../../../utils/Alerts/AlertsUtilPure';
+import {
+  getDestinationsWithTestStatus,
+  getFormattedDestinations,
+} from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,7 +79,9 @@ const AlertAiDestinationSection = ({
           destinations: externalDestinations,
         });
 
-        setDestinationsWithStatus(results);
+        setDestinationsWithStatus(
+          getDestinationsWithTestStatus(externalDestinations, results)
+        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
