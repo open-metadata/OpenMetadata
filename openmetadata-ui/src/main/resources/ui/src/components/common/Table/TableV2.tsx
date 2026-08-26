@@ -1252,23 +1252,30 @@ const TableV2 = <T extends object>(
 
               <UntitledTable.Body
                 renderEmptyState={() =>
-                  isLoading
-                    ? null
-                    : // AntD fell back to its own <Empty> illustration, not bare
-                      // text, so a table with no rows read as an empty state
-                      // rather than a stray label. Call sites that pass
-                      // `locale.emptyText` still win — most hand in their own
-                      // ErrorPlaceHolder or FilterTablePlaceHolder.
-                      (rest.locale?.emptyText as ReactNode) ?? (
-                        <EmptyPlaceholder
-                          className="tw:py-8"
-                          icon={
-                            <SearchLg className="tw:text-fg-brand-primary" />
-                          }
-                          title={t('label.no-data')}
-                          variant="blank"
-                        />
-                      )
+                  isLoading ? null : (
+                    // The padding is the placeholder's breathing room and
+                    // belongs to whatever fills the slot: a call site's own
+                    // placeholder needs it as much as the fallback does, and
+                    // without it the empty state crowds the header.
+                    <div className="tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
+                      {
+                        // AntD fell back to its own <Empty> illustration, not
+                        // bare text, so a table with no rows read as an empty
+                        // state rather than a stray label. Call sites that pass
+                        // `locale.emptyText` still win — most hand in their own
+                        // ErrorPlaceHolder or FilterTablePlaceHolder.
+                        (rest.locale?.emptyText as ReactNode) ?? (
+                          <EmptyPlaceholder
+                            icon={
+                              <SearchLg className="tw:text-fg-brand-primary" />
+                            }
+                            title={t('label.no-data')}
+                            variant="blank"
+                          />
+                        )
+                      }
+                    </div>
+                  )
                 }>
                 {flatRows.flatMap((flatRow, flatIndex) => {
                   const { record, actualIndex, depth, hasChildren, rowKey } =

@@ -496,3 +496,39 @@ describe('TableV2 — loading overlay is anchored to the table', () => {
     );
   });
 });
+
+/**
+ * TableV2-only: legacy AntD pads its own `.ant-table-placeholder` cell, so the
+ * padding lives in a class this suite cannot compare against. What matters is
+ * that a call site's placeholder is padded like the built-in one — dropping
+ * the wrapper crowds the empty state against the header.
+ */
+describe('TableV2 — empty state padding', () => {
+  const renderEmpty = (props: Record<string, unknown> = {}) =>
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[]}
+        pagination={false}
+        rowKey="name"
+        {...props}
+      />
+    );
+
+  const padded = (el: Element | null) =>
+    Boolean(el?.closest('[class*="py-8"]'));
+
+  it('pads the placeholder a call site supplies', () => {
+    renderEmpty({
+      locale: { emptyText: <span data-testid="mine">Nothing here</span> },
+    });
+
+    expect(padded(screen.getByTestId('mine'))).toBe(true);
+  });
+
+  it('pads the built-in placeholder too', () => {
+    renderEmpty();
+
+    expect(padded(screen.getByText('label.no-data'))).toBe(true);
+  });
+});
