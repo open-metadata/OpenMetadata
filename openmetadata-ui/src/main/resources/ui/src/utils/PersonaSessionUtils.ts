@@ -22,7 +22,7 @@
  */
 const SELECTED_PERSONA_SESSION_KEY = 'omSelectedPersona';
 
-const hasWindow = (): boolean => typeof globalThis.window !== 'undefined';
+const hasWindow = (): boolean => globalThis.window !== undefined;
 
 export const writePersonaSession = (personaId: string): void => {
   if (!hasWindow()) {
