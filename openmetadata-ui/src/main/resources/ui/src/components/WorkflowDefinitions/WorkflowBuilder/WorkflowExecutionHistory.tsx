@@ -142,14 +142,12 @@ export const WorkflowExecutionHistory: React.FC = () => {
           const { displayLabel, statusType } = getStatusInfo(status);
 
           return (
-            <div className="tw:flex tw:justify-center">
-              <StatusBadgeV2
-                dataTestId={`workflow-status-badge-${record.id}`}
-                label={displayLabel}
-                showIcon={false}
-                status={statusType}
-              />
-            </div>
+            <StatusBadgeV2
+              dataTestId={`workflow-status-badge-${record.id}`}
+              label={displayLabel}
+              showIcon={false}
+              status={statusType}
+            />
           );
         },
       },
