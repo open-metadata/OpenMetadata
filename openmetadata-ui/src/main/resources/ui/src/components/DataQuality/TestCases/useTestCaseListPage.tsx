@@ -99,6 +99,7 @@ export const useTestCaseListPage = () => {
     showPagination,
     showDeleted,
     handleShowDeletedChange,
+    handleAfterDeleteAction,
   } = useTestCaseList({
     params,
     selectedFilter,
@@ -186,5 +187,6 @@ export const useTestCaseListPage = () => {
     extraDropdownContent,
     showDeleted,
     handleShowDeletedChange,
+    handleAfterDeleteAction,
   };
 };

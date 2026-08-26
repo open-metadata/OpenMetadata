@@ -182,6 +182,18 @@ export const useTestCaseList = ({
     [handlePageChange, fetchTestCases]
   );
 
+  const handleAfterDeleteAction = useCallback(() => {
+    // Delete and restore both remove a row from the current result set. Move
+    // back when that row was the last one so pagination cannot point at an
+    // empty page that is now beyond the available results.
+    const targetPage =
+      currentPage > INITIAL_PAGING_VALUE && testCase.length === 1
+        ? currentPage - 1
+        : currentPage;
+
+    handlePagingClick({ currentPage: targetPage });
+  }, [currentPage, handlePagingClick, testCase.length]);
+
   const getTestCases = () => {
     if (!isEmpty(params) || !isEmpty(selectedFilter)) {
       const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
@@ -236,5 +248,6 @@ export const useTestCaseList = ({
     showPagination,
     showDeleted,
     handleShowDeletedChange,
+    handleAfterDeleteAction,
   };
 };

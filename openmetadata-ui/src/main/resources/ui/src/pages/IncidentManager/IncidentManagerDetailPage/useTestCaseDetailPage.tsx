@@ -97,7 +97,7 @@ export interface UseTestCaseDetailPageResult {
   }>;
   handleOwnerChange: (owners?: EntityReference[]) => Promise<void>;
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
-  handleRestore: () => Promise<void>;
+  handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
   setTestCase: (testCase: TestCase) => void;
 }
@@ -320,7 +320,7 @@ export const useTestCaseDetailPage = ({
 
   const handleRestore = useCallback(async () => {
     if (!testCase?.id) {
-      return;
+      return false;
     }
 
     try {
@@ -331,8 +331,12 @@ export const useTestCaseDetailPage = ({
           entity: testCase.displayName ?? testCase.name,
         })
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     }
   }, [setEntityDetails, t, testCase]);
   const handleOwnerChange = async (owners?: EntityReference[]) => {

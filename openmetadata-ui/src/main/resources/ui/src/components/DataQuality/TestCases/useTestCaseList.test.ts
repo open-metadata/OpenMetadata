@@ -249,6 +249,29 @@ describe('useTestCaseList', () => {
     );
   });
 
+  it('should move to the previous page after removing the last row on a later page', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'only-row' }],
+      paging: { total: 21 },
+    });
+    const { result, props } = renderList({ currentPage: 3 });
+
+    await waitFor(() => expect(result.current.testCase).toHaveLength(1));
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleAfterDeleteAction();
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledWith(2);
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 10 })
+      )
+    );
+  });
+
   it('should persist the sort options across later fetches after sortTestCase', async () => {
     const { result } = renderList();
 

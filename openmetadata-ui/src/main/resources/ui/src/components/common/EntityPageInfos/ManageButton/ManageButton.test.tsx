@@ -205,6 +205,20 @@ describe('Test manage button component', () => {
     expect(mockOnRestoreEntity).toHaveBeenCalled();
   });
 
+  it('should keep the restore modal open when the callback reports failure', async () => {
+    mockOnRestoreEntity.mockResolvedValueOnce(false);
+    render(<ManageButton {...mockProps} deleted />);
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+    const modalRestoreButton = await screen.findAllByText('label.restore');
+    fireEvent.click(modalRestoreButton[1]);
+
+    await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
+
+    expect(screen.getByTestId('restore-modal-body')).toBeInTheDocument();
+  });
+
   it('should gate restore independently from delete permission', async () => {
     render(
       <ManageButton {...mockProps} canDelete deleted canRestore={false} />

@@ -84,13 +84,13 @@ export const TestCases = () => {
     isLoading,
     pagingData,
     showPagination,
-    fetchTestCases,
     sortTestCase,
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
     showDeleted,
     handleShowDeletedChange,
+    handleAfterDeleteAction,
   } = useTestCaseListPage();
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
@@ -320,7 +320,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
-          afterDeleteAction={() => fetchTestCases(pagingData.currentPage)}
+          afterDeleteAction={handleAfterDeleteAction}
           breadcrumbData={[
             {
               name: t('label.data-quality'),

@@ -435,12 +435,14 @@ describe('useTestCaseDetailPage', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
+    let isRestored: boolean | undefined;
     await act(async () => {
-      await result.current.handleRestore();
+      isRestored = await result.current.handleRestore();
     });
 
     expect(showErrorToast).toHaveBeenCalledWith(error);
     expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(isRestored).toBe(false);
   });
 
   it('getEntityFeedCount should fetch feed counts', async () => {
