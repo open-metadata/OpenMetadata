@@ -42,6 +42,7 @@ import {
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import TestCaseFormDrawer from './TestCaseFormDrawer';
 import {
+  TestCaseFormBodyProps,
   TestCaseFormContext,
   TestCaseFormDrawerProps,
   TestLevel,
@@ -141,88 +142,90 @@ const mockContextWithPipeline: TestCaseFormContext = {
 let emitContextFn: ((ctx: TestCaseFormContext) => void) | undefined;
 let emitActiveFieldFn: ((fieldId: string) => void) | undefined;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let lastFormBodyProps: Record<string, any> | undefined;
+let lastFormBodyProps:
+  | { isEditMode?: boolean; showOnlyParameter?: boolean }
+  | undefined;
 
 jest.mock('./TestCaseFormBody', () =>
-  jest.fn().mockImplementation(
-    ({
-      form,
-      onContextChange,
-      onActiveFieldChange,
-      errorMessage,
-      isEditMode,
-      showOnlyParameter,
-    }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any) => {
-      emitContextFn = onContextChange;
-      emitActiveFieldFn = onActiveFieldChange;
-      lastFormBodyProps = { isEditMode, showOnlyParameter };
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        form,
+        onContextChange,
+        onActiveFieldChange,
+        errorMessage,
+        isEditMode,
+        showOnlyParameter,
+      }: TestCaseFormBodyProps) => {
+        emitContextFn = onContextChange;
+        emitActiveFieldFn = onActiveFieldChange;
+        lastFormBodyProps = { isEditMode, showOnlyParameter };
 
-      const testTypeField: FieldProp = {
-        name: 'testTypeId',
-        label: 'Test Type',
-        type: FieldTypes.TEXT,
-        required: false,
-        id: 'root/testType',
-        doc: TEST_TYPE_DOC,
-        props: { 'data-testid': 'test-type' },
-      };
+        const testTypeField: FieldProp = {
+          name: 'testTypeId',
+          label: 'Test Type',
+          type: FieldTypes.TEXT,
+          required: false,
+          id: 'root/testType',
+          doc: TEST_TYPE_DOC,
+          props: { 'data-testid': 'test-type' },
+        };
 
-      const testNameValue = form?.watch ? form.watch('testName') : undefined;
-      const displayNameValue = form?.watch
-        ? form.watch('displayName')
-        : undefined;
-      const paramsValue = form?.watch ? form.watch('params') : undefined;
+        const testNameValue = form?.watch ? form.watch('testName') : undefined;
+        const displayNameValue = form?.watch
+          ? form.watch('displayName')
+          : undefined;
+        const paramsValue = form?.watch ? form.watch('params') : undefined;
 
-      return (
-        <div data-testid="test-case-form-body">
-          {!showOnlyParameter && (
-            <input
-              aria-label="Test case name"
-              data-testid="test-case-name"
-              disabled={Boolean(isEditMode)}
-              value={testNameValue ?? ''}
-              onChange={() => undefined}
-            />
-          )}
-          {!showOnlyParameter && isEditMode && (
-            <input
-              aria-label="Display name"
-              data-testid="display-name"
-              value={displayNameValue ?? ''}
-              onChange={() => undefined}
-            />
-          )}
-          {!showOnlyParameter && (
-            <div data-testid="select-table-card">select-table-card</div>
-          )}
-          <div data-testid="test-type-card">
-            {getField(testTypeField)}
-            <div data-testid="params-value">
-              {paramsValue ? JSON.stringify(paramsValue) : ''}
+        return (
+          <div data-testid="test-case-form-body">
+            {!showOnlyParameter && (
+              <input
+                aria-label="Test case name"
+                data-testid="test-case-name"
+                disabled={Boolean(isEditMode)}
+                value={testNameValue ?? ''}
+                onChange={() => undefined}
+              />
+            )}
+            {!showOnlyParameter && isEditMode && (
+              <input
+                aria-label="Display name"
+                data-testid="display-name"
+                value={displayNameValue ?? ''}
+                onChange={() => undefined}
+              />
+            )}
+            {!showOnlyParameter && (
+              <div data-testid="select-table-card">select-table-card</div>
+            )}
+            <div data-testid="test-type-card">
+              {getField(testTypeField)}
+              <div data-testid="params-value">
+                {paramsValue ? JSON.stringify(paramsValue) : ''}
+              </div>
             </div>
+            {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
+            <button
+              data-testid="emit-context"
+              onClick={() => onContextChange?.(mockContext)}>
+              emit
+            </button>
+            <button
+              data-testid="emit-context-pipeline"
+              onClick={() => onContextChange?.(mockContextWithPipeline)}>
+              emit-pipeline
+            </button>
+            <button
+              data-testid="emit-active-field"
+              onClick={() => onActiveFieldChange?.('testName')}>
+              emit-field
+            </button>
           </div>
-          {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
-          <button
-            data-testid="emit-context"
-            onClick={() => onContextChange?.(mockContext)}>
-            emit
-          </button>
-          <button
-            data-testid="emit-context-pipeline"
-            onClick={() => onContextChange?.(mockContextWithPipeline)}>
-            emit-pipeline
-          </button>
-          <button
-            data-testid="emit-active-field"
-            onClick={() => onActiveFieldChange?.('testName')}>
-            emit-field
-          </button>
-        </div>
-      );
-    }
-  )
+        );
+      }
+    )
 );
 
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
