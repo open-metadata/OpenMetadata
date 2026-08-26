@@ -357,8 +357,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           .withDescription(csvRecord.get(3))
           .withReviewers(getReviewers(printer, csvRecord, 4))
           .withOwners(getOwners(printer, csvRecord, 5))
-          .withEntityStatus(getTagStatus(printer, csvRecord))
-          .withStyle(getStyle(csvRecord))
+          .withEntityStatus(getTagStatus(printer, csvRecord, existingTag))
+          .withStyle(getStyle(csvRecord, existingTag))
           .withDomains(getDomains(printer, csvRecord, 9))
           .withMutuallyExclusive(getMutuallyExclusive(csvRecord, existingTag));
 
@@ -382,15 +382,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       return parentRef;
     }
 
-    private EntityStatus getTagStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    private EntityStatus getTagStatus(CSVPrinter printer, CSVRecord csvRecord, Tag existingTag)
+        throws IOException {
       EntityStatus status = null;
       if (processRecord) {
         String tagStatus = csvRecord.get(6);
         try {
-          status =
-              nullOrEmpty(tagStatus)
-                  ? EntityStatus.DRAFT
-                  : EntityFieldUtils.parseEntityStatus(tagStatus);
+          status = existingTag == null ? EntityStatus.DRAFT : existingTag.getEntityStatus();
+          if (!nullOrEmpty(tagStatus)) {
+            status = EntityFieldUtils.parseEntityStatus(tagStatus);
+          }
         } catch (IllegalArgumentException ex) {
           importFailure(
               printer,
@@ -402,7 +403,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       return status;
     }
 
-    private Style getStyle(CSVRecord csvRecord) {
+    private Style getStyle(CSVRecord csvRecord, Tag existingTag) {
       Style style = null;
       if (processRecord) {
         String color = csvRecord.get(7);
@@ -415,6 +416,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           if (!nullOrEmpty(iconURL)) {
             style.setIconURL(iconURL);
           }
+        } else if (existingTag != null) {
+          style = existingTag.getStyle();
         }
       }
       return style;
