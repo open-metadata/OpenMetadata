@@ -224,7 +224,13 @@ class TagAnalyzer:
                     context=context,
                     result_patcher=date_time_patcher,
                 )
-                content_score = min(sum(r.score for r in content_results) / len(str_values), 1.0)
+                # Use the maximum individual recogniser score rather than the average over all
+                # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
+                # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any
+                # reasonable minimumConfidence.  For a security control, sensitivity is
+                # contaminating, not statistical: one confirmed hit is enough to classify the
+                # column as PII.  (Fixes #32070)
+                content_score = max((r.score for r in content_results), default=0.0)
 
         column_results: list[RecognizerResult] = []
         column_score = 0.0
