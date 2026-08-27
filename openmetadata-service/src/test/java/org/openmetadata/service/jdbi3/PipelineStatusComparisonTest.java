@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
-import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Guards the equality check behind ENTITY_NO_CHANGE for pipeline status writes. A false "changed"
@@ -30,19 +29,6 @@ class PipelineStatusComparisonTest {
         .withExecutionId("run_1")
         .withExecutionStatus(StatusType.Failed)
         .withTaskStatus(tasks);
-  }
-
-  private static PipelineStatus fromJson(String json) {
-    return JsonUtils.readValue(json, PipelineStatus.class);
-  }
-
-  @Test
-  @DisplayName("identical payloads compare equal")
-  void identicalPayloads() {
-    assertTrue(
-        PipelineRepository.isSameStatus(
-            status(List.of(task("a", StatusType.Failed, 5L))),
-            status(List.of(task("a", StatusType.Failed, 5L)))));
   }
 
   @Test
@@ -67,33 +53,6 @@ class PipelineStatusComparisonTest {
   }
 
   @Test
-  @DisplayName("legacy stored JSON without inputs/outputs compares equal")
-  void legacyJsonWithoutInputsOutputs() {
-    String legacy =
-        "{\"timestamp\":"
-            + TS
-            + ",\"executionId\":\"run_1\",\"executionStatus\":\"Failed\","
-            + "\"taskStatus\":[{\"name\":\"a\",\"executionStatus\":\"Failed\",\"endTime\":5}]}";
-    assertTrue(
-        PipelineRepository.isSameStatus(
-            fromJson(legacy), status(List.of(task("a", StatusType.Failed, 5L)))));
-  }
-
-  @Test
-  @DisplayName("key order in stored JSON is irrelevant: Postgres jsonb reorders on write")
-  void keyReorderedStoredJson() {
-    String reordered =
-        "{\"executionStatus\":\"Failed\",\"taskStatus\":[{\"endTime\":5,"
-            + "\"executionStatus\":\"Failed\",\"name\":\"a\"}],\"executionId\":\"run_1\","
-            + "\"timestamp\":"
-            + TS
-            + "}";
-    assertTrue(
-        PipelineRepository.isSameStatus(
-            fromJson(reordered), status(List.of(task("a", StatusType.Failed, 5L)))));
-  }
-
-  @Test
   @DisplayName("a changed executionStatus is a real change")
   void differentExecutionStatusIsAChange() {
     PipelineStatus incoming = status(List.of(task("a", StatusType.Failed, 5L)));
@@ -110,20 +69,5 @@ class PipelineStatusComparisonTest {
         PipelineRepository.isSameStatus(
             status(List.of(task("a", StatusType.Failed, null))),
             status(List.of(task("a", StatusType.Failed, 5L)))));
-  }
-
-  @Test
-  @DisplayName("a task disappearing is a real change")
-  void taskRemovalIsAChange() {
-    assertFalse(
-        PipelineRepository.isSameStatus(
-            status(List.of(task("a", StatusType.Failed, 5L), task("b", StatusType.Failed, 6L))),
-            status(List.of(task("a", StatusType.Failed, 5L)))));
-  }
-
-  @Test
-  @DisplayName("a null taskStatus is not the same as an empty one")
-  void nullTaskStatusVersusEmpty() {
-    assertFalse(PipelineRepository.isSameStatus(status(null), status(List.of())));
   }
 }

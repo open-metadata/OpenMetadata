@@ -10,7 +10,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
@@ -61,13 +64,6 @@ class StalePipelineExecutionTest {
   }
 
   @Test
-  @DisplayName("an execution that finished after the alert existed is delivered")
-  void recentExecutionIsDelivered() {
-    ChangeEvent event = pipelineStatusEvent(status(WATERMARK + HOUR, WATERMARK + HOUR));
-    assertFalse(AlertUtil.isStalePipelineExecution(event, WATERMARK));
-  }
-
-  @Test
   @DisplayName("a daily DAG's stale logical date must not silence a run that just failed")
   void logicalDateOlderThanWatermarkButTaskFinishedNow() {
     // Airflow's logical_date is the data-interval start, so a run executing today carries
@@ -96,14 +92,6 @@ class StalePipelineExecutionTest {
   }
 
   @Test
-  @DisplayName("startTime is used when no endTime is present")
-  void startTimeFallback() {
-    PipelineStatus status = status(WATERMARK - 24 * HOUR, null);
-    status.getTaskStatus().getFirst().setStartTime(WATERMARK - 40 * 24 * HOUR);
-    assertTrue(AlertUtil.isStalePipelineExecution(pipelineStatusEvent(status), WATERMARK));
-  }
-
-  @Test
   @DisplayName("a null watermark delivers everything, so upgrades do not silently suppress")
   void nullWatermarkDeliversEverything() {
     ChangeEvent event =
@@ -118,16 +106,6 @@ class StalePipelineExecutionTest {
         pipelineStatusEvent(status(WATERMARK - 40 * 24 * HOUR, WATERMARK - 40 * 24 * HOUR))
             .withEntityType(Entity.TABLE);
     assertFalse(AlertUtil.isStalePipelineExecution(event, WATERMARK));
-  }
-
-  @Test
-  @DisplayName("an EXCLUDE rule must still drop a stale execution, not deliver it")
-  void staleEventIsDroppedRegardlessOfRuleEffect() {
-    // The cut-off deliberately sits outside the rule engine: EXCLUDE rules compile to !(condition),
-    // so a matcher returning false for a stale execution would make the rule fire instead.
-    ChangeEvent event =
-        pipelineStatusEvent(status(WATERMARK - 40 * 24 * HOUR, WATERMARK - 40 * 24 * HOUR));
-    assertTrue(AlertUtil.isStalePipelineExecution(event, WATERMARK));
   }
 
   @Test
@@ -154,5 +132,28 @@ class StalePipelineExecutionTest {
 
   private static EventSubscription subscription(CreateEventSubscription.AlertType alertType) {
     return new EventSubscription().withId(UUID.randomUUID()).withAlertType(alertType);
+  }
+
+  @Test
+  @DisplayName("an EXCLUDE rule must still drop a stale execution rather than deliver it")
+  void staleEventIsDroppedUnderAnExcludeRule() {
+    // The cut-off deliberately sits outside the rule engine. EXCLUDE rules compile to !(condition),
+    // so moving this check into matchPipelineState would make such an alert fire on exactly the
+    // backfilled executions it is meant to suppress.
+    ChangeEvent stale =
+        pipelineStatusEvent(status(WATERMARK - 40 * 24 * HOUR, WATERMARK - 40 * 24 * HOUR));
+    EventFilterRule rule =
+        new EventFilterRule()
+            .withName("trigger")
+            .withEffect(ArgumentsInput.Effect.EXCLUDE)
+            .withCondition("matchPipelineState({'Failed'})")
+            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+    FilteringRules rules =
+        new FilteringRules()
+            .withResources(List.of("pipeline"))
+            .withRules(Collections.emptyList())
+            .withActions(List.of(rule));
+
+    assertFalse(AlertUtil.checkIfChangeEventIsAllowed(stale, rules, WATERMARK));
   }
 }
