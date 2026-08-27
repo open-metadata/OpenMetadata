@@ -56,9 +56,6 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -178,11 +175,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
@@ -209,8 +204,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
-import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
@@ -245,8 +238,6 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -268,7 +259,6 @@ import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -3944,8 +3934,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <ul>
    *   <li><b>user</b> — already excluded historically; user lookups are dominated by auth-time
    *       reads that talk to a different code path.
-   *   <li><b>THREAD / task</b> — feeds and tasks are write-heavy (every mutation creates a
-   *       thread), the JSON is small, and the workflow engine ({@link
+   *   <li><b>task</b> — tasks are write-heavy, the JSON is small, and the workflow engine ({@link
    *       org.openmetadata.service.governance.workflows.WorkflowHandler Flowable}) polls
    *       these tables on a tight loop. Stale-by-cache-window data here breaks workflow
    *       transitions and the IT suite (TaskResourceIT / IncidentTaskIntegrationIT /
@@ -3964,7 +3953,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final Set<String> UNCACHED_ENTITY_TYPES =
       Set.of(
           Entity.USER,
-          Entity.THREAD,
           Entity.TASK,
           Entity.WORKFLOW,
           Entity.WORKFLOW_DEFINITION,
@@ -4929,8 +4917,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
-              // Delete all the threads that are about this entity
-              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+              Entity.getConversationRepository()
+                  .deleteByEntity(entityType, List.of(entityInterface.getId()));
 
               // Drop cached state before the DB row goes away. A concurrent read arriving
               // between this invalidate and the dao.delete below would still observe the
@@ -7011,16 +6999,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
     }
-    try (var ignored = phase("bulkHardDeleteFeedThreads")) {
-      Entity.getFeedRepository().deleteByAbout(entityIds);
+    try (var ignored = phase("bulkHardDeleteConversations")) {
+      Entity.getConversationRepository().deleteByEntity(entityType, entityIds);
     }
   }
 
   /**
    * Delete the Task 2.0 feed artifacts (tasks and announcements) that are about this entity.
    *
-   * <p>{@link FeedRepository#deleteByAbout} only clears the pre-2.0 {@code thread_entity} table and
-   * no-ops once legacy thread storage is unavailable. Tasks and announcements moved to their own
+   * <p>The legacy feed cleanup only cleared the pre-2.0 {@code thread_entity} table, which no longer
+   * exists now that conversations own their storage. Tasks and announcements moved to their own
    * tables in Task 2.0, so a hard delete left them behind as orphans whose {@code about} no longer
    * resolves. Both are reached through {@code entity --MENTIONED_IN--> artifact}, so they must be
    * collected here, before the entity's own relationship rows are removed.
@@ -8565,28 +8553,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public List<TagLabel> getAllTags(EntityInterface entity) {
     return entity.getTags();
-  }
-
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-    if (EntityUtil.isDescriptionTask(taskType)) {
-      return new DescriptionTaskWorkflow(threadContext);
-    } else if (EntityUtil.isTagTask(taskType)) {
-      return new TagTaskWorkflow(threadContext);
-    } else if (EntityUtil.isApprovalTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-    }
-  }
-
-  public final void validateTaskThread(ThreadContext threadContext) {
-    ThreadType threadType = threadContext.getThread().getType();
-    if (threadType != ThreadType.Task) {
-      throw new IllegalArgumentException(
-          String.format("Thread type %s is not task related", threadType));
-    }
   }
 
   protected void validateColumnTags(List<Column> columns) {
@@ -11123,134 +11089,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       return json;
-    }
-  }
-
-  public static class DescriptionTaskWorkflow extends TaskWorkflow {
-    DescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setDescription(
-          org.openmetadata.service.util.DescriptionSanitizer.sanitize(resolveTask.getNewValue()));
-      return aboutEntity;
-    }
-  }
-
-  public static class TagTaskWorkflow extends TaskWorkflow {
-    TagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setTags(tags);
-      return aboutEntity;
-    }
-  }
-
-  /**
-   * Generic approval task workflow usable for any entity. Checks that the acting user is a
-   * reviewer of the entity, then delegates resolution to the governance WorkflowHandler. Falls
-   * back to a direct entityStatus patch when the Flowable workflow record no longer exists (e.g.
-   * after a corrupted restart).
-   */
-  public static class ApprovalTaskWorkflow extends TaskWorkflow {
-    ApprovalTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      EntityInterface entity = threadContext.getAboutEntity();
-      verifyReviewer(entity, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveLegacyThreadTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn("Workflow failed for taskId='{}', applying status directly", taskId);
-        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
-        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
-        EntityFieldUtils.setEntityField(
-            entity,
-            threadContext.getAbout().getEntityType(),
-            user,
-            FIELD_ENTITY_STATUS,
-            entityStatus,
-            true);
-      }
-
-      return entity;
-    }
-  }
-
-  /**
-   * Checks that {@code user} is an assignee of the given task thread. Throws
-   * {@link AuthorizationException} if not.
-   */
-  public static void checkUpdatedByTaskAssignee(Thread thread, String user) {
-    List<EntityReference> assignees = listOrEmpty(thread.getTask().getAssignees());
-    if (nullOrEmpty(assignees)) {
-      return; // no assignees configured – allow any user (backward compat)
-    }
-    boolean isAssignee =
-        assignees.stream()
-            .anyMatch(
-                ref -> {
-                  if (TEAM.equals(ref.getType())) {
-                    org.openmetadata.schema.entity.teams.Team team =
-                        Entity.getEntityByName(TEAM, ref.getName(), "users", Include.NON_DELETED);
-                    return team.getUsers().stream()
-                        .anyMatch(
-                            u ->
-                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
-                  }
-                  return ref.getName().equals(user)
-                      || (ref.getFullyQualifiedName() != null
-                          && ref.getFullyQualifiedName().equals(user));
-                });
-    if (!isAssignee) {
-      throw new AuthorizationException(notTaskAssignee(user));
-    }
-  }
-
-  /**
-   * Checks that {@code user} is a reviewer of the given entity. Throws {@link
-   * AuthorizationException} if not.
-   */
-  public static void verifyReviewer(EntityInterface entity, String user) {
-    List<EntityReference> reviewers = entity.getReviewers();
-    if (nullOrEmpty(reviewers)) {
-      return;
-    }
-    boolean isReviewer =
-        reviewers.stream()
-            .anyMatch(
-                e -> {
-                  if (TEAM.equals(e.getType())) {
-                    org.openmetadata.schema.entity.teams.Team team =
-                        Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                    return team.getUsers().stream()
-                        .anyMatch(
-                            u ->
-                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
-                  }
-                  return e.getName().equals(user) || e.getFullyQualifiedName().equals(user);
-                });
-    if (!isReviewer) {
-      throw new AuthorizationException(notReviewer(user));
     }
   }
 

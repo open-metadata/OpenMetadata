@@ -1819,12 +1819,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
   protected void preDelete(DataContract entity, String deletedBy) {
     // Inherited contracts cannot be deleted - they are virtual contracts derived from Data Product
     if (Boolean.TRUE.equals(entity.getInherited())) {
