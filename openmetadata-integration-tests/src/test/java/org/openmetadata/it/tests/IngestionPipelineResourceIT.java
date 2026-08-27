@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -71,6 +72,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1419,10 +1421,9 @@ public class IngestionPipelineResourceIT
     assertEquals(
         awsCredentials.getAwsRegion(), actualDbtS3Config.getDbtSecurityConfig().getAwsRegion());
 
-    String maskedSecret = actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey();
-    assertTrue(
-        maskedSecret == null || maskedSecret.contains("*"),
-        "Secret should be masked for admin user");
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
 
     IngestionPipeline botPipeline =
         SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId().toString());
@@ -1440,6 +1441,29 @@ public class IngestionPipelineResourceIT
     assertEquals(
         awsCredentials.getAwsSecretAccessKey(),
         botDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
+
+    actualDbtS3Config.getDbtSecurityConfig().setAwsRegion("us-east-1");
+    actualDbtPipeline.setDbtConfigSource(actualDbtS3Config);
+    SourceConfig maskedSourceConfig = new SourceConfig().withConfig(actualDbtPipeline);
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/sourceConfig")
+        .set("value", JsonUtils.valueToTree(maskedSourceConfig));
+
+    SdkClients.adminClient().ingestionPipelines().patch(pipeline.getId(), patch);
+
+    IngestionPipeline patchedPipeline =
+        SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId());
+    DbtPipeline patchedDbtPipeline =
+        JsonUtils.convertValue(patchedPipeline.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtS3Config patchedDbtS3Config =
+        JsonUtils.convertValue(patchedDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
+    assertEquals("us-east-1", patchedDbtS3Config.getDbtSecurityConfig().getAwsRegion());
+    assertEquals(
+        awsCredentials.getAwsSecretAccessKey(),
+        patchedDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
   }
 
   @Test

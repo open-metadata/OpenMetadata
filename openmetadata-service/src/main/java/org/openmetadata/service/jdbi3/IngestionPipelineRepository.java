@@ -85,6 +85,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -545,6 +546,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     Object type = configMap.get(SOURCE_CONFIG_TYPE);
     return type instanceof String typeValue && !typeValue.isBlank()
         || !(config instanceof Map<?, ?>) && type instanceof Enum<?>;
+  }
+
+  @Override
+  protected IngestionPipeline restorePatchSecrets(
+      IngestionPipeline original, IngestionPipeline updated) {
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
+    return updated;
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {

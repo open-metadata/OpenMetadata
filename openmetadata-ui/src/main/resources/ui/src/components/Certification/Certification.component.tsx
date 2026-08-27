@@ -29,11 +29,12 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { isImageUrl, renderIcon } from '../../utils/IconUtils';
+import { isImageUrl } from '../../utils/IconUtils';
 import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
+import { Icon } from '../common/Icon/Icon';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
@@ -158,13 +159,15 @@ const Certification = ({
             const title = getEntityName(certificate);
             const { id, fullyQualifiedName, description } = certificate;
 
-            const isIcon = iconURL && !isImageUrl(iconURL);
-            const renderedIcon = iconURL
-              ? renderIcon(iconURL, {
-                  size: 28,
-                  alt: title,
-                })
-              : null;
+            const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
+            const renderedIcon = iconURL ? (
+              <Icon
+                alt={title}
+                fallback={<CertificationIcon height={28} width={28} />}
+                iconValue={iconURL}
+                size={28}
+              />
+            ) : null;
 
             return (
               <div

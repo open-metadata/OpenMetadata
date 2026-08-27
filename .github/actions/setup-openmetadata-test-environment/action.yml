@@ -48,7 +48,7 @@ inputs:
     required: false
     default: "false"
   install-test-dependencies:
-    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
+    # ingestion[all], ingestion[test], sqlalchemy-redshift/ibmi,
     # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
     # workflows that invoke Python on the runner. Playwright E2E workflows drive
     # the browser and let the ingestion Docker container run its own installs, so
@@ -141,8 +141,6 @@ runs:
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
-        uv pip install "setuptools<81"
-        uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
         uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
