@@ -184,7 +184,7 @@ jobs:
           du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Integration Test Runtime
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
           overwrite: true
@@ -421,7 +421,7 @@ jobs:
       - name: Upload Integration Test Diagnostics
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-mysql-elasticsearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -434,7 +434,7 @@ jobs:
       - name: Upload Integration Test Reports
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: java-it-reports-mysql-elasticsearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml

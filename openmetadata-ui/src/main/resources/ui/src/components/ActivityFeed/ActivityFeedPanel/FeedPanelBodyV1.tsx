@@ -13,8 +13,7 @@
 
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useCallback, useMemo } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { FC, useCallback } from 'react';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import './feed-panel-body-v1.less';
@@ -27,20 +26,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   onFeedClick,
   isActive,
 }) => {
-  const mainFeed = useMemo(
-    () =>
-      feed
-        ? ({
-            message: feed.message,
-            postTs: feed.threadTs,
-            from: feed.createdBy,
-            id: feed.id,
-            reactions: feed.reactions,
-          } as Post)
-        : undefined,
-    [feed]
-  );
-
   const handleFeedClick = useCallback(() => {
     if (feed) {
       onFeedClick?.(feed);
@@ -58,7 +43,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         isOpenInDrawer
         feed={feed}
         isActive={isActive}
-        post={mainFeed}
         showThread={showThread}
       />
     );
