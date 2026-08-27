@@ -116,7 +116,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
       const response = await getLoggedInUserPermissions();
-      setPermissions(getUIPermission(response.data || []));
+      setPermissions(getUIPermission(response.data || [], true));
       redirectToStoredPath();
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -204,7 +204,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       }
       const promise = getResourcePermission(resource)
         .then((response) => {
-          const operationPermission = getOperationPermissions(response);
+          const operationPermission = getOperationPermissions(response, true);
           setResourcesPermission((prev) => ({
             ...prev,
             [resource]: operationPermission,

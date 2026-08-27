@@ -70,18 +70,59 @@ export const checkPermissionEntityResource = (
 };
 
 /**
+ * Translate access level to boolean, with optional handling for conditional grants.
+ *
+ * @param access - The access level from the backend (Allow, ConditionalAllow, etc.)
+ * @param allowConditional - If true, treat ConditionalAllow as true (for resource-level gating).
+ *                           If false, ConditionalAllow is false (for entity-level gating).
+ * @returns boolean - true if access is allowed, false otherwise
+ */
+const toAllowedBoolean = (
+  access: Access | undefined,
+  allowConditional: boolean
+): boolean => {
+  // Generated Permission.access is optional — absent means not granted.
+  if (access === undefined) {
+    return false;
+  }
+  switch (access) {
+    case Access.Allow:
+      return true;
+    case Access.ConditionalAllow:
+      // "Depends on the entity" — truthy only for resource-level gating,
+      // where the backend cannot evaluate conditions without an entity.
+      return allowConditional;
+    case Access.ConditionalDeny:
+    case Access.Deny:
+    case Access.NotAllow:
+      return false;
+    default: {
+      // Compile-time exhaustiveness: new Access members break the build here.
+      const unhandled: never = access;
+
+      return Boolean(unhandled);
+    }
+  }
+};
+
+/**
  *
  * @param permission ResourcePermission
+ * @param allowConditional If true, treat ConditionalAllow as true. Default false (entity-level strict gating).
  * @returns OperationPermission - {Operation:true/false}
  */
 export const getOperationPermissions = (
-  permission: ResourcePermission
+  permission: ResourcePermission,
+  allowConditional = false
 ): OperationPermission => {
   return permission.permissions.reduce(
     (acc: OperationPermission, curr: Permission) => {
       return {
         ...acc,
-        [curr.operation as Operation]: curr.access === Access.Allow,
+        [curr.operation as Operation]: toAllowedBoolean(
+          curr.access,
+          allowConditional
+        ),
       };
     },
     {} as OperationPermission
@@ -91,15 +132,20 @@ export const getOperationPermissions = (
 /**
  *
  * @param permissions Take ResourcePermission list
+ * @param allowConditional If true, treat ConditionalAllow as true. Default false (entity-level strict gating).
  * @returns UIPermission
  */
 export const getUIPermission = (
-  permissions: ResourcePermission[]
+  permissions: ResourcePermission[],
+  allowConditional = false
 ): UIPermission => {
   return permissions.reduce((acc: UIPermission, curr: ResourcePermission) => {
     return {
       ...acc,
-      [curr.resource as ResourceEntity]: getOperationPermissions(curr),
+      [curr.resource as ResourceEntity]: getOperationPermissions(
+        curr,
+        allowConditional
+      ),
     };
   }, {} as UIPermission);
 };
