@@ -13,12 +13,13 @@
 
 import { isEmpty } from 'lodash';
 import { lazy } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
+import { isAppModeSessionActive } from '../../utils/appModeSession';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
@@ -83,6 +84,9 @@ const AppRouter = () => {
   );
 
   const appMode = useAppMode();
+  // Subscribe to location so the app-mode-shell decision below is re-evaluated
+  // on every navigation (the session can end while the stored mode is unchanged).
+  useLocation();
 
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
@@ -97,8 +101,17 @@ const AppRouter = () => {
   }
 
   if (isAuthenticated) {
-    const AuthenticatedRoutesComponent =
-      appMode === AI_APP_MODE ? AppModeRoutes : AuthenticatedRoutes;
+    // Render the app-mode shell when the stored mode is AI, OR when an app-mode
+    // session is active — the user entered the AI experience (e.g. an AI-only
+    // deep link) and has not left it. The session keeps the shell across in-app
+    // navigation to shared routes (`/conversations` → `/explore` stays in the
+    // shell) without changing the stored mode, so the switcher still shows
+    // Classic. A fresh visit to a shared route with no session stays classic.
+    const shouldRenderAppModeShell =
+      appMode === AI_APP_MODE || isAppModeSessionActive();
+    const AuthenticatedRoutesComponent = shouldRenderAppModeShell
+      ? AppModeRoutes
+      : AuthenticatedRoutes;
 
     return (
       <AuthenticatedApp>

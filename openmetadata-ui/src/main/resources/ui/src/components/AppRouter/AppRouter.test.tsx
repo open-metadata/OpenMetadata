@@ -16,6 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
+import { isAppModeSessionActive } from '../../utils/appModeSession';
 import AppRouter from './AppRouter';
 
 jest.mock('./AuthenticatedApp', () => ({
@@ -75,8 +76,14 @@ jest.mock('../../hooks/useAppMode', () => ({
   useAppMode: jest.fn(),
 }));
 
+jest.mock('../../utils/appModeSession', () => ({
+  isAppModeSessionActive: jest.fn(),
+}));
+
 const mockUseApplicationStore = useApplicationStore as unknown as jest.Mock;
 const mockUseAppMode = useAppMode as unknown as jest.Mock;
+const mockIsAppModeSessionActive =
+  isAppModeSessionActive as unknown as jest.Mock;
 
 const setAuthState = (overrides: {
   isAuthenticated?: boolean;
@@ -110,6 +117,8 @@ describe('AppRouter — mode-based shell selection', () => {
   beforeEach(() => {
     mockUseApplicationStore.mockReset();
     mockUseAppMode.mockReset();
+    mockIsAppModeSessionActive.mockReset();
+    mockIsAppModeSessionActive.mockReturnValue(false);
   });
 
   it('renders the AI shell in ai mode', async () => {
@@ -130,6 +139,17 @@ describe('AppRouter — mode-based shell selection', () => {
 
     expect(await screen.findByTestId('classic-shell')).toBeInTheDocument();
     expect(screen.queryByTestId('classicv1-shell')).not.toBeInTheDocument();
+  });
+
+  it('renders the AI shell in default mode when an app-mode session is active', async () => {
+    setAuthState({ isAuthenticated: true });
+    mockUseAppMode.mockReturnValue('default');
+    mockIsAppModeSessionActive.mockReturnValue(true);
+
+    renderRouter();
+
+    expect(await screen.findByTestId('classicv1-shell')).toBeInTheDocument();
+    expect(screen.queryByTestId('classic-shell')).not.toBeInTheDocument();
   });
 
   it('wraps the rendered shell in AuthenticatedApp for an authenticated user', async () => {
