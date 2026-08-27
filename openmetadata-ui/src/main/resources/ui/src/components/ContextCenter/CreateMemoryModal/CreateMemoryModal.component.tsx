@@ -596,7 +596,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       return (
         <TextArea
           data-testid="memory-content-input"
-          placeholder={t(contextCenterClassBase.getMemoryPromptTranslationKey())}
+          placeholder={t(
+            contextCenterClassBase.getMemoryPromptTranslationKey()
+          )}
           rows={5}
           value={field.value}
           onChange={(value) => field.onChange(value)}
