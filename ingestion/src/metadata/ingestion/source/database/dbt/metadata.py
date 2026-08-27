@@ -63,6 +63,7 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
+    Markdown,
     SqlQuery,
     Timestamp,
     Uuid,
@@ -1895,10 +1896,11 @@ class DbtSource(DbtServiceSource):
                 # entityLink shapes), so its description is only set on creation and
                 # never patched from an individual node.
                 if not check_test_definition_exists:
+                    test_description = get_dbt_test_description(manifest_node)
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=get_dbt_test_description(manifest_node),
+                            description=Markdown(test_description) if test_description else None,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -1948,7 +1950,7 @@ class DbtSource(DbtServiceSource):
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=description,
+                                description=Markdown(description) if description else None,
                                 testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),

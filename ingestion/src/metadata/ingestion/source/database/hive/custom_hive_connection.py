@@ -111,7 +111,7 @@ class CustomHiveConnection(BaseConnection):
                 self._transport = thrift_transport
             else:
                 # Create puretransport with SSL
-                import puretransport
+                import puretransport  # noqa: PLC0415
 
                 socket_kwargs = _get_ssl_socket_kwargs(
                     ssl_certfile=ssl_certfile,
