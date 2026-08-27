@@ -12,12 +12,22 @@
 """
 Check the JSONPatch operations work as expected
 """
+
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import jsonpatch
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.basic import Markdown
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
 
 
@@ -251,3 +261,109 @@ class BuildPatchTest(TestCase):
 
             self.assertIn("JsonPatchUpdater exception", str(context.exception))
             self.assertIn("Failed to build patch", str(context.exception))
+
+    def test_build_patch_preserves_nested_column_metadata(self):
+        class TableModel(BaseModel):
+            columns: list[Column]
+
+        historical_tag = TagLabel(
+            tagFQN=TagFQN("PII.Personal"),
+            source=TagSource.Classification,
+            labelType=LabelType.Manual,
+            state=State.Confirmed,
+        )
+        source = TableModel(
+            columns=[
+                Column(
+                    name="payload",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="email",
+                            dataType=DataType.STRING,
+                            description=Markdown("Historical email"),
+                            tags=[historical_tag],
+                        )
+                    ],
+                )
+            ]
+        )
+        destination = TableModel(
+            columns=[
+                Column(
+                    name="payload",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="email",
+                            dataType=DataType.STRING,
+                        )
+                    ],
+                )
+            ]
+        )
+
+        patch = build_patch(
+            source=source,
+            destination=destination,
+            restrict_update_fields=["description", "tags"],
+            array_entity_fields=["columns"],
+        )
+
+        self.assertIsNotNone(patch)
+        columns_operation = next(
+            operation for operation in patch.patch if operation["path"] == "/columns"
+        )
+        nested_column = columns_operation["value"][0]["children"][0]
+        self.assertEqual(nested_column["description"], "Historical email")
+        self.assertEqual(nested_column["tags"][0]["tagFQN"], "PII.Personal")
+
+    def test_build_patch_allows_nested_column_metadata_override(self):
+        class TableModel(BaseModel):
+            columns: list[Column]
+
+        source = TableModel(
+            columns=[
+                Column(
+                    name="payload",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="email",
+                            dataType=DataType.STRING,
+                            description=Markdown("Historical email"),
+                        )
+                    ],
+                )
+            ]
+        )
+        destination = TableModel(
+            columns=[
+                Column(
+                    name="payload",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="email",
+                            dataType=DataType.STRING,
+                            description=Markdown("Current email"),
+                        )
+                    ],
+                )
+            ]
+        )
+
+        patch = build_patch(
+            source=source,
+            destination=destination,
+            restrict_update_fields=["description", "tags"],
+            array_entity_fields=["columns"],
+            override_metadata=True,
+        )
+
+        self.assertIsNotNone(patch)
+        columns_operation = next(
+            operation for operation in patch.patch if operation["path"] == "/columns"
+        )
+        nested_column = columns_operation["value"][0]["children"][0]
+        self.assertEqual(nested_column["description"], "Current email")

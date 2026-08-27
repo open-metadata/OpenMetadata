@@ -11,6 +11,7 @@
 """
 Pydantic definition for storing entities for patching
 """
+
 import json
 import logging
 import traceback
@@ -599,6 +600,54 @@ def _should_update_restricted_field(
     return override_metadata
 
 
+def _merge_array_attributes(
+    destination_attributes,
+    source_attributes,
+    restrict_set,
+    override_metadata: bool,
+):
+    source_dict = {
+        _get_attribute_name(attr): attr for attr in (source_attributes or [])
+    }
+    updated_attributes = []
+
+    for dest_attr in destination_attributes or []:
+        source_attr = source_dict.get(_get_attribute_name(dest_attr))
+        if not source_attr:
+            updated_attributes.append(dest_attr)
+            continue
+
+        update_dict = {}
+        for k, v in dest_attr.__dict__.items():
+            if k not in dest_attr.model_fields_set:
+                continue
+
+            field_value = v
+            if k == "children" and field_value is not None:
+                field_value = _merge_array_attributes(
+                    destination_attributes=field_value,
+                    source_attributes=getattr(source_attr, k, None),
+                    restrict_set=restrict_set,
+                    override_metadata=override_metadata,
+                )
+
+            if k in restrict_set:
+                src_val = getattr(source_attr, k, None)
+                if not _should_update_restricted_field(
+                    src_val, field_value, override_metadata
+                ):
+                    continue
+            update_dict[k] = field_value
+
+        updated_attributes.append(source_attr.model_copy(update=update_dict))
+
+    for idx, attr in enumerate(updated_attributes):
+        if hasattr(attr, "ordinalPosition"):
+            attr.ordinalPosition = idx + 1
+
+    return updated_attributes
+
+
 def _sort_array_entity_fields(
     source: T,
     destination: T,
@@ -622,35 +671,12 @@ def _sort_array_entity_fields(
             destination_attributes = getattr(destination, field)
             source_attributes = getattr(source, field)
 
-            source_dict = {
-                _get_attribute_name(attr): attr for attr in (source_attributes or [])
-            }
-
-            updated_attributes = []
-            for dest_attr in destination_attributes or []:
-                source_attr = source_dict.get(_get_attribute_name(dest_attr))
-                if source_attr:
-                    update_dict = {}
-                    for k, v in dest_attr.__dict__.items():
-                        if k not in dest_attr.model_fields_set:
-                            continue
-                        if k in restrict_set:
-                            src_val = getattr(source_attr, k, None)
-                            if not _should_update_restricted_field(
-                                src_val, v, override_metadata
-                            ):
-                                continue
-                        update_dict[k] = v
-                    updated_attributes.append(
-                        source_attr.model_copy(update=update_dict)
-                    )
-                else:
-                    updated_attributes.append(dest_attr)
-
-            for idx, attr in enumerate(updated_attributes):
-                if hasattr(attr, "ordinalPosition"):
-                    attr.ordinalPosition = idx + 1
-
+            updated_attributes = _merge_array_attributes(
+                destination_attributes=destination_attributes,
+                source_attributes=source_attributes,
+                restrict_set=restrict_set,
+                override_metadata=override_metadata,
+            )
             setattr(destination, field, updated_attributes)
 
 
