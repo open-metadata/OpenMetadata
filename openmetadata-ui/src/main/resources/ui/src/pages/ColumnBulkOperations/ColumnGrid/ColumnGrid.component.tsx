@@ -98,7 +98,7 @@ import { stringToDOMElement } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
-import { ColumnGridTableRow } from './components/ColumnGridTableRow';
+import ColumnGridRow from './components/ColumnGridRow';
 import {
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
@@ -2112,7 +2112,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               columnGridListing.expandedStructRows.has(entity.id);
 
             return (
-              <ColumnGridTableRow
+              <ColumnGridRow
                 columnWidthPercent={COLUMN_WIDTH_PERCENT}
                 entity={entity}
                 isPendingRefetch={pendingRefetchRowIds.has(entity.id)}

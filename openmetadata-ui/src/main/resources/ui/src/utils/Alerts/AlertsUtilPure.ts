@@ -269,9 +269,8 @@ export const getFormattedDestinations = (
 
 // Destination category exclusions by entity type
 const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Default: exclude Assignees and Mentions for all non-thread entities
+  // Most entity events have neither participants nor mention recipients.
   __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  // Thread-specific exclusions
   task: [
     SubscriptionCategory.Followers,
     SubscriptionCategory.Admins,

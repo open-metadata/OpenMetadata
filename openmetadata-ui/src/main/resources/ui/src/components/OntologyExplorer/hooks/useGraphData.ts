@@ -529,7 +529,7 @@ export function useGraphDataBuilder({
       const isDimmedBySelection =
         selectedNodeId !== null && !isSelected && !neighborSet.has(node.id);
       const isDimmedBySearch =
-        Boolean(searchNodeSet) && !searchNodeSet!.has(node.id);
+        searchNodeSet != null && !searchNodeSet.has(node.id);
       const isDimmed = searchHighlightActive
         ? isDimmedBySearch
         : isDimmedBySelection;
@@ -737,7 +737,7 @@ export function useGraphDataBuilder({
           const isPrimary = i === 0;
           const edgeKeyStr = `${singleEdge.from}::${singleEdge.to}::${singleEdge.relationType}`;
           const isDimmedBySearch =
-            Boolean(searchEdgeSet) && !searchEdgeSet!.has(edgeKeyStr);
+            searchEdgeSet != null && !searchEdgeSet.has(edgeKeyStr);
           const isEdgeDimmed = searchHighlightActive
             ? isDimmedBySearch
             : isDimmedBySelection;

@@ -345,8 +345,10 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, { target: { value: 'ghp_test' } });
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(tokenInput, { target: { value: 'ghp_test' } });
 
       const saveButton = screen.getByTestId('save-button');
 
@@ -414,8 +416,10 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, {
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(tokenInput, {
         target: { value: 'ghp_secrettoken123' },
       });
 
@@ -539,7 +543,9 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
 
       expect(tokenInput).toHaveAttribute('type', 'password');
     });
@@ -586,7 +592,9 @@ describe('SinkTaskForm', () => {
       expect(getInputByTestId('branch-input')).toHaveValue('main');
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
 
       expect(tokenInput).toHaveValue('');
     });
