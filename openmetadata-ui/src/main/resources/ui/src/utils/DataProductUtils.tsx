@@ -143,11 +143,11 @@ export interface DataProductDetailPageTabProps {
  */
 export const getDataProductIconByUrl = (iconURL?: string) => (
   <ImageIcon
-    className="tw:h-6 tw:w-6 tw:text-quaternary"
     fallback={
       <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
     }
     iconValue={iconURL}
+    imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
     size={24}
   />
 );

@@ -618,6 +618,25 @@ export const fillDomainForm = async (
     .click();
 };
 
+/**
+ * Submit the AddDomain/AddDataProduct drawer via its footer Save button.
+ *
+ * The drawer is a SlideoutMenu whose footer height is coupled to its
+ * (re-rendering) body, so the footer — and the Save button inside it — keeps
+ * shifting while the form settles. A pointer `click()` gates on Playwright's
+ * "stable" actionability check and can spin until the test times out
+ * ("element is not stable" → "element was detached from the DOM"), especially
+ * under CI load. save-btn is a native <button>, so focus it (focus() has no
+ * stability gate) and activate it with Enter, which fires the button's native
+ * click without needing a stable pointer target.
+ */
+export const clickDrawerSave = async (page: Page) => {
+  const saveButton = page.getByTestId('save-btn');
+  await expect(saveButton).toBeVisible();
+  await saveButton.focus();
+  await page.keyboard.press('Enter');
+};
+
 export const checkDomainDisplayName = async (
   page: Page,
   displayName: string

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FieldOrGroup } from '@react-awesome-query-builder/antd';
+import { FieldOrGroup } from '@react-awesome-query-builder/ui';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -78,8 +78,8 @@ jest.mock('./AdvancedSearchClassBase', () => ({
 const mockUuid = jest.fn();
 let uuidCounter = 0;
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  ...jest.requireActual('@react-awesome-query-builder/antd'),
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Utils: {
     uuid: () => mockUuid(),
   },
