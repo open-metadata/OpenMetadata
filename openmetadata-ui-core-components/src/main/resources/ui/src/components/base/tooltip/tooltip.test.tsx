@@ -47,17 +47,19 @@ describe('Tooltip — child wrapping', () => {
     expect(screen.getByText('trigger').closest('button')).not.toBeNull();
   });
 
-  it('does NOT wrap a native button — it is already focusable', () => {
+  it('wraps a native button in an AriaButton so react-aria hover fires reliably', () => {
     render(
       <Tooltip isOpen title="tip">
         <button>trigger</button>
       </Tooltip>
     );
 
-    const btn = screen.getByRole('button', { name: 'trigger' });
+    // 'button' is intentionally excluded from NATIVELY_FOCUSABLE_HTML because
+    // react-aria's hover system does not reliably fire on native buttons passed
+    // via cloneElement. Wrapping in an AriaButton ensures useHover/usePress attach.
+    const inner = screen.getByRole('button', { name: 'trigger' });
 
-    // Should not be nested inside another button.
-    expect(btn.closest('button')).toBe(btn);
+    expect(inner.closest('button')).not.toBe(inner);
   });
 
   it('does NOT wrap a native anchor', () => {
@@ -143,6 +145,26 @@ describe('Tooltip — show/hide behaviour', () => {
     );
 
     await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByText('Tooltip text')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the tooltip on hover over a native button child', async () => {
+    const user = userEvent.setup();
+    setupPointerModality();
+
+    render(
+      <Tooltip title="Tooltip text">
+        <button>trigger</button>
+      </Tooltip>
+    );
+
+    expect(screen.queryByText('Tooltip text')).not.toBeInTheDocument();
+
+    // Native button is wrapped in AriaButton so useHover fires correctly.
+    await user.hover(screen.getByRole('button', { name: 'trigger' }));
 
     await waitFor(() => {
       expect(screen.getByText('Tooltip text')).toBeInTheDocument();

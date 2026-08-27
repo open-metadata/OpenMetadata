@@ -151,9 +151,7 @@ describe('Typography ellipsis tooltip', () => {
   it('shows tooltip on hover when tooltip prop is set without ellipsis', async () => {
     const user = userEvent.setup();
 
-    render(
-      <Typography tooltip="Hint text">Plain text</Typography>
-    );
+    render(<Typography tooltip="Hint text">Plain text</Typography>);
 
     expect(screen.queryByText('Hint text')).not.toBeInTheDocument();
 
