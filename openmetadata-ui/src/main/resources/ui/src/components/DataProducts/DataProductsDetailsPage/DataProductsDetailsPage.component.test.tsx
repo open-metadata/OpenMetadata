@@ -11,16 +11,68 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DataProductsDetailsPage from './DataProductsDetailsPage.component';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
+
+// The component now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for the
+// full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce, the
+// `deleted`-gating blind spot), mirrored here without repeating it. DataProduct carries no
+// `deleted` field, so `deleted` is always false here.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
     .fn()
     .mockImplementation(({ children }) => children ?? null),
 }));
+
+// Captures the `createPermission` prop directly instead of driving antd's real Dropdown
+// portal (async, animated, flaky in jsdom) — a deterministic way to verify the
+// editAllPermission → createPermission wiring without simulating a click-and-wait UI flow.
+jest.mock(
+  '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ createPermission }) => (
+        <div
+          data-create-permission={String(Boolean(createPermission))}
+          data-testid="announcement-drawer"
+        />
+      ))
+);
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -39,12 +91,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { id: 'user-1', name: 'test.user', isAdmin: false },
-  }),
-}));
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockResolvedValue({}),
-    permissions: { task: { Create: true } },
   }),
 }));
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -132,6 +178,7 @@ function getDataProductClassBase() {
 describe('DataProductsDetailsPage — Request Data Access delegation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
     getDataProductClassBase().getRequestDataAccessButton.mockReturnValue(null);
     getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(null);
   });
@@ -176,5 +223,113 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
     );
 
     expect(getByTestId('mock-dar-banner')).toBeInTheDocument();
+  });
+});
+
+describe('DataProductsDetailsPage — permissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
+    getDataProductClassBase().getRequestDataAccessButton.mockReturnValue(null);
+    getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(null);
+  });
+
+  // Guardrail: this component owns the single useEntityPermissions call whose raw
+  // `dataProductPermission` prop feeds GenericProvider/dataProductClassBase — see
+  // PipelineDetails.test.tsx's afterEach for the general rationale on asserting the
+  // (resource, identifier) pair. `identifier` is compared with toEqual, not toBe: the source
+  // passes a fresh `{ id: dataProduct.id }` object literal on every render (several effects
+  // here trigger state updates — setDataContract, setAssetCount, etc. — so this component,
+  // unlike simpler single-render owners, genuinely re-renders during a test), so reference
+  // identity isn't meaningful; value equality is what actually matters here.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toEqual(expectedIdentifier);
+    });
+  });
+
+  it('fetches permissions by id, not fqn, with no deleted option (DataProduct has no deleted field)', async () => {
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.DATA_PRODUCT,
+        { id: mockDataProduct.id }
+      );
+    });
+  });
+
+  it('shows the add-asset button when Create permission is granted', async () => {
+    setMockPermissions({ ...ENTITY_PERMISSIONS, Create: true });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('data-product-details-add-button')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('hides the add-asset button when Create permission is denied', async () => {
+    setMockPermissions({ ...ENTITY_PERMISSIONS, Create: false });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('data-product-details-add-button')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  // manage-button itself always renders (menu.items unconditionally carries an
+  // export-odps-button entry regardless of permissions), so raw `.EditAll`'s replacement
+  // (canEditAll) is verified via the AnnouncementDrawer's createPermission prop instead —
+  // deterministic, unlike driving antd's real Dropdown portal open/closed.
+  it('wires editAllPermission (from canEditAll) into AnnouncementDrawer.createPermission when granted', async () => {
+    setMockPermissions({ ...ENTITY_PERMISSIONS, EditAll: true });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'true'
+      );
+    });
+  });
+
+  it('wires editAllPermission (from canEditAll) into AnnouncementDrawer.createPermission when denied', async () => {
+    setMockPermissions({ ...ENTITY_PERMISSIONS, EditAll: false });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'false'
+      );
+    });
+  });
+
+  it('shows the permission-fetch error toast when the hook reports an error', async () => {
+    setMockPermissions(ENTITY_PERMISSIONS, {
+      error: new Error('permission fetch failed'),
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    // Preserved verbatim from the old fetchDataProductPermission catch: a bare
+    // showErrorToast(error as AxiosError) call, no translated message/entity interpolation.
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(expect.any(Error));
+    });
   });
 });
