@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,8 +88,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
     Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
     saved.setFullyQualifiedName("Finance");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "Finance");
     Authorizer authorizer = mock(Authorizer.class);
     Limits limits = mock(Limits.class);
@@ -107,7 +107,7 @@ class CreateEntityToolTest {
     ordered.verify(limits).enforceLimits(any(), any(), any());
     ordered.verify(authorizer).authorize(any(), any(), any());
     ordered.verify(ruleEngine).evaluate(any());
-    ordered.verify(repository).createOrUpdate(isNull(), any(), anyString(), any());
+    ordered.verify(repository).create(isNull(), any(), anyString(), any());
   }
 
   @Test
@@ -201,8 +201,7 @@ class CreateEntityToolTest {
             .withFullyQualifiedName("PII");
     Tag saved = new Tag().withId(UUID.randomUUID()).withName("Restricted");
     saved.setFullyQualifiedName("PII.Sensitive.Restricted");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, saved.getFullyQualifiedName());
     Authorizer authorizer = mock(Authorizer.class);
     RuleEngine ruleEngine = mock(RuleEngine.class);
@@ -342,8 +341,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Domain.class);
     Domain saved = new Domain().withId(UUID.randomUUID()).withName("Marketing");
     saved.setFullyQualifiedName("Marketing");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "Marketing");
     Map<String, Object> params = params();
     params.put("entityType", Entity.DOMAIN);
@@ -357,7 +355,7 @@ class CreateEntityToolTest {
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
     ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    verify(repository).create(isNull(), captor.capture(), anyString(), any());
     assertEquals(CreateDomain.DomainType.AGGREGATE, ((Domain) captor.getValue()).getDomainType());
   }
 
@@ -366,8 +364,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(ContextMemory.class);
     ContextMemory saved = new ContextMemory().withId(UUID.randomUUID()).withName("memory");
     saved.setFullyQualifiedName("memory");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "memory");
     Map<String, Object> params = params();
     params.put("entityType", Entity.CONTEXT_MEMORY);
@@ -381,7 +378,7 @@ class CreateEntityToolTest {
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
     ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    verify(repository).create(isNull(), captor.capture(), anyString(), any());
     assertEquals(
         ContextMemorySourceType.REMEMBER_REQUEST,
         ((ContextMemory) captor.getValue()).getSourceType());
@@ -427,8 +424,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
     saved.setFullyQualifiedName("runbook");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "runbook");
     Map<String, Object> params = params(Entity.PAGE);
     params.put("attributes", Map.of("pageType", PageType.ARTICLE.value()));
@@ -441,7 +437,7 @@ class CreateEntityToolTest {
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
     ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    verify(repository).create(isNull(), captor.capture(), anyString(), any());
     Page created = (Page) captor.getValue();
     assertEquals(PageType.ARTICLE, created.getPageType());
     assertTrue(created.getPage() instanceof Article, String.valueOf(created.getPage()));
@@ -459,10 +455,58 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void anUpdateThatOmitsThePageBodyKeepsTheStoredOne() {
+    // An update replaces the entity, so defaulting an empty Article here would drop the publication
+    // date and delete every related-article relationship the updater compares against.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
+    saved.setFullyQualifiedName("runbook");
+    stubWrite(repository, saved);
+    setPreparedFqn(repository, "runbook");
+    Article storedBody =
+        new Article()
+            .withPublicationDate(new Date(0))
+            .withRelatedArticles(
+                List.of(new EntityReference().withType(Entity.PAGE).withId(UUID.randomUUID())));
+    Page stored =
+        new Page().withName("runbook").withPageType(PageType.ARTICLE).withPage(storedBody);
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put("attributes", Map.of("pageType", PageType.ARTICLE.value()));
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
+        MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.PAGE)).thenReturn(repository);
+      entities.when(() -> Entity.getEntityTypeFromClass(Page.class)).thenReturn(Entity.PAGE);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.PAGE), eq("runbook"), any(Include.class)))
+          .thenReturn(new EntityReference().withType(Entity.PAGE).withName("runbook"));
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.PAGE), eq("runbook"), anyString(), any(Include.class)))
+          .thenReturn(stored);
+      rules.when(RuleEngine::getInstance).thenReturn(mock(RuleEngine.class));
+
+      new CreateEntityTool()
+          .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params);
+    }
+
+    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    assertEquals(storedBody, ((Page) captor.getValue()).getPage());
+  }
+
+  @Test
   void aQuickLinkPageIsRejectedWithoutItsUrl() {
     // Only the article body is defaultable: a quick link with no page body would be stored with a
     // null destination and read back as a broken link.
     EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    setPreparedFqn(repository, "runbook");
     Map<String, Object> params = params(Entity.PAGE);
     params.put("attributes", Map.of("pageType", PageType.QUICK_LINK.value()));
 
@@ -473,11 +517,18 @@ class CreateEntityToolTest {
                 withRepository(
                     Entity.PAGE,
                     repository,
-                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+                    () ->
+                        new CreateEntityTool()
+                            .execute(
+                                mock(Authorizer.class),
+                                mock(Limits.class),
+                                securityContext(),
+                                params)));
 
     assertTrue(failure.getMessage().contains("page"), failure.getMessage());
     assertTrue(failure.getMessage().contains("url"), failure.getMessage());
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
+    verify(repository, never()).create(isNull(), any(), anyString(), any());
+    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
   }
 
   @Test
@@ -485,8 +536,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
     saved.setFullyQualifiedName("runbook");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "runbook");
     Map<String, Object> params = params(Entity.PAGE);
     params.put(
@@ -507,7 +557,7 @@ class CreateEntityToolTest {
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
     ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    verify(repository).create(isNull(), captor.capture(), anyString(), any());
     Page created = (Page) captor.getValue();
     assertNotNull(
         JsonUtils.convertValue(created.getPage(), Article.class).getPublicationDate(),
@@ -573,6 +623,29 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void aFreeNameIsWrittenThroughCreateSoARacingWriterCannotBeOverwritten() {
+    // createOrUpdate would silently update whatever took the name between the check and the write,
+    // with only CREATE authorized. create fails on the taken name, and the retry is authorized as
+    // the update it has become.
+    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
+    saved.setFullyQualifiedName("Finance");
+    stubWrite(repository, saved);
+    setPreparedFqn(repository, "Finance");
+
+    withRepository(
+        Entity.GLOSSARY,
+        repository,
+        () ->
+            new CreateEntityTool()
+                .execute(
+                    mock(Authorizer.class), mock(Limits.class), securityContext(), glossary()));
+
+    verify(repository).create(isNull(), any(), anyString(), any());
+    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+  }
+
+  @Test
   void anExistingNameIsAuthorizedAsAnEditAndSkipsTheCreateQuota() {
     // createOrUpdate updates in place when the name is taken, so the call is an edit. Authorizing
     // it as a create as well locked out a caller holding only edit rights, and ran the create quota
@@ -609,8 +682,7 @@ class CreateEntityToolTest {
     EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
     Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
     saved.setFullyQualifiedName("Finance");
-    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
-        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    stubWrite(repository, saved);
     setPreparedFqn(repository, "Finance");
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
@@ -648,6 +720,17 @@ class CreateEntityToolTest {
     when(repository.getParentEntity(any(), anyString()))
         .thenThrow(new EntityNotFoundException("no parent"));
     return repository;
+  }
+
+  /**
+   * A create is written through {@code create} and an update through {@code createOrUpdate}, so a
+   * test that does not say which leg it is on stubs both.
+   */
+  private static void stubWrite(
+      EntityRepository<EntityInterface> repository, EntityInterface saved) {
+    when(repository.create(isNull(), any(), anyString(), any())).thenReturn(saved);
+    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
+        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
   }
 
   private static void setPreparedFqn(

@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -62,6 +63,8 @@ public class CreateEntityTool implements McpTool {
   private static final String DESCRIPTION = "description";
   private static final String EXTENSION = "extension";
   private static final String ATTRIBUTES = "attributes";
+  private static final String PAGE = "page";
+  private static final String RELATED_ENTITIES = "relatedEntities";
 
   @Override
   public Map<String, Object> execute(
@@ -78,9 +81,14 @@ public class CreateEntityTool implements McpTool {
     applyRepositoryDefaults(entity);
     EntityRepository<EntityInterface> repository = type.typedRepository();
     repository.prepareInternal(entity, false);
-    authorizeCreateOrUpdate(authorizer, limits, securityContext, entityType, entity);
+    boolean updatesExisting = updatesExisting(entityType, entity);
+    authorizeCreateOrUpdate(
+        authorizer, limits, securityContext, entityType, entity, updatesExisting);
+    carryForwardOmittedPageBody(entity, params, updatesExisting);
+    requirePageBody(entity, updatesExisting);
     RuleEngine.getInstance().evaluate(entity);
-    RestUtil.PutResponse<EntityInterface> response = persist(repository, entity, userName);
+    RestUtil.PutResponse<EntityInterface> response =
+        persist(repository, entity, userName, updatesExisting);
 
     Map<String, Object> result =
         McpResponseUtils.compact(response.getEntity(), response.getChangeType());
@@ -107,13 +115,10 @@ public class CreateEntityTool implements McpTool {
       Limits limits,
       CatalogSecurityContext securityContext,
       String entityType,
-      EntityInterface entity) {
+      EntityInterface entity,
+      boolean updatesExisting) {
     String fqn = entity.getFullyQualifiedName();
-    // Include.ALL because createOrUpdate finds the original with ALL: a soft-deleted entity at this
-    // name is still updated in place, so it is an update rather than a create.
-    boolean overwritesExisting =
-        fqn != null && CommonUtils.entityExistsByName(entityType, fqn, Include.ALL);
-    if (overwritesExisting) {
+    if (updatesExisting) {
       OperationContext editContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
       authorizer.authorize(
           securityContext,
@@ -128,12 +133,74 @@ public class CreateEntityTool implements McpTool {
     }
   }
 
+  /**
+   * Whether this call updates an entity that already exists under the prepared name.
+   *
+   * <p>{@link Include#ALL} because {@code createOrUpdate} finds the original with ALL: a
+   * soft-deleted entity at this name is still updated in place.
+   */
+  private static boolean updatesExisting(String entityType, EntityInterface entity) {
+    String fqn = entity.getFullyQualifiedName();
+    return fqn != null && CommonUtils.entityExistsByName(entityType, fqn, Include.ALL);
+  }
+
+  /**
+   * Creates through {@code create} and updates through {@code createOrUpdate}, the same split
+   * {@code EntityResource} makes.
+   *
+   * <p>Routing a create through {@code createOrUpdate} left a window in which a competing writer
+   * could take the name between the existence check and the write, after which the call would have
+   * updated that entity holding only CREATE rights. {@code create} fails on the taken name instead,
+   * and the retry is authorized as the update it now is.
+   */
   private static RestUtil.PutResponse<EntityInterface> persist(
-      EntityRepository<EntityInterface> repository, EntityInterface entity, String userName) {
+      EntityRepository<EntityInterface> repository,
+      EntityInterface entity,
+      String userName,
+      boolean updatesExisting) {
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     RestUtil.PutResponse<EntityInterface> response =
-        repository.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
+        updatesExisting
+            ? repository.createOrUpdate(null, entity, userName, impersonatedBy)
+            : new RestUtil.PutResponse<>(
+                Response.Status.CREATED,
+                repository.create(null, entity, userName, impersonatedBy),
+                EventType.ENTITY_CREATED);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
     return response;
+  }
+
+  /**
+   * Keeps the stored page body when an update leaves {@code page} out.
+   *
+   * <p>An update replaces the entity, so the empty Article defaulted for a create would drop the
+   * publication date and delete every related-article relationship. The stored body is read with
+   * the related articles the updater compares against, so leaving the attribute out changes
+   * nothing.
+   */
+  private static void carryForwardOmittedPageBody(
+      EntityInterface entity, Map<String, Object> params, boolean updatesExisting) {
+    boolean bodyOmitted = !asMap(params.get(ATTRIBUTES)).containsKey(PAGE);
+    if (updatesExisting && bodyOmitted && entity instanceof Page page) {
+      Page stored =
+          Entity.getEntityByName(
+              Entity.PAGE, page.getFullyQualifiedName(), RELATED_ENTITIES, Include.ALL);
+      page.setPage(stored.getPage());
+    }
+  }
+
+  /**
+   * A quick link's body is its destination, which cannot be defaulted the way an article's can. It
+   * is required on a create only - an update that leaves it out has already kept the stored one.
+   */
+  private static void requirePageBody(EntityInterface entity, boolean updatesExisting) {
+    if (entity instanceof Page page && page.getPage() == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Attribute 'page' is required for a '%s' page and must carry its url, as"
+                  + " {\"url\": \"https://...\"}. Nothing was %s.",
+              page.getPageType(), updatesExisting ? "changed" : "created"));
+    }
   }
 
   /** Shared parameters plus attributes bound to the entity class owned by the repository. */
@@ -232,19 +299,11 @@ public class CreateEntityTool implements McpTool {
   /**
    * An article's body carries nothing the caller has to supply - its markdown lives in {@code
    * description} - so requiring the bare {@code page} object would fail every article creation on
-   * a field with no value to give it. A quick link's body is its destination, which cannot be
-   * guessed.
+   * a field with no value to give it.
    */
   private static void applyPageBody(Page page) {
-    boolean needsBody = page.getPage() == null;
-    if (needsBody && PageType.ARTICLE.equals(page.getPageType())) {
+    if (page.getPage() == null && PageType.ARTICLE.equals(page.getPageType())) {
       page.setPage(new Article());
-    } else if (needsBody) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Attribute 'page' is required for a '%s' page and must carry its url, as"
-                  + " {\"url\": \"https://...\"}. Nothing was created.",
-              page.getPageType()));
     }
   }
 
