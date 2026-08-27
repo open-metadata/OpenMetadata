@@ -1391,9 +1391,11 @@ class SearchRepositoryBehaviorTest {
             "cluster_table_search_index",
             entity.getId().toString(),
             new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
+    final UUID entityId = entity.getId();
+    final String entityFqn = entity.getFullyQualifiedName();
     QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
     verify(queryRepository)
-        .getQueriesForDomainSource(Entity.TABLE, entity.getId(), entity.getFullyQualifiedName());
+        .forEachQueryBatchForDomainSource(eq(Entity.TABLE), eq(entityId), eq(entityFqn), any());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);

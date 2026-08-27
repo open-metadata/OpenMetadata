@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -48,6 +49,8 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USERS_FIELD = "users";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
+  static final int DOMAIN_REINDEX_BATCH_SIZE = 100;
+  private static final String INITIAL_QUERY_ID_CURSOR = "";
   private static final Set<String> QUERY_DOMAIN_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA);
 
@@ -289,48 +292,54 @@ public class QueryRepository extends EntityRepository<Query> {
         : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
   }
 
-  private List<EntityReference> getQueryReferencesForTables(List<UUID> tableIds) {
-    return getQueryIdsForTables(tableIds).stream()
-        .map(queryId -> new EntityReference().withId(queryId).withType(Entity.QUERY))
-        .toList();
+  public void forEachQueryBatchForDomainSource(
+      String sourceType,
+      UUID sourceId,
+      String sourceFqn,
+      Consumer<List<EntityReference>> batchConsumer) {
+    String afterQueryId = INITIAL_QUERY_ID_CURSOR;
+    List<String> queryIds =
+        getQueryIdsForDomainSource(sourceType, sourceId, sourceFqn, afterQueryId);
+    while (!queryIds.isEmpty()) {
+      batchConsumer.accept(toQueryReferences(queryIds));
+      afterQueryId = queryIds.getLast();
+      queryIds =
+          queryIds.size() == DOMAIN_REINDEX_BATCH_SIZE
+              ? getQueryIdsForDomainSource(sourceType, sourceId, sourceFqn, afterQueryId)
+              : List.of();
+    }
   }
 
-  private List<UUID> getQueryIdsForTables(List<UUID> tableIds) {
-    List<UUID> queryIds = List.of();
-    if (!nullOrEmpty(tableIds)) {
-      final List<String> ids = tableIds.stream().map(UUID::toString).toList();
+  private List<String> getQueryIdsForDomainSource(
+      String sourceType, UUID sourceId, String sourceFqn, String afterQueryId) {
+    List<String> queryIds = List.of();
+    if (Entity.TABLE.equals(sourceType)) {
       queryIds =
           daoCollection
               .relationshipDAO()
-              .findToBatch(ids, Relationship.MENTIONED_IN.ordinal(), Entity.TABLE, Entity.QUERY)
-              .stream()
-              .map(CollectionDAO.EntityRelationshipObject::getToId)
-              .map(UUID::fromString)
-              .distinct()
-              .toList();
+              .findQueryIdsForTableAfter(
+                  sourceId,
+                  Relationship.MENTIONED_IN.ordinal(),
+                  afterQueryId,
+                  DOMAIN_REINDEX_BATCH_SIZE);
+    } else if (QUERY_DOMAIN_SOURCE_TYPES.contains(sourceType) && !nullOrEmpty(sourceFqn)) {
+      queryIds =
+          daoCollection
+              .relationshipDAO()
+              .findQueryIdsForTableFqnPrefixAfter(
+                  FullyQualifiedName.buildHash(sourceFqn) + ".%",
+                  Relationship.MENTIONED_IN.ordinal(),
+                  afterQueryId,
+                  DOMAIN_REINDEX_BATCH_SIZE);
     }
     return queryIds;
   }
 
-  public List<EntityReference> getQueriesForDomainSource(
-      String sourceType, UUID sourceId, String sourceFqn) {
-    final List<UUID> tableIds = getTableIdsForDomainSource(sourceType, sourceId, sourceFqn);
-    return getQueryReferencesForTables(tableIds);
-  }
-
-  private List<UUID> getTableIdsForDomainSource(
-      String sourceType, UUID sourceId, String sourceFqn) {
-    List<UUID> tableIds = List.of();
-    if (Entity.TABLE.equals(sourceType)) {
-      tableIds = List.of(sourceId);
-    } else if (QUERY_DOMAIN_SOURCE_TYPES.contains(sourceType) && !nullOrEmpty(sourceFqn)) {
-      final TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-      tableIds =
-          repository.getDao().listDescendantIdFqnByPrefixNonDeleted(sourceFqn).stream()
-              .map(pair -> pair.id)
-              .toList();
-    }
-    return tableIds;
+  private List<EntityReference> toQueryReferences(List<String> queryIds) {
+    return queryIds.stream()
+        .map(UUID::fromString)
+        .map(queryId -> new EntityReference().withId(queryId).withType(Entity.QUERY))
+        .toList();
   }
 
   @Override

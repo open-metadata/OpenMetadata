@@ -3121,8 +3121,8 @@ public class SearchRepository {
       deferIfFlushScopeActive(
           () -> {
             final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);
-            updateEntitiesByReference(
-                repository.getQueriesForDomainSource(entityType, entityId, entityFqn));
+            repository.forEachQueryBatchForDomainSource(
+                entityType, entityId, entityFqn, this::updateEntitiesByReference);
           },
           "reindexQueriesForDomainChange",
           entityId.toString(),

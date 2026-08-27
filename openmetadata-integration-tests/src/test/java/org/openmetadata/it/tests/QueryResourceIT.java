@@ -471,6 +471,28 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   }
 
   @Test
+  void querySearchDomainsFollowDatabaseDomainChanges(TestNamespace ns) throws Exception {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain originalDomain = createDomain(ns, "database_original");
+    final Domain updatedDomain = createDomain(ns, "database_updated");
+    final Database database = createDatabaseInDomain(ns, "mutable", originalDomain);
+    final DatabaseSchema schema = createDatabaseSchema(ns, "mutable", database);
+    final CreateTable tableRequest =
+        new CreateTable()
+            .withName("t_q_database_domain_" + ns.shortPrefix())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    final Table table = client.tables().create(tableRequest);
+    final Query query = createQueryUsedIn(ns, List.of(table));
+
+    replaceDatabaseDomain(client, database, updatedDomain);
+
+    assertInheritedQueryDomains(query.getId(), List.of(updatedDomain));
+    assertQuerySearchableInDomain(client, query.getId(), updatedDomain.getFullyQualifiedName());
+    assertQueryNotSearchableInDomain(client, query.getId(), originalDomain.getFullyQualifiedName());
+  }
+
+  @Test
   void querySearchDomainsFollowQueryUsageChanges(TestNamespace ns) {
     final OpenMetadataClient client = SdkClients.adminClient();
     final Domain originalDomain = createDomain(ns, "usage_original");
@@ -571,6 +593,16 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
         """
             .formatted(domain.getId());
     client.tables().patch(table.getId(), OBJECT_MAPPER.readTree(patch));
+  }
+
+  private void replaceDatabaseDomain(OpenMetadataClient client, Database database, Domain domain)
+      throws Exception {
+    final String patch =
+        """
+        [{"op":"replace","path":"/domains","value":[{"id":"%s","type":"domain"}]}]
+        """
+            .formatted(domain.getId());
+    client.databases().patch(database.getId(), OBJECT_MAPPER.readTree(patch));
   }
 
   private void assertInheritedQueryDomains(UUID queryId, List<Domain> expectedDomains) {
