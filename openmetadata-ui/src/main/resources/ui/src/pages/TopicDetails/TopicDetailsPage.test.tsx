@@ -12,7 +12,10 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getTopicByFqn } from '../../rest/topicsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -100,6 +103,33 @@ describe('Test TopicDetailsPage component', () => {
       ViewTests: true,
       ViewUsage: true,
     });
+  });
+
+  // Guardrail: this page owns the single useEntityPermissions call whose raw
+  // `topicPermissions` prop TopicDetails.component.tsx consumes downstream — see the
+  // "page-owner converts, child stays raw" precedent recorded in the Task 7A report. A
+  // future conversion that accidentally calls the hook more than once, or with a
+  // different identifier on a later render, would silently diverge from that raw prop's
+  // cache entry. See TableDetailsPageV1.test.tsx's afterEach for the general rationale.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toBe(expectedIdentifier);
+    });
+  });
+
+  it('should fetch permissions for the topic fqn', () => {
+    renderWithQueryClient(<TopicDetailsPageComponent />);
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.TOPIC,
+      'sample_kafka.sales'
+    );
   });
 
   it('TopicDetailsPage component should render properly', async () => {
