@@ -139,3 +139,15 @@ UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracledb"')
 WHERE serviceType = 'Oracle'
   AND json #>> '{connection,config,scheme}' = 'oracle+cx_oracle';
+
+-- Alerts must not fire for pipeline executions that finished before the alert existed (#31782).
+-- Stamp the alerting watermark on subscriptions that already have a consumer offset; subscriptions
+-- without one are stamped when that row is first created. 'timestamp' is deliberately untouched:
+-- change_event_consumers derives a NOT NULL generated column from it.
+UPDATE change_event_consumers
+SET json = jsonb_set(
+    json,
+    '{startingTimestamp}',
+    to_jsonb((EXTRACT(EPOCH FROM now()) * 1000)::bigint))
+WHERE extension = 'eventSubscription.Offset'
+  AND json ->> 'startingTimestamp' IS NULL;
