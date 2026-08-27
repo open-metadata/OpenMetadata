@@ -26,6 +26,7 @@ import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 
 export default [
@@ -105,6 +106,7 @@ export default [
       i18next,
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
+      'openmetadata-permissions': openMetadataPermissions,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -395,6 +397,16 @@ export default [
     files: ['src/components/AppRouter/**/*.{ts,tsx}'],
     rules: {
       'openmetadata-performance/no-eager-page-imports': 'error',
+    },
+  },
+
+  // Permission access restrictions: components and pages must use permission
+  // utilities instead of raw access. Guides the permission-refactor sweep (#6036).
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*'],
+    rules: {
+      'openmetadata-permissions/no-raw-permission-access': 'warn',
     },
   },
 
