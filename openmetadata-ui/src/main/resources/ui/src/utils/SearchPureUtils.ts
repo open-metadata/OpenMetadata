@@ -48,6 +48,72 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   return commonAssets[searchIndex] || null;
 };
 
+/**
+ * Resolves the display value of an aggregation bucket from a `_source` document.
+ *
+ * Terms aggregations on `lowercase_normalizer` keyword fields return lowercased
+ * bucket keys, while `_source` keeps the original casing — so the label comes
+ * from the `top_hits` sub-aggregation the `sourceFields` request parameter adds.
+ * The path may cross arrays (`tags.tagFQN`, `columns.name`) or end on one
+ * (`glossaryTags`, `ownerDisplayName`); in both cases the element that
+ * case-insensitively equals the bucket key wins, since one document can carry
+ * many values for the same field and only one of them belongs to this bucket.
+ */
+export const extractSourceValue = (
+  src: Record<string, unknown>,
+  path: string,
+  bucketKey: string
+): string | undefined => {
+  const parts = path.split('.');
+  let val: unknown = src;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (Array.isArray(val)) {
+      // When we hit an array mid-traversal, find the element whose resolved
+      // leaf value case-insensitively equals the bucket key, falling back to [0].
+      const remainingPath = parts.slice(i).join('.');
+      const match = (val as unknown[]).find((item) => {
+        const leaf = extractSourceValue(
+          item as Record<string, unknown>,
+          remainingPath,
+          bucketKey
+        );
+
+        return leaf?.toLowerCase() === bucketKey.toLowerCase();
+      });
+      const chosen = match ?? (val as unknown[])[0];
+      if (chosen === undefined) {
+        return undefined;
+      }
+
+      return extractSourceValue(
+        chosen as Record<string, unknown>,
+        remainingPath,
+        bucketKey
+      );
+    } else if (val && typeof val === 'object' && part in (val as object)) {
+      val = (val as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"])
+  if (Array.isArray(val)) {
+    const strings = (val as unknown[]).filter(
+      (item): item is string => typeof item === 'string'
+    );
+    const match = strings.find(
+      (s) => s.toLowerCase() === bucketKey.toLowerCase()
+    );
+
+    return match ?? strings[0];
+  }
+
+  return typeof val === 'string' ? val : undefined;
+};
+
 export const parseBucketsData = (
   buckets: Array<Bucket>,
   sourceFields?: string,
@@ -93,15 +159,8 @@ export const parseBucketsData = (
 
     const actualValue =
       sourceFields && topHitsSource
-        ? sourceFields
-            .split('.')
-            .reduce(
-              (obj: unknown, key: string): unknown =>
-                obj && typeof obj === 'object' && obj !== null && key in obj
-                  ? (obj as Record<string, unknown>)[key]
-                  : undefined,
-              topHitsSource
-            ) ?? bucket.key
+        ? extractSourceValue(topHitsSource, sourceFields, bucket.key) ??
+          bucket.key
         : bucket.key;
 
     return {

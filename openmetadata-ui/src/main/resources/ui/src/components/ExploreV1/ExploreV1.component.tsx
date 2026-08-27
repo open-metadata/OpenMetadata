@@ -57,6 +57,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
+import { hydrateQuickFilterLabels } from '../../utils/AdvancedSearchPureUtils';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
@@ -157,6 +158,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [location.search]
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
+
+  // Quick-filter values round trip through the URL as lowercased aggregation
+  // keys; every hit of a filtered result set carries the value that matched, so
+  // the selected chips take their casing from the results already fetched.
+  const hitSources = useMemo(
+    () => (searchResults?.hits?.hits ?? []).map((hit) => hit._source),
+    [searchResults]
+  );
   const totalPages = useMemo(
     () => Math.max(Math.ceil(totalValue / pageSize), 1),
     [pageSize, totalValue]
@@ -643,12 +652,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
     );
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({
-        ...item,
-        value: selectedValuesFromQuickFilter?.[item.label] ?? [],
-      }))
+      hydrateQuickFilterLabels(
+        dropdownItems.map((item) => ({
+          ...item,
+          value: selectedValuesFromQuickFilter?.[item.label] ?? [],
+        })),
+        hitSources
+      )
     );
-  }, [activeTabKey, quickFilters]);
+  }, [activeTabKey, quickFilters, hitSources]);
 
   useEffect(() => {
     if (!isUndefined(searchResults) && searchResults?.hits?.hits[0]) {

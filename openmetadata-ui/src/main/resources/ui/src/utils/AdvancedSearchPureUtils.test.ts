@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { Bucket } from 'Models';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
-import { getOptionsFromAggregationBucket } from './AdvancedSearchPureUtils';
+import {
+  getOptionsFromAggregationBucket,
+  getQuickFilterSourceFields,
+  hydrateQuickFilterLabels,
+} from './AdvancedSearchPureUtils';
 
 const buckets = [
   { key: 'table', doc_count: 1734 },
@@ -215,5 +220,149 @@ describe('getOptionsFromAggregationBucket', () => {
       expect(option.key).toBe('aaron johnson');
       expect(option.label).toBe('Aaron Johnson');
     });
+  });
+});
+
+describe('getQuickFilterSourceFields', () => {
+  it('resolves the shared source path for a field that does not pin one', () => {
+    expect(
+      getQuickFilterSourceFields({
+        key: EntityFields.GLOSSARY_TERMS,
+        label: 'label.glossary-term-plural',
+      })
+    ).toBe('glossaryTags');
+  });
+
+  it('prefers the path pinned on the field', () => {
+    expect(
+      getQuickFilterSourceFields({
+        key: EntityFields.OWNERS,
+        label: 'label.owner-plural',
+        sourceFields: 'owners.displayName',
+      })
+    ).toBe('owners.displayName');
+  });
+
+  it('returns undefined for a field aggregated in its original case', () => {
+    expect(
+      getQuickFilterSourceFields({
+        key: EntityFields.ENTITY_TYPE,
+        label: 'label.entity-type-plural',
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('hydrateQuickFilterLabels', () => {
+  const glossaryFilter = {
+    key: EntityFields.GLOSSARY_TERMS,
+    label: 'label.glossary-term-plural',
+    value: [
+      {
+        key: 'enterprise business glossary.advanced shipment notification',
+        label: 'enterprise business glossary.advanced shipment notification',
+      },
+    ],
+  };
+
+  it('restores the original casing of a selected value from the listed rows', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [glossaryFilter],
+      [
+        {
+          glossaryTags: [
+            'Enterprise Business Glossary.Advanced Shipment Notification',
+          ],
+        },
+      ]
+    );
+
+    expect(field.value?.[0]).toEqual({
+      key: 'enterprise business glossary.advanced shipment notification',
+      label: 'Enterprise Business Glossary.Advanced Shipment Notification',
+    });
+  });
+
+  it('resolves a path that crosses an array of objects', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [
+        {
+          key: EntityFields.TAG,
+          label: 'label.tag',
+          value: [{ key: 'pii.sensitive', label: 'pii.sensitive' }],
+        },
+      ],
+      [{ tags: [{ tagFQN: 'Tier.Tier1' }, { tagFQN: 'PII.Sensitive' }] }]
+    );
+
+    expect(field.value?.[0].label).toBe('PII.Sensitive');
+  });
+
+  it('keeps the field identity when no row carries the selected value', () => {
+    const fields = [glossaryFilter];
+    const result = hydrateQuickFilterLabels(fields, [
+      { glossaryTags: ['Some.Other Term'] },
+    ]);
+
+    expect(result[0]).toBe(glossaryFilter);
+  });
+
+  it('skips rows that are not objects', () => {
+    const [field] = hydrateQuickFilterLabels(
+      [glossaryFilter],
+      [
+        null,
+        'not-a-row',
+        {
+          glossaryTags: [
+            'Enterprise Business Glossary.Advanced Shipment Notification',
+          ],
+        },
+      ]
+    );
+
+    expect(field.value?.[0].label).toBe(
+      'Enterprise Business Glossary.Advanced Shipment Notification'
+    );
+  });
+
+  it('keeps the field identity when there are no rows to read from', () => {
+    const fields = [glossaryFilter];
+
+    expect(hydrateQuickFilterLabels(fields, [])[0]).toBe(glossaryFilter);
+  });
+
+  it('leaves a label already resolved by the dropdown untouched', () => {
+    const resolved = {
+      key: EntityFields.GLOSSARY_TERMS,
+      label: 'label.glossary-term-plural',
+      value: [
+        {
+          key: 'enterprise business glossary.advanced shipment notification',
+          label: 'Enterprise Business Glossary.Advanced Shipment Notification',
+        },
+      ],
+    };
+
+    expect(
+      hydrateQuickFilterLabels(
+        [resolved],
+        [{ glossaryTags: ['SHOUTED.VALUE'] }]
+      )[0]
+    ).toBe(resolved);
+  });
+
+  it('leaves a field aggregated in its original case untouched', () => {
+    const fields = [
+      {
+        key: EntityFields.ENTITY_TYPE,
+        label: 'label.entity-type-plural',
+        value: [{ key: 'table', label: 'table' }],
+      },
+    ];
+
+    expect(hydrateQuickFilterLabels(fields, [{ entityType: 'Table' }])[0]).toBe(
+      fields[0]
+    );
   });
 });
