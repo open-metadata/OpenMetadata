@@ -428,9 +428,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     snapshot.setPipelineStatus(status);
     snapshot.setChangeDescription(change);
     snapshot.setIncrementalChangeDescription(change);
-    // Deliberately wall-clock, not status.getTimestamp(): ChangeEvent.timestamp derives from this
-    // and /v1/events filters on it, so a backfilled logical date would hide the event from that
-    // API.
+    // Wall-clock, not status.getTimestamp(): /v1/events filters on ChangeEvent.timestamp.
     snapshot.setUpdatedAt(System.currentTimeMillis());
     return buildChangeEventJsonForBulkOperation(snapshot, ENTITY_UPDATED, updatedBy);
   }
