@@ -41,21 +41,18 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -98,10 +95,6 @@ import {
 } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-} from '../../../utils/PermissionsUtils';
 import {
   getDomainDetailsPath,
   getDomainPath,
@@ -160,7 +153,12 @@ const DomainDetails = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  // `permissions` here is the resource-level UIPermission map from the app-wide
+  // PermissionProvider context — kept only for the `permissions.dataProduct.Create` check
+  // below (whether the current user may create ANY DataProduct at all, unrelated to this
+  // domain's own entity permissions). Per the Task 8 brief's "Create flows" carve-out,
+  // resource-level create checks via usePermissionProvider().permissions stay unchanged.
+  const { permissions } = usePermissionProvider();
   const routeParams = useParams<{
     fqn?: string;
     tab?: string;
@@ -189,9 +187,35 @@ const DomainDetails = ({
 
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
-  const [domainPermission, setDomainPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+
+  // Single useEntityPermissions call, by id — mirrors MlModelDetail.component.tsx (Task 7C):
+  // no genuine ordering cycle here, `domain` (and therefore `domain.id`) is already available
+  // on first render via props. No `deleted` option: the generated `Domain` type carries no
+  // top-level `deleted` field (confirmed via generated/entity/domains/domain.ts — domains
+  // aren't soft-deletable), and the old component never referenced one either, so there is
+  // nothing to gate edit flags on. `domainPermission` keeps its original name (aliased from
+  // the hook's `permissions`) purely to minimize the diff against the rest of this file, which
+  // still consumes it as a raw OperationPermission (passed through GenericProvider unchanged,
+  // and read locally by domainClassBase.getDomainDetailPageTabs — out of this batch's scope).
+  const {
+    permissions: domainPermission,
+    error: domainPermissionError,
+    canEditAll: editAllPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canCreate: createPermission,
+    canDelete: deletePermission,
+  } = useEntityPermissions(ResourceEntity.DOMAIN, { id: domain.id });
+
+  useEffect(() => {
+    if (domainPermissionError) {
+      // Preserved verbatim: the old fetchDomainPermission catch called
+      // showErrorToast(error as AxiosError) with no message/entity interpolation — the same
+      // distinctive bare-error-object shape documented for APICollectionPage.tsx (Task 7C,
+      // File 3), not the majority `server.fetch-entity-permissions-error` pattern.
+      showErrorToast(domainPermissionError as AxiosError);
+    }
+  }, [domainPermissionError]);
+
   // Sub-domain drawer implementation
   const subDomainForm = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -644,13 +668,6 @@ const DomainDetails = ({
     loading: isSubDomainLoading,
   });
 
-  const editDisplayNamePermission = useMemo(() => {
-    return getPrioritizedEditPermission(
-      domainPermission,
-      Operation.EditDisplayName
-    );
-  }, [domainPermission]);
-
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', domain.votes),
     [domain.votes, currentUser?.id]
@@ -664,7 +681,7 @@ const DomainDetails = ({
   );
 
   const addButtonContent = [
-    ...(domainPermission.Create
+    ...(createPermission
       ? [
           {
             label: t('label.asset-plural'),
@@ -732,18 +749,6 @@ const DomainDetails = ({
     navigate(path);
   };
 
-  const fetchDomainPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.DOMAIN,
-        domain.id
-      );
-      setDomainPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const onAddDataProduct = useCallback(() => {
     openDataProductDrawer();
   }, [openDataProductDrawer]);
@@ -797,7 +802,7 @@ const DomainDetails = ({
   );
 
   const manageButtonContent: ItemType[] = [
-    ...(domainPermission?.EditAll
+    ...(editAllPermission
       ? ([
           {
             label: (
@@ -839,7 +844,7 @@ const DomainDetails = ({
           },
         ] as ItemType[])
       : []),
-    ...(domainPermission?.EditAll
+    ...(editAllPermission
       ? ([
           {
             label: (
@@ -861,7 +866,7 @@ const DomainDetails = ({
           },
         ] as ItemType[])
       : []),
-    ...(domainPermission.Delete
+    ...(deletePermission
       ? ([
           {
             label: (
@@ -952,7 +957,6 @@ const DomainDetails = ({
   );
 
   useEffect(() => {
-    fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
     fetchTaskCounts();
@@ -1201,7 +1205,7 @@ const DomainDetails = ({
       {subDomainDrawer}
 
       <AnnouncementDrawer
-        createPermission={domainPermission?.EditAll}
+        createPermission={editAllPermission}
         entityFQN={domain.fullyQualifiedName ?? ''}
         entityType={EntityType.DOMAIN}
         open={isAnnouncementDrawerOpen}
