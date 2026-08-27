@@ -274,6 +274,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     StatusChange statusChange =
         resolveStatusChange(pipeline.getFullyQualifiedName(), pipelineStatus);
+    if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
+      // A re-sent identical status writes nothing: every ES call here forces a segment refresh, and
+      // ENTITY_NO_CHANGE keeps ChangeEventHandler from emitting an event the alert would fire on.
+      return new RestUtil.PutResponse<>(
+          Response.Status.OK, pipeline.withPipelineStatus(pipelineStatus), ENTITY_NO_CHANGE);
+    }
+
     if (statusChange.outcome() == StatusOutcome.UPDATED) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -282,7 +289,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               PIPELINE_STATUS_EXTENSION,
               JsonUtils.pojoToJson(pipelineStatus),
               pipelineStatus.getTimestamp());
-    } else if (statusChange.outcome() == StatusOutcome.CREATED) {
+    } else {
       storeTimeSeries(
           pipeline.getFullyQualifiedName(),
           PIPELINE_STATUS_EXTENSION,
