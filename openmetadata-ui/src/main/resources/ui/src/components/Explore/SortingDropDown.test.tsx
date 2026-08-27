@@ -86,7 +86,7 @@ describe('Test Sorting DropDown Component', () => {
     const dropdownButton = dropdown.querySelector('button');
 
     expect(dropdownButton).toBeInTheDocument();
-    expect(dropdownButton).toHaveAttribute('data-size', 'xs');
+    expect(dropdownButton).toHaveAttribute('data-size', 'sm');
     expect(dropdownButton).toHaveAttribute('data-hide-focus-outline', 'true');
     expect(dropdownButton).not.toHaveClass('quick-filter-dropdown-trigger-btn');
 
