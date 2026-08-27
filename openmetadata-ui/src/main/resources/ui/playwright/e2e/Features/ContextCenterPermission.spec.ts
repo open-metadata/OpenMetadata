@@ -633,7 +633,9 @@ test.describe('Context Center Permissions', () => {
         await editor.click();
         await editor.fill(conversationMessage);
 
-        const feedResPromise = viewOnlyPage.waitForResponse('/api/v1/feed');
+        const feedResPromise = viewOnlyPage.waitForResponse(
+          '/api/v1/conversations'
+        );
         await viewOnlyPage.getByTestId('send-button').click();
         const feedRes = await feedResPromise;
 

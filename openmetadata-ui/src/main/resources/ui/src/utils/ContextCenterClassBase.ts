@@ -109,6 +109,10 @@ class ContextCenterClassBase {
     return [];
   }
 
+  public getMemoryPromptTranslationKey(): string {
+    return 'message.what-should-ai-remember';
+  }
+
   public getContextCenterRootBreadcrumb(
     t: TFunction
   ): ContextCenterBreadcrumbItem {

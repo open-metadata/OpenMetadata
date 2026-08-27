@@ -197,24 +197,33 @@ jest.mock('../../../../rest/metadataTypeAPI', () => ({
 
 jest.mock('../../../../utils/formUtils', () => ({
   generateFormFields: jest.fn((fields) =>
-    fields.map((field: any) => {
-      const testId =
-        field.type === 'description' ? 'editor' : field.props?.['data-testid'];
+    fields.map(
+      (field: {
+        type?: string;
+        name: string;
+        label?: string;
+        props?: Record<string, string>;
+      }) => {
+        const testId =
+          field.type === 'description'
+            ? 'editor'
+            : field.props?.['data-testid'];
 
-      return (
-        <div key={field.name}>
-          <label htmlFor={field.name}>
-            {field.label}
-            <input
-              aria-label={field.label}
-              data-testid={testId}
-              id={field.name}
-              name={field.name}
-            />
-          </label>
-        </div>
-      );
-    })
+        return (
+          <div key={field.name}>
+            <label htmlFor={field.name}>
+              {field.label}
+              <input
+                aria-label={field.label}
+                data-testid={testId}
+                id={field.name}
+                name={field.name}
+              />
+            </label>
+          </div>
+        );
+      }
+    )
   ),
 }));
 
