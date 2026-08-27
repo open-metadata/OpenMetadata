@@ -247,13 +247,13 @@ class KafkaconnectSource(PipelineServiceSource):
                     continue
 
                 service_config = service.connection.config
+                bootstrap_servers = getattr(service_config, "bootstrapServers", None)
 
                 # Extract bootstrapServers from Kafka connection
-                if hasattr(service_config, "bootstrapServers") and service_config.bootstrapServers:
+                if bootstrap_servers:
                     # Parse service brokers into hostnames (no protocol, no port)
                     service_brokers = set(  # noqa: C401
-                        self._extract_hostname(broker.strip()).lower()
-                        for broker in service_config.bootstrapServers.split(",")
+                        self._extract_hostname(broker.strip()).lower() for broker in bootstrap_servers.split(",")
                     )
 
                     # Check if any broker hostname matches
