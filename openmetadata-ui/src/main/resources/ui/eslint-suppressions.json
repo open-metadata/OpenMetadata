@@ -18,9 +18,6 @@
   "playwright/e2e/Auth/SSOAuthentication.spec.ts": {
     "playwright/no-skipped-test": {
       "count": 2
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 19
     }
   },
   "playwright/e2e/Auth/SSOLogin.spec.ts": {
@@ -133,9 +130,6 @@
     },
     "playwright/no-wait-for-selector": {
       "count": 1
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 2
     }
   },
   "playwright/e2e/Features/ContextCenterDashboard.spec.ts": {
@@ -1064,9 +1058,6 @@
   "playwright/e2e/nightly/ContextCenter.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 11
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 1
     }
   },
   "playwright/e2e/nightly/ServiceIngestion.spec.ts": {
@@ -1098,9 +1089,6 @@
   "playwright/utils/ContextCenterUtil.ts": {
     "om-playwright/no-positional-locator": {
       "count": 12
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 2
     }
   },
   "playwright/utils/KnowledgeCenter.ts": {
@@ -1109,9 +1097,6 @@
     },
     "playwright/no-wait-for-selector": {
       "count": 8
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 5
     }
   },
   "playwright/utils/activityAPI.ts": {
@@ -1175,9 +1160,6 @@
   "playwright/utils/customizeLandingPage.ts": {
     "om-playwright/no-positional-locator": {
       "count": 7
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 1
     }
   },
   "playwright/utils/customizeNavigation.ts": {
@@ -1251,9 +1233,6 @@
   "playwright/utils/logsViewer.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    },
-    "playwright/no-wait-for-timeout": {
-      "count": 1
     }
   },
   "playwright/utils/metric.ts": {
@@ -1337,9 +1316,6 @@
   "playwright/utils/taskWorkflow.ts": {
     "om-playwright/no-positional-locator": {
       "count": 40
-    },
-    "playwright/no-force-option": {
-      "count": 11
     },
     "playwright/no-wait-for-selector": {
       "count": 1

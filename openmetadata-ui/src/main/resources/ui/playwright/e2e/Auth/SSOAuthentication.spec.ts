@@ -264,6 +264,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate again — app should handle the error gracefully
       await page.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting a NON-event (no error redirect, still authenticated) — there is no positive signal to wait for, so elapsed time is the instrument
       await page.waitForTimeout(5000);
 
       const url = page.url();
@@ -306,6 +307,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       await page.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- the assertion below reads token/localStorage/URL state, not the DOM, so there is no locator or response to await; the app's silent-renewal work happens off the page
       await page.waitForTimeout(5000);
 
       const refreshFlag = await page.evaluate(() => {
@@ -325,8 +327,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         localStorage.setItem('refreshInProgress', 'true');
       });
 
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- waiting on a browser-internal async handler (BroadcastChannel / visibilitychange / storage) that emits nothing observable to Playwright
       await page.waitForTimeout(2000);
       await page.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting a NON-event (no error redirect, still authenticated) — there is no positive signal to wait for, so elapsed time is the instrument
       await page.waitForTimeout(5000);
 
       const url = page.url();
@@ -422,6 +426,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate to a page that makes multiple parallel API calls
       await page.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- settling background refresh before the next API call is observed, so the Authorization header read is not racing an in-flight renewal
       await page.waitForTimeout(10000);
 
       // The refresh should have happened at most once despite multiple 401s
@@ -493,6 +498,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       // Navigate — app should not crash even if silent renewal cannot use
       // a refresh token (it falls back to iframe/popup)
       await page.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting a NON-event (no error redirect, still authenticated) — there is no positive signal to wait for, so elapsed time is the instrument
       await page.waitForTimeout(5000);
 
       const url = page.url();
@@ -533,6 +539,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Allow async IndexedDB cleanup to complete (WebKit needs more time
       // because the OIDC logout redirect chain can interrupt pending writes)
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- ordering guard around the OIDC logout redirect chain, which can interrupt pending writes; no single event marks the chain complete
       await page.waitForTimeout(2000);
 
       // Verify auth state is cleared
@@ -568,6 +575,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       // Open a second tab
       const page2 = await context.newPage();
       await page2.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- the assertion below reads token/localStorage/URL state, not the DOM, so there is no locator or response to await; the app's silent-renewal work happens off the page
       await page2.waitForTimeout(3000);
 
       const tab2TokenBefore = await getStoredToken(page2);
@@ -596,10 +604,12 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Trigger the 401 in tab 1
       await page.goto('/activity-feed');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- settling background refresh before the next API call is observed, so the Authorization header read is not racing an in-flight renewal
       await page.waitForTimeout(10000);
 
       // Check that tab 2 can still access the app
       await page2.goto('/');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- the assertion below reads token/localStorage/URL state, not the DOM, so there is no locator or response to await; the app's silent-renewal work happens off the page
       await page2.waitForTimeout(5000);
 
       const tab2TokenAfter = await getStoredToken(page2);
@@ -638,10 +648,12 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await resetMetrics(request);
 
       // Wait for the token to expire and proactive renewal to trigger
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberately simulating elapsed time so the token expires and proactive renewal fires; the delay IS the test condition
       await page.waitForTimeout(8000);
 
       // Hard reload — this forces the app to read from IndexedDB (no in-memory cache)
       await page.reload({ waitUntil: 'networkidle' });
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting a NON-event (no error redirect, still authenticated) — there is no positive signal to wait for, so elapsed time is the instrument
       await page.waitForTimeout(3000);
 
       const url = page.url();
@@ -681,6 +693,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await setTokenExpiry(request, 5);
       await resetMetrics(request);
 
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- settling background refresh before the next API call is observed, so the Authorization header read is not racing an in-flight renewal
       await page.waitForTimeout(8000);
 
       // Observe the Authorization header on the next API call using waitForRequest
@@ -736,6 +749,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
     }) => {
       await performOidcLogin(page);
       await verifyAuthenticated(page);
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- waiting on a browser-internal async handler (BroadcastChannel / visibilitychange / storage) that emits nothing observable to Playwright
       await page.waitForTimeout(2000);
 
       // Set refreshInProgress BEFORE writing expired token to block the
@@ -789,6 +803,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       // Wait for TOKEN_UPDATE broadcast to be handled (blocked by flag)
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- waiting on a browser-internal async handler (BroadcastChannel / visibilitychange / storage) that emits nothing observable to Playwright
       await page.waitForTimeout(1000);
 
       // Remove the lock so visibilitychange handler can trigger refreshToken()
@@ -805,6 +820,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       // Wait for the async handler to complete
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- waiting on a browser-internal async handler (BroadcastChannel / visibilitychange / storage) that emits nothing observable to Playwright
       await page.waitForTimeout(3000);
 
       // Verify the handler detected the expired token and attempted refresh.
@@ -832,6 +848,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         document.dispatchEvent(new Event('visibilitychange'));
       });
 
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting a NON-event (no error redirect, still authenticated) — there is no positive signal to wait for, so elapsed time is the instrument
       await page.waitForTimeout(2000);
 
       // App should still be authenticated (handler didn't break anything)
@@ -860,10 +877,12 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       expect(initialToken.length).toBeGreaterThan(0);
 
       // Wait 10 seconds to simulate idle period
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberately simulating elapsed time so the token expires and proactive renewal fires; the delay IS the test condition
       await page.waitForTimeout(10000);
 
       // Navigate to a different page
       await page.goto('/explore/tables');
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- asserting a NON-event (no error redirect, still authenticated) — there is no positive signal to wait for, so elapsed time is the instrument
       await page.waitForTimeout(5000);
 
       // Should still be authenticated
