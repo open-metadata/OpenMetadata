@@ -538,3 +538,29 @@ describe('TableV2 — empty state padding', () => {
     expect(padded(screen.getByText('label.no-data'))).toBe(true);
   });
 });
+
+/**
+ * TableV2-only: legacy AntD leaves wrapping to its own stylesheet, so there is
+ * no shared class to compare. The contract here is that a cell confines its
+ * content — an unbreakable string in a width-constrained column must wrap
+ * rather than overflow onto the column beside it.
+ */
+describe('TableV2 — cells confine their content', () => {
+  it('lets a long unbreakable value break inside its own cell', () => {
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'name', key: 'name', title: 'Name', width: 250 },
+          { dataIndex: 'other', key: 'other', title: 'Other' },
+        ]}
+        dataSource={[{ name: 't'.repeat(160), other: 'x' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const cell = screen.getAllByRole('row')[1].querySelector('td, th');
+
+    expect((cell as HTMLElement).className).toContain('tw:break-words');
+  });
+});
