@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../constants/Glossary.contant';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
@@ -46,11 +47,19 @@ export const useGlossaryStore = create<{
   refreshGlossaryTerms: () => void;
   loadMoreTerms: () => void;
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
+  // The Terms table's live, already-'all'-filtered entityStatus param. Seeded
+  // with the table's own default filter (not undefined) so "not yet
+  // published" and "user explicitly selected All statuses" are
+  // distinguishable — only the latter is a real undefined, since the table
+  // always pushes at least once on mount.
+  termsStatusFilter: string | undefined;
+  setTermsStatusFilter: (termsStatusFilter: string | undefined) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
   glossaryChildTerms: [],
   termsLoading: false,
+  termsStatusFilter: DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','),
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -120,6 +129,9 @@ export const useGlossaryStore = create<{
   },
   setTermsLoading: (termsLoading: boolean) => {
     set({ termsLoading });
+  },
+  setTermsStatusFilter: (termsStatusFilter: string | undefined) => {
+    set({ termsStatusFilter });
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({
