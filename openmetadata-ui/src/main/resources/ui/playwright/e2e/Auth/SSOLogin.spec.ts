@@ -104,7 +104,9 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await test.step('Return to OpenMetadata and complete self-signup if needed', async () => {
       await page.waitForURL(
         (url) =>
-          url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
+          url.pathname.endsWith('/signup') ||
+          url.pathname.endsWith('/my-data') ||
+          url.pathname === '/',
         { timeout: 60_000 }
       );
 
@@ -113,7 +115,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
         await expect(createButton).toBeEnabled();
         await createButton.click();
-        await page.waitForURL('**/my-data', { timeout: 60_000 });
+        await page.waitForURL(/\/(my-data)?$/, { timeout: 60_000 });
       }
 
       await redirectToHomePage(page);
@@ -128,7 +130,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const page = userPage!;
 
     await page.reload();
-    await page.waitForURL('**/my-data', { timeout: 30_000 });
+    await page.waitForURL(/\/(my-data)?$/, { timeout: 30_000 });
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     await verifyLoggedInUserMatches(page, username);
   });
@@ -138,7 +140,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
     try {
       await extraPage.goto('/');
-      await extraPage.waitForURL('**/my-data', { timeout: 30_000 });
+      await extraPage.waitForURL(/\/(my-data)?$/, { timeout: 30_000 });
       await expect(extraPage.getByTestId('dropdown-profile')).toBeVisible();
       await verifyLoggedInUserMatches(extraPage, username);
     } finally {

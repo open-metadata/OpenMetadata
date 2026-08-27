@@ -779,7 +779,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         return <Route key={route.path ?? route.id} {...route} />;
       })}
 
-      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
+      <Route element={<MyDataPage />} path={ROUTES.HOME} />
       <Route
         element={
           <AdminProtectedRoute>

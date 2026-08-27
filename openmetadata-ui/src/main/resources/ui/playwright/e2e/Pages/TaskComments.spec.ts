@@ -84,7 +84,7 @@ test.describe('Task Comments - API Tests', () => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
     await page.goto('/');
-    await page.waitForURL('**/my-data');
+    await page.waitForURL(/\/(my-data)?$/);
     const result = await getApiContext(page);
     apiContext = result.apiContext;
     afterAction = result.afterAction;
@@ -331,7 +331,7 @@ test.describe('Task Comments - Permission Tests', () => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
     await page.goto('/');
-    await page.waitForURL('**/my-data');
+    await page.waitForURL(/\/(my-data)?$/);
     const { apiContext, afterAction } = await getApiContext(page);
 
     await adminUser.create(apiContext);
@@ -349,7 +349,7 @@ test.describe('Task Comments - Permission Tests', () => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
     await page.goto('/');
-    await page.waitForURL('**/my-data');
+    await page.waitForURL(/\/(my-data)?$/);
     const { apiContext, afterAction } = await getApiContext(page);
 
     await table.delete(apiContext);
@@ -366,7 +366,7 @@ test.describe('Task Comments - Permission Tests', () => {
     const adminContext = await browser.newContext({ storageState: adminFile });
     const adminPage = await adminContext.newPage();
     await adminPage.goto('/');
-    await adminPage.waitForURL('**/my-data');
+    await adminPage.waitForURL(/\/(my-data)?$/);
     const { apiContext: adminApiContext, afterAction } = await getApiContext(
       adminPage
     );
@@ -415,7 +415,7 @@ test.describe('Task Comments - Permission Tests', () => {
     const adminContext = await browser.newContext({ storageState: adminFile });
     const adminPage = await adminContext.newPage();
     await adminPage.goto('/');
-    await adminPage.waitForURL('**/my-data');
+    await adminPage.waitForURL(/\/(my-data)?$/);
     const { apiContext: adminApiContext, afterAction } = await getApiContext(
       adminPage
     );
@@ -464,7 +464,7 @@ test.describe('Task Comments - UI Tests', () => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
     await page.goto('/');
-    await page.waitForURL('**/my-data');
+    await page.waitForURL(/\/(my-data)?$/);
     const { apiContext, afterAction } = await getApiContext(page);
 
     await adminUser.create(apiContext);
@@ -480,7 +480,7 @@ test.describe('Task Comments - UI Tests', () => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
     await page.goto('/');
-    await page.waitForURL('**/my-data');
+    await page.waitForURL(/\/(my-data)?$/);
     const { apiContext, afterAction } = await getApiContext(page);
 
     await table.delete(apiContext);
@@ -499,7 +499,7 @@ test.describe('Task Comments - UI Tests', () => {
     const context = await browser.newContext({ storageState: adminFile });
     const apiPage = await context.newPage();
     await apiPage.goto('/');
-    await apiPage.waitForURL('**/my-data');
+    await apiPage.waitForURL(/\/(my-data)?$/);
     const { apiContext, afterAction } = await getApiContext(apiPage);
 
     const task = await createTaskViaAPI(
