@@ -15,19 +15,6 @@ import {
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
 
-// Maps antd camelCase placement strings to react-aria space-separated equivalents.
-// Allows legacy call sites to keep their placement values unchanged when migrating.
-const PLACEMENT_MAP: Record<string, string> = {
-  bottomLeft: 'bottom left',
-  bottomRight: 'bottom right',
-  leftBottom: 'left bottom',
-  leftTop: 'left top',
-  rightBottom: 'right bottom',
-  rightTop: 'right top',
-  topLeft: 'top left',
-  topRight: 'top right',
-};
-
 // HTML elements that are natively focusable and don't need an AriaButton wrapper.
 // IMPORTANT: do NOT pass a container element whose children are interactive (e.g.
 // a <div> containing a <button>). Tooltip only inspects the top-level element type;
@@ -48,10 +35,9 @@ interface TooltipProps
     Omit<AriaTooltipProps, 'children' | 'placement'> {
   /**
    * Placement of the tooltip relative to the trigger. Accepts react-aria
-   * values ("top", "bottom left", …) and antd legacy camelCase aliases
-   * ("bottomRight", "topLeft", …) which are normalised internally.
+   * values ("top", "bottom left", …).
    */
-  placement?: Placement | keyof typeof PLACEMENT_MAP;
+  placement?: Placement;
   /**
    * The title of the tooltip.
    */
@@ -98,11 +84,6 @@ interface TooltipProps
    * @default false
    */
   triggerIsDisabled?: boolean;
-  /**
-   * Delay in **seconds** before the tooltip shows. Antd legacy alias for
-   * `delay` (which uses milliseconds). When both are provided, `delay` wins.
-   */
-  mouseEnterDelay?: number;
 }
 
 export const Tooltip = ({
@@ -124,16 +105,9 @@ export const Tooltip = ({
   triggerClassName,
   onTriggerPress,
   triggerIsDisabled = false,
-  mouseEnterDelay,
   ...tooltipProps
 }: TooltipProps) => {
-  // Normalise antd camelCase placement aliases ("bottomRight" → "bottom right").
-  const resolvedPlacement = PLACEMENT_MAP[placement] ?? placement;
-
-  // `delay` (ms) takes precedence; fall back to mouseEnterDelay (seconds → ms);
-  // final fallback is the 300 ms default.
-  const resolvedDelay =
-    delay ?? (mouseEnterDelay !== undefined ? mouseEnterDelay * 1000 : 300);
+  const resolvedDelay = delay ?? 300;
 
   // Determine whether the child needs to be wrapped in a focusable AriaButton.
   // Non-focusable HTML string elements (span, div, svg, …) can't serve as
@@ -168,13 +142,13 @@ export const Tooltip = ({
     'top end',
     'bottom left',
     'bottom end',
-  ].includes(resolvedPlacement);
+  ].includes(placement);
   const isTopOrBottomRight = [
     'top right',
     'top start',
     'bottom right',
     'bottom start',
-  ].includes(resolvedPlacement);
+  ].includes(placement);
   // Set negative cross offset for left and right placement to visually balance the tooltip.
   const calculatedCrossOffset = isTopOrBottomLeft
     ? -12
@@ -206,7 +180,7 @@ export const Tooltip = ({
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}
         offset={offset}
-        placement={resolvedPlacement as Placement}>
+        placement={placement as Placement}>
         {({ isEntering, isExiting }) => (
           <>
             {arrow && (
