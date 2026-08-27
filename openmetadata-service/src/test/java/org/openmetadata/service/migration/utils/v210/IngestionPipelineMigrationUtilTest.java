@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -188,6 +189,23 @@ class IngestionPipelineMigrationUtilTest {
   }
 
   @Test
+  void resolveServiceTypeResolutionsTreatsMultipleSameTypeServicesAsAmbiguous() {
+    String pipelineId = UUID.randomUUID().toString();
+
+    var resolutions =
+        IngestionPipelineMigrationUtil.resolveServiceTypeResolutions(
+            List.of(
+                relationship(pipelineId, Entity.DATABASE_SERVICE),
+                relationship(pipelineId, Entity.DATABASE_SERVICE)));
+
+    var resolution = resolutions.get(pipelineId);
+    assertFalse(resolution.isResolved());
+    assertEquals(
+        "multiple active supported service relationships: databaseService, databaseService",
+        resolution.reason());
+  }
+
+  @Test
   void backfillReportsPipelineWithoutActiveServiceRelationship() {
     ObjectNode pipeline = pipeline(PipelineType.METADATA, JsonUtils.getObjectNode());
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
@@ -210,10 +228,40 @@ class IngestionPipelineMigrationUtilTest {
     assertEquals(1, result.scanned());
     assertEquals(0, result.repaired());
     assertEquals(1, result.unresolved());
-    assertEquals(pipeline.path("id").asText(), result.unresolvedPipelines().getFirst().id());
+    assertEquals(pipeline.path("id").asText(), result.unresolvedPipelineSamples().getFirst().id());
     assertEquals(
         "no active supported service relationship",
-        result.unresolvedPipelines().getFirst().reason());
+        result.unresolvedPipelineSamples().getFirst().reason());
+  }
+
+  @Test
+  void backfillKeepsOnlyABoundedSampleOfUnresolvedPipelines() {
+    int unresolvedPipelineCount = 101;
+    List<String> pipelines =
+        IntStream.range(0, unresolvedPipelineCount)
+            .mapToObj(
+                ignored -> pipeline(PipelineType.METADATA, JsonUtils.getObjectNode()).toString())
+            .toList();
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.IngestionPipelineDAO pipelineDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.ingestionPipelineDAO()).thenReturn(pipelineDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1_000), anyString(), anyString()))
+        .thenReturn(pipelines, List.of());
+    when(relationshipDAO.findFromBatch(
+            any(), eq(Relationship.CONTAINS.ordinal()), eq(Include.NON_DELETED)))
+        .thenReturn(List.of());
+
+    IngestionPipelineMigrationUtil.MigrationResult result =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO);
+
+    assertEquals(unresolvedPipelineCount, result.scanned());
+    assertEquals(unresolvedPipelineCount, result.unresolved());
+    assertEquals(
+        IngestionPipelineMigrationUtil.MAX_UNRESOLVED_PIPELINE_SAMPLES,
+        result.unresolvedPipelineSamples().size());
   }
 
   @Test
@@ -242,7 +290,7 @@ class IngestionPipelineMigrationUtilTest {
     assertFalse(config(pipeline).has("type"));
     assertEquals(
         "no active supported service relationship",
-        result.unresolvedPipelines().getFirst().reason());
+        result.unresolvedPipelineSamples().getFirst().reason());
   }
 
   @Test

@@ -17,10 +17,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 @Slf4j
 public final class IngestionPipelineMigrationUtil {
   private static final int BATCH_SIZE = 1_000;
+  static final int MAX_UNRESOLVED_PIPELINE_SAMPLES = 100;
   private static final String SOURCE_CONFIG_TYPE = "type";
   private static final String PIPELINE_TYPE = "pipelineType";
   private static final String REVERSE_INGESTION_OPERATIONS = "operations";
@@ -92,17 +93,18 @@ public final class IngestionPipelineMigrationUtil {
   private IngestionPipelineMigrationUtil() {}
 
   public record MigrationResult(
-      int scanned, int repaired, List<UnresolvedPipeline> unresolvedPipelines) {
+      int scanned,
+      int repaired,
+      int unresolved,
+      List<UnresolvedPipeline> unresolvedPipelineSamples) {
     public MigrationResult {
-      unresolvedPipelines = List.copyOf(unresolvedPipelines);
-    }
-
-    public int unresolved() {
-      return unresolvedPipelines.size();
+      unresolvedPipelineSamples = List.copyOf(unresolvedPipelineSamples);
     }
   }
 
   public record UnresolvedPipeline(String id, String fullyQualifiedName, String reason) {}
+
+  private record ServiceRelationship(String serviceId, String serviceType) {}
 
   enum RepairOutcome {
     NOT_NEEDED,
@@ -133,9 +135,12 @@ public final class IngestionPipelineMigrationUtil {
       return new ServiceTypeResolution(null, MISSING_SERVICE_RELATIONSHIP);
     }
 
-    private static ServiceTypeResolution ambiguous(Set<String> serviceTypes) {
+    private static ServiceTypeResolution ambiguous(Set<ServiceRelationship> serviceRelationships) {
+      List<String> serviceTypes =
+          serviceRelationships.stream().map(ServiceRelationship::serviceType).sorted().toList();
       return new ServiceTypeResolution(
-          null, "multiple active supported service types: " + String.join(", ", serviceTypes));
+          null,
+          "multiple active supported service relationships: " + String.join(", ", serviceTypes));
     }
 
     boolean isResolved() {
@@ -158,23 +163,27 @@ public final class IngestionPipelineMigrationUtil {
   private static final class MigrationSummary {
     private int scanned;
     private int repaired;
-    private final List<UnresolvedPipeline> unresolvedPipelines = new ArrayList<>();
+    private int unresolved;
+    private final List<UnresolvedPipeline> unresolvedPipelineSamples = new ArrayList<>();
 
     private void record(ObjectNode pipeline, RepairResult result) {
       scanned++;
       if (result.outcome() == RepairOutcome.REPAIRED) {
         repaired++;
       } else if (result.outcome() == RepairOutcome.UNRESOLVED) {
-        unresolvedPipelines.add(
-            new UnresolvedPipeline(
-                pipelineId(pipeline),
-                pipeline.path("fullyQualifiedName").asText(),
-                result.reason()));
+        unresolved++;
+        if (unresolvedPipelineSamples.size() < MAX_UNRESOLVED_PIPELINE_SAMPLES) {
+          unresolvedPipelineSamples.add(
+              new UnresolvedPipeline(
+                  pipelineId(pipeline),
+                  pipeline.path("fullyQualifiedName").asText(),
+                  result.reason()));
+        }
       }
     }
 
     private MigrationResult toResult() {
-      return new MigrationResult(scanned, repaired, unresolvedPipelines);
+      return new MigrationResult(scanned, repaired, unresolved, unresolvedPipelineSamples);
     }
   }
 
@@ -261,24 +270,24 @@ public final class IngestionPipelineMigrationUtil {
 
   static Map<String, ServiceTypeResolution> resolveServiceTypeResolutions(
       List<CollectionDAO.EntityRelationshipObject> relationships) {
-    Map<String, Set<String>> serviceTypesByPipeline = new HashMap<>();
+    Map<String, Set<ServiceRelationship>> serviceRelationshipsByPipeline = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject relationship : relationships) {
-      addServiceType(serviceTypesByPipeline, relationship);
+      addServiceRelationship(serviceRelationshipsByPipeline, relationship);
     }
     Map<String, ServiceTypeResolution> resolutions = new HashMap<>();
-    serviceTypesByPipeline.forEach(
-        (pipelineId, serviceTypes) ->
-            resolutions.put(pipelineId, resolveServiceTypes(serviceTypes)));
+    serviceRelationshipsByPipeline.forEach(
+        (pipelineId, serviceRelationships) ->
+            resolutions.put(pipelineId, resolveServiceRelationships(serviceRelationships)));
     return resolutions;
   }
 
-  private static void addServiceType(
-      Map<String, Set<String>> serviceTypesByPipeline,
+  private static void addServiceRelationship(
+      Map<String, Set<ServiceRelationship>> serviceRelationshipsByPipeline,
       CollectionDAO.EntityRelationshipObject relationship) {
     if (isActiveServiceRelationship(relationship)) {
-      serviceTypesByPipeline
-          .computeIfAbsent(relationship.getToId(), ignored -> new TreeSet<>())
-          .add(relationship.getFromEntity());
+      serviceRelationshipsByPipeline
+          .computeIfAbsent(relationship.getToId(), ignored -> new HashSet<>())
+          .add(new ServiceRelationship(relationship.getFromId(), relationship.getFromEntity()));
     }
   }
 
@@ -288,10 +297,12 @@ public final class IngestionPipelineMigrationUtil {
         && SOURCE_CONFIG_TYPES.containsKey(relationship.getFromEntity());
   }
 
-  private static ServiceTypeResolution resolveServiceTypes(Set<String> serviceTypes) {
-    ServiceTypeResolution resolution = ServiceTypeResolution.ambiguous(serviceTypes);
-    if (serviceTypes.size() == 1) {
-      resolution = ServiceTypeResolution.resolved(serviceTypes.iterator().next());
+  private static ServiceTypeResolution resolveServiceRelationships(
+      Set<ServiceRelationship> serviceRelationships) {
+    ServiceTypeResolution resolution = ServiceTypeResolution.ambiguous(serviceRelationships);
+    if (serviceRelationships.size() == 1) {
+      resolution =
+          ServiceTypeResolution.resolved(serviceRelationships.iterator().next().serviceType());
     }
     return resolution;
   }
@@ -419,7 +430,7 @@ public final class IngestionPipelineMigrationUtil {
         result.repaired(),
         result.unresolved());
     result
-        .unresolvedPipelines()
+        .unresolvedPipelineSamples()
         .forEach(
             pipeline ->
                 LOG.warn(
@@ -427,5 +438,13 @@ public final class IngestionPipelineMigrationUtil {
                     pipeline.id(),
                     pipeline.fullyQualifiedName(),
                     pipeline.reason()));
+    int omittedUnresolvedPipelines =
+        result.unresolved() - result.unresolvedPipelineSamples().size();
+    if (omittedUnresolvedPipelines > 0) {
+      LOG.warn(
+          "Unable to repair {} additional ingestion pipeline source configs; only the first {} are logged",
+          omittedUnresolvedPipelines,
+          MAX_UNRESOLVED_PIPELINE_SAMPLES);
+    }
   }
 }
