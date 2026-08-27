@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
-import { ColumnsType, ColumnType, TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +26,11 @@ import { getContractStatusType } from '../../../utils/DataContract/DataContractU
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
+import {
+  ColumnsType,
+  ColumnType,
+  TablePaginationConfig,
+} from '../../common/Table/Table.interface';
 import './contract-schema.less';
 
 const ContractSchemaTable: React.FC<{

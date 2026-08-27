@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.jdbi3.SystemRepository.ReindexStatus;
 import org.openmetadata.service.jdbi3.SystemRepository.SearchReindexStatus;
@@ -106,6 +107,37 @@ class SystemRepositoryReindexStatusTest {
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.contains("3"));
     assertTrue(message.toLowerCase().contains("version-tracked"));
+  }
+
+  @Test
+  void degradedClusterFailsStepEvenWhenNoReindexNeeded() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), false, true);
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+    assertFalse(step.getPassed());
+    assertTrue(step.getMessage().toLowerCase().contains("degraded"));
+  }
+
+  @Test
+  void cleanUpToDateHealthyClusterPassesStep() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+    assertTrue(step.getPassed());
+  }
+
+  @Test
+  void reindexNeededFailsStepEvenWhenClusterHealthy() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of("dashboard"), 0, List.of(), List.of(), true, true);
+    assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
+  }
+
+  @Test
+  void driftComputeFailureFailsStepEvenWhenClusterHealthy() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
+    assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
   }
 
   @Test

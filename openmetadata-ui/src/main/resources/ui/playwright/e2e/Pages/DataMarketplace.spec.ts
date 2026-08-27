@@ -21,7 +21,11 @@ import {
   navigateToMarketplace,
   searchMarketplace,
 } from '../../utils/dataMarketplace';
-import { fillCommonFormItems, fillDomainForm } from '../../utils/domain';
+import {
+  clickDrawerSave,
+  fillCommonFormItems,
+  fillDomainForm,
+} from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -173,7 +177,10 @@ test.describe(
             response.url().includes('/api/v1/dataProducts') &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        const saveBtn = page.getByTestId('save-btn');
+        await expect(saveBtn).toBeVisible();
+        await saveBtn.focus();
+        await page.keyboard.press('Enter');
         const response = await createResponse;
         expect(response.status()).toBe(201);
       });
@@ -214,7 +221,7 @@ test.describe(
             response.url().includes('/api/v1/domains') &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
         const response = await createResponse;
         expect(response.status()).toBe(201);
       });
