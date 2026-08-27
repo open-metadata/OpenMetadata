@@ -1363,6 +1363,12 @@ const TableV2 = <T extends object>(
                             {...cellHandlerProps}
                             className={classNames(
                               colType.ellipsis && 'tw:overflow-hidden',
+                              // A cell must never spill into its neighbour. An
+                              // unbreakable string — a long name with no spaces,
+                              // an FQN — otherwise overflows a width-constrained
+                              // cell and lands on the column beside it, covering
+                              // whatever is there and swallowing clicks on it.
+                              'tw:break-words',
                               rest.cellClassName ??
                                 'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top',
                               getAlignClass(colType.align),
