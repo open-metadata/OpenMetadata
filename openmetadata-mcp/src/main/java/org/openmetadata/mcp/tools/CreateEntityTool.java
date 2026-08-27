@@ -16,7 +16,10 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -33,6 +36,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -72,10 +76,11 @@ public class CreateEntityTool implements McpTool {
     Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
 
     applyRepositoryDefaults(entity);
-    authorizeCreate(authorizer, limits, securityContext, entityType, entity);
+    EntityRepository<EntityInterface> repository = type.typedRepository();
+    repository.prepareInternal(entity, false);
+    authorizeCreateOrUpdate(authorizer, limits, securityContext, entityType, entity);
     RuleEngine.getInstance().evaluate(entity);
-    RestUtil.PutResponse<EntityInterface> response =
-        persist(authorizer, securityContext, type, entity, userName);
+    RestUtil.PutResponse<EntityInterface> response = persist(repository, entity, userName);
 
     Map<String, Object> result =
         McpResponseUtils.compact(response.getEntity(), response.getChangeType());
@@ -85,33 +90,46 @@ public class CreateEntityTool implements McpTool {
   }
 
   /**
-   * CREATE rights first, then the overwrite check once {@code prepareInternal} has resolved the
-   * fully qualified name - {@code createOrUpdate} updates in place when the name is taken, so a
-   * caller holding only create rights must not be able to overwrite somebody else's entity.
+   * Authorizes the call as either a create or an overwrite, never both.
+   *
+   * <p>Mirrors {@code EntityResource.createOrUpdate}, which branches exclusively once the name is
+   * resolved: a name that is free is checked as {@link MetadataOperation#CREATE} and counted
+   * against the create quota, while a name already taken is an update, checked as {@link
+   * MetadataOperation#EDIT_ALL} against the existing entity and exempt from the quota.
+   *
+   * <p>Running the create leg unconditionally was stricter than REST in two ways that matter: a
+   * caller holding only edit rights could not update an entity it is allowed to edit, and an
+   * installation at its quota for a type could no longer edit existing entities of that type at
+   * all.
    */
-  private static void authorizeCreate(
+  private static void authorizeCreateOrUpdate(
       Authorizer authorizer,
       Limits limits,
       CatalogSecurityContext securityContext,
       String entityType,
       EntityInterface entity) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    CreateResourceContext<EntityInterface> resourceContext =
-        new CreateResourceContext<>(entityType, entity);
-    limits.enforceLimits(securityContext, resourceContext, operationContext);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    String fqn = entity.getFullyQualifiedName();
+    // Include.ALL because createOrUpdate finds the original with ALL: a soft-deleted entity at this
+    // name is still updated in place, so it is an update rather than a create.
+    boolean overwritesExisting =
+        fqn != null && CommonUtils.entityExistsByName(entityType, fqn, Include.ALL);
+    if (overwritesExisting) {
+      OperationContext editContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      authorizer.authorize(
+          securityContext,
+          editContext,
+          new ResourceContext<EntityInterface>(entityType, null, fqn, Include.ALL));
+    } else {
+      OperationContext createContext = new OperationContext(entityType, MetadataOperation.CREATE);
+      CreateResourceContext<EntityInterface> createResourceContext =
+          new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, createResourceContext, createContext);
+      authorizer.authorize(securityContext, createContext, createResourceContext);
+    }
   }
 
   private static RestUtil.PutResponse<EntityInterface> persist(
-      Authorizer authorizer,
-      CatalogSecurityContext securityContext,
-      EntityCreationSpec type,
-      EntityInterface entity,
-      String userName) {
-    String entityType = type.entityType();
-    EntityRepository<EntityInterface> repository = type.typedRepository();
-    repository.prepareInternal(entity, false);
-    CommonUtils.authorizeOverwrite(authorizer, securityContext, entityType, entity);
+      EntityRepository<EntityInterface> repository, EntityInterface entity, String userName) {
     RestUtil.PutResponse<EntityInterface> response =
         repository.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
@@ -205,6 +223,28 @@ public class CreateEntityTool implements McpTool {
     }
     if (entity instanceof Metric metric) {
       validateMetric(metric);
+    }
+    if (entity instanceof Page page) {
+      applyPageBody(page);
+    }
+  }
+
+  /**
+   * An article's body carries nothing the caller has to supply - its markdown lives in {@code
+   * description} - so requiring the bare {@code page} object would fail every article creation on
+   * a field with no value to give it. A quick link's body is its destination, which cannot be
+   * guessed.
+   */
+  private static void applyPageBody(Page page) {
+    boolean needsBody = page.getPage() == null;
+    if (needsBody && PageType.ARTICLE.equals(page.getPageType())) {
+      page.setPage(new Article());
+    } else if (needsBody) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Attribute 'page' is required for a '%s' page and must carry its url, as"
+                  + " {\"url\": \"https://...\"}. Nothing was created.",
+              page.getPageType()));
     }
   }
 

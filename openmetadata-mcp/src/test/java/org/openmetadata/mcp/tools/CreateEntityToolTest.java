@@ -3,11 +3,14 @@ package org.openmetadata.mcp.tools;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -26,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -39,15 +43,20 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -58,6 +67,9 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.RestUtil;
 
 class CreateEntityToolTest {
@@ -88,12 +100,13 @@ class CreateEntityToolTest {
         ruleEngine,
         () -> new CreateEntityTool().execute(authorizer, limits, securityContext(), glossary()));
 
-    InOrder ordered = inOrder(limits, authorizer, ruleEngine, repository);
+    // prepareInternal first: it resolves the name, and the name decides whether this call is a
+    // create or an update - and so which permission and quota apply.
+    InOrder ordered = inOrder(repository, limits, authorizer, ruleEngine);
+    ordered.verify(repository).prepareInternal(any(), anyBoolean());
     ordered.verify(limits).enforceLimits(any(), any(), any());
     ordered.verify(authorizer).authorize(any(), any(), any());
     ordered.verify(ruleEngine).evaluate(any());
-    ordered.verify(repository).prepareInternal(any(), anyBoolean());
-    ordered.verify(authorizer).authorize(any(), any(), any());
     ordered.verify(repository).createOrUpdate(isNull(), any(), anyString(), any());
   }
 
@@ -217,6 +230,12 @@ class CreateEntityToolTest {
                           .withFullyQualifiedName("PII"),
                       Include.NON_DELETED))
           .thenReturn(resolvedClassification);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TAG), eq(saved.getFullyQualifiedName()), any(Include.class)))
+          .thenThrow(new EntityNotFoundException("not found"));
       rules.when(RuleEngine::getInstance).thenReturn(ruleEngine);
 
       new CreateEntityTool().execute(authorizer, mock(Limits.class), securityContext(), input);
@@ -233,10 +252,10 @@ class CreateEntityToolTest {
     verify(authorizer).authorize(any(), any(), contextCaptor.capture());
     Tag authorized = (Tag) contextCaptor.getValue().getEntity();
     assertEquals(resolvedClassification.getId(), authorized.getClassification().getId());
-    InOrder ordered = inOrder(authorizer, ruleEngine, repository);
+    InOrder ordered = inOrder(repository, authorizer, ruleEngine);
+    ordered.verify(repository).prepareInternal(prepared, false);
     ordered.verify(authorizer).authorize(any(), any(), any());
     ordered.verify(ruleEngine).evaluate(prepared);
-    ordered.verify(repository).prepareInternal(prepared, false);
 
     Map<String, Object> described =
         withRepository(
@@ -395,9 +414,230 @@ class CreateEntityToolTest {
                     new CreateEntityTool()
                         .execute(authorizer, mock(Limits.class), securityContext(), glossary())));
 
+    // prepareInternal runs first now - it only validates and names the entity, nothing is written -
+    // so what a denial has to stop is the rule evaluation and the write itself.
     verify(ruleEngine, never()).evaluate(any());
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
     verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+  }
+
+  @Test
+  void anArticlePageBodyDefaultsSoOnlyItsPageTypeIsNeeded() {
+    // page.json requires the 'page' body, but for an article that body carries nothing a caller
+    // has to supply - without a default every article creation failed on a required bare Object.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
+    saved.setFullyQualifiedName("runbook");
+    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
+        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    setPreparedFqn(repository, "runbook");
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put("attributes", Map.of("pageType", PageType.ARTICLE.value()));
+
+    withRepository(
+        Entity.PAGE,
+        repository,
+        () ->
+            new CreateEntityTool()
+                .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
+
+    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    Page created = (Page) captor.getValue();
+    assertEquals(PageType.ARTICLE, created.getPageType());
+    assertTrue(created.getPage() instanceof Article, String.valueOf(created.getPage()));
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.PAGE,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.PAGE)));
+    assertTrue(described.get("alsoRequired").toString().contains("pageType"));
+    assertFalse(described.get("alsoRequired").toString().contains("page,"));
+    assertTrue(described.get("conditionalRequirements").toString().contains("QuickLink"));
+  }
+
+  @Test
+  void aQuickLinkPageIsRejectedWithoutItsUrl() {
+    // Only the article body is defaultable: a quick link with no page body would be stored with a
+    // null destination and read back as a broken link.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put("attributes", Map.of("pageType", PageType.QUICK_LINK.value()));
+
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.PAGE,
+                    repository,
+                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+
+    assertTrue(failure.getMessage().contains("page"), failure.getMessage());
+    assertTrue(failure.getMessage().contains("url"), failure.getMessage());
+    verify(repository, never()).prepareInternal(any(), anyBoolean());
+  }
+
+  @Test
+  void anArticleBodySuppliedByTheCallerIsKept() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
+    saved.setFullyQualifiedName("runbook");
+    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
+        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    setPreparedFqn(repository, "runbook");
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put(
+        "attributes",
+        Map.of(
+            "pageType",
+            PageType.ARTICLE.value(),
+            "page",
+            Map.of("publicationDate", "2026-08-28T00:00:00.000Z"),
+            "entityStatus",
+            EntityStatus.DRAFT.value()));
+
+    withRepository(
+        Entity.PAGE,
+        repository,
+        () ->
+            new CreateEntityTool()
+                .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
+
+    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    verify(repository).createOrUpdate(isNull(), captor.capture(), anyString(), any());
+    Page created = (Page) captor.getValue();
+    assertNotNull(
+        JsonUtils.convertValue(created.getPage(), Article.class).getPublicationDate(),
+        "the caller's article body must not be replaced by the default");
+    assertEquals(EntityStatus.DRAFT, created.getEntityStatus());
+  }
+
+  @Test
+  void aPageOffersOnlyTheFieldsItsCreateRequestCarries() {
+    // Binding straight to the entity class exposed fields no caller sets - children and editors are
+    // written from relationships, votes and the extraction fields by background work. Offering
+    // 'children' was the harmful one: storeRelationships reads child.getId() and a caller has no id
+    // to give, so an accepted value would have written a relationship row with a null id.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.PAGE,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.PAGE)));
+
+    assertEquals(
+        Set.of("pageType", "page", "parent", "relatedEntities", "entityStatus"),
+        attributeNames(described));
+
+    Map<String, Object> params = params(Entity.PAGE);
+    params.put(
+        "attributes",
+        Map.of("pageType", PageType.ARTICLE.value(), "children", List.of(Map.of("type", "page"))));
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.PAGE,
+                    repository,
+                    () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
+
+    assertTrue(failure.getMessage().contains("children"), failure.getMessage());
+    verify(repository, never()).prepareInternal(any(), anyBoolean());
+  }
+
+  @Test
+  void aNameThatIsFreeIsAuthorizedAsCreateAndCountsAgainstTheQuota() {
+    Authorizer authorizer = mock(Authorizer.class);
+    Limits limits = mock(Limits.class);
+
+    createGlossary(authorizer, limits, nameIsFree());
+
+    ArgumentCaptor<OperationContext> operations = ArgumentCaptor.forClass(OperationContext.class);
+    ArgumentCaptor<ResourceContextInterface> resources =
+        ArgumentCaptor.forClass(ResourceContextInterface.class);
+    verify(authorizer).authorize(any(), operations.capture(), resources.capture());
+    assertInstanceOf(CreateResourceContext.class, resources.getValue());
+    assertTrue(
+        operations
+            .getValue()
+            .getOperations(resources.getValue())
+            .contains(MetadataOperation.CREATE));
+    verify(limits).enforceLimits(any(), any(), any());
+  }
+
+  @Test
+  void anExistingNameIsAuthorizedAsAnEditAndSkipsTheCreateQuota() {
+    // createOrUpdate updates in place when the name is taken, so the call is an edit. Authorizing
+    // it as a create as well locked out a caller holding only edit rights, and ran the create quota
+    // against an update - EntityResource.createOrUpdate takes one leg or the other, never both.
+    Authorizer authorizer = mock(Authorizer.class);
+    Limits limits = mock(Limits.class);
+
+    createGlossary(
+        authorizer,
+        limits,
+        entities ->
+            entities
+                .when(
+                    () ->
+                        Entity.getEntityReferenceByName(
+                            eq(Entity.GLOSSARY), eq("Finance"), any(Include.class)))
+                .thenReturn(new EntityReference().withType(Entity.GLOSSARY).withName("Finance")));
+
+    ArgumentCaptor<OperationContext> operations = ArgumentCaptor.forClass(OperationContext.class);
+    ArgumentCaptor<ResourceContextInterface> resources =
+        ArgumentCaptor.forClass(ResourceContextInterface.class);
+    verify(authorizer).authorize(any(), operations.capture(), resources.capture());
+    assertInstanceOf(ResourceContext.class, resources.getValue());
+    assertTrue(
+        operations
+            .getValue()
+            .getOperations(resources.getValue())
+            .contains(MetadataOperation.EDIT_ALL));
+    verify(limits, never()).enforceLimits(any(), any(), any());
+  }
+
+  private static void createGlossary(
+      Authorizer authorizer, Limits limits, Consumer<MockedStatic<Entity>> existence) {
+    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
+    saved.setFullyQualifiedName("Finance");
+    when(repository.createOrUpdate(isNull(), any(), anyString(), any()))
+        .thenReturn(new RestUtil.PutResponse<>(null, saved, EventType.ENTITY_CREATED));
+    setPreparedFqn(repository, "Finance");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
+        MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.GLOSSARY)).thenReturn(repository);
+      entities
+          .when(() -> Entity.getEntityTypeFromClass(Glossary.class))
+          .thenReturn(Entity.GLOSSARY);
+      existence.accept(entities);
+      rules.when(RuleEngine::getInstance).thenReturn(mock(RuleEngine.class));
+      new CreateEntityTool().execute(authorizer, limits, securityContext(), glossary());
+    }
+  }
+
+  /**
+   * The existence check reads a missing entity off the exception, so a free name has to throw -
+   * a stub returning null would be read as "the name is taken".
+   */
+  private static Consumer<MockedStatic<Entity>> nameIsFree() {
+    return entities ->
+        entities
+            .when(
+                () ->
+                    Entity.getEntityReferenceByName(
+                        eq(Entity.GLOSSARY), eq("Finance"), any(Include.class)))
+            .thenThrow(new EntityNotFoundException("not found"));
   }
 
   @SuppressWarnings("unchecked")
@@ -438,6 +678,11 @@ class CreateEntityToolTest {
       entities
           .when(() -> Entity.getEntityTypeFromClass(repository.getEntityClass()))
           .thenReturn(entityType);
+      // Nothing exists at the prepared name unless a test says otherwise, so these exercise the
+      // create leg; a null return would instead be read as an overwrite.
+      entities
+          .when(() -> Entity.getEntityReferenceByName(anyString(), anyString(), any(Include.class)))
+          .thenThrow(new EntityNotFoundException("not found"));
       rules.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       return action.get();
     }

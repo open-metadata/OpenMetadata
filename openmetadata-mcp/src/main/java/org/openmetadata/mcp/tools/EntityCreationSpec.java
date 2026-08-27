@@ -1,11 +1,14 @@
 package org.openmetadata.mcp.tools;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -16,6 +19,25 @@ record EntityCreationSpec(
     String entityType,
     EntityRepository<? extends EntityInterface> repository,
     Class<? extends EntityInterface> entityClass) {
+
+  /**
+   * Knowledge page fields no create request carries: children and editors come from relationships,
+   * votes and the extraction fields from background work. Offering {@code children} was actively
+   * harmful - {@code storeRelationships} reads {@code child.getId()}, and a caller has no id.
+   */
+  private static final Set<String> PAGE_SYSTEM_FIELDS =
+      Set.of(
+          "children",
+          "childrenCount",
+          "editors",
+          "followers",
+          "votes",
+          "attachments",
+          "dataProducts",
+          "processingStatus",
+          "processingError",
+          "extractionStats",
+          "memoryCount");
 
   private static final Map<String, String> DEDICATED_CREATE_FLOWS =
       Map.of(
@@ -81,14 +103,26 @@ record EntityCreationSpec(
 
   boolean hasMcpDefault(String field) {
     return (Domain.class.equals(entityClass) && "domainType".equals(field))
-        || (Tag.class.equals(entityClass) && "classification".equals(field));
+        || (Tag.class.equals(entityClass) && "classification".equals(field))
+        || (Page.class.equals(entityClass) && "page".equals(field));
   }
 
   boolean isMcpOwned(String field) {
-    return ContextMemory.class.equals(entityClass) && "sourceType".equals(field);
+    return (ContextMemory.class.equals(entityClass) && "sourceType".equals(field))
+        || (Page.class.equals(entityClass) && PAGE_SYSTEM_FIELDS.contains(field));
   }
 
-  boolean hasConditionalRequirements() {
-    return Tag.class.equals(entityClass);
+  /** Requirements that hold only for some values of another field, in the caller's own terms. */
+  List<String> conditionalRequirements() {
+    List<String> requirements = List.of();
+    if (Tag.class.equals(entityClass)) {
+      requirements = List.of("classification is required unless parent identifies a parent tag");
+    } else if (Page.class.equals(entityClass)) {
+      requirements =
+          List.of(
+              "page is required when pageType is QuickLink and must carry its url; an Article"
+                  + " page body defaults to an empty article and its markdown goes in description");
+    }
+    return requirements;
   }
 }

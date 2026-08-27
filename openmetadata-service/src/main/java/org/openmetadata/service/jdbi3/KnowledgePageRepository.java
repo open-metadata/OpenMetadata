@@ -384,6 +384,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   @Override
   public void prepare(Page knowledgePage, boolean b) {
+    // storeRelationships reads parent.getId() directly, so a parent given by name alone has to be
+    // resolved here or the CONTAINS row is written with a null id and the page loses its parent.
+    knowledgePage.withParent(
+        Entity.getEntityReference(knowledgePage.getParent(), Include.NON_DELETED));
+
     // Validate Related Entities
     List<EntityReference> relatedEntities = knowledgePage.getRelatedEntities();
     if (!nullOrEmpty(relatedEntities)) {
