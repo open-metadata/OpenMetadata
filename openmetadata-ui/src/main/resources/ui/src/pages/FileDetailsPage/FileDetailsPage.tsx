@@ -23,17 +23,13 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import FileDetails from '../../components/DriveService/File/FileDetails';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { File } from '../../generated/entity/data/file';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDriveAssetFollower,
@@ -45,10 +41,6 @@ import {
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { fileDefaultFields } from '../../utils/FileDetailsUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -58,16 +50,30 @@ function FileDetailsPage() {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: fileFQN } = useFqn();
   const [fileDetails, setFileDetails] = useState<File>({} as File);
-  const [isLoading, setLoading] = useState<boolean>(true);
+  // Entity-fetch loading only now — permission-fetch loading comes from the hook below.
+  // Combined at the render gate as `isPermissionsLoading || (canViewBasic &&
+  // isEntityLoading)` — see SpreadsheetDetailsPage.tsx's analogous comment for why the
+  // `canViewBasic` guard matters (a denied-view render must not get stuck on the loader
+  // forever, since fetchFileDetails — the only thing that ever flips this flag false — is
+  // never called at all when view permission is denied).
+  const [isEntityLoading, setEntityLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [filePermissions, setFilePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Single useEntityPermissions call — no genuine cycle: this page never derives a
+  // `deleted`-gated canEdit* flag of its own. FileDetails (the child) owns the raw
+  // filePermissions prop and derives its own edit-tier flags against its own `deleted`
+  // (sourced from fileDetails.deleted) — see TopicDetailsPage.component.tsx's analogous
+  // comment.
+  const {
+    permissions: filePermissions, // FileDetails consumes the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.FILE, fileFQN);
 
   const { id: fileId, version: currentVersion } = fileDetails;
 
@@ -93,27 +99,8 @@ function FileDetailsPage() {
     }
   };
 
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.FILE,
-        entityFqn
-      );
-      setFilePermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchFileDetails = async (fileFQN: string) => {
-    setLoading(true);
+    setEntityLoading(true);
     try {
       const res = await getDriveAssetByFqn<File>(
         fileFQN,
@@ -149,7 +136,7 @@ function FileDetailsPage() {
         );
       }
     } finally {
-      setLoading(false);
+      setEntityLoading(false);
     }
   };
 
@@ -244,22 +231,25 @@ function FileDetailsPage() {
     }));
   }, []);
 
+  // Permission fetching itself now lives in useEntityPermissions (called above). Preserves
+  // the old fetchResourcePermission catch's exact toast (interpolating the FQN itself, not
+  // a translated entity-type label) — matches TopicDetailsPage.component.tsx's analogous
+  // effect.
   useEffect(() => {
-    fetchResourcePermission(fileFQN);
-  }, [fileFQN]);
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: fileFQN })
+      );
+    }
+  }, [permissionsError, fileFQN]);
 
   useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        filePermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
+    if (canViewBasic) {
       fetchFileDetails(fileFQN);
     }
-  }, [filePermissions, fileFQN]);
+  }, [canViewBasic, fileFQN]);
 
-  if (isLoading) {
+  if (isPermissionsLoading || (canViewBasic && isEntityLoading)) {
     return <PageLoader />;
   }
   if (isError) {
@@ -269,7 +259,7 @@ function FileDetailsPage() {
       </ErrorPlaceHolder>
     );
   }
-  if (!filePermissions.ViewAll && !filePermissions.ViewBasic) {
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
