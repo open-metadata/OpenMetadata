@@ -109,10 +109,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.rdf.RdfUpdater;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -138,7 +135,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms,style";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms,style";
 
-  final FeedRepository feedRepository = Entity.getFeedRepository();
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
@@ -1555,12 +1551,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
   protected EntityReference getParentReference(GlossaryTerm entity) {
     return entity.getParent() != null ? entity.getParent() : entity.getGlossary();
   }
@@ -1726,15 +1716,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void updateEntityLinks(String oldFqn, String newFqn, GlossaryTerm updated) {
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    EntityLink newAbout = new EntityLink(GLOSSARY_TERM, newFqn);
-    feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+    ConversationRepository conversations = Entity.getConversationRepository();
+    conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
     List<EntityReference> childTerms =
         findTo(updated.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
 
     for (EntityReference child : childTerms) {
-      newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
-      feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+      String childNewFqn = child.getFullyQualifiedName();
+      String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+      conversations.updateEntityReference(child, childOldFqn);
     }
 
     // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
