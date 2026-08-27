@@ -52,6 +52,12 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 COPY --from=jre-builder /health/Health.class /opt/openmetadata/health/Health.class
+# The one glibc library distroless cc leaves out. libtorch pulls libgfortran,
+# which links libz.so.1, so without this the djl provider downloads its natives
+# and then dies with "libz.so.1: cannot open shared object file" (issue #26700).
+# The glob keeps the multi-arch build working -- the triplet directory differs
+# between linux/amd64 and linux/arm64.
+COPY --from=jre-builder /lib/*-linux-gnu/libz.so.1* /usr/lib/
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /

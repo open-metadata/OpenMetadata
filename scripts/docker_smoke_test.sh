@@ -121,6 +121,14 @@ for triplet in x86_64-linux-gnu aarch64-linux-gnu; do
   fi
 done
 [ "$found_cxx" = "1" ] || fail "libstdc++.so.6 / libgcc_s.so.1 missing -- JNI natives will not load"
+
+# Copied in explicitly: distroless cc ships every other glibc library the natives
+# want but not this one, and libtorch's libgfortran links it.
+if docker cp "$CONTAINER:/usr/lib/libz.so.1" "$WORKDIR_TMP/" >/dev/null 2>&1; then
+  pass "libz.so.1 is present"
+else
+  fail "libz.so.1 missing -- the djl provider will fail to load libtorch"
+fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 # Runs bootstrap/openmetadata-ops.sh exactly the way compose and the helm chart
@@ -168,6 +176,26 @@ if echo "$probe" | grep -qE 'Exception|Error occurred|Error:'; then
 else
   pass "the declared HEALTHCHECK runs and reports unhealthy with no server behind it"
 fi
+
+# The JVM has to be PID 1 or `docker stop` and pod termination never reach
+# Dropwizard's shutdown hooks: the shell that would otherwise be PID 1 does not
+# forward signals, so the container is SIGKILLed once the grace period ends.
+# openmetadata-start.sh execs for exactly this reason. Asserted against a
+# container with no database behind it -- it exits on its own after ~10s, which
+# is a wide enough window to read /proc/1.
+docker run -d --name "$CONTAINER" "$IMAGE" >/dev/null
+pid1=""
+for _ in 1 2 3 4 5 6 7 8; do
+  pid1="$(docker exec "$CONTAINER" /bin/sh -c 'tr "\0" " " < /proc/1/cmdline' 2>/dev/null || true)"
+  [ -n "$pid1" ] && break
+  sleep 1
+done
+case "$pid1" in
+  *OpenMetadataApplication*) pass "the JVM runs as PID 1, so SIGTERM reaches Dropwizard" ;;
+  "") fail "could not read /proc/1 before the container exited" ;;
+  *) fail "PID 1 is '${pid1%% *}', not the JVM -- docker stop will SIGKILL instead of shutting down" ;;
+esac
+docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 echo
 if [ "$failures" -ne 0 ]; then
