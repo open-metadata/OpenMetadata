@@ -986,6 +986,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * definition) must override this (or {@link #setInheritedFields(List, Fields)}) to name the one it
    * inherits from -- otherwise the ancestor fallback resolves an arbitrary CONTAINS parent.
    */
+  /**
+   * Batch-resolve EntityReferences by id for the bulk field fetchers.
+   *
+   * <p>Fails fast on an id that cannot be resolved, preserving the contract of the per-record
+   * {@link Entity#getEntityReferenceById} calls this replaced. The batch query underneath
+   * ({@code findReferencesByIds}) is a plain {@code WHERE id IN (...)}, so it silently omits ids it
+   * cannot find; without this check an orphaned relationship row would change from failing the
+   * request to silently dropping the reference.
+   */
   protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
     List<UUID> distinctIds = ids.stream().distinct().toList();
     Map<UUID, EntityReference> refsById = new HashMap<>();
@@ -993,6 +1002,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityReference ref :
           Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
         refsById.put(ref.getId(), ref);
+      }
+      for (UUID id : distinctIds) {
+        if (!refsById.containsKey(id)) {
+          throw EntityNotFoundException.byMessage(
+              CatalogExceptionMessage.entityNotFound(entityType, id));
+        }
       }
     }
     return refsById;
