@@ -70,4 +70,15 @@ class MigrationUtilTest {
     assertFalse(MigrationUtil.addQueryDomainRuleExemption(null));
     assertFalse(MigrationUtil.addQueryDomainRuleExemption(new EntityRulesSettings()));
   }
+
+  @Test
+  void initializesNullIgnoredEntities() {
+    SemanticsRule multiDomain = new SemanticsRule().withName("Multiple Domains are not allowed");
+    multiDomain.setIgnoredEntities(null);
+    EntityRulesSettings settings =
+        new EntityRulesSettings().withEntitySemantics(new ArrayList<>(List.of(multiDomain)));
+
+    assertTrue(MigrationUtil.addQueryDomainRuleExemption(settings));
+    assertEquals(1, queryCount(multiDomain));
+  }
 }

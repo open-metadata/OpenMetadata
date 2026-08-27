@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -103,9 +104,15 @@ public class MigrationUtil {
     }
     boolean changed = false;
     for (SemanticsRule rule : rules.getEntitySemantics()) {
-      if (QUERY_EXEMPT_DOMAIN_RULES.contains(rule.getName())
-          && rule.getIgnoredEntities() != null
-          && !rule.getIgnoredEntities().contains(QUERY_ENTITY)) {
+      if (!QUERY_EXEMPT_DOMAIN_RULES.contains(rule.getName())) {
+        continue;
+      }
+      // A customized/older persisted rule may carry a null list; initialize it so the exemption is
+      // never silently skipped.
+      if (rule.getIgnoredEntities() == null) {
+        rule.setIgnoredEntities(new ArrayList<>());
+      }
+      if (!rule.getIgnoredEntities().contains(QUERY_ENTITY)) {
         rule.getIgnoredEntities().add(QUERY_ENTITY);
         changed = true;
       }
