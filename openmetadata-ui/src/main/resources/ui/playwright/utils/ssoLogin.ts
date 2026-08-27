@@ -46,7 +46,10 @@ export const loginViaSso = async (
 
     await expect(createButton).toBeEnabled();
     await createButton.click();
-    await page.waitForURL(/\/(my-data)?$/, { timeout: 60_000 });
+    await page.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { timeout: 60_000 }
+    );
   }
 
   await expect(page.getByTestId('dropdown-profile')).toBeVisible({

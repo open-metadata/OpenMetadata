@@ -122,7 +122,9 @@ test.describe(
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(/\/(my-data)?$/);
+      await expect(page).toHaveURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data'
+      );
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
