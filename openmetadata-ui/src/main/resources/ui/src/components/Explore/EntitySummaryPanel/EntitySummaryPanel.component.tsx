@@ -244,6 +244,11 @@ export default function EntitySummaryPanel({
     canEditDisplayName,
     canEditCustomFields,
     canViewCustomFields,
+    // Deliberate semantic change, not a pure rename: the old expression was the raw dual
+    // check `entityPermissions.ViewTests || entityPermissions.ViewAll`, which grants on
+    // ViewAll even when ViewTests is explicitly denied. `canViewTests` is prioritized (same
+    // precedent as `canViewBasic`'s fix — see PermissionDerivation.ts): an explicit field
+    // deny beats a broader grant. Fixes the same class of bug in passing.
     canViewTests,
   } = useEntityPermissions(
     permissionResourceType ?? ResourceEntity.TABLE,

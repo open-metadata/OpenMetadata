@@ -144,29 +144,38 @@ const WorksheetDetailsPage = () => {
       });
     } catch (error) {
       const status = (error as AxiosError)?.response?.status;
-      if (status === ClientErrors.NOT_FOUND) {
-        // Column-deep-link fallback: `worksheetFQN` (== resolvedEntityFqn at call time) did
-        // not resolve to an actual worksheet — likely a column FQN, since the drive-asset
-        // endpoint doesn't resolve columns. Walk up to the parent worksheet and re-resolve;
-        // setting resolvedEntityFqn also re-triggers permission fetching for the new
-        // identifier via useEntityPermissions (a different query key). Mirrors
-        // ContainerPage.tsx's analogous containerError-driven fallback. Old code reached
-        // this same walk-up by re-throwing to fetchResourcePermission's catch (now removed
-        // — permission fetching is decoupled, so the walk-up lives here instead).
-        const parentParts = Fqn.split(worksheetFQN).slice(0, -1);
-        if (parentParts.length > 0) {
-          setActiveColumnFqn(worksheetFQN);
-          setResolvedEntityFqn(Fqn.build(...parentParts));
-        } else {
-          // No parent to fall back to — genuinely not found. Old code's terminal branch
-          // (shared between permission-fetch and entity-fetch 404s, via the re-throw) showed
-          // this exact permission-fetch-error toast regardless of which fetch actually
-          // failed; preserved verbatim rather than switching to the entity-fetch toast text.
-          showErrorToast(
-            t('server.fetch-entity-permissions-error', { entity: worksheetFQN })
-          );
-          setIsError(true);
-        }
+      // Column-deep-link fallback: `worksheetFQN` (== resolvedEntityFqn at call time) did
+      // not resolve to an actual worksheet — likely a column FQN, since the drive-asset
+      // endpoint doesn't resolve columns. Walk up to the parent worksheet and re-resolve;
+      // setting resolvedEntityFqn also re-triggers permission fetching for the new
+      // identifier via useEntityPermissions (a different query key). Mirrors
+      // ContainerPage.tsx's analogous containerError-driven fallback. Old code reached this
+      // same walk-up by re-throwing to fetchResourcePermission's catch (now removed —
+      // permission fetching is decoupled, so the walk-up lives here instead).
+      //
+      // Single-hop guard (`!activeColumnFqn && worksheetFQN === decodedWorksheetFQN`),
+      // mirroring ContainerPage.tsx's approved fallback shape and Path B (the
+      // permissionsError effect) below: only attempt the walk-up while still resolving the
+      // original deep-link FQN, not a second hop from an already-walked parent.
+      const canWalkUp =
+        status === ClientErrors.NOT_FOUND &&
+        !activeColumnFqn &&
+        worksheetFQN === decodedWorksheetFQN;
+      const parentParts = canWalkUp ? Fqn.split(worksheetFQN).slice(0, -1) : [];
+
+      if (parentParts.length > 0) {
+        setActiveColumnFqn(worksheetFQN);
+        setResolvedEntityFqn(Fqn.build(...parentParts));
+      } else if (status === ClientErrors.NOT_FOUND) {
+        // Terminal 404: no parent to fall back to (or already past the single allowed
+        // hop). Old code's terminal branch (shared between permission-fetch and
+        // entity-fetch 404s, via the re-throw) showed this exact permission-fetch-error
+        // toast regardless of which fetch actually failed; preserved verbatim rather than
+        // switching to the entity-fetch toast text.
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', { entity: worksheetFQN })
+        );
+        setIsError(true);
       } else if (status === ClientErrors.FORBIDDEN) {
         navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {

@@ -669,8 +669,12 @@ describe('WorksheetDetailsPage', () => {
 
       await renderComponent();
 
+      // t() is globally mocked to the identity function (see src/setupTests.js), so the
+      // interpolated `entity` option collapses out and only the outer key survives.
       await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalled();
+        expect(showErrorToast).toHaveBeenCalledWith(
+          'server.fetch-entity-permissions-error'
+        );
       });
     });
   });
