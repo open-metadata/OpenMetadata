@@ -596,7 +596,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       return (
         <TextArea
           data-testid="memory-content-input"
-          placeholder={t('message.what-should-ask-collate-remember')}
+          placeholder={t('message.what-should-ai-remember')}
           rows={5}
           value={field.value}
           onChange={(value) => field.onChange(value)}
@@ -763,7 +763,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               />
                               <Tooltip
                                 title={t(
-                                  'message.what-should-ask-collate-remember'
+                                  'message.what-should-ai-remember'
                                 )}>
                                 <TooltipTrigger className="tw:leading-0">
                                   <InfoCircle
