@@ -308,6 +308,7 @@ const CustomizeAppModeSidebarPage = () => {
             <Toggle
               aria-label={node.title}
               data-testid={`ask-sidebar-switch-${node.key}`}
+              isDisabled={node.disablePersonaHide}
               isSelected={!hiddenKeys.includes(node.key)}
               onChange={(checked) => handleVisibilityToggle(checked, node.key)}
             />

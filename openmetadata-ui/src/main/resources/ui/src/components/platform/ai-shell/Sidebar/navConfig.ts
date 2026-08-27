@@ -65,6 +65,8 @@ export interface MainNavItem {
   badgeKey?: string;
   /** Points to a sub-nav config key if this section has a sub-navigation */
   subNav?: string;
+  /** Disables this item's visibility toggle in the customize editor. */
+  disablePersonaHide?: boolean;
 }
 
 const moduleToNavItem = (m: AppModule): MainNavItem => {
@@ -81,6 +83,7 @@ const moduleToNavItem = (m: AppModule): MainNavItem => {
     labelKey: m.labelKey,
     action: { kind: 'navigate', path: m.defaultPath },
     subNav: m.subNav?.key,
+    disablePersonaHide: m.disablePersonaHide,
   };
 };
 

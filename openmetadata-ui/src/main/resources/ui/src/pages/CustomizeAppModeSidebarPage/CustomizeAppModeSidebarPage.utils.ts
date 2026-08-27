@@ -32,6 +32,8 @@ export interface SidebarTreeNode {
   title: string;
   isLeaf?: boolean;
   navIcon?: IconComponent;
+  /** When true the visibility toggle is disabled (item cannot be hidden). */
+  disablePersonaHide?: boolean;
   children?: SidebarTreeNode[];
 }
 
@@ -51,6 +53,7 @@ const toItemNode = (
   key,
   title: i18n.t(labelKeyForKey(map, key)) as string,
   navIcon: map.get(key)?.icon,
+  disablePersonaHide: map.get(key)?.disablePersonaHide,
 });
 
 // The "More" node is a first-class, hideable, draggable node that owns the

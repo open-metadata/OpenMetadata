@@ -152,6 +152,13 @@ export interface AppModule {
   activeIcon?: IconComponent;
 
   /**
+   * When true this item cannot be hidden per-persona: its visibility toggle
+   * in the app-mode sidebar customize editor is disabled. Use for anchor
+   * entries (e.g. New Chat) that must always render on the live sidebar.
+   */
+  disablePersonaHide?: boolean;
+
+  /**
    * Primary URL namespace owned by this module (e.g. '/observability').
    * The sidebar item highlights when the current pathname starts with
    * this prefix; nothing outside the prefix belongs to the module.
