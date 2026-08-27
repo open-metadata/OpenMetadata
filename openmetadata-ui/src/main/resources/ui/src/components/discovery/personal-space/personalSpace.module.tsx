@@ -48,6 +48,14 @@ const gatedInbox = (
  * `activity` / `tasks` sub-tabs plus `/my-data` all render the shared
  * {@link InboxPage} shell behind the {@link PersonalSpaceGate} view-permission
  * gate; the active tab is derived from the path.
+ *
+ * The Inbox is a single tabbed page, so it is registered as ONE `/inbox/*`
+ * route rather than one route per sub-tab. Separate per-tab routes would each
+ * become their own keep-alive cache entry, leaving multiple `InboxContent`
+ * instances mounted at once — and because the tab is derived from the global
+ * pathname, every mounted instance would render the *same* (current) tab,
+ * duplicating tab test-ids. The splat is intentionally non-cacheable (one live
+ * instance), which is the correct trade-off for a tabbed page.
  */
 export const personalSpaceModule: AppModule = {
   id: 'personal-space',
@@ -58,17 +66,7 @@ export const personalSpaceModule: AppModule = {
   defaultPath: PERSONAL_SPACE_ROUTES.INBOX,
   routes: [
     {
-      path: PERSONAL_SPACE_ROUTES.INBOX,
-      element: gatedInbox,
-      position: RoutePosition.APP,
-    },
-    {
-      path: PERSONAL_SPACE_ROUTES.INBOX_ACTIVITY,
-      element: gatedInbox,
-      position: RoutePosition.APP,
-    },
-    {
-      path: PERSONAL_SPACE_ROUTES.INBOX_TASKS,
+      path: `${PERSONAL_SPACE_ROUTES.INBOX}/*`,
       element: gatedInbox,
       position: RoutePosition.APP,
     },
