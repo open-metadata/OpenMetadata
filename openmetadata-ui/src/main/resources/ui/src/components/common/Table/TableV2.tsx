@@ -40,40 +40,40 @@
  */
 
 import {
-    Button,
-    Dropdown,
-    EmptyPlaceholder,
-    Table as UntitledTable,
-    Typography
+  Button,
+  Dropdown,
+  EmptyPlaceholder,
+  Table as UntitledTable,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import React, {
-    forwardRef,
-    ReactElement,
-    ReactNode,
-    Ref,
-    RefAttributes,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
+  forwardRef,
+  ReactElement,
+  ReactNode,
+  Ref,
+  RefAttributes,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import {
-    Button as AriaButton,
-    ColumnResizer,
-    Dialog,
-    DialogTrigger,
-    Popover,
-    ResizableTableContainer
+  Button as AriaButton,
+  ColumnResizer,
+  Dialog,
+  DialogTrigger,
+  Popover,
+  ResizableTableContainer,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
-    getCustomizeColumnDetails,
-    getReorderedColumns
+  getCustomizeColumnDetails,
+  getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
@@ -81,28 +81,28 @@ import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
 import type {
-    ColumnsType,
-    ColumnType,
-    FilterValue,
-    SorterResult,
-    TableCurrentDataSource,
-    TablePaginationConfig
+  ColumnsType,
+  ColumnType,
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
 } from './Table.interface';
 import {
-    TableColumnDropdownList,
-    TableComponentProps
+  TableColumnDropdownList,
+  TableComponentProps,
 } from './Table.interface';
 import './table.less';
 import type {
-    AriaSelection,
-    AriaSortDescriptor,
-    FlatRow
+  AriaSelection,
+  AriaSortDescriptor,
+  FlatRow,
 } from './TableV2.interface';
 import {
-    flattenTreeRows,
-    getColumnStickyStyle,
-    resolveCellValue,
-    resolveColumnTitle
+  flattenTreeRows,
+  getColumnStickyStyle,
+  resolveCellValue,
+  resolveColumnTitle,
 } from './TableV2Utils';
 
 /**
