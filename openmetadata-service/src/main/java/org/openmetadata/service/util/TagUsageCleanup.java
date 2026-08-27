@@ -168,7 +168,7 @@ public class TagUsageCleanup {
     nullHashRows.forEach(tagUsage -> processTagUsage(tagUsage, result));
     if (nullHashRows.size() == MAX_NULL_HASH_ROWS) {
       LOG.warn(
-          "Reached the {}-row cap while sweeping tag_usage rows with NULL hashes; some malformed rows may remain. Investigate and re-run cleanup.",
+          "Reached the {}-row cap while sweeping tag_usage rows with NULL hashes; malformed rows beyond the cap were not examined this run. Re-run cleanup to process the remainder.",
           MAX_NULL_HASH_ROWS);
     }
     return nullHashRows.size();
@@ -241,11 +241,19 @@ public class TagUsageCleanup {
 
     for (OrphanedTagUsage orphan : orphanedTagUsages) {
       try {
+        // Malformed rows from the NULL-hash sweep cannot be matched by the equality delete
+        // (col = NULL is UNKNOWN), so they need the NULL-safe predicate to actually be removed.
+        boolean hasNullHash = orphan.getTagFQNHash() == null || orphan.getTargetFQNHash() == null;
         int deleted =
-            collectionDAO
-                .tagUsageDAO()
-                .deleteTagUsage(
-                    orphan.getSource(), orphan.getTagFQNHash(), orphan.getTargetFQNHash());
+            hasNullHash
+                ? collectionDAO
+                    .tagUsageDAO()
+                    .deleteTagUsageNullSafe(
+                        orphan.getSource(), orphan.getTagFQNHash(), orphan.getTargetFQNHash())
+                : collectionDAO
+                    .tagUsageDAO()
+                    .deleteTagUsage(
+                        orphan.getSource(), orphan.getTagFQNHash(), orphan.getTargetFQNHash());
 
         if (deleted > 0) {
           deletedCount++;

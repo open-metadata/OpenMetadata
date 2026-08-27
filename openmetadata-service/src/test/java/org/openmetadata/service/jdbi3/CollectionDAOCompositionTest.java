@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +41,9 @@ class CollectionDAOCompositionTest {
 
   /** A floor so a reflection change that silently returns nothing fails loudly. */
   private static final int MIN_EXPECTED_ACCESSORS = 30;
+
+  /** Same floor idea for the aggregator interfaces behind CollectionDAO. */
+  private static final int MIN_EXPECTED_AGGREGATORS = 15;
 
   @Test
   void everyCreateSqlObjectAccessorRemainsVisibleAndAnnotated() throws NoSuchMethodException {
@@ -67,6 +71,52 @@ class CollectionDAOCompositionTest {
           viaCollectionDao.getAnnotation(CreateSqlObject.class),
           name + " lost its @CreateSqlObject annotation when resolved through CollectionDAO");
     }
+  }
+
+  /**
+   * Java does not inherit annotations across interfaces ({@code @Inherited} is superclass-only), so
+   * a JDBI configurer placed at the type level on one of the aggregator interfaces is silently
+   * dropped when JDBI attaches CollectionDAO: no compile error, no wiring failure, just a missing
+   * mapper on whichever runtime path needed it. Type-level configurers must therefore live on
+   * CollectionDAO itself. Method-level annotations are unaffected — those are read off the resolved
+   * method, which is why the accessor guard above passes.
+   */
+  @Test
+  void noAggregatorInterfaceCarriesTypeLevelJdbiConfigurer() {
+    Set<Class<?>> aggregators = new LinkedHashSet<>();
+    collectExtendedInterfaces(CollectionDAO.class, aggregators);
+    assertTrue(
+        aggregators.size() >= MIN_EXPECTED_AGGREGATORS,
+        "Expected at least "
+            + MIN_EXPECTED_AGGREGATORS
+            + " aggregator interfaces behind CollectionDAO, found "
+            + aggregators.size());
+
+    for (Class<?> aggregator : aggregators) {
+      for (Annotation annotation : aggregator.getAnnotations()) {
+        assertTrue(
+            !isJdbiConfigurer(annotation),
+            aggregator.getSimpleName()
+                + " declares the type-level JDBI configurer @"
+                + annotation.annotationType().getSimpleName()
+                + ". Java does not inherit interface annotations, so JDBI ignores it when attaching"
+                + " CollectionDAO. Move it onto CollectionDAO, or onto the specific method.");
+      }
+    }
+  }
+
+  /**
+   * A JDBI configurer is any annotation meta-annotated as one, rather than a hardcoded list, so new
+   * {@code @Register*} variants are covered automatically.
+   */
+  private static boolean isJdbiConfigurer(Annotation annotation) {
+    Class<? extends Annotation> type = annotation.annotationType();
+    return Arrays.stream(type.getAnnotations())
+        .map(meta -> meta.annotationType().getName())
+        .anyMatch(
+            name ->
+                name.equals("org.jdbi.v3.core.extension.annotation.UseExtensionConfigurer")
+                    || name.equals("org.jdbi.v3.sqlobject.config.ConfiguringAnnotation"));
   }
 
   /**

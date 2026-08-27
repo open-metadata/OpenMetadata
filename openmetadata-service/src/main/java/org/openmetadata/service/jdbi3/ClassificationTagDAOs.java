@@ -1202,9 +1202,9 @@ public interface ClassificationTagDAOs {
 
     // Malformed rows whose hash columns are NULL cannot be keyset-ordered, so they are swept in one
     // bounded query. No current write path produces NULL hashes (FullyQualifiedName.buildHash only
-    // returns null for null/empty FQNs), so this is expected to return nothing — but the cleanup
-    // tool
-    // exists precisely to remove malformed rows, so it must still see them.
+    // returns null for null/empty FQNs), so this is expected to return nothing. Rows it does return
+    // are deleted through deleteTagUsageNullSafe below — the plain equality delete cannot match
+    // them, so without that the cleanup would report them every run and never remove them.
     @SqlQuery(
         "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
             + "FROM tag_usage WHERE tagFQNHash IS NULL OR targetFQNHash IS NULL LIMIT :limit")
@@ -1214,6 +1214,30 @@ public interface ClassificationTagDAOs {
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND targetFQNHash = :targetFQNHash")
     int deleteTagUsage(
+        @Bind("source") int source,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("targetFQNHash") String targetFQNHash);
+
+    /**
+     * NULL-safe counterpart of {@link #deleteTagUsage}, for the malformed rows surfaced by {@link
+     * #getTagUsagesWithNullHash}. {@code col = NULL} is UNKNOWN, so the equality delete above
+     * matches zero rows for them and the cleanup could never converge. Kept as a separate method so
+     * the common path keeps the plain equality predicate, which the
+     * (source, tagFQNHash, targetFQNHash) unique index serves directly — Postgres cannot use that
+     * index for IS NOT DISTINCT FROM.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM tag_usage WHERE source = :source "
+                + "AND tagFQNHash <=> :tagFQNHash AND targetFQNHash <=> :targetFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM tag_usage WHERE source = :source "
+                + "AND tagFQNHash IS NOT DISTINCT FROM CAST(:tagFQNHash AS TEXT) "
+                + "AND targetFQNHash IS NOT DISTINCT FROM CAST(:targetFQNHash AS TEXT)",
+        connectionType = POSTGRES)
+    int deleteTagUsageNullSafe(
         @Bind("source") int source,
         @Bind("tagFQNHash") String tagFQNHash,
         @Bind("targetFQNHash") String targetFQNHash);

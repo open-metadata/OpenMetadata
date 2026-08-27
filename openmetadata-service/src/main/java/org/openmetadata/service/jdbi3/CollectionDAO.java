@@ -27,6 +27,25 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJson;
 
+/**
+ * Thin composite over the domain aggregator interfaces the DAOs were split into. JDBI builds its
+ * handler map from {@code getMethods()}, which returns inherited methods, so every
+ * {@code @CreateSqlObject} accessor stays wired through this type unchanged.
+ *
+ * <p><b>Referencing the nested types.</b> The member types those aggregators declare are inherited
+ * here, so an existing inline reference such as {@code CollectionDAO.EntityRelationshipObject} still
+ * compiles. An <b>import</b> does not: JLS 7.5 requires the canonical name, which is now the owning
+ * interface — {@code CoreRelationshipDAOs.EntityRelationshipObject},
+ * {@code TimeSeriesDAOs.TestCaseDAO}, and so on. An IDE "add import" or organize-imports that
+ * reaches for {@code CollectionDAO.<Nested>} will therefore not compile; name the owning interface
+ * instead. Spotless does not catch this.
+ *
+ * <p><b>Type-level JDBI configurers belong here, not on an aggregator.</b> Java does not inherit
+ * annotations across interfaces ({@code @Inherited} is superclass-only), so a
+ * {@code @RegisterRowMapper} / {@code @RegisterArgumentFactory} placed on one of the extended
+ * interfaces is silently ignored when JDBI attaches this type. {@code CollectionDAOCompositionTest}
+ * guards both invariants.
+ */
 public interface CollectionDAO
     extends CoreRelationshipDAOs,
         OAuthDAOs,
