@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -16,13 +17,18 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.aicontext.AIContextBuilder;
+import org.openmetadata.service.aicontext.AIContextMarkdown;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -75,6 +81,16 @@ public class GetEntityTool implements McpTool {
   private static final String INCLUDE_PARAM = "include";
   private static final String INCLUDE_LINEAGE = "lineage";
   private static final String INCLUDE_QUALITY = "quality";
+  private static final String INCLUDE_CONTEXT = "context";
+  private static final String INCLUDE_CONTENT = "content";
+  private static final String FORMAT_PARAM = "format";
+  private static final String QUERY_PARAM = "query";
+  private static final String PASSAGES_PARAM = "passages";
+  private static final String CONTENT_KEY = "content";
+  private static final String FORMAT_JSON = "json";
+  private static final String FORMAT_MARKDOWN = "markdown";
+  private static final int DEFAULT_PASSAGES = 3;
+  private static final int MAX_PASSAGES = 10;
   private static final String TEST_SUITE_KEY = "testSuite";
   private static final String CERTIFICATION_KEY = "certification";
 
@@ -227,6 +243,11 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> params,
       String entityType,
       String fqn) {
+    List<String> includes =
+        McpParams.getStringList(params, INCLUDE_PARAM).stream().distinct().toList();
+    if (includes.size() == 1 && includes.contains(INCLUDE_CONTENT)) {
+      return readContentOnly(authorizer, securityContext, params, entityType, fqn);
+    }
     // Authorize by FQN so entity-scoped tag/owner/domain policies are evaluated, not just the
     // resource-type permission.
     authorizer.authorize(
@@ -237,8 +258,10 @@ public class GetEntityTool implements McpTool {
     int columnOffset =
         Math.max(0, McpParams.getInt(params, COLUMN_OFFSET_PARAM, DEFAULT_COLUMN_OFFSET));
     int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
-    Map<String, Object> entityData =
-        JsonUtils.getMap(Entity.getEntityByName(entityType, fqn, "*", null));
+    // Kept as the entity, not just its map: the content section needs the object, and reading it
+    // a second time for that would be the same fetch twice in one request.
+    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "*", null);
+    Map<String, Object> entityData = JsonUtils.getMap(entity);
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
     // stays under the dispatch-level size cap instead of being replaced by an empty stub.
@@ -247,9 +270,29 @@ public class GetEntityTool implements McpTool {
     Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
     addIncludes(
         windowed,
-        new IncludeContext(authorizer, securityContext, entityType, fqn),
-        McpParams.getStringList(params, INCLUDE_PARAM));
+        new IncludeContext(authorizer, securityContext, entityType, fqn, entity, options(params)),
+        includes);
     return windowed;
+  }
+
+  private static Map<String, Object> readContentOnly(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      String entityType,
+      String fqn) {
+    IncludeContext authorizationContext =
+        new IncludeContext(authorizer, securityContext, entityType, fqn, null, options(params));
+    authorizeKnowledge(authorizationContext);
+    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "", Include.NON_DELETED);
+    IncludeContext contentContext =
+        new IncludeContext(
+            authorizer, securityContext, entityType, fqn, entity, authorizationContext.options());
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("entityType", entityType);
+    result.put("fullyQualifiedName", fqn);
+    result.put(INCLUDE_CONTENT, knowledgeContent(contentContext));
+    return result;
   }
 
   /**
@@ -268,7 +311,24 @@ public class GetEntityTool implements McpTool {
       Authorizer authorizer,
       CatalogSecurityContext securityContext,
       String entityType,
-      String fqn) {}
+      String fqn,
+      EntityInterface entity,
+      ContentOptions options) {}
+
+  /** How the knowledge sections render, shared by {@code context} and {@code content}. */
+  private record ContentOptions(String query, String format, int passages) {
+    boolean asJson() {
+      return FORMAT_JSON.equalsIgnoreCase(format);
+    }
+  }
+
+  private static ContentOptions options(Map<String, Object> params) {
+    int requested = McpParams.getInt(params, PASSAGES_PARAM, DEFAULT_PASSAGES);
+    return new ContentOptions(
+        CommonUtils.optString(params, QUERY_PARAM),
+        McpParams.getString(params, FORMAT_PARAM, FORMAT_MARKDOWN),
+        Math.min(Math.max(requested, 1), MAX_PASSAGES));
+  }
 
   private static void addIncludes(
       Map<String, Object> result, IncludeContext ctx, List<String> include) {
@@ -281,6 +341,88 @@ public class GetEntityTool implements McpTool {
     if (include.contains(INCLUDE_QUALITY)) {
       result.put(INCLUDE_QUALITY, section(() -> quality(result, ctx), INCLUDE_QUALITY, ctx.fqn()));
     }
+    if (include.contains(INCLUDE_CONTEXT)) {
+      result.put(INCLUDE_CONTEXT, section(() -> assetContext(ctx), INCLUDE_CONTEXT, ctx.fqn()));
+    }
+    if (include.contains(INCLUDE_CONTENT)) {
+      result.put(INCLUDE_CONTENT, section(() -> knowledge(ctx), INCLUDE_CONTENT, ctx.fqn()));
+    }
+  }
+
+  /**
+   * The asset's Context Profile - attached business knowledge plus the type-specific structural
+   * context (for a table: keys, frequent joins, partitions). Was {@code get_asset_context}, which
+   * took the same {@code entityType} and {@code fqn} this tool already has and read them again.
+   *
+   * <p>Authorized against this specific asset rather than its type, so per-entity policies apply -
+   * the same check the standalone tool made.
+   */
+  private static Object assetContext(IncludeContext ctx) {
+    ctx.authorizer()
+        .authorize(
+            ctx.securityContext(),
+            new OperationContext(ctx.entityType(), VIEW_ALL),
+            new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+    AIContext context =
+        new AIContextBuilder(ctx.entityType(), ctx.fqn())
+            .withQuery(ctx.options().query())
+            .withSecurity(ctx.authorizer(), ctx.securityContext())
+            .build();
+    return ctx.options().asJson()
+        ? JsonUtils.getMap(context)
+        : Map.of(FORMAT_PARAM, FORMAT_MARKDOWN, CONTENT_KEY, AIContextMarkdown.render(context));
+  }
+
+  /**
+   * The body of a knowledge item - a whole article, or with a {@code query} only the passages that
+   * answer it, using the per-chunk embeddings. Was {@code get_knowledge_content}.
+   *
+   * <p>VIEW_BASIC, not VIEW_ALL: that is what the standalone tool required, and folding it in must
+   * not quietly raise the bar for reading an article a caller could read yesterday.
+   */
+  private static Object knowledge(IncludeContext ctx) {
+    authorizeKnowledge(ctx);
+    return knowledgeContent(ctx);
+  }
+
+  private static void authorizeKnowledge(IncludeContext ctx) {
+    ctx.authorizer()
+        .authorize(
+            ctx.securityContext(),
+            new OperationContext(ctx.entityType(), VIEW_BASIC),
+            new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+  }
+
+  private static Object knowledgeContent(IncludeContext ctx) {
+    String query = ctx.options().query();
+    Object rendered;
+    if (query != null && !query.isBlank() && vectorSearchEnabled()) {
+      rendered = passages(ctx, query);
+    } else {
+      String body = AIContextBuilder.fullContentOf(ctx.entity());
+      rendered = renderText(ctx, body == null ? "" : body);
+    }
+    return rendered;
+  }
+
+  private static Object passages(IncludeContext ctx, String query) {
+    List<String> found =
+        OpenSearchVectorService.getInstance()
+            .searchChunksByParent(ctx.entity().getId().toString(), query, ctx.options().passages());
+    return ctx.options().asJson()
+        ? Map.of("passages", found)
+        : renderText(ctx, String.join("\n\n---\n\n", found));
+  }
+
+  private static Object renderText(IncludeContext ctx, String text) {
+    return ctx.options().asJson()
+        ? Map.of(CONTENT_KEY, text)
+        : Map.of(FORMAT_PARAM, FORMAT_MARKDOWN, CONTENT_KEY, text);
+  }
+
+  private static boolean vectorSearchEnabled() {
+    return Entity.getSearchRepository().isVectorEmbeddingEnabled()
+        && OpenSearchVectorService.getInstance() != null;
   }
 
   /** Runs one include section, converting a failure into a note instead of losing the whole read. */

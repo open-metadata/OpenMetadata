@@ -14,8 +14,7 @@
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { FC, useCallback, useMemo } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { FC, useCallback } from 'react';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
@@ -34,22 +33,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isFullSizeWidget = false,
 }) => {
   const isActivityEvent = !isUndefined(activity);
-
-  const mainFeed = useMemo(() => {
-    if (isActivityEvent) {
-      return undefined;
-    }
-
-    return feed
-      ? ({
-          message: feed.message,
-          postTs: feed.threadTs,
-          from: feed.createdBy,
-          id: feed.id,
-          reactions: feed.reactions,
-        } as Post)
-      : undefined;
-  }, [feed, isActivityEvent]);
 
   const handleFeedClick = useCallback(() => {
     if (feed) {
@@ -105,7 +88,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         isForFeedTab={isForFeedTab}
         isFullSizeWidget={isFullSizeWidget}
         isPost={false}
-        post={mainFeed}
         showActivityFeedEditor={showActivityFeedEditor}
         showThread={showThread}
       />

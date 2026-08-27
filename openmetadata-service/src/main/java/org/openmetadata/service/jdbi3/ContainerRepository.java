@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
@@ -35,9 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerFileFormat;
@@ -47,7 +44,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -56,10 +52,7 @@ import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -76,8 +69,6 @@ public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_PATCH_FIELDS = "dataModel,parent";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
   public static final String CONTAINER_SAMPLE_DATA_EXTENSION = "container.sampleData";
-
-  private final FeedRepository feedRepository = Entity.getFeedRepository();
 
   public ContainerRepository() {
     super(
@@ -612,23 +603,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     return allTags;
   }
 
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("dataModel")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new DataModelDescriptionTaskWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new DataModelTagTaskWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
     return listChildren(parentFQN, limit, offset, Include.NON_DELETED, null);
   }
@@ -985,45 +959,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     return container;
   }
 
-  static class DataModelDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    private final Column column;
-
-    DataModelDescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(
-              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
-      threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      column.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class DataModelTagTaskWorkflow extends TagTaskWorkflow {
-    private final Column column;
-
-    DataModelTagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(
-              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
-      threadContext.setAboutEntity(dataModel);
-      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      column.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
   /**
    * Rewrite feed entity-links and field-relationships when a container's FQN changes (parent
    * move).
@@ -1043,8 +978,8 @@ public class ContainerRepository extends EntityRepository<Container> {
       List<EntityDAO.EntityIdFqnPair> renamedDescendants) {
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    EntityLink newAbout = new EntityLink(CONTAINER, newFqn);
-    feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+    ConversationRepository conversations = Entity.getConversationRepository();
+    conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
     if (renamedDescendants == null || renamedDescendants.isEmpty()) {
       return;
@@ -1058,9 +993,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         continue;
       }
       String descendantNewFqn = newFqn + descendant.fqn.substring(oldFqn.length());
-      EntityLink descendantAbout = new EntityLink(CONTAINER, descendantNewFqn);
-      feedRepository.updateLegacyThreadsAbout(
-          descendantAbout.getLinkString(), descendant.id.toString());
+      conversations.updateEntityFqn(CONTAINER, descendant.id, descendant.fqn, descendantNewFqn);
     }
   }
 
