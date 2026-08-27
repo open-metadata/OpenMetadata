@@ -961,7 +961,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames({ isFullScreen }, 'lineage-card tw:flex tw:flex-col')}
+      className={classNames(
+        { isFullScreen },
+        'lineage-card tw:flex tw:flex-col'
+      )}
       data-testid="lineage-card-table"
       variant="default">
       <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
