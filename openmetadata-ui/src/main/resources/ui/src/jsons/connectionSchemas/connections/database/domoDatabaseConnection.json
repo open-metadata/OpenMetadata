@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomoDatabaseConnection",
+  "description": "Domo Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DomoDatabaseConnection",
+  "definitions": {
+    "domoDatabaseType": {
+      "description": " service type",
+      "type": "string",
+      "enum": [
+        "DomoDatabase"
+      ],
+      "default": "DomoDatabase"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "DomoDatabase",
+      "type": "string",
+      "enum": [
+        "DomoDatabase"
+      ]
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Client ID for DOMO",
+      "type": "string"
+    },
+    "secretToken": {
+      "title": "Secret Token",
+      "description": "Secret Token to connect DOMO",
+      "type": "string",
+      "format": "password"
+    },
+    "accessToken": {
+      "title": "Access Token",
+      "description": "Access token to connect to DOMO",
+      "type": "string"
+    },
+    "apiHost": {
+      "expose": true,
+      "title": "API Host",
+      "description": "API Host to connect to DOMO instance",
+      "default": "api.domo.com",
+      "type": "string",
+      "format": "string"
+    },
+    "instanceDomain": {
+      "title": "Instance Domain",
+      "description": "URL of your Domo instance, e.g., https://openmetadata.domo.com",
+      "type": "string",
+      "format": "uri"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "clientId",
+    "secretToken",
+    "instanceDomain"
+  ]
+}
