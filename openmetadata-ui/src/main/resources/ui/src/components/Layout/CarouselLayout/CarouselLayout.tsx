@@ -24,7 +24,7 @@ const LoginCarousel = withSuspenseFallback(
 );
 
 const LOGIN_SPLIT_LAYOUT_CLASSES =
-  'tw:flex tw:h-screen tw:min-h-screen tw:w-full tw:overflow-hidden tw:bg-[#ffffff]';
+  'tw:flex tw:h-screen tw:min-h-screen tw:w-full tw:overflow-hidden tw:bg-white';
 
 const LOGIN_VIDEO_PANEL_CLASSES =
   'tw:relative tw:flex tw:flex-[1_1_52%] tw:min-w-0 tw:items-center ' +
@@ -44,7 +44,7 @@ const LOGIN_VIDEO_CARD_CLASSES =
 
 const LOGIN_FORM_PANEL_CLASSES =
   'tw:flex tw:flex-[1_1_48%] tw:min-w-0 tw:flex-col tw:overflow-y-auto ' +
-  'tw:bg-[#ffffff] tw:max-[1000px]:flex-[1_1_100%] ' +
+  'tw:bg-white tw:max-[1000px]:flex-[1_1_100%] ' +
   'tw:[&_.login-form-container]:h-auto tw:[&_.login-form-container]:m-auto ' +
   'tw:[&_.login-form-container]:w-full';
 
