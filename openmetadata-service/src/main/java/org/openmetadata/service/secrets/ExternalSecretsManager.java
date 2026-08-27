@@ -104,8 +104,15 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     String result;
-    // check if value does not start with 'config:' only String can have password annotation
-    if (Boolean.FALSE.equals(isSecret(value))) {
+    if (isEmptySecret(value)) {
+      // Clearing a credential means removing it. Writing the NULL_SECRET_STRING placeholder instead
+      // would make consumers read the literal "null" back as if it were the secret.
+      if (store) {
+        deleteSecret(fieldSecretId);
+      }
+      result = null;
+      // check if value does not start with 'config:' only String can have password annotation
+    } else if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
@@ -114,6 +121,17 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       result = value;
     }
     return result;
+  }
+
+  /**
+   * Resolves a {@code secret:/...} reference, mapping the {@link #NULL_SECRET_STRING} placeholder
+   * written by older versions back to an absent value. Services saved before this was fixed still
+   * hold a secret whose payload is the literal "null", which must never be used as a credential.
+   */
+  @Override
+  public String getSecretValue(String secretWithPrefix) {
+    String secretValue = super.getSecretValue(secretWithPrefix);
+    return NULL_SECRET_STRING.equals(secretValue) ? null : secretValue;
   }
 
   public void upsertSecret(String secretName, String secretValue) {
@@ -142,6 +160,33 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     } else {
       storeSecret(secretName, secretValue);
     }
+  }
+
+  /**
+   * Removes a secret from the external backend, tolerating one that is already gone so clearing a
+   * credential that was never stored is not an error. Deliberately does not probe with {@link
+   * #existSecret} first: that read reports any failure as "absent", which would silently skip the
+   * delete and orphan the secret while the entity says the credential is gone.
+   */
+  public void deleteSecret(String secretName) {
+    throttle();
+    try {
+      deleteSecretInternal(secretName);
+    } catch (RuntimeException e) {
+      if (!isNotFoundInCauseChain(e)) {
+        throw deleteFailure(secretName, e);
+      }
+      LOG.debug(
+          "Secret [{}] is already absent from {}", secretName, getSecretsManagerProvider().value());
+    }
+  }
+
+  private SecretsManagerException deleteFailure(String secretName, RuntimeException cause) {
+    return new SecretsManagerException(
+        String.format(
+            "Failed to delete secret [%s] from %s: %s",
+            secretName, getSecretsManagerProvider().value(), exceptionMessage(cause)),
+        cause);
   }
 
   private SecretsManagerException upsertFailure(String secretName, RuntimeException cause) {
@@ -211,6 +256,10 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   public String cleanNullOrEmpty(String secretValue) {
-    return Objects.isNull(secretValue) || secretValue.isEmpty() ? NULL_SECRET_STRING : secretValue;
+    return isEmptySecret(secretValue) ? NULL_SECRET_STRING : secretValue;
+  }
+
+  private static boolean isEmptySecret(String secretValue) {
+    return Objects.isNull(secretValue) || secretValue.isEmpty();
   }
 }

@@ -462,10 +462,11 @@ public abstract class SecretsManager {
                             fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
-                    // set new value
+                    // set new value. A null means the field was cleared, so there is nothing left
+                    // to encrypt and the entity must not keep a reference to a removed secret.
                     ReflectionUtil.setValueInMethod(
                         toEncryptObject,
-                        Fernet.isTokenized(newFieldValue)
+                        newFieldValue == null || Fernet.isTokenized(newFieldValue)
                             ? newFieldValue
                             : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
