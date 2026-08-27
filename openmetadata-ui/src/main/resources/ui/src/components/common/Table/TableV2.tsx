@@ -43,6 +43,7 @@ import {
   Button,
   Dropdown,
   EmptyPlaceholder,
+  PaginationCardWithControls,
   Table as UntitledTable,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -77,6 +78,7 @@ import {
 } from '../../../utils/CustomizeColumnUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
+import { computeTotalPages } from '../../../utils/PaginationUtils';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
@@ -994,7 +996,7 @@ const TableV2 = <T extends object>(
     }
   }, [dataSourceLength, clientPagination, internalCurrentPage]);
 
-  /** NextPrevious renders its page-size dropdown only when handed a handler. */
+  /** The core pager shows its size control only when handed a handler. */
   const sizeChangerProps = useMemo(() => {
     if (!clientPagination?.showSizeChanger) {
       return {};
@@ -1002,7 +1004,7 @@ const TableV2 = <T extends object>(
     const { pageSizeOptions } = clientPagination;
 
     return {
-      onShowSizeChange: handlePageSizeChange,
+      onPageSizeChange: handlePageSizeChange,
       ...(pageSizeOptions.length ? { pageSizeOptions } : {}),
     };
   }, [clientPagination, handlePageSizeChange]);
@@ -1532,17 +1534,21 @@ const TableV2 = <T extends object>(
           (clientPagination.serverTotal ?? filteredDataSource.length) <=
             clientPagination.pageSize
         ) ? (
-        <div>
-          <NextPrevious
-            isNumberBased
-            currentPage={currentPage}
+        <div className="tw:px-4 tw:pb-4">
+          {/*
+            The core pager rather than NextPrevious: it navigates by page
+            number instead of one step at a time, and it is react-aria rather
+            than AntD, which is the point of the migration. `total` here is a
+            page count, not a row count.
+          */}
+          <PaginationCardWithControls
+            page={currentPage}
             pageSize={clientPagination.pageSize}
-            paging={{
-              total: clientPagination.serverTotal ?? filteredDataSource.length,
-            }}
-            pagingHandler={({ currentPage: nextPage }) =>
-              handlePageChange(nextPage)
-            }
+            total={computeTotalPages(
+              clientPagination.pageSize,
+              clientPagination.serverTotal ?? filteredDataSource.length
+            )}
+            onPageChange={handlePageChange}
             {...sizeChangerProps}
           />
         </div>
