@@ -47,12 +47,16 @@ RUN apt-get -qq update \
   # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
+  # linux-libc-dev (source pkg "linux") -> kernel headers pulled by libc6-dev; only
+  # used at build time and the container runs the host kernel, so the kernel CVEs it
+  # reports (e.g. CVE-2026-68082, fixed 6.12.105-1) are not reachable at runtime.
+  # Upgraded here for scanner clearance; no-op until Debian security ships the fix.
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
   # docker-ce-cli comes from the airflow base and nothing in this image runs it:
   # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
   # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
