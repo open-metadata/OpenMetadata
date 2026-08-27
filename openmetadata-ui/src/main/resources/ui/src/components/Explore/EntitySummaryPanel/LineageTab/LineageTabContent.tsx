@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -236,15 +236,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
                       <Tooltip placement="top" title={t('label.upstream')}>
-                        <TooltipTrigger>
-                          <UpstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                        <UpstreamIcon height={18} width={18} />
                       </Tooltip>
                     ) : (
                       <Tooltip placement="top" title={t('label.downstream')}>
-                        <TooltipTrigger>
-                          <DownstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                        <DownstreamIcon height={18} width={18} />
                       </Tooltip>
                     )}
                   </div>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { HelpCircle } from '@untitledui/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,9 +48,7 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
                 </span>
                 {metric.tooltip && (
                   <Tooltip placement="top" title={metric.tooltip}>
-                    <TooltipTrigger>
-                      <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
-                    </TooltipTrigger>
+                    <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
                   </Tooltip>
                 )}
               </div>

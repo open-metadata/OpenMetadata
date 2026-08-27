@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
 
@@ -74,7 +74,7 @@ export const StatItem = ({
 
   return (
     <Tooltip placement="top" title={tooltip}>
-      <TooltipTrigger>{interactive}</TooltipTrigger>
+      {interactive}
     </Tooltip>
   );
 };

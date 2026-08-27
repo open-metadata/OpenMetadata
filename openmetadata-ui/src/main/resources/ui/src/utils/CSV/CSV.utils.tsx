@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
@@ -457,9 +457,7 @@ export const renderColumnDataEditor = (
           containerClassName="tw:max-w-sm tw:break-all"
           placement="top"
           title={value}>
-          <TooltipTrigger>
-            <span className="tw:block tw:truncate">{value}</span>
-          </TooltipTrigger>
+          <span className="tw:block tw:truncate">{value}</span>
         </Tooltip>
       ) : (
         value

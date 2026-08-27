@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FunctionComponent } from 'react';
 import { LogViewerToolbarToggleProps } from './LogViewerToolbarToggle.interface';
@@ -24,16 +24,17 @@ const LogViewerToolbarToggle: FunctionComponent<
   LogViewerToolbarToggleProps
 > = ({ icon, isActive, label, testId, onToggle }) => (
   <Tooltip delay={TOOLTIP_DELAY_MS} placement="top" title={label}>
-    <TooltipTrigger
+    <button
       aria-label={label}
       aria-pressed={isActive}
       className={classNames('lvm-icon-button', {
         'lvm-icon-button--active': isActive,
       })}
       data-testid={testId}
-      onPress={onToggle}>
+      type="button"
+      onClick={onToggle}>
       {icon}
-    </TooltipTrigger>
+    </button>
   </Tooltip>
 );
 
