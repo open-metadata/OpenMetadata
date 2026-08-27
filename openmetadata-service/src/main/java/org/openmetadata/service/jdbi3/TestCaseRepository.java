@@ -158,7 +158,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
-  private final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
+  // Static so it is safely published: the base constructor registers `this` before subclass
+  // fields initialize, so an instance ThreadLocal could be observed null and NPE in
+  // clearParentCache().
+  private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
 
   @Override
   public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {
