@@ -523,9 +523,22 @@ class SupersetUnitTest(TestCase):
     def test_fetch_chart_db(self):
         """
         test fetch chart method of db source
+
+        Also covers the Dashboard/Chart FQN collision fix: a chart's OpenMetadata `name`
+        must be prefixed with "chart_" so it can never collide with a Dashboard sharing the
+        same raw Superset numeric id, while `sourceUrl` must stay untouched -- still built
+        from the real, unprefixed Superset slice id -- so the link back to Superset remains
+        exactly as reachable as before.
         """
         self.superset_db.prepare()
         self.assertEqual(EXPECTED_ALL_CHARTS_DB, self.superset_db.all_charts)
+
+        dashboard_chart = next(self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)).right
+        self.assertEqual(dashboard_chart.name.root, "chart_1")
+        self.assertEqual(
+            dashboard_chart.sourceUrl.root,
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1",
+        )
 
     def test_dashboard_name(self):
         dashboard_name = self.superset_api.get_dashboard_name(MOCK_DASHBOARD)
