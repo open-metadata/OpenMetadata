@@ -196,6 +196,21 @@ class OpenlineageSource(PipelineServiceSource):
     _service_cache: Dict[str, str]  # noqa: UP006
     _current_pipeline_service: Optional[str] = None  # noqa: UP045
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        try:
+            super().__init__(config, metadata)
+        except Exception:
+            connection = getattr(self, "connection", None)
+            if connection is not None:
+                try:
+                    connection.close()
+                except Exception:
+                    logger.warning(
+                        "Failed to close the OpenLineage broker after source initialization failed",
+                        exc_info=True,
+                    )
+            raise
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
