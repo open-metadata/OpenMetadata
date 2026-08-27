@@ -9,17 +9,27 @@ from uuid import UUID
 
 import pytest
 from cachetools import LRUCache
+from pydantic import SecretStr
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     ConsumerOffsets,
-    ConsumerOffsets1,
-    KinesisBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     SecurityProtocol,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    ConsumerOffsets as ConsumerOffsets1,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    Kinesis as KinesisBrokerConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -38,6 +48,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.pipeline.openlineage.connection import (
+    ManagedKafkaConsumer,
+)
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
     KPL_AGGREGATED_MAGIC,
     RESOLUTION_CACHE_MAXSIZE,
@@ -53,6 +67,7 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
+from metadata.utils.ssl_manager import SSLManager
 
 MOCK_WORKFLOW_CONFIG = {
     "openMetadataServerConfig": {
@@ -186,6 +201,46 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
     inputs=FULL_OL_KAFKA_EVENT["inputs"],
     outputs=FULL_OL_KAFKA_EVENT["outputs"],
 )
+
+
+def test_failed_source_connection_test_releases_kafka_ssl_resources():
+    class TrackingKafkaConsumer:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    kafka_consumer = TrackingKafkaConsumer()
+    ssl_manager = SSLManager(ca=SecretStr("test-ca-certificate"))
+    assert ssl_manager.ca_file_path is not None
+    ca_path = Path(ssl_manager.ca_file_path)
+    managed_consumer = ManagedKafkaConsumer(kafka_consumer, ssl_manager)
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
+
+    assert ca_path.exists()
+
+    try:
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.get_connection",
+                return_value=managed_consumer,
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection",
+                side_effect=SourceConnectionException("broker unavailable"),
+            ),
+            pytest.raises(SourceConnectionException),
+        ):
+            OpenlineageSource.create(
+                MOCK_OL_CONFIG["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+
+        assert kafka_consumer.closed
+        assert not ca_path.exists()
+    finally:
+        ssl_manager.cleanup_temp_files()
 
 
 class OpenLineageUnitTest(unittest.TestCase):
@@ -2968,6 +3023,28 @@ class TestKinesisMultiShardPolling(unittest.TestCase):
         events = list(source._poll_kinesis(broker))
 
         assert len(events) == 2
+
+
+class TestKafkaPolling(unittest.TestCase):
+    def test_consumer_errors_use_broker_session_timeout(self):
+        message = MagicMock()
+        message.error.return_value = "broker error"
+        consumer = MagicMock()
+        consumer.poll.return_value = message
+        broker = KafkaBrokerConfig(
+            brokersUrl="broker:9092",
+            topicName="openlineage",
+            poolTimeout=1.0,
+            sessionTimeout=1,
+        )
+        source = object.__new__(OpenlineageSource)
+        source.client = consumer
+
+        events = list(source._poll_kafka(broker))
+
+        assert events == []
+        assert consumer.poll.call_count == 2
+        consumer.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

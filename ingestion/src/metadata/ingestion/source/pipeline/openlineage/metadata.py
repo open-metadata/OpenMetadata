@@ -29,9 +29,13 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    Kinesis as KinesisBrokerConfig,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    KafkaBrokerConfig,
-    KinesisBrokerConfig,
     OpenLineageConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -191,6 +195,21 @@ class OpenlineageSource(PipelineServiceSource):
     _db_service_names_warned: bool = False
     _service_cache: Dict[str, str]  # noqa: UP006
     _current_pipeline_service: Optional[str] = None  # noqa: UP045
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        try:
+            super().__init__(config, metadata)
+        except Exception:
+            connection = getattr(self, "connection", None)
+            if connection is not None:
+                try:
+                    connection.close()
+                except Exception:
+                    logger.warning(
+                        "Failed to close the OpenLineage broker after source initialization failed",
+                        exc_info=True,
+                    )
+            raise
 
     @classmethod
     def create(
@@ -1272,10 +1291,7 @@ class OpenlineageSource(PipelineServiceSource):
                 elif message.error():
                     logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
-                    if (
-                        empty_msg_cnt * pool_timeout
-                        > self.service_connection.sessionTimeout
-                    ):
+                    if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
