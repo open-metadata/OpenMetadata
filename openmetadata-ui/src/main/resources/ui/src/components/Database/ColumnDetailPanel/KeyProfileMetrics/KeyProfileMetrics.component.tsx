@@ -47,7 +47,10 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
                   {metric.label}
                 </span>
                 {metric.tooltip && (
-                  <Tooltip placement="top" title={metric.tooltip}>
+                  <Tooltip
+                    placement="top"
+                    title={metric.tooltip}
+                    triggerClassName="tw:inline-flex">
                     <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
                   </Tooltip>
                 )}

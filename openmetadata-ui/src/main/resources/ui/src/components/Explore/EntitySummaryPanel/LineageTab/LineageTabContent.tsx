@@ -235,11 +235,17 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <Tooltip placement="top" title={t('label.upstream')}>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.upstream')}
+                        triggerClassName="tw:inline-flex">
                         <UpstreamIcon height={18} width={18} />
                       </Tooltip>
                     ) : (
-                      <Tooltip placement="top" title={t('label.downstream')}>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.downstream')}
+                        triggerClassName="tw:inline-flex">
                         <DownstreamIcon height={18} width={18} />
                       </Tooltip>
                     )}

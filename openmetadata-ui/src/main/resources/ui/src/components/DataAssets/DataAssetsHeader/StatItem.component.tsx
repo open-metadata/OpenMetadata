@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
 
@@ -55,26 +55,28 @@ export const StatItem = ({
     </>
   );
 
-  const interactive = onClick ? (
-    <button
-      aria-busy={loading || undefined}
-      aria-label={srLabel ?? tooltip}
-      className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
-      data-testid={testId}
-      disabled={isDisabled}
-      type="button"
-      onClick={onClick}>
-      <span className={labelClassName}>{label}</span>
-    </button>
-  ) : (
-    <span className={labelClassName} data-testid={testId}>
-      {label}
-    </span>
-  );
+  if (onClick) {
+    return (
+      <Button
+        aria-busy={loading || undefined}
+        aria-label={srLabel ?? tooltip}
+        className="tw:rounded tw:p-0 tw:hover:bg-transparent"
+        color="tertiary"
+        data-testid={testId}
+        isDisabled={isDisabled}
+        tooltip={tooltip}
+        tooltipPlacement="top"
+        onClick={onClick}>
+        <span className={labelClassName}>{label}</span>
+      </Button>
+    );
+  }
 
   return (
     <Tooltip placement="top" title={tooltip}>
-      {interactive}
+      <span className={labelClassName} data-testid={testId}>
+        {label}
+      </span>
     </Tooltip>
   );
 };
