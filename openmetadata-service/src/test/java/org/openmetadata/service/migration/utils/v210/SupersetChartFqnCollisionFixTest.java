@@ -2,6 +2,9 @@ package org.openmetadata.service.migration.utils.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -14,13 +17,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.DashboardRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -28,6 +34,13 @@ class SupersetChartFqnCollisionFixTest {
 
   private static final String GET_SUPERSET_SERVICES =
       "SELECT id FROM dashboard_service_entity WHERE serviceType = 'Superset'";
+
+  @AfterEach
+  void tearDown() {
+    // registerEntity/setSearchRepository mutate Entity's shared static state; reset it so a
+    // mock registered here can't leak into unrelated tests running later in the same JVM.
+    Entity.cleanup();
+  }
 
   @Test
   void fixSupersetChartFqnCollisionRenamesNumericChartAndReindexes() {
@@ -38,14 +51,16 @@ class SupersetChartFqnCollisionFixTest {
     CollectionDAO.DashboardServiceDAO dashboardServiceDAO =
         mock(CollectionDAO.DashboardServiceDAO.class);
     CollectionDAO.ChartDAO chartDAO = mock(CollectionDAO.ChartDAO.class);
-    CollectionDAO.DashboardDAO dashboardDAO = mock(CollectionDAO.DashboardDAO.class);
+    ChartRepository chartRepository = mock(ChartRepository.class);
+    DashboardRepository dashboardRepository = mock(DashboardRepository.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
     Entity.setSearchRepository(searchRepository);
+    Entity.registerEntity(Chart.class, Entity.CHART, chartRepository);
+    Entity.registerEntity(Dashboard.class, Entity.DASHBOARD, dashboardRepository);
 
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(dashboardServiceDAO);
     when(collectionDAO.chartDAO()).thenReturn(chartDAO);
-    when(collectionDAO.dashboardDAO()).thenReturn(dashboardDAO);
 
     UUID serviceId = UUID.randomUUID();
     UUID chartId = UUID.randomUUID();
@@ -73,7 +88,10 @@ class SupersetChartFqnCollisionFixTest {
 
     when(dashboardServiceDAO.findEntityById(serviceId)).thenReturn(service);
     when(chartDAO.findEntityById(chartId)).thenReturn(chart);
-    when(dashboardDAO.findEntityById(dashboardId)).thenReturn(dashboard);
+    // Reindex re-fetches through the repository (not the raw DAO) so relationship fields like
+    // "dashboards"/"charts" are populated -- the exact fields value doesn't matter to this test.
+    when(chartRepository.get(isNull(), eq(chartId), any())).thenReturn(chart);
+    when(dashboardRepository.get(isNull(), eq(dashboardId), any())).thenReturn(dashboard);
 
     SupersetChartFqnCollisionFix.fixSupersetChartFqnCollision(handle, collectionDAO);
 
@@ -153,10 +171,6 @@ class SupersetChartFqnCollisionFixTest {
   }
 
   private static CollectionDAO.EntityRelationshipRecord relationship(UUID id, String type) {
-    return CollectionDAO.EntityRelationshipRecord.builder()
-        .id(id)
-        .type(type)
-        .json("{}")
-        .build();
+    return CollectionDAO.EntityRelationshipRecord.builder().id(id).type(type).json("{}").build();
   }
 }

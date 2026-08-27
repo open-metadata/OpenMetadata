@@ -11,7 +11,9 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.DashboardRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -97,7 +99,7 @@ public class SupersetChartFqnCollisionFix {
         chart.setName(newName);
         chart.setFullyQualifiedName(newFqn);
         collectionDAO.chartDAO().update(chart);
-        reindexChart(chart);
+        reindexChart(chartId);
         reindexParentDashboards(collectionDAO, chartId);
         fixedCount = 1;
       }
@@ -107,14 +109,22 @@ public class SupersetChartFqnCollisionFix {
     return fixedCount;
   }
 
-  private static void reindexChart(Chart chart) {
+  /**
+   * Re-fetches the chart through its repository (not the raw DAO) so relationship fields like
+   * "dashboards" -- which Chart's own search-index document embeds -- are populated before
+   * reindexing. Reindexing a bare DAO-fetched entity would serialize those fields as null,
+   * blanking them out in the existing search document instead of just leaving them stale.
+   */
+  private static void reindexChart(UUID chartId) {
     try {
+      ChartRepository chartRepository = (ChartRepository) Entity.getEntityRepository(Entity.CHART);
+      Chart chart = chartRepository.get(null, chartId, chartRepository.getFields("dashboards"));
       Entity.getSearchRepository().updateEntityIndex(chart);
     } catch (Exception e) {
       LOG.error(
           "Chart {} FQN fixed in the database but the search index could not be refreshed; "
               + "run 'Recreate Search Indexes' to sync.",
-          chart.getId(),
+          chartId,
           e);
     }
   }
@@ -132,19 +142,25 @@ public class SupersetChartFqnCollisionFix {
             .relationshipDAO()
             .findFrom(chartId, Entity.CHART, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD);
     for (CollectionDAO.EntityRelationshipRecord record : dashboards) {
-      try {
-        Dashboard dashboard = collectionDAO.dashboardDAO().findEntityById(record.getId());
-        if (dashboard != null) {
-          Entity.getSearchRepository().updateEntityIndex(dashboard);
-        }
-      } catch (Exception e) {
-        LOG.error(
-            "Chart {} was renamed but parent Dashboard {} search index could not be refreshed; "
-                + "run 'Recreate Search Indexes' to sync.",
-            chartId,
-            record.getId(),
-            e);
-      }
+      reindexDashboard(chartId, record.getId());
+    }
+  }
+
+  /** Same "fetch through the repository with the right fields" reasoning as reindexChart. */
+  private static void reindexDashboard(UUID chartId, UUID dashboardId) {
+    try {
+      DashboardRepository dashboardRepository =
+          (DashboardRepository) Entity.getEntityRepository(Entity.DASHBOARD);
+      Dashboard dashboard =
+          dashboardRepository.get(null, dashboardId, dashboardRepository.getFields("charts"));
+      Entity.getSearchRepository().updateEntityIndex(dashboard);
+    } catch (Exception e) {
+      LOG.error(
+          "Chart {} was renamed but parent Dashboard {} search index could not be refreshed; "
+              + "run 'Recreate Search Indexes' to sync.",
+          chartId,
+          dashboardId,
+          e);
     }
   }
 
