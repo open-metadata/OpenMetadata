@@ -298,6 +298,8 @@ export function getEntityTypeString(type: string) {
       return t('label.domain-lowercase');
     case AssetsOfEntity.TAG:
       return t('label.tag-lowercase');
+    case AssetsOfEntity.TEAM:
+      return t('label.team-lowercase');
     default:
       return t('label.data-product-lowercase');
   }
@@ -327,10 +329,10 @@ export interface EntityIconProps {
 export const getEntityIconWithBg = (
   entityType?: string,
   containerProps?: HTMLAttributes<HTMLSpanElement>,
-  iconProps?: EntityIconProps
+  iconProps?: EntityIconProps,
+  mapper: typeof ENTITY_ICON_MAPPER = ENTITY_ICON_MAPPER
 ) => {
-  const style =
-    ENTITY_ICON_MAPPER[entityType ?? ''] ?? ENTITY_ICON_MAPPER['default'];
+  const style = mapper[entityType ?? ''] ?? mapper['default'];
   const Icon = style?.icon;
   const { className: containerClassName, ...restContainerProps } =
     containerProps ?? {};
@@ -342,13 +344,14 @@ export const getEntityIconWithBg = (
 
   return (
     <Box
+      inline
       align="center"
       justify="center"
       {...restContainerProps}
       className={classNames(
-        'tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
-        style?.bgClass ?? 'tw:bg-tertiary',
-        containerClassName
+        containerClassName || 'tw:h-7 tw:w-7 tw:rounded-md',
+        'tw:shrink-0 tw:opacity-90',
+        style?.bgClass ?? 'tw:bg-tertiary'
       )}>
       {Icon && (
         <Icon

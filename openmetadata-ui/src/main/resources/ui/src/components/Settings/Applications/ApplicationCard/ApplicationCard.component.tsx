@@ -60,7 +60,7 @@ const ApplicationCard = ({
             </Typography.Title>
             {isUnavailable && (
               <div
-                className="deleted-badge-button text-xss flex-center"
+                className="deleted-badge-button text-xss flex-center tw:items-center"
                 data-testid="deleted-badge">
                 <ExclamationCircleFilled className="d-flex m-r-xss font-medium text-xs" />
                 {t('label.disabled')}

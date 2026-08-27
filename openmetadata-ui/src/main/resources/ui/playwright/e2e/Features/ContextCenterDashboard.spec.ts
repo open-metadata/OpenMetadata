@@ -61,42 +61,6 @@ test.describe('Context Center - Dashboard', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await Promise.all([
-      ...Array.from(contextArticleIdsToCleanup).map((id) =>
-        apiContext
-          .delete(
-            `/api/v1/contextCenter/pages/${id}?hardDelete=true&recursive=true`
-          )
-          .catch(() => undefined)
-      ),
-      ...Array.from(contextMemoryIdsToCleanup).map((id) =>
-        apiContext
-          .delete(`/api/v1/contextCenter/memories/${id}?hardDelete=true`)
-          .catch(() => undefined)
-      ),
-      ...Array.from(contextFileIdsToCleanup).map((id) =>
-        apiContext
-          .delete(`/api/v1/contextCenter/drive/files/${id}?hardDelete=true`)
-          .catch(() => undefined)
-      ),
-    ]);
-    await Promise.all(
-      Array.from(contextFolderIdsToCleanup).map((id) =>
-        apiContext
-          .delete(
-            `/api/v1/contextCenter/drive/folders/${id}?recursive=true&hardDelete=true`
-          )
-          .catch(() => undefined)
-      )
-    );
-    await dataAsset?.delete(apiContext).catch(() => undefined);
-
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -160,6 +124,8 @@ test.describe('Context Center - Dashboard', () => {
         .catch(() => false);
       if (isStillInTopThree) {
         await expect(seededDocument).toBeVisible();
+        await seededDocument.click();
+        await expect(page).toHaveURL(/\/context-center\/documents\?document=/);
       }
     });
 
@@ -192,6 +158,8 @@ test.describe('Context Center - Dashboard', () => {
         .catch(() => false);
       if (isStillInTopThree) {
         await expect(seededMemory).toBeVisible();
+        await seededMemory.click();
+        await expect(page).toHaveURL(/\/context-center\/memories\?memory=/);
       }
     });
   });
@@ -220,7 +188,13 @@ test.describe('Context Center - Dashboard', () => {
 
       const recentlyViewedCard = page.getByTestId('recently-viewed-card');
       await expect(recentlyViewedCard).toBeVisible();
-      await expect(recentlyViewedCard.getByText(displayName)).toBeVisible();
+
+      const recentlyViewedItem = recentlyViewedCard.getByText(displayName);
+      await expect(recentlyViewedItem).toBeVisible();
+      await recentlyViewedItem.click();
+      await expect(page).toHaveURL(
+        new RegExp(`/context-center/articles/${article.fullyQualifiedName}`)
+      );
     });
   });
 
@@ -251,6 +225,7 @@ test.describe('Context Center - Dashboard', () => {
       // along with it. Same technique used in ContextCenterMemories.spec.ts.
       await patchMemory(apiContext, memory.id, [
         { op: 'add', path: '/usageCount', value: 999999 },
+        { op: 'add', path: '/lastUsedAt', value: Date.now() },
         { op: 'add', path: '/pinned', value: true },
       ]);
       await afterAction();
@@ -260,8 +235,12 @@ test.describe('Context Center - Dashboard', () => {
       const mostCitedCard = page.getByTestId('most-cited-memories-card');
       await expect(mostCitedCard).toBeVisible();
 
-      const firstItem = mostCitedCard.locator('.tw\\:py-1\\.5').first();
-      await expect(firstItem).toContainText(title);
+      const firstItem = mostCitedCard.getByTestId('most-cited-count').first();
+      await expect(firstItem).toContainText('Cited 999999 times');
+
+      const firstItemRow = mostCitedCard.getByRole('button').first();
+      await firstItemRow.click();
+      await expect(page).toHaveURL(/\/context-center\/memories\?memory=/);
     });
   });
 
@@ -321,6 +300,15 @@ test.describe('Context Center - Dashboard', () => {
 
       const childRow = tree.getByRole('row', { name: fileName });
       await expect(childRow).toBeVisible();
+
+      await childRow.getByRole('button', { name: fileName }).click();
+      await expect(page).toHaveURL(
+        new RegExp(`/context-center/documents\\?document=${file.id}`)
+      );
+
+      const panel = page.getByTestId('document-preview-panel');
+      await expect(panel).toBeVisible();
+      await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
     });
   });
 
@@ -409,19 +397,29 @@ test.describe('Context Center - Dashboard', () => {
 
       await test.step('Articles card redirects to /context-center/articles', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('article-detail-card').click();
+        await page
+          .getByTestId('article-detail-card')
+          .getByRole('button', { name: 'View All Articles' })
+          .click();
         await expect(page).toHaveURL(/\/context-center\/articles/);
       });
 
       await test.step('Documents card redirects to /context-center/documents', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('document-detail-card').click();
+        await page
+          .getByTestId('document-detail-card')
+          .getByRole('button', { name: 'View All Documents' })
+          .first()
+          .click();
         await expect(page).toHaveURL(/\/context-center\/documents/);
       });
 
       await test.step('Memories card redirects to /context-center/memories', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('memory-detail-card').click();
+        await page
+          .getByTestId('memory-detail-card')
+          .getByRole('button', { name: 'View All Memories' })
+          .click();
         await expect(page).toHaveURL(/\/context-center\/memories/);
         await waitForAllLoadersToDisappear(page);
       });

@@ -135,8 +135,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<p>DescriptionV1</p>);
+jest.mock('../../common/EntityDescription/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
 jest.mock('react-router-dom', () => ({

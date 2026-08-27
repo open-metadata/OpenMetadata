@@ -14,7 +14,7 @@
 
 .table-container {
   height: initial !important;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   background-color: var(--tw-color-bg-primary);
   border: 1px solid @border-color-1;
   overflow: hidden;
@@ -29,8 +29,8 @@
     border: none;
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-weight: 500;
+    gap: var(--om-space-4);
+    font-weight: var(--om-font-weight-medium);
     color: @grey-600;
 
     .ant-dropdown-menu {
@@ -39,8 +39,8 @@
     }
 
     .ant-dropdown-menu-item {
-      padding-left: 0px;
-      padding-right: 0px;
+      padding-left: 0;
+      padding-right: 0;
     }
 
     .ant-dropdown-menu-item:hover {
@@ -54,21 +54,21 @@
 
   .pagination-container {
     border-top: 1px solid @border-color;
-    padding: 16px 0;
+    padding: var(--om-space-16) 0;
   }
 }
 
 .custom-card-with-table {
   &.table-container {
     border: none;
-    border-radius: 0px 0px @border-rad-sm @border-rad-sm;
+    border-radius: var(--om-radius-none) var(--om-radius-none) @border-rad-sm @border-rad-sm;
   }
   .ant-table {
     table > tbody > tr:last-child > td {
       border-bottom: none;
     }
     tr > td:first-child.name-column {
-      padding-left: 16px;
+      padding-left: var(--om-space-16);
     }
   }
 }

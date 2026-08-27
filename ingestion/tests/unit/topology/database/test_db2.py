@@ -202,7 +202,7 @@ class Db2UnitTest(TestCase):
     Db2 Unit Test
     """
 
-    @patch("metadata.ingestion.source.database.common_db_source.get_connection")
+    @patch("metadata.ingestion.source.database.common_db_source.create_connection")
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,

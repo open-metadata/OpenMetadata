@@ -18,6 +18,8 @@ from azure.identity import ClientSecretCredential
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+import metadata.ingestion.source.database.postgres.connection as connection_module
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
@@ -198,7 +200,7 @@ def test_unknown_error_returns_no_diagnosis():
 
 def test_checks_cover_exactly_the_seeded_steps():
     engine = create_engine("sqlite://", poolclass=StaticPool)
-    checks = PostgresChecks(client=engine, query_statement_source=None)
+    checks = PostgresChecks(db=Borrowed.of(engine), query_statement_source=None)
     collected = collect_checks(checks)
     assert set(collected.keys()) == {
         DatabaseStep.CheckAccess,
@@ -224,12 +226,12 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     client = MagicMock()
     client.url.host = "db.invalid"
     client.url.port = 5432
-    checks = PostgresChecks(client=client, query_statement_source=None)
+    checks = PostgresChecks(db=Borrowed.of(client), query_statement_source=None)
     probe_error = NetworkUnreachableError("db.invalid:5432 is not reachable")
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
         patch(
-            "metadata.core.connections.test_connection.checks.database.tcp_probe",
+            "metadata.core.connections.test_connection.network.tcp_probe",
             side_effect=probe_error,
         ) as mock_probe,
         pytest.raises(CheckError) as exc,
@@ -250,15 +252,27 @@ def test_query_statement_is_built_lazily_not_at_construction():
         side_effect=lambda engine: calls.append(1) or "total_exec_time",
     ):
         engine = create_engine("sqlite://", poolclass=StaticPool)
-        PostgresChecks(client=engine, query_statement_source=None)
+        PostgresChecks(db=Borrowed.of(engine), query_statement_source=None)
         assert calls == []
 
 
-def test_get_databases_summary_marks_the_sample_cap():
-    # run_sql fetches at most DEFAULT_SAMPLE_ROWS; below the cap the count is exact,
-    # at the cap it is a lower bound and must be reported as "N+".
-    assert PostgresChecks._summarize_databases([1, 2, 3]) == "3 databases enumerated"
-    assert (
-        PostgresChecks._summarize_databases(list(range(DEFAULT_SAMPLE_ROWS)))
-        == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
-    )
+def _databases_summary(rows: int) -> str:
+    """Drive GetDatabases against a real engine whose probe returns ``rows`` rows."""
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    with engine.connect() as connection:
+        connection.exec_driver_sql("CREATE TABLE probe (name TEXT)")
+        for index in range(rows):
+            connection.exec_driver_sql(f"INSERT INTO probe VALUES ('db{index}')")
+        connection.commit()
+    checks = PostgresChecks(db=Borrowed.of(engine), query_statement_source="pg_stat_statements")
+    with patch.object(connection_module, "POSTGRES_GET_DATABASE", "SELECT name FROM probe"):
+        return collect_checks(checks)[DatabaseStep.GetDatabases]().summary
+
+
+def test_get_databases_counts_the_databases_it_found():
+    assert _databases_summary(3) == "3 databases enumerated"
+
+
+def test_get_databases_reports_a_floor_when_the_sample_is_capped():
+    # run_sql fetches at most DEFAULT_SAMPLE_ROWS; at the cap the count is a floor.
+    assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"

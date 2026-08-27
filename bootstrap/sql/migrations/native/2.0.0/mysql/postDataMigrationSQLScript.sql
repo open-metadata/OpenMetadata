@@ -121,28 +121,6 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.pipelineStatuses')
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.pipelineStatuses');
 
--- MCP Server and MCP Chat are no longer internal Applications; their enablement now lives in
--- platform settings (mcpConfiguration). The MCP Chat app was never shipped to customers, so
--- aiSettings.mcpChat keeps its seeded default shape (no config carry-over).
-
--- MCP Server: keep it disabled if the server app was not installed (mcpConfiguration defaults
--- to enabled=true, which would otherwise turn it on).
-UPDATE openmetadata_settings
-SET json = JSON_SET(json, '$.enabled', false)
-WHERE configType = 'mcpConfiguration'
-  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
-
--- Retire the MCP apps (their Java classes and marketplace seeds are removed). Keep the bot users
--- so the MCP server keeps its principal.
-DELETE er FROM entity_relationship er
-  JOIN installed_apps ia ON er.fromId = ia.id OR er.toId = ia.id
-  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
-DELETE er FROM entity_relationship er
-  JOIN apps_marketplace ia ON er.fromId = ia.id OR er.toId = ia.id
-  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');
-
 -- Post data migration script for Task workflow cutover - OpenMetadata 2.0.0 (moved from 2.0.1)
 
 -- RdfIndexApp: switch to weekly Saturday cron and full-rebuild every run.
@@ -243,6 +221,23 @@ SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsMaskedA
 WHERE serviceType = 'Databricks'
   AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess') = true;
 
+-- Unity Catalog: same defaults as Databricks (enabled/Full true, Column and Masked false).
+-- The field is new for this serviceType, so every existing row is missing the object
+-- entirely — one full-object write, no guarded flips.
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.policyAgentConfig',
+    JSON_OBJECT(
+        'enabled', true,
+        'supportsColumnAccess', false,
+        'supportsFullAccess', true,
+        'supportsMaskedAccess', false
+    )
+)
+WHERE serviceType = 'UnityCatalog'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NULL;
+
 -- Postgres no longer declares policyAgentConfig. Earlier this script backfilled the
 -- object onto Postgres rows; remove it so the stored shape matches the schema.
 UPDATE dbservice_entity
@@ -261,3 +256,112 @@ SET json = JSON_REMOVE(json, '$.openMetadataServerConnection', '$.privateConfigu
 WHERE extension LIKE 'app.version.%'
   AND (JSON_EXTRACT(json, '$.openMetadataServerConnection') IS NOT NULL
        OR JSON_EXTRACT(json, '$.privateConfiguration') IS NOT NULL);
+
+-- Data Insights no longer runs a Data Quality workflow: testCaseResult and
+-- testCaseResolutionStatus are read straight from their live search indexes via the
+-- di-data-assets-* aliases, which search indexing now owns. moduleConfiguration is
+-- additionalProperties:false, so the retired dataQuality key must be stripped from every
+-- persisted config or DataInsightsApp fails to deserialize it on startup.
+UPDATE installed_apps
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+UPDATE apps_marketplace
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+UPDATE entity_extension
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');
+
+-- MCP configuration lives solely in the mcpConfiguration setting. Drop the app-level copy, which
+-- no code reads, and hide the now empty configure step.
+UPDATE installed_apps
+SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
+WHERE name = 'McpApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
+WHERE name = 'McpApplication';
+
+UPDATE entity_extension
+SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'McpApplication';
+
+-- Anchor the CVV recognizer regex to the whole sampled value.
+-- `\b\d{3,4}\b` matched the `125` inside values like `SCN-125`, so any column whose name carries a
+-- CvvRecognizer context word (`code`, `card`, `cvv`, ...) and whose values contain a 3-4 digit run
+-- was tagged PII.Sensitive -- `scenario_code`, `error_code`. The context boost sets the score
+-- straight to MAX_SCORE, so a 0.5 "3-4 digits" pattern became a certain match. `\A..\Z` (not `^..$`)
+-- because the recognizer sets the MULTILINE flag, under which `^..$` still matches a single line of
+-- a multi-line value.
+-- Idempotent: the join finds nothing once the regex is anchored, so a re-run touches no rows.
+-- The recognizer is located by a join rather than by an `EXISTS (SELECT ... FROM JSON_TABLE(json,...))`
+-- in the WHERE clause: that form does not correlate reliably inside an UPDATE and silently matches
+-- zero rows, leaving the migration a no-op.
+UPDATE tag t
+JOIN (
+    SELECT t2.id AS tag_id, jt.idx AS rec_idx
+    FROM tag t2,
+         JSON_TABLE(t2.json, '$.recognizers[*]' COLUMNS (
+             idx FOR ORDINALITY,
+             rec_name VARCHAR(256) PATH '$.name',
+             rec_regex VARCHAR(512) PATH '$.recognizerConfig.patterns[0].regex'
+         )) AS jt
+    WHERE JSON_VALUE(t2.json, '$.fullyQualifiedName' RETURNING CHAR) = 'PII.Sensitive'
+      AND jt.rec_name = 'CvvRecognizer'
+      AND jt.rec_regex = _utf8mb4'\\b\\d{3,4}\\b'
+) AS m ON m.tag_id = t.id
+SET t.json = JSON_SET(
+        t.json,
+        CONCAT('$.recognizers[', m.rec_idx - 1, '].recognizerConfig.patterns[0].regex'),
+        _utf8mb4'\\A\\d{3,4}\\Z');
+
+-- Offer Table Diff on Databricks, Unity Catalog and AzureSQL.
+-- tableDiff.json gained these three services in #31356, but test definitions are seed data and
+-- initializeEntity() skips a row that already exists, so an upgraded deployment keeps the old
+-- 10-service list and the Add Test form never offers Table Diff on those connectors.
+-- One statement per service so a customised list keeps its other entries, and each is a no-op
+-- once its service is present. An empty list already means "every service", so leave it alone
+-- rather than narrowing it to three.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedServices', 'Databricks')
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.supportedServices')) = 'ARRAY'
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.supportedServices')) > 0
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.supportedServices'), JSON_QUOTE('Databricks'));
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedServices', 'UnityCatalog')
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.supportedServices')) = 'ARRAY'
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.supportedServices')) > 0
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.supportedServices'), JSON_QUOTE('UnityCatalog'));
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedServices', 'AzureSQL')
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.supportedServices')) = 'ARRAY'
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.supportedServices')) > 0
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.supportedServices'), JSON_QUOTE('AzureSQL'));

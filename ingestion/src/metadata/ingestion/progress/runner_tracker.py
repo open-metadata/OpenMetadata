@@ -145,6 +145,10 @@ class NodeProgress:
     def advance_leaf(self) -> None:
         if self._is_leaf:
             self._registry.advance(self._parent_path, self._entity_type_name)
+            # A leaf has no container scope to advance its global counter's done
+            # on exit, so a leaf-declared total (e.g. Pipeline) only moves here.
+            # No-op for leaf types with no declared counter (Table, etc.).
+            self._registry.track(self._entity_type_name)
 
     def enter_scope(self):
         """Scope handle for the container entity currently in this thread's

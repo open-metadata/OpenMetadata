@@ -106,27 +106,95 @@ public final class TaskFieldValidator {
     if (about == null || nullOrEmpty(about.getType())) {
       return;
     }
+    String aboutType = about.getType();
+    // Report M10: DAR is meant only for data assets that a policy agent (or manual owner
+    // process) can enforce access on — table / schema / database / storedProcedure / data
+    // product. Non-data assets (dashboard, topic, container, pipeline, mlmodel, …) have no
+    // enforcement path, so accepting a DAR against them creates a phantom "granted" record
+    // that can never actually be applied.
+    boolean isDataProduct = Entity.DATA_PRODUCT.equals(aboutType);
+    boolean isDatabaseFamily = isDatabaseFamilyEntity(aboutType);
+    if (!isDataProduct && !isDatabaseFamily) {
+      throw new IllegalArgumentException(
+          "Data Access Request is only supported for tables, schemas, databases, stored"
+              + " procedures, and data products. Received entity type: '%s'.".formatted(aboutType));
+    }
     DataAccessRequestPayload payload = readDataAccessPayload(task.getPayload());
     if (payload == null || payload.getAccessType() == null) {
       return;
     }
     DataAccessType accessType = payload.getAccessType();
-    String aboutType = about.getType();
 
-    if (Entity.DATA_PRODUCT.equals(aboutType)) {
+    if (isDataProduct) {
       rejectColumnLevelForDataProduct(accessType);
-    } else if (isDatabaseFamilyEntity(aboutType)) {
+    } else if (isDatabaseFamily) {
       enforceConnectorCapability(about, accessType);
     }
   }
 
+  /**
+   * Ten-year upper bound on {@code expirationDate}, measured from {@link
+   * System#currentTimeMillis()}. Blocks the QA-reported {@code 1e400} exploit (Jackson parses that
+   * literal as {@code Double.POSITIVE_INFINITY} and the Long coercion used to swallow the payload
+   * silently), rejects year-9999 timestamps that would leave a Data Access grant effectively
+   * forever, and still leaves a comfortable envelope for real "long-lived research access".
+   */
+  private static final long MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS =
+      10L * 365L * 24L * 60L * 60L * 1000L;
+
+  /**
+   * Require a Data Access Request to carry a future {@code expirationDate} that fits within
+   * {@link #MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS}. Every approved DAR reaches an {@code
+   * expiryTimer} boundary node, so a missing or already-expired timestamp would leave that
+   * boundary timer unschedulable and fail the task mid-workflow. Called on create only —
+   * PATCH/PUT is guarded by the JSON-Schema bound on expirationDate plus the "payload frozen
+   * after Open" patch guard in {@link
+   * org.openmetadata.service.resources.tasks.TaskResource#validatePatchOperations}. No-op for
+   * non-DAR tasks.
+   */
+  public static void validateDataAccessRequestExpiry(Task task) {
+    if (task.getType() != TaskEntityType.DataAccessRequest) {
+      return;
+    }
+    DataAccessRequestPayload payload = readDataAccessPayload(task.getPayload());
+    if (payload == null) {
+      return;
+    }
+    Long expirationDate = payload.getExpirationDate();
+    if (expirationDate == null) {
+      throw new IllegalArgumentException(
+          "A Data Access Request requires an access expirationDate timestamp.");
+    }
+    long now = System.currentTimeMillis();
+    if (expirationDate <= now) {
+      throw new IllegalArgumentException(
+          "Data Access Request expirationDate must be a future timestamp: '%s'."
+              .formatted(expirationDate));
+    }
+    if (expirationDate > now + MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS) {
+      throw new IllegalArgumentException(
+          "Data Access Request expirationDate '%s' exceeds the ten-year horizon."
+              .formatted(expirationDate));
+    }
+  }
+
+  /**
+   * Do NOT swallow malformed payloads. Silently returning null on
+   * {@link IllegalArgumentException} let inputs like {@code expirationDate: 1e400} — which
+   * Jackson parses as {@code Double.POSITIVE_INFINITY} and fails to coerce into the
+   * schema-declared {@code Long} — bypass every downstream validator in
+   * {@link #validateDataAccessRequestExpiry(Task)}, effectively storing "never expires". Surface
+   * the parse failure to the caller so it turns into a clean 400.
+   */
   private static DataAccessRequestPayload readDataAccessPayload(Object payload) {
     DataAccessRequestPayload result = null;
     if (payload != null) {
       try {
         result = JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
-      } catch (IllegalArgumentException ignored) {
-        result = null;
+      } catch (IllegalArgumentException invalidPayload) {
+        throw new IllegalArgumentException(
+            "Invalid Data Access Request payload: %s".formatted(invalidPayload.getMessage()),
+            invalidPayload);
       }
     }
     return result;

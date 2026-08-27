@@ -41,14 +41,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
-import type { ColumnsType } from 'antd/es/table/interface';
-import type {
-  ColumnType,
-  FilterValue,
-  SorterResult,
-  TableCurrentDataSource,
-  TablePaginationConfig,
-} from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import React, {
@@ -81,6 +73,14 @@ import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
+import type {
+  ColumnsType,
+  ColumnType,
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from './Table.interface';
 import {
   TableColumnDropdownList,
   TableComponentProps,
@@ -198,9 +198,11 @@ const TableV2 = <T extends object>(
             String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx) === colKey
         ) as ColumnType<T> | undefined;
 
-        return col?.onFilter
+        const onFilter = col?.onFilter;
+
+        return onFilter
           ? selectedKeys.some((key) =>
-              col.onFilter!(key as React.Key | boolean, record)
+              onFilter(key as React.Key | boolean, record)
             )
           : true;
       })
@@ -544,7 +546,8 @@ const TableV2 = <T extends object>(
         className={classNames('p-x-md', {
           'p-y-md':
             searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
-        })}>
+        })}
+        data-testid="table-toolbar">
         <div className="tw:flex tw:items-center">
           {searchProps && (
             <div style={{ flex: 1 }}>
@@ -581,11 +584,13 @@ const TableV2 = <T extends object>(
                       <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
                         <Typography
                           className="tw:text-tertiary"
+                          data-testid="column-dropdown-title"
                           weight="medium">
                           {t('label.column')}
                         </Typography>
                         <Button
                           color="link-color"
+                          data-testid="column-dropdown-action-button"
                           size="xs"
                           onClick={handleBulkColumnAction}>
                           {dropdownColumnList.length ===
@@ -659,6 +664,7 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
+              onRowAction={rest.onRowAction}
               onSelectionChange={handleSelectionChange}
               onSortChange={handleSortChange}>
               <UntitledTable.Header className="tw:px-2">
@@ -712,7 +718,7 @@ const TableV2 = <T extends object>(
                             <Popover placement="bottom right">
                               <Dialog className="tw:outline-none">
                                 <div
-                                  className="tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:rounded-lg"
+                                  className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
                                   style={{ minWidth: '200px' }}>
                                   {typeof colType.filterDropdown === 'function'
                                     ? colType.filterDropdown({
@@ -746,7 +752,7 @@ const TableV2 = <T extends object>(
                         <ColumnResizer
                           className="tw:absolute tw:right-0 tw:top-1/4 tw:h-1/2 tw:w-2 tw:cursor-col-resize 
                         tw:touch-none tw:after:absolute tw:after:left-1/2 tw:after:h-full tw:after:w-px tw:after:-translate-x-1/2 tw:after:content-[''] 
-                        tw:after:bg-[--color-border-secondary] tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-[--color-border-brand]"
+                        tw:after:bg-border-secondary tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-border-brand"
                         />
                       )}
                     </UntitledTable.Head>

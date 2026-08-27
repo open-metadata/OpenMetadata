@@ -34,8 +34,7 @@ class EnumBackwardCompatibilityTest {
   /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {
-    assertEquals(27, Relationship.values().length);
-    assertEquals(26, Relationship.DERIVED_FROM.ordinal());
+    assertEquals(26, Relationship.values().length);
     assertEquals(25, Relationship.ASSIGNED_TO.ordinal());
     assertEquals(24, Relationship.OUTPUT_PORT.ordinal());
     assertEquals(23, Relationship.INPUT_PORT.ordinal());

@@ -1,5 +1,6 @@
 import type { AnchorHTMLAttributes } from 'react';
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export const GooglePlayButton = ({
   size = 'md',
@@ -11,7 +12,7 @@ export const GooglePlayButton = ({
       href="#"
       {...props}
       className={cx(
-        'tw:rounded-[7px] tw:text-fg-primary tw:ring-1 tw:ring-fg-primary tw:outline-focus-ring tw:ring-inset tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+        `tw:relative tw:rounded-[7px] tw:text-fg-primary tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 ${borderAfter} tw:after:outline-fg-primary`,
         props.className
       )}>
       <svg
@@ -111,7 +112,7 @@ export const AppStoreButton = ({
       href="#"
       {...props}
       className={cx(
-        'tw:rounded-[7px] tw:text-fg-primary tw:ring-1 tw:ring-fg-primary tw:outline-focus-ring tw:ring-inset tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+        `tw:relative tw:rounded-[7px] tw:text-fg-primary tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 ${borderAfter} tw:after:outline-fg-primary`,
         props.className
       )}>
       <svg
@@ -226,7 +227,7 @@ export const GalaxyStoreButton = ({
       href="#"
       {...props}
       className={cx(
-        'tw:rounded-[7px] tw:text-fg-primary tw:ring-1 tw:ring-fg-primary tw:outline-focus-ring tw:ring-inset tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+        `tw:relative tw:rounded-[7px] tw:text-fg-primary tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 ${borderAfter} tw:after:outline-fg-primary`,
         props.className
       )}>
       <svg
@@ -343,7 +344,7 @@ export const AppGalleryButton = ({
       href="#"
       {...props}
       className={cx(
-        'tw:rounded-[7px] tw:text-fg-primary tw:ring-1 tw:ring-fg-primary tw:outline-focus-ring tw:ring-inset tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+        `tw:relative tw:rounded-[7px] tw:text-fg-primary tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 ${borderAfter} tw:after:outline-fg-primary`,
         props.className
       )}>
       <svg

@@ -22,6 +22,7 @@ const mockPatchDataProduct = jest.fn();
 let capturedOnUpdate:
   | ((d: EntityReference | EntityReference[]) => Promise<void> | void)
   | undefined;
+let capturedDomainLabelProps: Record<string, unknown> | undefined;
 
 const mockDataProduct: DataProduct = {
   id: 'dp-1',
@@ -61,6 +62,7 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
 jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: jest.fn().mockImplementation((props) => {
     capturedOnUpdate = props.onUpdate;
+    capturedDomainLabelProps = props;
 
     return <div data-testid="mock-domain-label" />;
   }),
@@ -71,6 +73,16 @@ describe('DataProductDomainWidget', () => {
     mockOnUpdate.mockClear();
     mockPatchDataProduct.mockClear();
     capturedOnUpdate = undefined;
+    capturedDomainLabelProps = undefined;
+  });
+
+  it('renders DomainLabelV2 in single-domain mode so the heading reads "Domain"', async () => {
+    render(<DataProductDomainWidget />);
+
+    await waitFor(() => expect(capturedDomainLabelProps).toBeDefined());
+
+    expect(capturedDomainLabelProps?.multiple).toBe(false);
+    expect(capturedDomainLabelProps?.showDomainHeading).toBe(true);
   });
 
   it('delegates domain change to onUpdate without self-patching', async () => {

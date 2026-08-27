@@ -69,7 +69,6 @@ export enum RelationshipType {
     Contains = "contains",
     CreatedBy = "createdBy",
     DefaultsTo = "defaultsTo",
-    DerivedFrom = "derivedFrom",
     EditedBy = "editedBy",
     Expert = "expert",
     Follows = "follows",

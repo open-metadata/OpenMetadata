@@ -31,12 +31,14 @@ from metadata.generated.schema.entity.utils.common.mwaaAuthConfig import (
     MwaaAuthentication,
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
-from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.ometa.client import ClientConfig, LimitsException
 from metadata.ingestion.source.pipeline.airflow.api.auth import (
     build_access_token_callback,
     build_basic_auth_callback,
     build_gcp_token_callback,
 )
+from metadata.ingestion.source.pipeline.airflow.api.exceptions import AirflowApiResponseError
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
     AirflowApiDagRun,
@@ -48,6 +50,11 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Retry budget for the test call, summing to 6s. The client defaults (retry=3,
+# retry_wait=30) sleep ~180s on a 504, over the step budget.
+TEST_MAX_RETRIES = 2
+TEST_RETRY_WAIT_SECONDS = 2
 
 
 class AirflowApiClient:
@@ -98,8 +105,18 @@ class AirflowApiClient:
                 auth_token=auth_token_fn,
                 auth_token_mode=auth_token_mode,
                 verify=verify_ssl,
+                retry_codes=[503, 504],
             )
             self.client = TrackedREST(client_config, source_name="airflow_api")
+
+    @property
+    def _rest(self) -> TrackedREST:
+        """The REST client. ``client`` is None on the MWAA flavour, which reaches
+        Airflow through the AWS SDK instead - callers must branch on ``mwaa_client``
+        before reading this."""
+        if self.client is None:
+            raise SourceConnectionException("No Airflow REST client: this is an MWAA connection")
+        return self.client
 
     @property
     def api_version(self) -> str:
@@ -164,12 +181,46 @@ class AirflowApiClient:
         response = self.client.get(f"{self._prefix}/version")
         return self._parse_response(response)
 
+    def test_get_version(self) -> dict:
+        """Prove the host really is Airflow, for the test-connection gate.
+
+        Unlike ``get_version``, which is lenient over REST (parses to ``{}``, so a
+        200 HTML page passes) and a stub over MWAA: REST reads via ``get_raw`` so a
+        bad status/body raises, MWAA makes a real ``invoke_rest_api`` call.
+        """
+        if self.mwaa_client:
+            return self.mwaa_client.test_get_version()
+
+        try:
+            response = self._rest.get_raw(
+                f"{self._prefix}/version", retry_wait=TEST_RETRY_WAIT_SECONDS, retries=TEST_MAX_RETRIES
+            )
+        except LimitsException as rate_limited:
+            # A 429 surfaces as LimitsException, raised with no message, so its
+            # errorLog would be blank. Its cause is the driver's real HTTPError,
+            # which carries the status and a readable message - surface that.
+            if rate_limited.__cause__ is not None:
+                raise rate_limited.__cause__ from None
+            raise
+        response.raise_for_status()
+        return response.json()
+
     def list_dags(self, limit: int = 100, offset: int = 0) -> dict:
         if self.mwaa_client:
             return self.mwaa_client.list_dags(limit=limit, offset=offset)
 
         response = self.client.get(f"{self._prefix}/dags?limit={limit}&offset={offset}")
         return self._parse_response(response)
+
+    def get_dags_count(self) -> Optional[int]:  # noqa: UP045
+        try:
+            response = self.list_dags(limit=1)
+            total_entries = response.get("total_entries")
+            if isinstance(total_entries, int):
+                return total_entries
+        except Exception as exc:
+            logger.debug(f"Could not fetch DAG count: {exc}")
+        return None
 
     def get_dag_tasks(self, dag_id: str) -> dict:
         if self.mwaa_client:
@@ -204,20 +255,21 @@ class AirflowApiClient:
             response = self.client.get(f"{path}{separator}limit={limit}&offset={offset}")
 
             response = self._parse_response(response)
-            if not response:
-                break
+            if not isinstance(response, dict) or not isinstance(response.get(key), list):
+                raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
 
-            page = response.get(key, [])
+            page = response[key]
+            total_entries = response.get("total_entries")
+            if total_entries is not None and type(total_entries) is not int:
+                raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
             if not page:
+                if total_entries is not None and offset < total_entries:
+                    raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
                 break
             result.extend(page)
-            offset += limit
+            offset += len(page)
 
-            total_entries = response.get("total_entries")
-            if total_entries is not None:
-                if offset >= total_entries:
-                    break
-            elif len(page) < limit:
+            if total_entries is not None and offset >= total_entries:
                 break
         return result
 
@@ -254,12 +306,10 @@ class AirflowApiClient:
             if isinstance(schedule, dict):
                 schedule = schedule.get("value")
 
-        try:
-            task_response = self.get_dag_tasks(dag_id)
-            tasks_data = task_response.get("tasks", [])
-        except Exception as exc:
-            logger.warning(f"Could not fetch tasks for DAG {dag_id}: {exc}")
-            tasks_data = []
+        task_response = self.get_dag_tasks(dag_id)
+        if not isinstance(task_response, dict) or not isinstance(task_response.get("tasks"), list):
+            raise AirflowApiResponseError(f"Invalid tasks response for DAG {dag_id}")
+        tasks_data = task_response["tasks"]
 
         tasks = [
             AirflowApiTask(

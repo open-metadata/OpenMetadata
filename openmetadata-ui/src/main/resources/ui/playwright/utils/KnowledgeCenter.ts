@@ -21,8 +21,9 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const ARTICLE_PAGE_ROUTE = '/context-center/articles/:fqn';
+const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
+const ARTICLE_PAGE_ROUTE = `${ARTICLE_PATH_PREFIX}${FQN_PLACEHOLDER}`;
 
 export const deletePage = async (
   page: Page,
@@ -394,7 +395,13 @@ export const createMentionInConversation = async (
 
   // Click on Conversations tab
   await page.getByRole('tab', { name: 'Conversations' }).click();
-  await page.waitForSelector('[data-testid="editor-wrapper"]');
+  const editor = page.locator(
+    '[data-testid="editor-wrapper"] [contenteditable="true"]'
+  );
+  if (!(await editor.isVisible())) {
+    await page.getByTestId('add-new-conversation').click();
+  }
+  await expect(editor).toBeVisible();
 
   // Create message with mention
   const messageWithMention = `${message} @${userName}`;
@@ -405,12 +412,8 @@ export const createMentionInConversation = async (
   );
 
   // Type the message with mention
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .click();
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .fill(messageWithMention);
+  await editor.click();
+  await editor.fill(messageWithMention);
 
   await userSuggestionsResponse;
 
@@ -418,7 +421,7 @@ export const createMentionInConversation = async (
   await page.locator(`[data-value="@${userName}"]`).first().click();
 
   // Send the message
-  const feedResponse = page.waitForResponse('/api/v1/feed');
+  const feedResponse = page.waitForResponse('/api/v1/conversations');
   await page.locator('[data-testid="send-button"]').click();
   await feedResponse;
 
@@ -443,7 +446,9 @@ export const verifyNotificationAndClick = async (
 
   // Click on Mentions tab
   const mentionsTabResponse = page.waitForResponse(
-    '/api/v1/feed?userId=*&filterType=MENTIONS'
+    (response) =>
+      response.url().includes('/api/v1/conversations') &&
+      response.url().includes('filterType=MENTIONS')
   );
 
   await page.getByRole('tab', { name: 'Mentions' }).click();
@@ -487,7 +492,9 @@ export const getKnowledgePageCardEntityIdentifier = async (
 ): Promise<string> => {
   const href =
     (await card.getByTestId('knowledge-page-link').getAttribute('href')) ?? '';
-  const fqn = href.split('/knowledge-center/').pop() ?? '';
+  // getArticlePath builds this href from the Context Center route; splitting on the old
+  // /knowledge-center/ prefix never matched, so the fallback returned the whole URL.
+  const fqn = href.split(ARTICLE_PATH_PREFIX).pop() ?? '';
   const displayText = (
     await card.getByTestId('knowledge-card-title').textContent()
   )?.trim();

@@ -31,6 +31,9 @@ const knowledgeCenterQueryFilter = {
       must_not: [
         { term: { entityType: 'dataProduct' } },
         { term: { entityType: 'domain' } },
+        // Columns are not first-class entities (no repository), so they cannot be related
+        // entities — resolving one 404s the list. Keep them out of the picker.
+        { term: { entityType: 'tableColumn' } },
         { match: { isBot: true } },
       ],
     },

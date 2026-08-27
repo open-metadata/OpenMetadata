@@ -13,25 +13,25 @@
 .user-tag {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--om-space-8);
   cursor: pointer;
 
   &.bordered {
-    border: 1px solid #7147e899;
-    border-radius: 4px;
-    background: #7147e81a;
-    padding: 4px 8px;
+    border: 1px solid var(--om-legacy-color-113-71-232-0-6);
+    border-radius: var(--om-radius-sm);
+    background: var(--om-legacy-color-113-71-232-0-102);
+    padding: var(--om-space-4) var(--om-space-8);
 
     &.small {
-      padding: 2px 6px;
+      padding: var(--om-space-2) var(--om-space-6);
     }
   }
 
   &.small {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
   }
 
   &.large {
-    font-size: 16px;
+    font-size: var(--om-font-size-md);
   }
 }

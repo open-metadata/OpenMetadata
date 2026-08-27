@@ -16,8 +16,8 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
+import { ReactComponent as MyDataIcon } from '../../../assets/svg/widget/my-data.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -40,6 +40,7 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
@@ -205,8 +206,8 @@ const MyDataWidgetInternal = ({
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                        <div className="d-flex items-center justify-center flex-shrink">
+                          {getEntityIcon(item, EntityIconSize.Size24)}
                         </div>
                       }
                       type="text">

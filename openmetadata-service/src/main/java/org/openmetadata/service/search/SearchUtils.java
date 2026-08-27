@@ -55,6 +55,8 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  private static final String FUZZINESS_DISABLED = "0";
+  private static final String FUZZINESS_ENABLED = "1";
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -683,6 +685,8 @@ public final class SearchUtils {
           Entity.SPREADSHEET,
           "file_search_index",
           Entity.FILE,
+          "context_file_search_index",
+          Entity.CONTEXT_FILE,
           "metric_search_index",
           Entity.METRIC -> true;
       default -> false;
@@ -774,6 +778,7 @@ public final class SearchUtils {
       case "file_search_index", Entity.FILE -> Entity.FILE;
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
       case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
+      case "context_file_search_index", Entity.CONTEXT_FILE -> Entity.CONTEXT_FILE;
       case "column_search_index", Entity.TABLE_COLUMN -> Entity.TABLE_COLUMN;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
@@ -806,9 +811,9 @@ public final class SearchUtils {
    */
   public static String getFuzziness(String query) {
     if (query == null || query.isBlank()) {
-      return "1";
+      return FUZZINESS_ENABLED;
     }
-    return analyzedSubTokenCount(query) > 2 ? "0" : "1";
+    return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
   }
 
   /**

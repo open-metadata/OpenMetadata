@@ -15,4 +15,6 @@ import { Folder } from '../../../generated/entity/data/folder';
 export interface DashboardFoldersCardProps {
   folders: Folder[];
   isLoading?: boolean;
+  onCreateFolder?: () => void;
+  onOpenFile: (fileId: string) => void;
 }

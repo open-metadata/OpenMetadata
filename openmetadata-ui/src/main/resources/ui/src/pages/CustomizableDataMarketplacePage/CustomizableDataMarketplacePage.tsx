@@ -22,6 +22,7 @@ import RGL, {
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import marketplaceBg from '../../assets/img/widgets/marketplace-bg.png';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import MarketplaceGreetingBanner from '../../components/DataMarketplace/MarketplaceGreetingBanner/MarketplaceGreetingBanner.component';
 import MarketplaceSearchBar from '../../components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -181,49 +182,51 @@ const CustomizableDataMarketplacePage = ({
   );
 
   return (
-    <PageLayoutV1
-      className="bg-grey"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.data-marketplace'),
-      })}>
-      <div className="customize-details-page">
-        <CustomizablePageHeader
-          disableSave={disableSave}
-          personaName={getEntityName(personaDetails)}
-          onReset={handleReset}
-          onSave={handleSave}
-        />
-        <div className="customize-marketplace-content">
-          <div
-            className="customize-marketplace-bg"
-            style={
-              {
-                '--marketplace-bg': `url(${marketplaceBg})`,
-              } as React.CSSProperties
-            }>
-            <div className="marketplace-grid-wrapper">
-              <MarketplaceGreetingBanner />
-              <MarketplaceSearchBar isEditView />
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.data-marketplace'),
+        })}>
+        <div className="customize-details-page">
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={getEntityName(personaDetails)}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+          <div className="customize-marketplace-content">
+            <div
+              className="customize-marketplace-bg"
+              style={
+                {
+                  '--marketplace-bg': `url(${marketplaceBg})`,
+                } as React.CSSProperties
+              }>
+              <div className="marketplace-grid-wrapper">
+                <MarketplaceGreetingBanner />
+                <MarketplaceSearchBar isEditView />
+              </div>
+            </div>
+            <div className="marketplace-grid-wrapper" dir="ltr">
+              <ReactGridLayout
+                useCSSTransforms
+                verticalCompact
+                className="marketplace-customize-widgets"
+                cols={TAB_GRID_MAX_COLUMNS}
+                compactType="vertical"
+                draggableHandle=".marketplace-drag-handle"
+                isResizable={false}
+                margin={[16, 24]}
+                rowHeight={ROW_HEIGHT}
+                onLayoutChange={handleLayoutUpdate}>
+                {widgets}
+              </ReactGridLayout>
             </div>
           </div>
-          <div className="marketplace-grid-wrapper" dir="ltr">
-            <ReactGridLayout
-              useCSSTransforms
-              verticalCompact
-              className="marketplace-customize-widgets"
-              cols={TAB_GRID_MAX_COLUMNS}
-              compactType="vertical"
-              draggableHandle=".marketplace-drag-handle"
-              isResizable={false}
-              margin={[16, 24]}
-              rowHeight={ROW_HEIGHT}
-              onLayoutChange={handleLayoutUpdate}>
-              {widgets}
-            </ReactGridLayout>
-          </div>
         </div>
-      </div>
-    </PageLayoutV1>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };
 

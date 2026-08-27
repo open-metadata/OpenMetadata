@@ -15,9 +15,10 @@ import {
   Box,
   Button,
   Dropdown,
+  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown, FlipBackward, Plus, Stars01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,9 +29,11 @@ import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg'
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
 import ContextSimplePillarCard from '../../../components/ContextCenter/ContextSimplePillarCard/ContextSimplePillarCard.component';
+import CreateFolderModal from '../../../components/ContextCenter/CreateFolderModal/CreateFolderModal.component';
 import DashboardFoldersCard from '../../../components/ContextCenter/DashboardFoldersCard/DashboardFoldersCard.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import {
@@ -58,8 +61,10 @@ import {
   CreateKnowledgePage,
   KnowledgePage,
   PageType,
+  QuickLink,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { listContextFiles, listFolders } from '../../../rest/assetAPI';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import {
@@ -68,6 +73,10 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import {
+  CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -83,15 +92,15 @@ const ContextCenterDashboardPage: FC = () => {
   } = useCurrentUserPreferences();
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [articles, setArticles] = useState<KnowledgePage[]>([]);
   const [articlesCount, setArticlesCount] = useState(0);
   const [documents, setDocuments] = useState<ContextFile[]>([]);
   const [documentsCount, setDocumentsCount] = useState(0);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [memories, setMemories] = useState<
-    Array<{ title: string; meta: string[] }>
-  >([]);
+  const [folderCount, setFolderCount] = useState(0);
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
   const [mostCitedMemories, setMostCitedMemories] = useState<ContextMemory[]>(
     []
@@ -105,7 +114,19 @@ const ContextCenterDashboardPage: FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const folderCount = folders.length;
+  const isDashboardLoading =
+    isArticlesLoading ||
+    isDocumentsLoading ||
+    isFoldersLoading ||
+    isMemoriesLoading ||
+    isMostCitedLoading;
+
+  const isDashboardEmpty =
+    !isDashboardLoading &&
+    articlesCount === 0 &&
+    documentsCount === 0 &&
+    folderCount === 0 &&
+    memoriesCount === 0;
 
   const hasCreatePermission = useMemo(
     () => permissions.Create,
@@ -137,12 +158,16 @@ const ContextCenterDashboardPage: FC = () => {
           tags,
         };
         const articleData = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         showSuccessToast(
           t('message.entity-saved-successfully', {
             entity: t('label.quick-link'),
           })
         );
         setArticles((prev) => [articleData, ...prev]);
+        setArticlesCount((prev) => prev + 1);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -187,7 +212,8 @@ const ContextCenterDashboardPage: FC = () => {
     setIsFoldersLoading(true);
     try {
       const response = await listFolders();
-      setFolders(response);
+      setFolders(response.data);
+      setFolderCount(response.paging.total ?? response.data.length);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -204,12 +230,7 @@ const ContextCenterDashboardPage: FC = () => {
         sortOrder: 'desc',
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
-      setMemories(
-        response.data.map((m) => ({
-          title: m.title ?? m.name,
-          meta: [`cited ${m.usageCount}×`],
-        }))
-      );
+      setMemories(response.data);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -261,8 +282,55 @@ const ContextCenterDashboardPage: FC = () => {
   ]);
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+    });
     setDocuments((prev) => [...newFiles, ...prev]);
+    setDocumentsCount((prev) => prev + newFiles.length);
   }, []);
+
+  const handleFolderCreated = useCallback(() => {
+    setIsCreateFolderModalOpen(false);
+    fetchFolders();
+  }, [fetchFolders]);
+
+  const handleOpenKnowledgePage = useCallback(
+    (page: Pick<KnowledgePage, 'pageType' | 'page' | 'fullyQualifiedName'>) => {
+      if (page.pageType === PageType.QUICK_LINK) {
+        window.open(
+          (page.page as QuickLink).url,
+          '_blank',
+          'noopener,noreferrer'
+        );
+
+        return;
+      }
+      navigate(contextCenterClassBase.getArticlePath(page.fullyQualifiedName));
+    },
+    [navigate]
+  );
+
+  const handleOpenDocument = useCallback(
+    (documentId: string) => {
+      navigate(
+        `${contextCenterClassBase.getDocumentsListPath()}?document=${encodeURIComponent(
+          documentId
+        )}`
+      );
+    },
+    [navigate]
+  );
+
+  const handleOpenMemory = useCallback(
+    (memoryName: string) => {
+      navigate(
+        `${contextCenterClassBase.getMemoriesListPath()}?memory=${encodeURIComponent(
+          memoryName
+        )}`
+      );
+    },
+    [navigate]
+  );
 
   const articlesRecentItems = useMemo(
     () =>
@@ -281,9 +349,10 @@ const ContextCenterDashboardPage: FC = () => {
           icon,
           meta: metaParts,
           title: getEntityName(article),
+          onClick: () => handleOpenKnowledgePage(article),
         };
       }),
-    [articles]
+    [articles, handleOpenKnowledgePage]
   );
 
   const documentsRecentItems = useMemo(
@@ -292,11 +361,15 @@ const ContextCenterDashboardPage: FC = () => {
         const metaParts = [
           doc.updatedBy,
           getShortRelativeTime(doc.updatedAt),
-        ].filter(Boolean);
+        ].filter((part): part is string => Boolean(part));
 
-        return { title: getEntityName(doc), meta: metaParts };
+        return {
+          title: getEntityName(doc),
+          meta: metaParts,
+          onClick: () => handleOpenDocument(doc.id),
+        };
       }),
-    [documents]
+    [documents, handleOpenDocument]
   );
 
   const recentlyViewedItems = useMemo(() => {
@@ -308,8 +381,19 @@ const ContextCenterDashboardPage: FC = () => {
       title: getEntityName(page),
       pageType: page.pageType,
       time: page.timestamp ? getShortRelativeTime(page.timestamp) : '',
+      onClick: () => handleOpenKnowledgePage(page),
     }));
-  }, [recentlyViewedQuickLinks]);
+  }, [recentlyViewedQuickLinks, handleOpenKnowledgePage]);
+
+  const memoriesRecentItems = useMemo(
+    () =>
+      memories.map((memory) => ({
+        title: memory.title ?? getEntityName(memory),
+        meta: [`cited ${memory.usageCount}×`],
+        onClick: () => handleOpenMemory(memory.name),
+      })),
+    [memories, handleOpenMemory]
+  );
 
   const mostCitedItems = useMemo(
     () =>
@@ -317,216 +401,317 @@ const ContextCenterDashboardPage: FC = () => {
         id: memory.id,
         title: memory.title ?? getEntityName(memory),
         citedCount: memory.usageCount ?? 0,
+        onClick: () => handleOpenMemory(memory.name),
       })),
-    [mostCitedMemories]
+    [mostCitedMemories, handleOpenMemory]
   );
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
-      <ContextCenterHeader
-        actionsSlot={
-          <Box align="center" className="tw:shrink-0" gap={3}>
-            <Button
-              color="secondary"
-              iconLeading={UploadIcon}
-              size="sm"
-              onClick={() => setIsUploadModalOpen(true)}>
-              {t('label.upload-file')}
-            </Button>
-            <LimitWrapper resource="knowledgeCenter">
-              <Dropdown.Root>
-                <Button
-                  color="primary"
-                  data-testid="create-knowledge-page-btn"
-                  iconTrailing={ChevronDown}>
-                  {t('label.create')}
-                </Button>
-                <Dropdown.Popover className="tw:w-30">
-                  <Dropdown.Menu aria-label="create knowledge page">
-                    <Dropdown.Item
-                      data-testid="create-article-btn"
-                      key={PageType.ARTICLE}
-                      onAction={handleCreateArticle}>
-                      {t('label.article')}
-                    </Dropdown.Item>
-                    <Dropdown.Item
-                      data-testid="create-quick-link-btn"
-                      key={PageType.QUICK_LINK}
-                      onAction={() => setShowAddLinkModal(true)}>
-                      {t('label.quick-link')}
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </LimitWrapper>
-          </Box>
-        }
-        breadcrumbs={[
-          {
-            label: t('label.dashboard'),
-          },
-        ]}
-        hasPermission={hasCreatePermission}
-        subtitle={t('message.context-center-dashboard-subtitle')}
-        title={t('label.dashboard')}
-      />
-
+      <DocumentTitle title={t('label.context-center')} />
+      <div className="context-center-header-section tw:px-5">
+        <ContextCenterHeader
+          actionsSlot={
+            <Box align="center" className="tw:shrink-0" gap={3}>
+              <Button
+                color="secondary"
+                iconLeading={UploadIcon}
+                size="sm"
+                onClick={() => setIsUploadModalOpen(true)}>
+                {t('label.upload-file')}
+              </Button>
+              <LimitWrapper resource="knowledgeCenter">
+                <Dropdown.Root>
+                  <Button
+                    color="primary"
+                    data-testid="create-knowledge-page-btn"
+                    iconTrailing={ChevronDown}>
+                    {t('label.create')}
+                  </Button>
+                  <Dropdown.Popover className="tw:w-30">
+                    <Dropdown.Menu aria-label="create knowledge page">
+                      <Dropdown.Item
+                        data-testid="create-article-btn"
+                        key={PageType.ARTICLE}
+                        onAction={handleCreateArticle}>
+                        {t('label.article')}
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="create-quick-link-btn"
+                        key={PageType.QUICK_LINK}
+                        onAction={() => setShowAddLinkModal(true)}>
+                        {t('label.quick-link')}
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              </LimitWrapper>
+            </Box>
+          }
+          breadcrumbs={[
+            {
+              label: t('label.overview'),
+            },
+          ]}
+          hasPermission={hasCreatePermission}
+          subtitle={t('message.context-center-dashboard-subtitle')}
+          title={t('label.overview')}
+        />
+      </div>
       <Box
-        className="tw:h-full tw:min-h-0"
+        className="context-center-content-section tw:h-full tw:min-h-0 tw:px-5 tw:pb-5"
         data-testid="dashboard-detail-card"
         direction="col"
         gap={5}>
-        <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:shrink-0">
-          <ContextKnowledgePillarCard
-            cta={t('label.view-all-entity', {
-              entity: t('label.article-plural'),
-            })}
-            dataTestId="article-detail-card"
-            icon={FileIcon}
-            isLoading={isArticlesLoading}
-            recent={articlesRecentItems}
-            stat={String(articlesCount)}
-            statSub={t('label.published')}
-            subtitle={t('message.long-form-authored-versioned')}
-            title={t('label.article-plural')}
-            onClick={() =>
-              navigate(contextCenterClassBase.getArticlesListPath())
-            }
-          />
-          <ContextKnowledgePillarCard
-            cta={t('label.view-all-entity', {
-              entity: t('label.document-plural'),
-            })}
-            dataTestId="document-detail-card"
-            icon={FolderIcon}
-            isLoading={isDocumentsLoading}
-            recent={documentsRecentItems}
-            stat={String(documentsCount)}
-            statSub={t('label.file-plural')}
-            statSubSecondary={`${folderCount} ${t('label.folder-plural')}`}
-            subtitle={t('message.files-uploaded-for-ai-retrieval')}
-            title={t('label.document-plural')}
-            onClick={() =>
-              navigate(contextCenterClassBase.getDocumentsListPath())
-            }
-          />
-          <ContextKnowledgePillarCard
-            cta={t('label.view-all-entity', {
-              entity: t('label.memory-plural'),
-            })}
-            dataTestId="memory-detail-card"
-            icon={MemoryIcon}
-            isLoading={isMemoriesLoading}
-            recent={memories}
-            stat={String(memoriesCount)}
-            statSub={t('label.memory-plural')}
-            subtitle={t('message.atomic-facts-ai-should-remember')}
-            title={t('label.memory-plural')}
-            onClick={() =>
-              navigate(contextCenterClassBase.getMemoriesListPath())
-            }
-          />
-        </div>
+        {isDashboardEmpty ? (
+          <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
+            <EmptyPlaceholder
+              actions={
+                hasCreatePermission
+                  ? [
+                      {
+                        color: 'primary',
+                        iconLeading: Plus,
+                        key: 'new-article',
+                        label: t('label.new-article'),
+                        onClick: handleCreateArticle,
+                      },
+                      {
+                        color: 'secondary',
+                        iconLeading: UploadIcon,
+                        key: 'upload-file',
+                        label: t('label.upload-file'),
+                        onClick: () => setIsUploadModalOpen(true),
+                      },
+                    ]
+                  : []
+              }
+              description={t('message.context-center-dashboard-empty-subtitle')}
+              features={[
+                {
+                  key: 'add-knowledge',
+                  icon: <FileIcon className="tw:text-fg-brand-primary" />,
+                  title: t('label.add-knowledge'),
+                  description: t(
+                    'message.context-center-dashboard-empty-feature-add-knowledge'
+                  ),
+                },
+                {
+                  key: 'retrievable',
+                  icon: <FlipBackward className="tw:text-fg-warning-primary" />,
+                  title: t('label.it-becomes-retrievable'),
+                  description: t(
+                    'message.context-center-dashboard-empty-feature-retrievable'
+                  ),
+                },
+                {
+                  key: 'grounded',
+                  icon: <Stars01 className="tw:text-fg-success-primary" />,
+                  title: t('label.answers-get-grounded'),
+                  description: t(
+                    'message.context-center-dashboard-empty-feature-grounded'
+                  ),
+                },
+              ]}
+              title={t('label.give-your-ai-something-to-know')}
+              variant="features"
+            />
+          </div>
+        ) : (
+          <>
+            <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:shrink-0">
+              <ContextKnowledgePillarCard
+                cta={t('label.view-all-entity', {
+                  entity: t('label.article-plural'),
+                })}
+                dataTestId="article-detail-card"
+                icon={FileIcon}
+                isLoading={isArticlesLoading}
+                recent={articlesRecentItems}
+                stat={String(articlesCount)}
+                statSub={t('label.published')}
+                subtitle={t('message.long-form-authored-versioned')}
+                title={t('label.article-plural')}
+                onClick={() =>
+                  navigate(contextCenterClassBase.getArticlesListPath())
+                }
+              />
+              <ContextKnowledgePillarCard
+                cta={t('label.view-all-entity', {
+                  entity: t('label.document-plural'),
+                })}
+                dataTestId="document-detail-card"
+                icon={FolderIcon}
+                isLoading={isDocumentsLoading}
+                recent={documentsRecentItems}
+                stat={String(documentsCount)}
+                statSub={t('label.file-plural')}
+                statSubSecondary={`${folderCount} ${t('label.folder-plural')}`}
+                subtitle={t('message.files-uploaded-for-ai-retrieval')}
+                title={t('label.document-plural')}
+                onClick={() =>
+                  navigate(contextCenterClassBase.getDocumentsListPath())
+                }
+              />
+              <ContextKnowledgePillarCard
+                cta={t('label.view-all-entity', {
+                  entity: t('label.memory-plural'),
+                })}
+                dataTestId="memory-detail-card"
+                icon={MemoryIcon}
+                isLoading={isMemoriesLoading}
+                recent={memoriesRecentItems}
+                stat={String(memoriesCount)}
+                statSub={t('label.memory-plural')}
+                subtitle={t('message.atomic-facts-ai-should-remember')}
+                title={t('label.memory-plural')}
+                onClick={() =>
+                  navigate(contextCenterClassBase.getMemoriesListPath())
+                }
+              />
+            </div>
 
-        <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:flex-1 tw:min-h-0">
-          <ContextSimplePillarCard
-            dataTestId="recently-viewed-card"
-            emptyMessage={t('message.no-recently-viewed-data')}
-            icon={FileIcon}
-            isEmpty={recentlyViewedItems.length === 0}
-            title={t('label.recently-viewed')}>
-            <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
-              {recentlyViewedItems.map((item) => (
-                <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                  {item.pageType === PageType.QUICK_LINK ? (
-                    <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
-                  ) : (
-                    <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
-                  )}
+            <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:flex-1 tw:min-h-0">
+              <ContextSimplePillarCard
+                dataTestId="recently-viewed-card"
+                emptyMessage={t('message.recently-viewed-empty-description')}
+                icon={FileIcon}
+                isEmpty={recentlyViewedItems.length === 0}
+                title={t('label.recently-viewed')}>
+                <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
+                  {recentlyViewedItems.map((item) => (
+                    <Box
+                      align="center"
+                      className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                      gap={2}
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={item.onClick}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          item.onClick();
+                        }
+                      }}>
+                      {item.pageType === PageType.QUICK_LINK ? (
+                        <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                      ) : (
+                        <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                      )}
 
-                  <Box
-                    align="center"
-                    className="tw:min-w-0 tw:flex-1"
-                    gap={4}
-                    justify="between">
-                    <div className="tw:min-w-0">
-                      <Typography
-                        ellipsis
-                        className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-                        size="text-xs"
-                        weight="medium">
-                        {item.title}
-                      </Typography>
-                    </div>
+                      <Box
+                        align="center"
+                        className="tw:min-w-0 tw:flex-1"
+                        gap={4}
+                        justify="between">
+                        <div className="tw:min-w-0">
+                          <Typography
+                            ellipsis
+                            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+                            size="text-xs"
+                            weight="medium">
+                            {item.title}
+                          </Typography>
+                        </div>
 
-                    <div className="tw:max-w-20">
-                      <Typography
-                        ellipsis
-                        className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-                        size="text-xs">
-                        {item.time}
-                      </Typography>
-                    </div>
-                  </Box>
+                        <div className="tw:max-w-20">
+                          <Typography
+                            ellipsis
+                            className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                            size="text-xs">
+                            {item.time}
+                          </Typography>
+                        </div>
+                      </Box>
+                    </Box>
+                  ))}
                 </Box>
-              ))}
-            </Box>
-          </ContextSimplePillarCard>
+              </ContextSimplePillarCard>
 
-          <DashboardFoldersCard
-            folders={folders}
-            isLoading={isFoldersLoading}
-          />
+              <DashboardFoldersCard
+                folders={folders}
+                isLoading={isFoldersLoading}
+                onCreateFolder={
+                  hasCreatePermission
+                    ? () => setIsCreateFolderModalOpen(true)
+                    : undefined
+                }
+                onOpenFile={handleOpenDocument}
+              />
 
-          <ContextSimplePillarCard
-            dataTestId="most-cited-memories-card"
-            emptyMessage={t('label.no-entity', {
-              entity: t('label.memory-plural'),
-            })}
-            icon={MemoryIcon}
-            isEmpty={mostCitedItems.length === 0}
-            isLoading={isMostCitedLoading}
-            title={t('label.most-cited')}>
-            <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
-              {mostCitedItems.map((item) => (
-                <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                  <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
-                  <Box
-                    align="center"
-                    className="tw:min-w-0 tw:flex-1"
-                    gap={4}
-                    justify="between">
-                    <div className="tw:min-w-0">
-                      <Typography
-                        ellipsis
-                        className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-                        size="text-xs"
-                        weight="medium">
-                        {item.title}
-                      </Typography>
-                    </div>
-                    <div>
-                      <Typography
-                        ellipsis
-                        className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-                        size="text-xs">
-                        {t('label.cited-n-times', { count: item.citedCount })}
-                      </Typography>
-                    </div>
-                  </Box>
+              <ContextSimplePillarCard
+                dataTestId="most-cited-memories-card"
+                emptyMessage={t('message.most-cited-empty-description')}
+                icon={MemoryIcon}
+                isEmpty={mostCitedItems.length === 0}
+                isLoading={isMostCitedLoading}
+                title={t('label.most-cited')}>
+                <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
+                  {mostCitedItems.map((item) => (
+                    <Box
+                      align="center"
+                      className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                      gap={2}
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={item.onClick}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          item.onClick();
+                        }
+                      }}>
+                      <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                      <Box
+                        align="center"
+                        className="tw:min-w-0 tw:flex-1"
+                        gap={4}
+                        justify="between">
+                        <div
+                          className="tw:min-w-0"
+                          data-testid="most-cited-memory">
+                          <Typography
+                            ellipsis
+                            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+                            size="text-xs"
+                            weight="medium">
+                            {item.title}
+                          </Typography>
+                        </div>
+                        <div data-testid="most-cited-count">
+                          <Typography
+                            ellipsis
+                            className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                            size="text-xs">
+                            {t('label.cited-n-times', {
+                              count: item.citedCount,
+                            })}
+                          </Typography>
+                        </div>
+                      </Box>
+                    </Box>
+                  ))}
                 </Box>
-              ))}
-            </Box>
-          </ContextSimplePillarCard>
-        </div>
+              </ContextSimplePillarCard>
+            </div>
+          </>
+        )}
       </Box>
 
       <UploadDocumentModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onUploaded={handleUploaded}
+      />
+
+      <CreateFolderModal
+        isOpen={isCreateFolderModalOpen}
+        onClose={() => setIsCreateFolderModalOpen(false)}
+        onCreated={handleFolderCreated}
       />
 
       <QuickLinkFormModal

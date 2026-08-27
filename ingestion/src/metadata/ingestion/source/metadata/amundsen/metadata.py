@@ -14,7 +14,7 @@ Amundsen source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Iterable, List, Optional, cast  # noqa: UP035
 
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
@@ -59,7 +59,11 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -71,6 +75,9 @@ from metadata.utils.helpers import get_standard_chart_type, retry_with_docker_ho
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -121,10 +128,12 @@ class AmundsenSource(Source):
         self.database_object = None
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
         self.database_service_map = {service.value.lower(): service.value for service in DatabaseServiceType}
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -404,8 +413,8 @@ class AmundsenSource(Source):
             yield Either(right=chart)
 
     def close(self):
-        if self.client is not None:
-            self.client.close()
+        if self._connection is not None:
+            self._connection.close()
 
     def get_type_primitive_type(self, data_type):
         for p_type in PRIMITIVE_TYPES:
@@ -436,4 +445,4 @@ class AmundsenSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

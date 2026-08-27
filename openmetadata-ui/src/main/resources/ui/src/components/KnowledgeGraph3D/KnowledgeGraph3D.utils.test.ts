@@ -14,6 +14,8 @@
 import {
   computeHighlight,
   computeLinkHighlight,
+  expandGraphLayout,
+  getVisibleLabelIds,
   idOf,
   linkKey,
   viewGraph,
@@ -242,5 +244,99 @@ describe('computeLinkHighlight', () => {
 
     expect(result.nodes.size).toBe(0);
     expect(result.links.size).toBe(0);
+  });
+});
+
+describe('getVisibleLabelIds', () => {
+  it('shows every label for a small graph', () => {
+    const nodes = ['A', 'B', 'C'].map((id) => makeNode({ id, name: id }));
+
+    const visible = getVisibleLabelIds({ nodes, links: [] }, 'A', null);
+
+    expect([...visible].sort()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('prioritizes the focus, interaction targets and selected neighbors in a dense graph', () => {
+    const nodes = [
+      makeNode({ id: 'selected', name: 'Selected' }),
+      makeNode({ id: 'neighbor', name: 'Neighbor' }),
+      makeNode({ id: 'focus', name: 'Focus' }),
+      makeNode({ id: 'hub', name: 'Hub' }),
+      ...Array.from({ length: 16 }, (_, index) =>
+        makeNode({ id: `node-${index}`, name: `Node ${index}` })
+      ),
+    ];
+    const links = [
+      makeLink({ source: 'selected', target: 'neighbor' }),
+      ...Array.from({ length: 10 }, (_, index) =>
+        makeLink({ source: 'hub', target: `node-${index}` })
+      ),
+    ];
+
+    const visible = getVisibleLabelIds({ nodes, links }, 'focus', 'selected');
+
+    expect(visible.size).toBe(18);
+    expect(visible.has('focus')).toBe(true);
+    expect(visible.has('selected')).toBe(true);
+    expect(visible.has('neighbor')).toBe(true);
+    expect(visible.has('hub')).toBe(true);
+  });
+
+  it('does not reduce the visible count when crossing the dense threshold', () => {
+    const atThreshold = Array.from({ length: 18 }, (_, index) =>
+      makeNode({ id: `node-${index}` })
+    );
+    const aboveThreshold = [...atThreshold, makeNode({ id: 'node-18' })];
+
+    expect(
+      getVisibleLabelIds({ nodes: atThreshold, links: [] }, undefined, null)
+        .size
+    ).toBe(18);
+    expect(
+      getVisibleLabelIds({ nodes: aboveThreshold, links: [] }, undefined, null)
+        .size
+    ).toBe(18);
+  });
+
+  it('skips label ranking when labels are not rendered', () => {
+    const nodes = Array.from({ length: 141 }, (_, index) =>
+      makeNode({ id: `node-${index}` })
+    );
+
+    expect(
+      getVisibleLabelIds({ nodes, links: [] }, 'node-0', 'node-1').size
+    ).toBe(0);
+  });
+});
+
+describe('expandGraphLayout', () => {
+  it('widens and flattens a dense layout to use a landscape viewport', () => {
+    const nodes = Array.from({ length: 24 }, (_, index) =>
+      makeNode({
+        id: `node-${index}`,
+        x: index % 2 === 0 ? -10 : 10,
+        y: index * 4,
+        z: index % 2 === 0 ? -10 : 10,
+      })
+    );
+
+    const horizontalScale = expandGraphLayout(nodes, 1600, 800);
+
+    expect(horizontalScale).toBe(2.2);
+    expect(nodes[0].x).toBe(-22);
+    expect(nodes[1].x).toBe(22);
+    expect(nodes[0].z).toBe(-6.5);
+    expect(nodes[1].z).toBe(6.5);
+  });
+
+  it('leaves a small layout unchanged', () => {
+    const nodes = [
+      makeNode({ id: 'A', x: -10, y: 0, z: -10 }),
+      makeNode({ id: 'B', x: 10, y: 20, z: 10 }),
+    ];
+
+    expect(expandGraphLayout(nodes, 1600, 800)).toBe(1);
+    expect(nodes[0].x).toBe(-10);
+    expect(nodes[0].z).toBe(-10);
   });
 });

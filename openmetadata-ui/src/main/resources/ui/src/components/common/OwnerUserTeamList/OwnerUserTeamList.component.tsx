@@ -65,7 +65,7 @@ const OwnerUserTeamList = ({
       />
 
       {placement === 'horizontal' && (
-        <Divider className="tw:mx-[10px]" orientation="vertical" />
+        <Divider className="tw:mx-2.5" orientation="vertical" />
       )}
 
       <OwnerTeamList

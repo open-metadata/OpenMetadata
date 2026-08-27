@@ -28,6 +28,8 @@ for (const [
   { CreationClass, tabSelector, supportDisplayNameUpdate },
 ] of Object.entries(nestedChildrenTestData)) {
   test.describe(entityType, () => {
+    test.describe.configure({ mode: 'default' });
+
     const entity = new CreationClass();
 
     test.beforeAll(async ({ browser }) => {

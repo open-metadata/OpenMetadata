@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Закрыть",
+    "close-navigation-menu": "Закрыть меню навигации",
+    "copy-link": "Скопировать ссылку",
+    "current-page": "Текущая страница",
+    "date-range-picker": "Выбор диапазона дат",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "expand-navigation-menu": "Развернуть меню навигации",
+    "field-documentation": "Документация поля",
+    "hidden-breadcrumbs": "Скрытые хлебные крошки",
+    "loading": "Загрузка…",
+    "next-page": "Перейти на следующую страницу",
+    "open-menu": "Открыть меню",
+    "page": "Страница",
+    "pagination": "Пагинация",
+    "pagination-navigation": "Навигация по страницам",
+    "previous-page": "Перейти на предыдущую страницу",
+    "records": "Записи",
+    "remove-filter": "Удалить фильтр",
+    "select-dates": "Выбрать даты",
+    "show-hidden-breadcrumbs": "Показать скрытые хлебные крошки",
+    "today": "Сегодня"
+  }
+}

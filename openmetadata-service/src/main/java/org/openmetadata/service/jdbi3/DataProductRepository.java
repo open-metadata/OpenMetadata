@@ -66,10 +66,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -458,6 +455,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
+        if (!isPortEligibleType(ref.getType())) {
+          String msg =
+              String.format(
+                  "Asset '%s' of type '%s' cannot be added as a port; ports must reference a data asset",
+                  ref.getFullyQualifiedName(), ref.getType());
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
+        }
+
         if (oppositePortIds.contains(ref.getId())) {
           String oppositePortType =
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
@@ -609,6 +617,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
+  }
+
+  // A port must reference a data asset: a real, non-time-series entity whose schema declares a
+  // dataProducts field (same rule the assets API uses). Excludes pseudo-types like tableColumn.
+  private static boolean isPortEligibleType(String entityType) {
+    return entityType != null
+        && Entity.hasEntityRepository(entityType)
+        && !Entity.isTimeSeriesEntity(entityType)
+        && Entity.entityHasField(entityType, Entity.FIELD_DATA_PRODUCTS);
   }
 
   private ResultList<EntityWithType> getPaginatedPorts(
@@ -1026,6 +1043,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           List<UUID> assetIds =
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
           searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
+          List<EntityReference> assetRefs =
+              allRecords.stream()
+                  .map(
+                      record ->
+                          new EntityReference().withId(record.getId()).withType(record.getType()))
+                  .toList();
+          searchRepository.propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
         }
       }
     }
@@ -1154,9 +1178,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     private void updateEntityLinks(String oldFqn, String newFqn) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
-      EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getConversationRepository()
+          .updateEntityReference(updated.getEntityReference(), oldFqn);
     }
   }
 
@@ -1192,12 +1215,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
   }
 
   @Override

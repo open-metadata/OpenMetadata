@@ -15,11 +15,15 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     ConsumerOffsets,
-    ConsumerOffsets1,
-    KinesisBrokerConfig,
     SecurityProtocol,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    ConsumerOffsets as ConsumerOffsets1,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    Kinesis as KinesisBrokerConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -232,6 +236,19 @@ class OpenLineageUnitTest(unittest.TestCase):
             None,
         ]
         self.open_lineage_source.client = self.mock_consumer
+
+    def test_close_disposes_the_owned_connection(self):
+        """close() defers to the base, which releases the connection the source
+        owns; the override only adds its own teardown on top."""
+        source = self.open_lineage_source
+        source._connection = MagicMock()
+        source.metadata = MagicMock()
+
+        source.close()
+
+        source._connection.close.assert_called_once()
+        source.metadata.compute_percentile.assert_called_once()
+        source.metadata.close.assert_called_once()
 
     def test_message_to_ol_event_valid_event(self):
         """Test conversion with a valid event."""
@@ -1158,6 +1175,67 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
         self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
+    def test_yield_pipeline_lineage_details_glue_symlink_backticked_database(self, mock_get_table_from_om):
+        """End-to-end for the Iceberg-on-Glue customer scenario: a database name
+        with a hyphen (silver-stagingdb) arrives backtick-quoted inside the symlink
+        identifier. The quotes must not leak into the FQN, otherwise the lookup
+        misses a table that exists in OpenMetadata and the event yields no lineage.
+        """
+        src_uuid = "11111111-1111-1111-1111-111111111111"
+        dst_uuid = "22222222-2222-2222-2222-222222222222"
+
+        def t_fqn_build_side_effect(table_details, services=None):
+            return f"glueService.{table_details.schema}.{table_details.name}"
+
+        catalogued = {
+            "glueService.silver-stagingdb.src_table": src_uuid,
+            "glueService.silver-stagingdb.recon_stats": dst_uuid,
+        }
+
+        def mock_get_by_name(entity, fqn):
+            # Any FQN still carrying the backticks resolves to this sentinel id,
+            # so a leaked quote shows up as a wrong edge rather than no edge.
+            return Mock(id=Mock(root=catalogued.get(fqn, "33333333-3333-3333-3333-333333333333")))
+
+        mock_get_table_from_om.side_effect = t_fqn_build_side_effect
+
+        def glue_symlink_dataset(table_name):
+            return {
+                "namespace": "s3://lakehouse--managed-us-west-2--prod",
+                "name": f"main/silver-stagingdb/{table_name}",
+                "facets": {
+                    "symlinks": {
+                        "identifiers": [
+                            {
+                                "namespace": "arn:aws:glue:us-west-2:012621376717",
+                                "name": f"table/`silver-stagingdb`/{table_name}",
+                                "type": "TABLE",
+                            }
+                        ]
+                    }
+                },
+            }
+
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        event["inputs"] = [glue_symlink_dataset("src_table")]
+        event["outputs"] = [glue_symlink_dataset("recon_stats")]
+        ol_event = self.read_openlineage_event_from_kafka(event)
+
+        with patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=mock_get_by_name,
+        ):
+            results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
+
+        lineage = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
+        self.assertEqual(len(lineage), 1, "Backtick-quoted Glue database must still produce a lineage edge")
+        edge = lineage[0].edge
+        self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
+        self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
+
     @patch("confluent_kafka.Consumer")
     def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns COMPLETE events"""
@@ -1975,8 +2053,9 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
-        no lineage edge should be produced for that topic, even though the table output
-        is resolvable. The topic is silently skipped."""
+        no topic -> table edge can be built. The unresolvable side is skipped and the
+        event degrades to the single-sided form, attaching the pipeline itself to the
+        resolvable table output rather than dropping the event entirely."""
         ol_event = OpenLineageEvent(
             run_facet={
                 "facets": {
@@ -2044,13 +2123,18 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         lineage_requests = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
 
-        # No lineage should be produced because the topic input couldn't be resolved
-        # (no matching broker), so there are no input edges to pair with the table output
+        # The topic input never resolves, so there is no dataset to pair the table
+        # output with — the pipeline takes its place as the upstream endpoint.
         self.assertEqual(
             len(lineage_requests),
-            0,
-            "No lineage edges should be produced when input topic cannot be resolved",
+            1,
+            "The resolvable table output must still be linked, with the pipeline as its upstream",
         )
+        edge = lineage_requests[0].edge
+        self.assertEqual(str(edge.fromEntity.id.root), pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(str(edge.toEntity.id.root), table_id)
+        self.assertEqual(edge.toEntity.type, "table")
 
     def test_yield_pipeline_lineage_producer_only_no_inputs(self):
         """When an event has only outputs (producer), the pipeline itself becomes the
@@ -2286,6 +2370,158 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(edge.toEntity.type, "table")
         self.assertIsNone(edge.lineageDetails.pipeline)
 
+    def test_yield_pipeline_lineage_pipeline_as_node_when_inputs_do_not_resolve(self):
+        """An event that declares inputs which none resolve in OpenMetadata is
+        effectively a producer: the fallback must key off the resolved edges, not
+        the raw event payload, so the pipeline still becomes the fromEntity of the
+        resolvable output instead of the whole event yielding nothing."""
+        table_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "partial-job", "namespace": "test-namespace"}}}},
+            job={"name": "partial-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "public.uncatalogued_source",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.target_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table and fqn == "db-service.public.target_table":
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        def get_table_fqn(table_details, namespace=None):
+            if table_details.name == "target_table":
+                return "db-service.public.target_table"
+            return None
+
+        extra_patches = [
+            patch.object(self.open_lineage_source, "_get_table_fqn", side_effect=get_table_fqn),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_pipeline_as_node_when_outputs_do_not_resolve(self):
+        """Mirror of the inputs case: an event whose declared outputs are all
+        unresolvable behaves as a consumer, so the resolvable input is wired to
+        the pipeline as its toEntity."""
+        table_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "partial-job", "namespace": "test-namespace"}}}},
+            job={"name": "partial-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "public.source_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.uncatalogued_target",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table and fqn == "db-service.public.source_table":
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        def get_table_fqn(table_details, namespace=None):
+            if table_details.name == "source_table":
+                return "db-service.public.source_table"
+            return None
+
+        extra_patches = [
+            patch.object(self.open_lineage_source, "_get_table_fqn", side_effect=get_table_fqn),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, table_id)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_no_edges_when_no_side_resolves(self):
+        """With neither side resolvable there is nothing to attach the pipeline to,
+        so the edge-based fallback must stay silent rather than emit a dangling edge."""
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "orphan-job", "namespace": "test-namespace"}}}},
+            job={"name": "orphan-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[{"name": "public.unknown_source", "namespace": "postgres://db:5432", "facets": {}}],
+            outputs=[{"name": "public.unknown_target", "namespace": "postgres://db:5432", "facets": {}}],
+        )
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(self.open_lineage_source, "_get_table_fqn", return_value=None),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+
+        self.assertEqual(lineage_requests, [])
+
     def test_cleanup_only_deletes_edges_matching_current_event_datasets(self):
         """When a both-sided event arrives, cleanup should only remove
         pipeline-as-node edges for the datasets in that event, not unrelated ones."""
@@ -2453,6 +2689,43 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = OpenlineageSource._parse_glue_table_name("table/Sales/Users")
         self.assertEqual(result.name, "users")
         self.assertEqual(result.schema, "sales")
+
+    def test_parse_glue_table_name_strips_iceberg_quoting_backticks(self):
+        """Iceberg backtick-quotes namespace/table parts that contain special
+        characters (e.g. the hyphen in silver-stagingdb) when it builds the
+        TableIdentifier that becomes the Glue symlink name. The quotes are not part
+        of the identifier and must be stripped, otherwise the FQN never matches a
+        catalogued table."""
+        result = OpenlineageSource._parse_glue_table_name("table/`silver-stagingdb`/`order-lines`")
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "order-lines")
+
+    def test_parse_glue_table_name_strips_backticks_on_quoted_schema_only(self):
+        """Iceberg only quotes the parts that need it, so a quoted database can be
+        paired with an unquoted table in the same name."""
+        result = OpenlineageSource._parse_glue_table_name("table/`silver-stagingdb`/orders")
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "orders")
+
+    def test_parse_table_identity_glue_backticked_name(self):
+        """The backtick stripping must survive the namespace-based dispatch that
+        picks the Glue parser."""
+        result = OpenlineageSource._parse_table_identity(
+            "arn:aws:glue:us-west-2:012621376717", "table/`silver-stagingdb`/`Orders`"
+        )
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "orders")
+
+    def test_candidate_glue_backticked_symlink_name(self):
+        """The candidate path used for Glue symlink identifiers yields the unquoted
+        identity, which is what gets turned into the OpenMetadata FQN."""
+        data = {
+            "namespace": "arn:aws:glue:us-west-2:012621376717",
+            "name": "table/`silver-stagingdb`/`order-lines`",
+        }
+        details, _ = OpenlineageSource._iter_table_candidates(data)[0]
+        self.assertEqual(details.schema, "silver-stagingdb")
+        self.assertEqual(details.name, "order-lines")
 
     def test_parse_glue_table_name_not_glue_format_returns_none(self):
         """Names without the table/ prefix are not Glue format and return None."""

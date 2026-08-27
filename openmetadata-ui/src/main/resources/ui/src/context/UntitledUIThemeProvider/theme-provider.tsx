@@ -58,7 +58,7 @@ interface ThemeProviderProps {
  * Utility classes like `tw:bg-brand-solid` reference these `--tw-*` vars at runtime,
  * so we override them directly to update the brand color system-wide.
  *
- * Mapping (matches what generateAllMuiPalettes uses for consistency):
+ * Mapping:
  *   primaryColor  → brand-600 (solid bg, fg-brand-primary, borders)
  *   hoverColor    → brand-100 (light bg tints)
  *   selectedColor → brand-700 (solid hover, selected state)
@@ -111,6 +111,10 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-ring-color-brand_alt', primaryColor);
     root.style.setProperty('--tw-ring-color-bg-brand-solid', primaryColor);
     root.style.setProperty('--tw-outline-color-brand-solid', primaryColor);
+    // Borders are drawn with `outline` now, so each themed ring colour needs an outline
+    // counterpart or the border ignores custom branding. `bg-brand-solid` needs no entry:
+    // `tw:outline-bg-brand-solid` resolves to `--tw-color-bg-brand-solid`, set above.
+    root.style.setProperty('--tw-outline-color-brand_alt', primaryColor);
   }
 
   if (selectedColor) {
@@ -153,12 +157,6 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-color-utility-brand-100_alt', hoverColor);
     root.style.setProperty('--tw-color-bg-brand-secondary', hoverColor);
     root.style.setProperty('--tw-background-color-brand-secondary', hoverColor);
-    root.style.setProperty('--tw-color-text-secondary_on-brand', hoverColor);
-    root.style.setProperty('--tw-color-text-tertiary_on-brand', hoverColor);
-    root.style.setProperty('--tw-color-icon-fg-brand_on-brand', hoverColor);
-    root.style.setProperty('--tw-text-color-secondary_on-brand', hoverColor);
-    root.style.setProperty('--tw-text-color-tertiary_on-brand', hoverColor);
-    root.style.setProperty('--tw-text-color-brand-secondary_hover', hoverColor);
   }
 
   if (errorColor) {

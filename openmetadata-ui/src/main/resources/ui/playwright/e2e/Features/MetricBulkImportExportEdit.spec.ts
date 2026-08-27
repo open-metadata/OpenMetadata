@@ -183,6 +183,10 @@ let viewOnlyRole: RolesClass;
 let metricEditorUser: UserClass;
 let metricEditorPolicy: PolicyClass;
 let metricEditorRole: RolesClass;
+// Dedicated admin user for export/import tests so that completed background
+// jobs accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let metricExportUser: UserClass;
 let metricTypeId: string | undefined;
 let metricCustomPropertyName: string;
 
@@ -586,12 +590,22 @@ const clickMetricAction = async (page: Page, actionName: string) => {
     .click();
 };
 
-const waitForMetricBulkEditGrid = async (page: Page, metricName: string) => {
+const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
   await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
   await expect(page.locator('.rdg-header-row')).toBeVisible({
     timeout: 90000,
   });
-  await expect(page.getByText(metricName)).toBeVisible();
+
+  if (metricName) {
+    await expect(
+      page
+        .locator('.bulk-edit-name-value')
+        .filter({ hasText: metricName })
+        .first()
+    ).toBeVisible();
+  } else {
+    await expect(page.locator('.rdg-row').first()).toBeVisible();
+  }
 };
 
 const editFirstDisplayNameCell = async (page: Page, value: string) => {
@@ -907,771 +921,864 @@ const expectImportedMetricComplexFields = async (metricName: string) => {
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Metrics bulk import, export, and edit', () => {
-  test.beforeAll(async () => {
-    test.setTimeout(180_000);
-    const adminContext = await createAdminApiContext();
-    apiContext = adminContext.apiContext;
-    disposeApiContext = adminContext.afterAction;
-    metricCustomPropertyName = `metric_cp_${getNameSuffix()}`;
-    await createMetricStringCustomProperty(metricCustomPropertyName);
-    fixtures = await createFixtures(metricCustomPropertyName);
+test.describe(
+  'Metrics bulk import, export, and edit',
+  { tag: '@import-export' },
+  () => {
+    test.beforeAll(async () => {
+      test.setTimeout(180_000);
+      const adminContext = await createAdminApiContext();
+      apiContext = adminContext.apiContext;
+      disposeApiContext = adminContext.afterAction;
+      metricCustomPropertyName = `metric_cp_${getNameSuffix()}`;
+      await createMetricStringCustomProperty(metricCustomPropertyName);
+      fixtures = await createFixtures(metricCustomPropertyName);
 
-    viewOnlyUser = new UserClass();
-    viewOnlyPolicy = new PolicyClass();
-    viewOnlyRole = new RolesClass();
-    await viewOnlyUser.create(apiContext, false);
-    await viewOnlyPolicy.create(apiContext, VIEW_ONLY_RULE);
-    await viewOnlyRole.create(apiContext, [viewOnlyPolicy.responseData.name]);
-    await viewOnlyUser.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/roles/0',
-          value: {
-            id: viewOnlyRole.responseData.id,
-            type: 'role',
-            name: viewOnlyRole.responseData.name,
+      viewOnlyUser = new UserClass();
+      viewOnlyPolicy = new PolicyClass();
+      viewOnlyRole = new RolesClass();
+      await viewOnlyUser.create(apiContext, false);
+      await viewOnlyPolicy.create(apiContext, VIEW_ONLY_RULE);
+      await viewOnlyRole.create(apiContext, [viewOnlyPolicy.responseData.name]);
+      await viewOnlyUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: viewOnlyRole.responseData.id,
+              type: 'role',
+              name: viewOnlyRole.responseData.name,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    metricEditorUser = new UserClass();
-    metricEditorPolicy = new PolicyClass();
-    metricEditorRole = new RolesClass();
-    await metricEditorUser.create(apiContext, false);
-    await metricEditorPolicy.create(apiContext, METRIC_EDITOR_RULES);
-    await metricEditorRole.create(apiContext, [
-      metricEditorPolicy.responseData.name,
-    ]);
-    await metricEditorUser.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/roles/0',
-          value: {
-            id: metricEditorRole.responseData.id,
-            type: 'role',
-            name: metricEditorRole.responseData.name,
+      metricEditorUser = new UserClass();
+      metricEditorPolicy = new PolicyClass();
+      metricEditorRole = new RolesClass();
+      await metricEditorUser.create(apiContext, false);
+      await metricEditorPolicy.create(apiContext, METRIC_EDITOR_RULES);
+      await metricEditorRole.create(apiContext, [
+        metricEditorPolicy.responseData.name,
+      ]);
+      await metricEditorUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: metricEditorRole.responseData.id,
+              type: 'role',
+              name: metricEditorRole.responseData.name,
+            },
           },
-        },
-      ],
-    });
-  });
+        ],
+      });
 
-  test.afterAll(async () => {
-    test.setTimeout(120_000);
-    await Promise.allSettled([
-      viewOnlyUser?.delete(apiContext),
-      viewOnlyRole?.delete(apiContext),
-      viewOnlyPolicy?.delete(apiContext),
-      metricEditorUser?.delete(apiContext),
-      metricEditorRole?.delete(apiContext),
-      metricEditorPolicy?.delete(apiContext),
-    ]);
-    await cleanupFixtures();
-    await cleanupMetricCustomProperty();
-    await disposeApiContext?.();
-  });
-
-  test('Admin starts exactly one async export job from the metrics listing', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, fixtures.prefix);
-    await openMetricActions(page);
-
-    let exportRequestCount = 0;
-    page.on('request', (request) => {
-      if (request.url().includes('/api/v1/metrics/name/*/exportAsync')) {
-        exportRequestCount += 1;
-      }
+      metricExportUser = new UserClass(undefined, true);
+      await metricExportUser.create(apiContext);
     });
 
-    const exportResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/metrics/name/*/exportAsync') &&
-        response.request().method() === 'GET'
-    );
-
-    await clickMetricAction(page, 'Export');
-    const response = await exportResponse;
-    expect(response.ok()).toBeTruthy();
-    await expect.poll(() => exportRequestCount).toBe(1);
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
-      timeout: 30000,
-    });
-    await page.locator('.csv-jobs-tray-launcher').click();
-    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
-    await expect(page.locator('.csv-jobs-tray-item')).toHaveCount(1);
-    await expect(
-      page.getByText(/Exporting Metrics|Exported Metrics/)
-    ).toBeVisible();
-  });
-
-  test('Admin imports a metric CSV through preview and async apply', async ({
-    page,
-  }) => {
-    test.slow();
-    const importedMetricName = `${fixtures.prefix}_imported`;
-    fixtures.metrics.push({
-      id: '',
-      name: importedMetricName,
-      fullyQualifiedName: importedMetricName,
+    test.afterAll(async () => {
+      test.setTimeout(120_000);
+      await Promise.allSettled([
+        viewOnlyUser?.delete(apiContext),
+        viewOnlyRole?.delete(apiContext),
+        viewOnlyPolicy?.delete(apiContext),
+        metricEditorUser?.delete(apiContext),
+        metricEditorRole?.delete(apiContext),
+        metricEditorPolicy?.delete(apiContext),
+        metricExportUser?.delete(apiContext),
+      ]);
+      await cleanupFixtures();
+      await cleanupMetricCustomProperty();
+      await disposeApiContext?.();
     });
 
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await openMetricActions(page);
-    await clickMetricAction(page, 'Import');
-    await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
+    test('Admin starts exactly one async export job from the metrics listing', async ({
+      browser,
+    }) => {
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
+        await redirectToHomePage(page);
+        await waitForMetricsPage(page);
+        await filterMetrics(page, fixtures.prefix);
+        await openMetricActions(page);
 
-    const csvPath = createMetricCsvFile(importedMetricName);
-    await uploadMetricCsvAndWaitForPreview(page, csvPath);
-    await expect(
-      page.getByRole('gridcell', { exact: true, name: importedMetricName })
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: /Start Import/i })
-    ).toBeVisible();
+        let exportRequestCount = 0;
+        page.on('request', (request) => {
+          if (request.url().includes('/api/v1/metrics/name/*/exportAsync')) {
+            exportRequestCount += 1;
+          }
+        });
 
-    const applyResponse = waitForMetricImportResponse(page, false);
-    await page.getByRole('button', { name: /Start Import/i }).click();
-    await applyResponse;
-    await expectMetricImportStatus(page, {
-      processed: '1',
-      passed: '1',
-      failed: '0',
-    });
+        const exportResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/metrics/name/*/exportAsync') &&
+            response.request().method() === 'GET'
+        );
 
-    await expectImportedMetricComplexFields(importedMetricName);
-  });
-
-  test('Admin sees metric CSV validation failures for missing names and invalid references', async ({
-    page,
-  }) => {
-    test.slow();
-    const invalidCsvPath = createInvalidMetricCsvFile(
-      `${fixtures.prefix}_invalid_import`
-    );
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await openMetricActions(page);
-    await clickMetricAction(page, 'Import');
-    await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
-
-    await uploadMetricCsvAndWaitForPreview(page, invalidCsvPath);
-    await expectMetricImportStatus(page, {
-      processed: '2',
-      passed: '0',
-      failed: '2',
-    });
-    await expect(page.getByText('Missing name display')).toBeVisible();
-    await expect(page.getByText('Invalid references display')).toBeVisible();
-  });
-
-  test('Admin imports a CSV update for an existing metric', async ({
-    page,
-  }) => {
-    test.slow();
-    const existingMetricName = fixtures.metrics[1].name;
-    const updatedDisplayName = `${fixtures.prefix} Import Updated`;
-    const csv = createCsv([
-      [
-        existingMetricName,
-        updatedDisplayName,
-        'Metric updated from Playwright CSV',
-        'COUNT',
-        'COUNT',
-        '',
-        'MONTH',
-        'SQL',
-        'COUNT(order_id)',
-        fixtures.metrics[0].fullyQualifiedName,
-        fixtures.secondTag.fullyQualifiedName,
-        fixtures.nestedGlossaryTerm.fullyQualifiedName,
-        'Tier.Tier3',
-        `user:${fixtures.owner.name}`,
-        `team:${fixtures.reviewer.name}`,
-        fixtures.domain.fullyQualifiedName,
-        fixtures.dataProduct.fullyQualifiedName,
-        'Approved',
-        `${metricCustomPropertyName}:updated custom value`,
-      ],
-    ]);
-    const csvPath = test.info().outputPath(`${existingMetricName}-update.csv`);
-    fs.writeFileSync(csvPath, csv);
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await openMetricActions(page);
-    await clickMetricAction(page, 'Import');
-    await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
-
-    await uploadMetricCsvAndWaitForPreview(page, csvPath);
-    await expect(page.getByText(updatedDisplayName)).toBeVisible();
-
-    const applyResponse = waitForMetricImportResponse(page, false);
-    await page.getByRole('button', { name: /Start Import/i }).click();
-    const response = await applyResponse;
-    expect(response.ok()).toBeTruthy();
-    await expectMetricImportStatus(page, {
-      processed: '1',
-      passed: '1',
-      failed: '0',
-    });
-
-    const updatedMetric = await parseResponse<MetricResponse>(
-      await apiContext.get(
-        `/api/v1/metrics/name/${existingMetricName}?fields=extension&include=all`
-      ),
-      'fetch CSV-updated metric'
-    );
-    expect(updatedMetric.displayName).toBe(updatedDisplayName);
-    expect(updatedMetric.extension).toMatchObject({
-      [metricCustomPropertyName]: 'updated custom value',
-    });
-  });
-
-  test('Admin bulk edits filtered metrics from the listing API without export jobs', async ({
-    page,
-  }) => {
-    test.slow();
-    const targetMetricName = fixtures.metrics[METRIC_FIXTURE_COUNT - 1].name;
-    const updatedDisplayName = `${fixtures.prefix} Updated Display`;
-    let exportRequestCount = 0;
-    page.on('request', (request) => {
-      if (request.url().includes('/exportAsync')) {
-        exportRequestCount += 1;
-      }
-    });
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetricName);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetricName);
-
-    await expect.poll(() => exportRequestCount).toBe(0);
-
-    const nextButton = page.getByRole('button', { name: 'Next' });
-    await expect(nextButton).toBeDisabled();
-    await editFirstDisplayNameCell(page, updatedDisplayName);
-    await expect(nextButton).toBeEnabled();
-
-    const validateResponse = waitForMetricImportResponse(page, true);
-    await nextButton.click();
-    await validateResponse;
-    await expectMetricImportStatus(page, {
-      processed: '1',
-      passed: '1',
-      failed: '0',
-    });
-
-    const updateResponse = waitForMetricImportResponse(page, false);
-    await page.getByRole('button', { name: 'Update' }).click();
-    const response = await updateResponse;
-    expect(response.ok()).toBeTruthy();
-    await page.waitForURL(/\/metrics/, { timeout: 90000 });
-
-    const updatedMetric = await parseResponse<MetricResponse>(
-      await apiContext.get(`/api/v1/metrics/name/${targetMetricName}`),
-      'fetch updated metric'
-    );
-    expect(updatedMetric.displayName).toBe(updatedDisplayName);
-  });
-
-  test('Admin bulk edit keeps text edits on blur and can revert to no changes', async ({
-    page,
-  }) => {
-    const targetMetricName = fixtures.metrics[2].name;
-    const originalDisplayName = fixtures.metrics[2].displayName ?? '';
-    const updatedDisplayName = `${fixtures.prefix} Blur Saved`;
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetricName);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetricName);
-
-    const nextButton = getBulkEditNextButton(page);
-    await expect(nextButton).toBeDisabled();
-    await editFirstDisplayNameCellAndBlur(page, updatedDisplayName);
-    await expect(nextButton).toBeEnabled();
-
-    await page.getByRole('button', { name: 'Revert Changes' }).click();
-    await expect(nextButton).toBeDisabled();
-    await expect(
-      page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
-    ).toContainText(originalDisplayName);
-  });
-
-  test('Admin bulk edit hydrates filtered metrics across cursor pages', async ({
-    page,
-  }) => {
-    const { getPageRequestCount, pagedMetricName } =
-      await routePagedMetricBulkHydration(page);
-    let exportRequestCount = 0;
-    page.on('request', (request) => {
-      if (request.url().includes('/exportAsync')) {
-        exportRequestCount += 1;
-      }
-    });
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, 'paged_only_metric');
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, pagedMetricName);
-
-    await expect.poll(getPageRequestCount).toBe(2);
-    await expect.poll(() => exportRequestCount).toBe(0);
-    await expect(
-      page.getByText(`${fixtures.prefix}_paged_skip`)
-    ).not.toBeVisible();
-  });
-
-  test('Admin bulk edit renders complex fields from listing hydration', async ({
-    page,
-  }) => {
-    const targetMetric = fixtures.metrics[0];
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetric.name);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetric.name);
-
-    await expect(page.getByText(targetMetric.displayName ?? '')).toBeVisible();
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(/SELECT SUM\(amount\)/)
-    );
-
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(fixtures.tag.fullyQualifiedName)
-    );
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.locator(
-        `[title="${fixtures.nestedGlossaryTerm.fullyQualifiedName}"]`
-      )
-    );
-    await expectVisibleAfterHorizontalScroll(page, page.getByText('Tier2'));
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(fixtures.owner.name)
-    );
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(fixtures.reviewer.name)
-    );
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(fixtures.domain.fullyQualifiedName)
-    );
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(fixtures.dataProduct.fullyQualifiedName)
-    );
-    await expectVisibleAfterHorizontalScroll(
-      page,
-      page.getByText(`${fixtures.prefix} custom property 0`)
-    );
-  });
-
-  test('Admin bulk edits only selected metric rows', async ({ page }) => {
-    let exportRequestCount = 0;
-    page.on('request', (request) => {
-      if (request.url().includes('/exportAsync')) {
-        exportRequestCount += 1;
-      }
-    });
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    const { metric: selectedMetric, row } =
-      await getFirstVisibleFixtureMetricRow(page);
-    const unselectedMetric =
-      fixtures.metrics.find((metric) => metric.name !== selectedMetric.name) ??
-      fixtures.metrics[0];
-
-    // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
-    await row.getByRole('checkbox').check({ force: true });
-    await expect(page.locator('.metric-list-selection-count')).toHaveText('1');
-
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, selectedMetric.name);
-
-    await expect.poll(() => exportRequestCount).toBe(0);
-    await expect(page.getByText(selectedMetric.name)).toBeVisible();
-    await expect(page.getByText(unselectedMetric.name)).not.toBeVisible();
-  });
-
-  test('Cancel from metric bulk edit returns to the metrics listing', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    const { metric } = await getFirstVisibleFixtureMetricRow(page);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, metric.name);
-
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page).toHaveURL(/\/metrics/);
-  });
-
-  test('Custom metric editor role can import export and bulk edit metrics', async ({
-    browser,
-  }) => {
-    const metricEditorPage = await browser.newPage();
-    await metricEditorUser.login(metricEditorPage);
-
-    try {
-      await redirectToHomePage(metricEditorPage);
-      await waitForMetricsPage(metricEditorPage);
-      await expect(metricEditorPage.getByTestId('create-metric')).toBeVisible();
-      await expect(
-        metricEditorPage.getByTestId('bulk-edit-metric')
-      ).toBeVisible();
-      await openMetricActions(metricEditorPage);
-      await expect(
-        metricEditorPage
-          .locator('.metric-actions-menu-item')
-          .filter({ hasText: 'Export' })
-      ).toBeVisible();
-      await expect(
-        metricEditorPage
-          .locator('.metric-actions-menu-item')
-          .filter({ hasText: 'Import' })
-      ).toBeVisible();
-      await metricEditorPage.keyboard.press('Escape');
-
-      await verifyPageAccess(metricEditorPage, '/bulk/import/metric/*', true);
-      await verifyPageAccess(metricEditorPage, '/bulk/edit/metric/*', true);
-    } finally {
-      await metricEditorPage.close();
-    }
-  });
-
-  test('Restricted roles cannot access metric import or bulk edit', async ({
-    browser,
-    dataConsumerPage,
-    dataStewardPage,
-    viewOnlyPage,
-  }) => {
-    const customViewOnlyPage = await browser.newPage();
-    await viewOnlyUser.login(customViewOnlyPage);
-
-    try {
-      for (const restrictedPage of [
-        dataConsumerPage,
-        dataStewardPage,
-        viewOnlyPage,
-        customViewOnlyPage,
-      ]) {
-        await redirectToHomePage(restrictedPage);
-        await waitForMetricsPage(restrictedPage);
+        await clickMetricAction(page, 'Export');
+        const response = await exportResponse;
+        expect(response.status()).toBe(202);
+        // Verify exactly one export request was fired (no duplicate calls).
+        await expect.poll(() => exportRequestCount).toBe(1);
+        await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
+          timeout: 30000,
+        });
+        await page.locator('.csv-jobs-tray-launcher').click();
+        await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
+        // Verify the export job appears in the tray. Each test uses a dedicated
+        // user session so only this test's own job is visible — checking the
+        // label is sufficient.
         await expect(
-          restrictedPage.getByTestId('create-metric')
-        ).not.toBeVisible();
-        await expect(
-          restrictedPage.getByTestId('bulk-edit-metric')
-        ).not.toBeVisible();
-        await expect(
-          restrictedPage.getByTestId('metric-actions')
-        ).not.toBeVisible();
-        await verifyPageAccess(restrictedPage, '/bulk/import/metric/*', false);
-        await verifyPageAccess(restrictedPage, '/bulk/edit/metric/*', false);
+          page
+            .locator('.csv-jobs-tray-item')
+            .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
+        ).toBeVisible();
+      } finally {
+        await page.close();
       }
-    } finally {
-      await customViewOnlyPage.close();
-    }
-  });
-
-  test('Bulk edit grid shows NO_CHANGE badge on unmodified rows', async ({
-    page,
-  }) => {
-    const targetMetric = fixtures.metrics[3];
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetric.name);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetric.name);
-
-    await expect(
-      page.locator('.bulk-edit-operation-badge-no_change').first()
-    ).toBeVisible();
-    await expect(page.getByTestId('bulk-edit-operation-summary')).toBeVisible();
-    await expect(
-      page.locator('.bulk-edit-operation-summary-count-no_change')
-    ).toContainText('1');
-    await expect(
-      page.locator('.bulk-edit-operation-summary-count-update')
-    ).toContainText('0');
-  });
-
-  test('Bulk edit grid shows UPDATE badge and increments summary after editing a cell', async ({
-    page,
-  }) => {
-    const targetMetric = fixtures.metrics[4];
-    const updatedDisplayName = `${fixtures.prefix} Badge Update Test`;
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetric.name);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetric.name);
-
-    await expect(
-      page.locator('.bulk-edit-operation-badge-no_change').first()
-    ).toBeVisible();
-    await expect(
-      page.locator('.bulk-edit-operation-summary-count-update')
-    ).toContainText('0');
-
-    await editFirstDisplayNameCell(page, updatedDisplayName);
-
-    await expect(
-      page.locator('.bulk-edit-operation-badge-update').first()
-    ).toBeVisible();
-    await expect(
-      page.locator('.bulk-edit-operation-summary-count-update')
-    ).toContainText('1');
-    await expect(
-      page.locator('.bulk-edit-operation-summary-count-no_change')
-    ).toContainText('0');
-  });
-
-  test('Adding a new metric row shows CREATE badge once name is filled', async ({
-    page,
-  }) => {
-    const targetMetric = fixtures.metrics[5];
-    const newMetricName = `${fixtures.prefix}_add_row_test`;
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetric.name);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetric.name);
-
-    await page.getByTestId('bulk-edit-add-metric').click();
-
-    await expect(page.locator('.rdg-row')).toHaveCount(2);
-
-    const newRow = page.locator('.rdg-row').last();
-    const nameCell = newRow.locator('[aria-colindex="2"]');
-    await nameCell.dblclick();
-
-    const nameEditor = page
-      .locator(`${RDG_ACTIVE_CELL_SELECTOR} input`)
-      .first();
-    await expect(nameEditor).toBeVisible();
-    await nameEditor.fill(newMetricName);
-    await nameEditor.press('Enter');
-
-    await expect(
-      page.locator('.bulk-edit-operation-badge-create')
-    ).toBeVisible();
-    await expect(
-      page.locator('.bulk-edit-operation-summary-count-create')
-    ).toContainText('1');
-  });
-
-  test('New metric row without a name shows error pill and SKIP badge', async ({
-    page,
-  }) => {
-    const targetMetric = fixtures.metrics[6];
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetric.name);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetric.name);
-
-    await page.getByTestId('bulk-edit-add-metric').click();
-
-    await expect(page.locator('.bulk-edit-error-pill')).toBeVisible();
-    await expect(
-      page.locator('.bulk-edit-operation-badge-skip').last()
-    ).toBeVisible();
-  });
-
-  test('Removing a newly added metric row restores the grid state', async ({
-    page,
-  }) => {
-    const targetMetric = fixtures.metrics[7];
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, targetMetric.name);
-    await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, targetMetric.name);
-
-    const rowsBefore = await page.locator('.rdg-row').count();
-
-    await page.getByTestId('bulk-edit-add-metric').click();
-    await expect(page.locator('.rdg-row')).toHaveCount(rowsBefore + 1);
-
-    await page.getByTestId('bulk-edit-remove-row').click();
-    await expect(page.locator('.rdg-row')).toHaveCount(rowsBefore);
-    await expect(page.locator('.bulk-edit-error-pill')).not.toBeVisible();
-  });
-
-  test('Bulk edit grid search filters rows to match the search term', async ({
-    page,
-  }) => {
-    const firstMetric = fixtures.metrics[0];
-    const lastMetric = fixtures.metrics[METRIC_FIXTURE_COUNT - 2];
-
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, fixtures.prefix);
-    await page.getByTestId('bulk-edit-metric').click();
-    await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
-    await expect(page.locator('.rdg-header-row')).toBeVisible({
-      timeout: 90_000,
     });
-    await expect(page.locator('.rdg-row').first()).toBeVisible();
 
-    const searchInput = page.getByTestId('bulk-edit-search').locator('input');
-    await searchInput.fill(firstMetric.name);
+    test('Admin imports a metric CSV through preview and async apply', async ({
+      browser,
+    }) => {
+      test.slow();
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
+        const importedMetricName = `${fixtures.prefix}_imported`;
+        fixtures.metrics.push({
+          id: '',
+          name: importedMetricName,
+          fullyQualifiedName: importedMetricName,
+        });
 
-    await expect(page.getByText(firstMetric.name)).toBeVisible();
-    await expect(page.getByText(lastMetric.name)).not.toBeVisible();
-  });
+        await redirectToHomePage(page);
+        await waitForMetricsPage(page);
+        await openMetricActions(page);
+        await clickMetricAction(page, 'Import');
+        await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
 
-  test('Clearing the bulk edit search box restores all rows', async ({
-    page,
-  }) => {
-    const firstMetric = fixtures.metrics[0];
-    const lastMetric = fixtures.metrics[METRIC_FIXTURE_COUNT - 2];
+        const csvPath = createMetricCsvFile(importedMetricName);
+        await uploadMetricCsvAndWaitForPreview(page, csvPath);
+        await expect(
+          page.getByRole('gridcell', { exact: true, name: importedMetricName })
+        ).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: /Start Import/i })
+        ).toBeVisible();
 
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, fixtures.prefix);
-    await page.getByTestId('bulk-edit-metric').click();
-    await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
-    await expect(page.locator('.rdg-header-row')).toBeVisible({
-      timeout: 90_000,
+        const applyResponse = waitForMetricImportResponse(page, false);
+        await page.getByRole('button', { name: /Start Import/i }).click();
+        await applyResponse;
+        await expectMetricImportStatus(page, {
+          processed: '1',
+          passed: '1',
+          failed: '0',
+        });
+
+        await expectImportedMetricComplexFields(importedMetricName);
+      } finally {
+        await page.close();
+      }
     });
-    await expect(page.locator('.rdg-row').first()).toBeVisible();
 
-    const searchInput = page.getByTestId('bulk-edit-search').locator('input');
-    await searchInput.fill(firstMetric.name);
-    await expect(page.getByText(lastMetric.name)).not.toBeVisible();
+    test('Admin sees metric CSV validation failures for missing names and invalid references', async ({
+      page,
+    }) => {
+      test.slow();
+      const invalidCsvPath = createInvalidMetricCsvFile(
+        `${fixtures.prefix}_invalid_import`
+      );
 
-    await searchInput.fill('');
-    await expect(page.getByText(lastMetric.name)).toBeVisible();
-  });
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await openMetricActions(page);
+      await clickMetricAction(page, 'Import');
+      await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
 
-  test('Admin can cancel a metric import mid-flight and cancel API is called', async ({
-    page,
-  }) => {
-    test.slow();
+      await uploadMetricCsvAndWaitForPreview(page, invalidCsvPath);
+      await expectMetricImportStatus(page, {
+        processed: '2',
+        passed: '0',
+        failed: '2',
+      });
+      await expect(page.getByText('Missing name display')).toBeVisible();
+      await expect(page.getByText('Invalid references display')).toBeVisible();
+    });
 
-    const cancelMetricName = `${fixtures.prefix}_cancel_flight`;
-    const csvPath = createMetricCsvFile(cancelMetricName);
+    test('Admin imports a CSV update for an existing metric', async ({
+      browser,
+    }) => {
+      test.slow();
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
+        const existingMetricName = fixtures.metrics[1].name;
+        const updatedDisplayName = `${fixtures.prefix} Import Updated`;
+        const csv = createCsv([
+          [
+            existingMetricName,
+            updatedDisplayName,
+            'Metric updated from Playwright CSV',
+            'COUNT',
+            'COUNT',
+            '',
+            'MONTH',
+            'SQL',
+            'COUNT(order_id)',
+            fixtures.metrics[0].fullyQualifiedName,
+            fixtures.secondTag.fullyQualifiedName,
+            fixtures.nestedGlossaryTerm.fullyQualifiedName,
+            'Tier.Tier3',
+            `user:${fixtures.owner.name}`,
+            `team:${fixtures.reviewer.name}`,
+            fixtures.domain.fullyQualifiedName,
+            fixtures.dataProduct.fullyQualifiedName,
+            'Approved',
+            `${metricCustomPropertyName}:updated custom value`,
+          ],
+        ]);
+        const csvPath = test
+          .info()
+          .outputPath(`${existingMetricName}-update.csv`);
+        fs.writeFileSync(csvPath, csv);
 
-    // The Cancel Import button is enabled only after the server sends a WebSocket
-    // STARTED event.  We must intercept the socket BEFORE the first navigation so
-    // the connection is routed through Playwright.  We use a flag to let the
-    // dry-run (dryRun=true) COMPLETED event pass — it renders the preview grid —
-    // while blocking the actual import COMPLETED to keep the button clickable.
-    let blockImportCompletion = false;
+        await redirectToHomePage(page);
+        await waitForMetricsPage(page);
+        await openMetricActions(page);
+        await clickMetricAction(page, 'Import');
+        await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
 
-    await page.routeWebSocket(/\/api\/v1\/push\/feed/, (ws) => {
-      const server = ws.connectToServer();
+        await uploadMetricCsvAndWaitForPreview(page, csvPath);
+        await expect(page.getByText(updatedDisplayName)).toBeVisible();
 
-      server.onMessage((msg) => {
-        if (
-          blockImportCompletion &&
-          typeof msg === 'string' &&
-          msg.includes('csvImportChannel') &&
-          (msg.includes('COMPLETED') || msg.includes('FAILED'))
-        ) {
-          return; // Drop — keeps the Cancel Import button enabled
+        const applyResponse = waitForMetricImportResponse(page, false);
+        await page.getByRole('button', { name: /Start Import/i }).click();
+        const response = await applyResponse;
+        expect(response.status()).toBe(200);
+        await expectMetricImportStatus(page, {
+          processed: '1',
+          passed: '1',
+          failed: '0',
+        });
+
+        const updatedMetric = await parseResponse<MetricResponse>(
+          await apiContext.get(
+            `/api/v1/metrics/name/${existingMetricName}?fields=extension&include=all`
+          ),
+          'fetch CSV-updated metric'
+        );
+        expect(updatedMetric.displayName).toBe(updatedDisplayName);
+        expect(updatedMetric.extension).toMatchObject({
+          [metricCustomPropertyName]: 'updated custom value',
+        });
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('Admin bulk edits filtered metrics from the listing API without export jobs', async ({
+      page,
+    }) => {
+      test.slow();
+      const targetMetricName = fixtures.metrics[METRIC_FIXTURE_COUNT - 1].name;
+      const updatedDisplayName = `${fixtures.prefix} Updated Display`;
+      let exportRequestCount = 0;
+      page.on('request', (request) => {
+        if (request.url().includes('/exportAsync')) {
+          exportRequestCount += 1;
         }
-        ws.send(msg);
       });
 
-      ws.onMessage((msg) => server.send(msg));
-    });
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetricName);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetricName);
 
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await openMetricActions(page);
-    await clickMetricAction(page, 'Import');
-    await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
+      await expect.poll(() => exportRequestCount).toBe(0);
 
-    // Dry-run preview — let COMPLETED through (blockImportCompletion is false)
-    await uploadMetricCsvAndWaitForPreview(page, csvPath);
-    await expect(
-      page.getByRole('button', { name: /Start Import/i })
-    ).toBeVisible();
+      const nextButton = page.getByRole('button', { name: 'Next' });
+      await expect(nextButton).toBeDisabled();
+      await editFirstDisplayNameCell(page, updatedDisplayName);
+      await expect(nextButton).toBeEnabled();
 
-    // From this point block the actual import COMPLETED so the cancel button
-    // stays enabled after STARTED fires.
-    blockImportCompletion = true;
-
-    let cancelApiCalled = false;
-    await page.route('**/api/v1/csvAsyncJobs/*/cancel', async (route) => {
-      cancelApiCalled = true;
-      await route.fulfill({
-        contentType: 'application/json',
-        json: { status: 'CANCELLING' },
+      const validateResponse = waitForMetricImportResponse(page, true);
+      await nextButton.click();
+      await validateResponse;
+      await expectMetricImportStatus(page, {
+        processed: '1',
+        passed: '1',
+        failed: '0',
       });
+
+      const updateResponse = waitForMetricImportResponse(page, false);
+      await page.getByRole('button', { name: 'Update' }).click();
+      const response = await updateResponse;
+      expect(response.status()).toBe(200);
+      await page.waitForURL(/\/metrics/, { timeout: 90000 });
+
+      const updatedMetric = await parseResponse<MetricResponse>(
+        await apiContext.get(`/api/v1/metrics/name/${targetMetricName}`),
+        'fetch updated metric'
+      );
+      expect(updatedMetric.displayName).toBe(updatedDisplayName);
     });
 
-    await page.getByRole('button', { name: /Start Import/i }).click();
+    test('Admin bulk edit keeps text edits on blur and can revert to no changes', async ({
+      page,
+    }) => {
+      const targetMetricName = fixtures.metrics[2].name;
+      const originalDisplayName = fixtures.metrics[2].displayName ?? '';
+      const updatedDisplayName = `${fixtures.prefix} Blur Saved`;
 
-    // Wait for STARTED WebSocket event → button becomes enabled
-    const cancelBtn = page.getByRole('button', { name: /Cancel Import/i });
-    await expect(cancelBtn).toBeEnabled({ timeout: 30_000 });
-    await cancelBtn.click();
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetricName);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetricName);
 
-    await expect.poll(() => cancelApiCalled, { timeout: 15_000 }).toBe(true);
-  });
+      const nextButton = getBulkEditNextButton(page);
+      await expect(nextButton).toBeDisabled();
+      await editFirstDisplayNameCellAndBlur(page, updatedDisplayName);
+      await expect(nextButton).toBeEnabled();
 
-  test('MetricListPage header checkbox selects all visible metrics', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, fixtures.prefix);
+      await page.getByRole('button', { name: 'Revert Changes' }).click();
+      await expect(nextButton).toBeDisabled();
+      await expect(
+        page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
+      ).toContainText(originalDisplayName);
+    });
 
-    await expect(page.getByTestId('metric-name').first()).toBeVisible();
+    test('Admin bulk edit hydrates filtered metrics across cursor pages', async ({
+      page,
+    }) => {
+      const { getPageRequestCount, pagedMetricName } =
+        await routePagedMetricBulkHydration(page);
+      let exportRequestCount = 0;
+      page.on('request', (request) => {
+        if (request.url().includes('/exportAsync')) {
+          exportRequestCount += 1;
+        }
+      });
 
-    // The table is React Aria — click the visible <label slot="selection"> in
-    // the header to trigger select-all (no force needed; the label is visible).
-    await page.locator('thead label[slot="selection"]').click();
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, 'paged_only_metric');
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, pagedMetricName);
 
-    await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
-    await expect(page.locator('.metric-list-selection-count')).not.toHaveText(
-      '0'
-    );
-  });
+      await expect.poll(getPageRequestCount).toBe(2);
+      await expect.poll(() => exportRequestCount).toBe(0);
+      await expect(
+        page.getByText(`${fixtures.prefix}_paged_skip`)
+      ).not.toBeVisible();
+    });
 
-  test('MetricListPage unchecking header checkbox clears the selection bar', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await waitForMetricsPage(page);
-    await filterMetrics(page, fixtures.prefix);
+    test('Admin bulk edit renders complex fields from listing hydration', async ({
+      page,
+    }) => {
+      const targetMetric = fixtures.metrics[0];
 
-    await expect(page.getByTestId('metric-name').first()).toBeVisible();
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetric.name);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetric.name);
 
-    await page.locator('thead label[slot="selection"]').click();
-    await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
+      await expect(
+        page.getByText(targetMetric.displayName ?? '')
+      ).toBeVisible();
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(/SELECT SUM\(amount\)/)
+      );
 
-    await page.locator('thead label[slot="selection"]').click();
-    await expect(page.locator('.metric-list-selection-bar')).not.toBeVisible();
-  });
-});
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(fixtures.tag.fullyQualifiedName)
+      );
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.locator(
+          `[title="${fixtures.nestedGlossaryTerm.fullyQualifiedName}"]`
+        )
+      );
+      await expectVisibleAfterHorizontalScroll(page, page.getByText('Tier2'));
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(fixtures.owner.name)
+      );
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(fixtures.reviewer.name)
+      );
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(fixtures.domain.fullyQualifiedName)
+      );
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(fixtures.dataProduct.fullyQualifiedName)
+      );
+      await expectVisibleAfterHorizontalScroll(
+        page,
+        page.getByText(`${fixtures.prefix} custom property 0`)
+      );
+    });
+
+    test('Admin bulk edits only selected metric rows', async ({ page }) => {
+      let exportRequestCount = 0;
+      page.on('request', (request) => {
+        if (request.url().includes('/exportAsync')) {
+          exportRequestCount += 1;
+        }
+      });
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      const { metric: selectedMetric, row } =
+        await getFirstVisibleFixtureMetricRow(page);
+
+      // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
+      await row.getByRole('checkbox').check({ force: true });
+      await expect(page.locator('.metric-list-selection-count')).toHaveText(
+        '1'
+      );
+
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, selectedMetric.name);
+
+      await expect.poll(() => exportRequestCount).toBe(0);
+      await expect(page.locator('.bulk-edit-name-value')).toHaveText([
+        selectedMetric.name,
+      ]);
+    });
+
+    test('Cancel from metric bulk edit returns to the metrics listing', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await getFirstVisibleFixtureMetricRow(page);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page);
+
+      await page.getByRole('button', { name: 'Cancel' }).click();
+      await expect(page).toHaveURL(/\/metrics/);
+    });
+
+    test('Custom metric editor role can import export and bulk edit metrics', async ({
+      browser,
+    }) => {
+      const metricEditorPage = await browser.newPage();
+      await metricEditorUser.login(metricEditorPage);
+
+      try {
+        await redirectToHomePage(metricEditorPage);
+        await waitForMetricsPage(metricEditorPage);
+        await expect(
+          metricEditorPage.getByTestId('create-metric')
+        ).toBeVisible();
+        await expect(
+          metricEditorPage.getByTestId('bulk-edit-metric')
+        ).toBeVisible();
+        await openMetricActions(metricEditorPage);
+        await expect(
+          metricEditorPage
+            .locator('.metric-actions-menu-item')
+            .filter({ hasText: 'Export' })
+        ).toBeVisible();
+        await expect(
+          metricEditorPage
+            .locator('.metric-actions-menu-item')
+            .filter({ hasText: 'Import' })
+        ).toBeVisible();
+        await metricEditorPage.keyboard.press('Escape');
+
+        await verifyPageAccess(metricEditorPage, '/bulk/import/metric/*', true);
+        await verifyPageAccess(metricEditorPage, '/bulk/edit/metric/*', true);
+      } finally {
+        await metricEditorPage.close();
+      }
+    });
+
+    test('Restricted roles cannot access metric import or bulk edit', async ({
+      browser,
+      dataConsumerPage,
+      dataStewardPage,
+      viewOnlyPage,
+    }) => {
+      test.slow();
+      const customViewOnlyPage = await browser.newPage();
+      await viewOnlyUser.login(customViewOnlyPage);
+
+      try {
+        for (const restrictedPage of [
+          dataConsumerPage,
+          dataStewardPage,
+          viewOnlyPage,
+          customViewOnlyPage,
+        ]) {
+          await redirectToHomePage(restrictedPage);
+          await waitForMetricsPage(restrictedPage);
+          await expect(
+            restrictedPage.getByTestId('create-metric')
+          ).not.toBeVisible();
+          await expect(
+            restrictedPage.getByTestId('bulk-edit-metric')
+          ).not.toBeVisible();
+          await expect(
+            restrictedPage.getByTestId('metric-actions')
+          ).not.toBeVisible();
+          await verifyPageAccess(
+            restrictedPage,
+            '/bulk/import/metric/*',
+            false
+          );
+          await verifyPageAccess(restrictedPage, '/bulk/edit/metric/*', false);
+        }
+      } finally {
+        await customViewOnlyPage.close();
+      }
+    });
+
+    test('Bulk edit grid shows NO_CHANGE badge on unmodified rows', async ({
+      page,
+    }) => {
+      const targetMetric = fixtures.metrics[3];
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetric.name);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetric.name);
+
+      await expect(
+        page.locator('.bulk-edit-operation-badge-no_change').first()
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('bulk-edit-operation-summary')
+      ).toBeVisible();
+      await expect(
+        page.locator('.bulk-edit-operation-summary-count-no_change')
+      ).toContainText('1');
+      await expect(
+        page.locator('.bulk-edit-operation-summary-count-update')
+      ).toContainText('0');
+    });
+
+    test('Bulk edit grid shows UPDATE badge and increments summary after editing a cell', async ({
+      page,
+    }) => {
+      const targetMetric = fixtures.metrics[4];
+      const updatedDisplayName = `${fixtures.prefix} Badge Update Test`;
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetric.name);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetric.name);
+
+      await expect(
+        page.locator('.bulk-edit-operation-badge-no_change').first()
+      ).toBeVisible();
+      await expect(
+        page.locator('.bulk-edit-operation-summary-count-update')
+      ).toContainText('0');
+
+      await editFirstDisplayNameCell(page, updatedDisplayName);
+
+      await expect(
+        page.locator('.bulk-edit-operation-badge-update').first()
+      ).toBeVisible();
+      await expect(
+        page.locator('.bulk-edit-operation-summary-count-update')
+      ).toContainText('1');
+      await expect(
+        page.locator('.bulk-edit-operation-summary-count-no_change')
+      ).toContainText('0');
+    });
+
+    test('Adding a new metric row shows CREATE badge once name is filled', async ({
+      page,
+    }) => {
+      const targetMetric = fixtures.metrics[5];
+      const newMetricName = `${fixtures.prefix}_add_row_test`;
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetric.name);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetric.name);
+
+      await page.getByTestId('bulk-edit-add-metric').click();
+
+      await expect(page.locator('.rdg-row')).toHaveCount(2);
+
+      const newRow = page.locator('.rdg-row').last();
+      const nameCell = newRow.locator('[aria-colindex="2"]');
+      await nameCell.dblclick();
+
+      const nameEditor = page
+        .locator(`${RDG_ACTIVE_CELL_SELECTOR} input`)
+        .first();
+      await expect(nameEditor).toBeVisible();
+      await nameEditor.fill(newMetricName);
+      await nameEditor.press('Enter');
+
+      await expect(
+        page.locator('.bulk-edit-operation-badge-create')
+      ).toBeVisible();
+      await expect(
+        page.locator('.bulk-edit-operation-summary-count-create')
+      ).toContainText('1');
+    });
+
+    test('New metric row without a name shows error pill and SKIP badge', async ({
+      page,
+    }) => {
+      const targetMetric = fixtures.metrics[6];
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetric.name);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetric.name);
+
+      await page.getByTestId('bulk-edit-add-metric').click();
+
+      await expect(page.locator('.bulk-edit-error-pill')).toBeVisible();
+      await expect(
+        page.locator('.bulk-edit-operation-badge-skip').last()
+      ).toBeVisible();
+    });
+
+    test('Removing a newly added metric row restores the grid state', async ({
+      page,
+    }) => {
+      const targetMetric = fixtures.metrics[7];
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, targetMetric.name);
+      await page.getByTestId('bulk-edit-metric').click();
+      await waitForMetricBulkEditGrid(page, targetMetric.name);
+
+      const rowsBefore = await page.locator('.rdg-row').count();
+
+      await page.getByTestId('bulk-edit-add-metric').click();
+      await expect(page.locator('.rdg-row')).toHaveCount(rowsBefore + 1);
+
+      await page.getByTestId('bulk-edit-remove-row').click();
+      await expect(page.locator('.rdg-row')).toHaveCount(rowsBefore);
+      await expect(page.locator('.bulk-edit-error-pill')).not.toBeVisible();
+    });
+
+    test('Bulk edit grid search filters rows to match the search term', async ({
+      page,
+    }) => {
+      const firstMetric = fixtures.metrics[0];
+      const lastMetric = fixtures.metrics[METRIC_FIXTURE_COUNT - 2];
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, fixtures.prefix);
+      await page.getByTestId('bulk-edit-metric').click();
+      await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
+      await expect(page.locator('.rdg-header-row')).toBeVisible({
+        timeout: 90_000,
+      });
+      await expect(page.locator('.rdg-row').first()).toBeVisible();
+
+      const searchInput = page.getByTestId('bulk-edit-search').locator('input');
+      await searchInput.fill(firstMetric.name);
+
+      await expect(page.getByText(firstMetric.name)).toBeVisible();
+      await expect(page.getByText(lastMetric.name)).not.toBeVisible();
+    });
+
+    test('Clearing the bulk edit search box restores all rows', async ({
+      page,
+    }) => {
+      const firstMetric = fixtures.metrics[0];
+      const lastMetric = fixtures.metrics[METRIC_FIXTURE_COUNT - 2];
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await filterMetrics(page, fixtures.prefix);
+      await page.getByTestId('bulk-edit-metric').click();
+      await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
+      await expect(page.locator('.rdg-header-row')).toBeVisible({
+        timeout: 90_000,
+      });
+      await expect(page.locator('.rdg-row').first()).toBeVisible();
+
+      const searchInput = page.getByTestId('bulk-edit-search').locator('input');
+      await searchInput.fill(firstMetric.name);
+      await expect(page.getByText(lastMetric.name)).not.toBeVisible();
+
+      await searchInput.fill('');
+      await expect(page.getByText(lastMetric.name)).toBeVisible();
+    });
+
+    test('Admin can cancel a metric import mid-flight and cancel API is called', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const cancelMetricName = `${fixtures.prefix}_cancel_flight`;
+      const csvPath = createMetricCsvFile(cancelMetricName);
+
+      // The Cancel Import button is enabled only after the server sends a WebSocket
+      // STARTED event.  We must intercept the socket BEFORE the first navigation so
+      // the connection is routed through Playwright.  We use a flag to let the
+      // dry-run (dryRun=true) COMPLETED event pass — it renders the preview grid —
+      // while blocking the actual import COMPLETED to keep the button clickable.
+      let blockImportCompletion = false;
+
+      await page.routeWebSocket(/\/api\/v1\/push\/feed/, (ws) => {
+        const server = ws.connectToServer();
+
+        server.onMessage((msg) => {
+          if (
+            blockImportCompletion &&
+            typeof msg === 'string' &&
+            msg.includes('csvImportChannel') &&
+            (msg.includes('COMPLETED') || msg.includes('FAILED'))
+          ) {
+            return; // Drop — keeps the Cancel Import button enabled
+          }
+          ws.send(msg);
+        });
+
+        ws.onMessage((msg) => server.send(msg));
+      });
+
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      await openMetricActions(page);
+      await clickMetricAction(page, 'Import');
+      await expect(page).toHaveURL(/\/bulk\/import\/metric\/\*/);
+
+      // Dry-run preview — let COMPLETED through (blockImportCompletion is false)
+      await uploadMetricCsvAndWaitForPreview(page, csvPath);
+      await expect(
+        page.getByRole('button', { name: /Start Import/i })
+      ).toBeVisible();
+
+      // From this point block the actual import COMPLETED so the cancel button
+      // stays enabled after STARTED fires.
+      blockImportCompletion = true;
+
+      let cancelApiCalled = false;
+      await page.route('**/api/v1/csvAsyncJobs/*/cancel', async (route) => {
+        cancelApiCalled = true;
+        await route.fulfill({
+          contentType: 'application/json',
+          json: { status: 'CANCELLING' },
+        });
+      });
+
+      await page.getByRole('button', { name: /Start Import/i }).click();
+
+      // Wait for STARTED WebSocket event → button becomes enabled
+      const cancelBtn = page.getByRole('button', { name: /Cancel Import/i });
+      await expect(cancelBtn).toBeEnabled({ timeout: 30_000 });
+      await cancelBtn.click();
+
+      await expect.poll(() => cancelApiCalled, { timeout: 15_000 }).toBe(true);
+    });
+
+    test('MetricListPage header checkbox selects all visible metrics', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+
+      const searchResponse = waitForMetricsSearchResponse(page);
+      await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
+
+      await expect(page.getByTestId('metric-name').first()).toBeVisible();
+
+      await page.locator('thead label[slot="selection"]').click();
+
+      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
+      await expect(page.locator('.metric-list-selection-count')).not.toHaveText(
+        '0'
+      );
+    });
+
+    test('MetricListPage unchecking header checkbox clears the selection bar', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+
+      const searchResponse = waitForMetricsSearchResponse(page);
+      await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
+
+      await expect(page.getByTestId('metric-name').first()).toBeVisible();
+
+      await page.locator('thead label[slot="selection"]').click();
+      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
+
+      await page.locator('thead label[slot="selection"]').click();
+      await expect(
+        page.locator('.metric-list-selection-bar')
+      ).not.toBeVisible();
+    });
+
+    test('MetricListPage clicking anywhere in a row navigates to metric details', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      const searchResponse = waitForMetricsSearchResponse(page);
+      await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
+
+      const row = page
+        .locator('tr')
+        .filter({ hasText: fixtures.prefix })
+        .first();
+      await expect(row).toBeVisible();
+
+      await row.locator('.metric-status-pill').first().click();
+
+      await expect(page).toHaveURL(/\/metric\//);
+    });
+
+    test('MetricListPage clicking the row checkbox selects without navigating', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      const searchResponse = waitForMetricsSearchResponse(page);
+      await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
+
+      const row = page
+        .locator('tr')
+        .filter({ hasText: fixtures.prefix })
+        .first();
+      await expect(row).toBeVisible();
+
+      await row.locator('label[slot="selection"]').click();
+
+      await expect(page.locator('.metric-list-selection-count')).toHaveText(
+        '1'
+      );
+      await expect(page).toHaveURL(/\/metrics/);
+    });
+  }
+);

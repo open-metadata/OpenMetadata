@@ -14,7 +14,6 @@
 import { EditorState } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { isString } from 'lodash';
-import Showdown from 'showdown';
 import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
 import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
 import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
@@ -23,6 +22,7 @@ import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import {
   convertMarkdownFormatToHtmlString,
+  getHtmlStringFromMarkdownString,
   isHTMLString,
 } from './BlockEditorPureUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
@@ -34,17 +34,6 @@ export const getSelectedText = (state: EditorState) => {
   const text = state.doc.textBetween(from, to);
 
   return text;
-};
-
-export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
-  const eleTop = ele.offsetTop;
-  const eleBottom = eleTop + ele.clientHeight;
-
-  const containerTop = container.scrollTop;
-  const containerBottom = containerTop + container.clientHeight;
-
-  // The element is fully visible in the container
-  return eleTop >= containerTop && eleBottom <= containerBottom;
 };
 
 // Unique marker prefix used to temporarily replace entity links during HTML serialization
@@ -122,26 +111,7 @@ export const formatServerContent = (htmlString: string) => {
 export const formatValueBasedOnContent = (value: string) =>
   value === '<p></p>' ? '' : value;
 
-/**
- * Convert a markdown string to an HTML string
- */
-const _convertMarkdownStringToHtmlString = new Showdown.Converter({
-  ghCodeBlocks: true,
-  encodeEmails: false,
-  ellipsis: false,
-  tables: true,
-  strikethrough: true,
-  simpleLineBreaks: true,
-  openLinksInNewWindow: true,
-  emoji: true,
-  underline: true,
-});
-
-export const getHtmlStringFromMarkdownString = (content: string) => {
-  return isHTMLString(content)
-    ? content
-    : _convertMarkdownStringToHtmlString.makeHtml(content);
-};
+export { getHtmlStringFromMarkdownString } from './BlockEditorPureUtils';
 
 /**
  * Set the content of the editor

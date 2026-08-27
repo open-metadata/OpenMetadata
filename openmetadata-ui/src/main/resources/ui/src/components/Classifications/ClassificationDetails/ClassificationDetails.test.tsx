@@ -72,6 +72,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  EmptyPlaceholder: ({ title }: { title?: string }) => (
+    <div data-testid="empty-tags-placeholder">{title}</div>
+  ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -105,7 +109,7 @@ jest.mock('../../../rest/tagAPI', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div data-testid="description-container">
       <button
@@ -261,6 +265,7 @@ const defaultProps = {
   handleActionDeleteTag: jest.fn(),
   handleAddNewTagClick: jest.fn(),
   handleToggleDisable: jest.fn(),
+  handleEditClassificationClick: jest.fn(),
   deleteTags: undefined,
   isAddingTag: false,
   disableEditButton: false,
@@ -343,7 +348,7 @@ describe('ClassificationDetails', () => {
     );
   });
 
-  it('should allow user to edit display name', async () => {
+  it('should trigger edit classification when edit option is clicked', async () => {
     render(
       <MemoryRouter>
         <ClassificationDetails {...defaultProps} />
@@ -351,14 +356,14 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('edit-display-name')).toBeInTheDocument()
+      expect(
+        screen.getByTestId('edit-classification-button')
+      ).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByTestId('edit-display-name'));
+    fireEvent.click(screen.getByTestId('edit-classification-button'));
 
-    expect(defaultProps.handleUpdateClassification).toHaveBeenCalledWith(
-      expect.objectContaining({ displayName: 'New Display' })
-    );
+    expect(defaultProps.handleEditClassificationClick).toHaveBeenCalled();
   });
 
   it('should navigate to version history when version button is clicked', async () => {
@@ -417,6 +422,43 @@ describe('ClassificationDetails', () => {
     );
 
     expect(screen.getByTestId('disable-button')).toBeInTheDocument();
+  });
+
+  it('should hide import and export options for system classifications but show them for user classifications', async () => {
+    const systemClassification = {
+      ...mockClassification,
+      provider: ProviderType.System,
+    };
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={systemClassification}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('system-badge')).toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('export-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('export-button')).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('import-button')).toBeInTheDocument();
   });
 
   it('should toggle classification enabled state when disable button is clicked', async () => {
@@ -484,6 +526,7 @@ describe('ClassificationDetails', () => {
       EditAll: false,
       Delete: false,
       EditDisplayName: false,
+      ViewAll: false,
     };
 
     render(

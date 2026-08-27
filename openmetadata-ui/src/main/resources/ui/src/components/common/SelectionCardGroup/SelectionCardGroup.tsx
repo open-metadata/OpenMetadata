@@ -27,10 +27,11 @@ export const SelectionCard: FC<SelectionCardProps> = ({
   isSelected,
   onClick,
   disabled = false,
+  layout = 'horizontal',
 }: SelectionCardProps) => {
   return (
     <Card
-      className={classNames('selection-card', {
+      className={classNames('selection-card', `selection-card-${layout}`, {
         selected: isSelected,
         disabled: disabled,
         'has-beta': option.isBeta,
@@ -39,7 +40,7 @@ export const SelectionCard: FC<SelectionCardProps> = ({
       onClick={disabled ? undefined : onClick}>
       {option.isBeta && <BetaBadge />}
       <div className="selection-content">
-        <div className="d-flex gap-3">
+        <div className="selection-body">
           <span className="selection-icon">{option.icon}</span>
           <div className="selection-header">
             <div className="selection-title">{option.label}</div>
@@ -65,6 +66,7 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
   className,
   onClick,
   disabled = false,
+  layout = 'horizontal',
 }: SelectionCardGroupProps) => {
   const handleOptionSelect = (selectedValue: string) => {
     if (!disabled) {
@@ -83,6 +85,7 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
           disabled={disabled}
           isSelected={value === option.value}
           key={option.value}
+          layout={layout}
           option={option}
           onClick={() => handleOptionSelect(option.value)}
         />

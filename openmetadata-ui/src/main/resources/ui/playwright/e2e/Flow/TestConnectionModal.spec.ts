@@ -13,7 +13,7 @@
 
 import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   advanceToServiceConnectionStep,
@@ -101,10 +101,26 @@ async function navigateToMysqlConnectionForm(page: Page) {
   await page.goto('/databaseServices/add-service');
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
-  await page.fill('#service-name', `pw-tc-modal-test`);
+  await fillServiceNameAndWaitForValidation(page, `pw-tc-modal-test-${uuid()}`);
   await advanceToServiceConnectionStep(page);
   await page.fill('[id="root\\/username"]', 'test-user');
   await page.fill('[id="root\\/hostPort"]', 'localhost:3306');
+}
+
+async function fillServiceNameAndWaitForValidation(
+  page: Page,
+  serviceName: string
+) {
+  const validationResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response
+        .url()
+        .includes(`/api/v1/services/databaseServices/name/${serviceName}`)
+  );
+
+  await page.fill('#service-name', serviceName);
+  await validationResponse;
 }
 
 async function navigateToMysqlFormWithoutFilling(page: Page) {
@@ -121,6 +137,16 @@ test.describe(
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
     test.beforeEach(async ({ page }) => {
+      await page.route(
+        '**/api/v1/services/ingestionPipelines/status',
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 200, platform: 'airflow' }),
+          });
+        }
+      );
       await redirectToHomePage(page);
     });
 
@@ -140,7 +166,10 @@ test.describe(
       page,
     }) => {
       await navigateToMysqlFormWithoutFilling(page);
-      await page.fill('#service-name', 'pw-validation-test');
+      await fillServiceNameAndWaitForValidation(
+        page,
+        `pw-validation-test-${uuid()}`
+      );
 
       await page.getByTestId('test-connection-btn').click();
 
@@ -199,6 +228,51 @@ test.describe(
         page.getByTestId('edit-connection-button')
       ).not.toBeVisible();
       await expect(page.getByTestId('retry-test-button')).not.toBeVisible();
+    });
+
+    test('changing a form field after a successful test resets the connection badge', async ({
+      page,
+    }) => {
+      const successResponse = {
+        id: MOCK_WORKFLOW_ID,
+        status: 'Successful',
+        response: {
+          status: 'Successful',
+          steps: [
+            { name: 'CheckAccess', passed: true, mandatory: true },
+            { name: 'GetDatabases', passed: true, mandatory: true },
+          ],
+        },
+      };
+
+      await navigateToMysqlConnectionForm(page);
+      await setupWorkflowApiMocks(page, successResponse);
+
+      await page.getByTestId('test-connection-btn').click();
+
+      await expect(page.getByRole('button', { name: /done/i })).toBeVisible({
+        timeout: 30000,
+      });
+      await page.getByRole('button', { name: /done/i }).click();
+
+      await expect(
+        page.getByTestId('test-connection-card-Successful')
+      ).toBeVisible();
+      await expect(page.getByTestId('test-connection-btn')).toHaveText(
+        'Re-test Connection'
+      );
+
+      await page.fill('[id="root\\/hostPort"]', 'localhost:3307');
+
+      await expect(
+        page.getByTestId('test-connection-card-Successful')
+      ).not.toBeVisible();
+      await expect(
+        page.getByTestId('test-connection-card-ready-to-test')
+      ).toBeVisible();
+      await expect(page.getByTestId('test-connection-btn')).toHaveText(
+        'Test Connection'
+      );
     });
 
     test('failure state shows Edit Connection button and Retry Test button', async ({

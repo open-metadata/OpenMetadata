@@ -22,7 +22,7 @@ import { CommonWidgets } from './CommonWidgets';
 
 // Mock the required dependencies
 jest.mock('../../Customization/GenericProvider/GenericContext');
-jest.mock('../../common/EntityDescription/DescriptionV1', () => ({
+jest.mock('../../common/EntityDescription/Description', () => ({
   __esModule: true,
   default: () => <div data-testid="description-widget">Description Widget</div>,
 }));

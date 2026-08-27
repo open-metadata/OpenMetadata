@@ -23,8 +23,6 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -46,11 +44,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -71,11 +67,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -224,6 +216,91 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
+  /**
+   * Heals seeded Tags: system recognizers the Tag lost - or that a later release added - are put
+   * back by name, and a provider knocked off the seeded value is restored. A recognizer that is
+   * still there is never touched, so user edits to it survive.
+   */
+  public void reconcileSeededTags(List<Tag> seedTags) {
+    for (Tag seedTag : listOrEmpty(seedTags)) {
+      try {
+        reconcileSeededTag(seedTag);
+      } catch (Exception e) {
+        LOG.warn("Failed to reconcile seeded tag {}", seedTag.getFullyQualifiedName(), e);
+      }
+    }
+  }
+
+  private void reconcileSeededTag(Tag seedTag) {
+    // A Tag missing altogether was just created from this same seed by initializeEntity()
+    Tag stored = findByNameOrNull(seedTag.getFullyQualifiedName(), ALL);
+    if (stored == null) {
+      return;
+    }
+
+    List<Recognizer> seeded = systemRecognizers(seedTag);
+    List<Recognizer> missing = missingSystemRecognizers(stored.getRecognizers(), seeded);
+    // CreateTag defaults provider to user, so any PUT that omits it downgrades a seeded Tag - and a
+    // Tag that is no longer system provided is no longer protected from deletion
+    boolean providerDrifted =
+        seedTag.getProvider() != null && !seedTag.getProvider().equals(stored.getProvider());
+    if (missing.isEmpty() && !providerDrifted) {
+      return;
+    }
+
+    if (!missing.isEmpty()) {
+      appendRecognizers(stored, seedTag, missing, seeded.size());
+    }
+    if (providerDrifted) {
+      stored.setProvider(seedTag.getProvider());
+    }
+    store(stored, true);
+    LOG.info(
+        "Reconciled seeded tag {}: provider={}, recognizers re-added={}",
+        stored.getFullyQualifiedName(),
+        stored.getProvider(),
+        missing.stream().map(Recognizer::getName).toList());
+  }
+
+  private List<Recognizer> systemRecognizers(Tag seedTag) {
+    return listOrEmpty(seedTag.getRecognizers()).stream()
+        .filter(recognizer -> Boolean.TRUE.equals(recognizer.getIsSystemDefault()))
+        .toList();
+  }
+
+  private void appendRecognizers(
+      Tag stored, Tag seedTag, List<Recognizer> missing, int seededCount) {
+    List<Recognizer> merged = new ArrayList<>(listOrEmpty(stored.getRecognizers()));
+    merged.addAll(missing);
+    stored.setRecognizers(merged);
+    restoreAutoClassification(stored, seedTag, missing.size() == seededCount);
+  }
+
+  /** Seeded recognizers absent from {@code stored}, copied so the seed list stays reusable. */
+  protected List<Recognizer> missingSystemRecognizers(
+      List<Recognizer> stored, List<Recognizer> seeded) {
+    Set<String> storedNames =
+        listOrEmpty(stored).stream().map(Recognizer::getName).collect(Collectors.toSet());
+    return seeded.stream()
+        .filter(recognizer -> !storedNames.contains(recognizer.getName()))
+        .map(recognizer -> JsonUtils.deepCopy(recognizer, Recognizer.class))
+        .map(recognizer -> recognizer.withId(UUID.randomUUID()))
+        .toList();
+  }
+
+  /**
+   * Recognizers are inert while autoClassificationEnabled is false, so a Tag that lost every seeded
+   * recognizer - the signature of a wipe - gets its flags back too. One merely short a newly shipped
+   * recognizer keeps whatever the user configured.
+   */
+  private void restoreAutoClassification(Tag stored, Tag seedTag, boolean lostEverySeeded) {
+    if (!lostEverySeeded || !Boolean.TRUE.equals(seedTag.getAutoClassificationEnabled())) {
+      return;
+    }
+    stored.setAutoClassificationEnabled(true);
+    stored.setAutoClassificationPriority(seedTag.getAutoClassificationPriority());
+  }
+
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
     if (tag.getClassification() == null || tag.getClassification().getId() == null) {
@@ -297,7 +374,63 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
+    // setInheritedFields() sets disabled=true on the in-memory Tag whenever the parent
+    // Classification is disabled. That inherited value must never be persisted: once it is
+    // stored, re-enabling the Classification can no longer clear it and the Tag stays disabled
+    // forever.
+    //
+    // Leave the Tag holding its own flag afterwards rather than restoring the effective value.
+    // The entity is cached after this returns, so restoring would write the inherited true into
+    // the cache while the row holds false - the read then reports a Tag that is disabled with an
+    // enabled Classification, which is the very state this guard exists to prevent. It only
+    // shows up with a distributed cache, because an L1-only entry is invalidated on write and
+    // reloaded from the row. Restoring is also unnecessary: inheritance is re-applied on the way
+    // out, so the write response still reports the effective value.
+    tag.setDisabled(getOwnDisabled(tag, update, tag.getDisabled()));
     store(tag, update);
+  }
+
+  /**
+   * Returns the Tag's own {@code disabled} setting, with any value inherited from a disabled parent
+   * Classification removed. While the parent Classification is disabled the Tag always reads as
+   * disabled, so a user cannot express "disable this Tag individually" during that window - the
+   * stored value is therefore authoritative.
+   */
+  private Boolean getOwnDisabled(Tag tag, boolean update, Boolean effectiveDisabled) {
+    Boolean ownDisabled = effectiveDisabled;
+    if (Boolean.TRUE.equals(effectiveDisabled) && isParentClassificationDisabled(tag)) {
+      ownDisabled = update ? getStoredDisabled(tag.getId()) : Boolean.FALSE;
+    }
+    return ownDisabled;
+  }
+
+  private Boolean getStoredDisabled(UUID tagId) {
+    Boolean storedDisabled = Boolean.FALSE;
+    try {
+      storedDisabled = dao.findEntityById(tagId, ALL).getDisabled();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Tag {} not found while reading its stored disabled flag", tagId, e);
+    }
+    return storedDisabled;
+  }
+
+  private boolean isParentClassificationDisabled(Tag tag) {
+    boolean isDisabled = false;
+    EntityReference classificationRef = tag.getClassification();
+    if (classificationRef != null && classificationRef.getId() != null) {
+      try {
+        Classification classification =
+            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL, false);
+        isDisabled = Boolean.TRUE.equals(classification.getDisabled());
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Classification {} not found while checking the disabled flag of tag {}",
+            classificationRef.getId(),
+            tag.getId(),
+            e);
+      }
+    }
+    return isDisabled;
   }
 
   @Override
@@ -307,7 +440,19 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntities(List<Tag> entities) {
+    // Today every caller of this bulk path is create-only and applies setInheritedFields() after
+    // the store, so no inherited value can be present here. Strip it anyway: a future bulk update
+    // path would otherwise silently persist it and strand the Tags, which is the exact failure
+    // storeEntity() guards against. Tags are almost never created disabled, so the guard costs
+    // nothing on the common path.
+    entities.forEach(this::clearInheritedDisabled);
     storeMany(entities);
+  }
+
+  private void clearInheritedDisabled(Tag tag) {
+    if (Boolean.TRUE.equals(tag.getDisabled()) && isParentClassificationDisabled(tag)) {
+      tag.setDisabled(Boolean.FALSE);
+    }
   }
 
   @Override
@@ -840,75 +985,6 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
-      return new RecognizerFeedbackTaskWorkflow(threadContext);
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  private boolean isRecognizerFeedbackTask(UUID taskId) {
-    try {
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread thread = feedRepository.get(taskId);
-      return thread.getTask() != null && thread.getTask().getFeedback() != null;
-    } catch (Exception e) {
-      LOG.debug("Failed to check if task is recognizer feedback task", e);
-    }
-    return false;
-  }
-
-  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
-    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      Tag tag = (Tag) threadContext.getAboutEntity();
-      EntityRepository.checkUpdatedByTaskAssignee(threadContext.getThread(), user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveLegacyThreadTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn(
-            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
-            taskId);
-        try {
-          org.openmetadata.schema.type.RecognizerFeedback feedback =
-              threadContext.getThread().getTask().getFeedback();
-          if (feedback != null) {
-            RecognizerFeedbackRepository repo =
-                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-
-            boolean approved =
-                resolveTask.getNewValue() != null
-                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
-            if (approved) {
-              repo.applyFeedback(feedback, user);
-            } else {
-              repo.rejectFeedback(feedback, user, null);
-            }
-          }
-        } catch (Exception e) {
-          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
-        }
-      }
-
-      return tag;
-    }
-  }
-
   public class TagUpdater extends EntityUpdater {
     private boolean renameProcessed = false;
 
@@ -934,6 +1010,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveRecognizerConfigOnPut();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -958,6 +1035,17 @@ public class TagRepository extends EntityRepository<Tag> {
                   original.getAutoClassificationPriority(),
                   updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
+    }
+
+    // CreateTag defaults recognizers to empty and autoClassificationEnabled to false, so a PUT
+    // that never mentions them is indistinguishable from one clearing them. Clear via PATCH.
+    private void preserveRecognizerConfigOnPut() {
+      if (operation != Operation.PUT || !nullOrEmpty(updated.getRecognizers())) {
+        return;
+      }
+      updated.setRecognizers(original.getRecognizers());
+      updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
+      updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
     }
 
     /**
@@ -1071,16 +1159,15 @@ public class TagRepository extends EntityRepository<Tag> {
     private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      ConversationRepository conversations = Entity.getConversationRepository();
+      conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
       List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
 
       for (EntityReference child : childTags) {
-        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        Entity.getFeedRepository()
-            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+        String childNewFqn = child.getFullyQualifiedName();
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        conversations.updateEntityReference(child, childOldFqn);
       }
     }
 

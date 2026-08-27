@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import { useAppRoutesRegistry } from '../../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCustomizePagePath } from '../../../../utils/GlobalSettingsUtils';
@@ -24,9 +25,17 @@ import {
 } from '../../../../utils/Persona/PersonaUtils';
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
-const categories = getCustomizePageCategories();
-
 export const CustomizeUI = () => {
+  const hasNonDefaultMode = useAppRoutesRegistry(
+    (state) => Object.keys(state.routes).length > 0
+  );
+  const categories = useMemo(
+    () =>
+      getCustomizePageCategories().filter(
+        (category) => category.key !== 'app-mode' || hasNonDefaultMode
+      ),
+    [hasNonDefaultMode]
+  );
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
@@ -63,7 +72,7 @@ export const CustomizeUI = () => {
 
     const nestedItems = getCustomizePageOptions(activeCat);
     setItems(nestedItems);
-  }, [activeCat]);
+  }, [activeCat, categories]);
 
   return (
     <Row className="bg-grey" gutter={[16, 16]}>

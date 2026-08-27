@@ -15,12 +15,12 @@
 .domain-page-container {
   background-color: var(--tw-color-bg-primary);
   border: 1px solid var(--tw-color-gray-blue-100);
-  border-radius: 6px;
-  margin-bottom: 20px;
+  border-radius: var(--om-radius-md);
+  margin-bottom: var(--om-space-20);
 
   .grid-container {
     background: none;
-    padding-right: 1px;
+    padding-right: var(--om-space-1);
   }
 
   .resizable-panels-layout {
@@ -46,17 +46,17 @@
   }
 
   .entity-header-name {
-    font-size: 20px;
+    font-size: var(--om-font-size-xl);
     line-height: 30px;
   }
 
   .entity-header-display-name {
-    font-size: 14px !important;
+    font-size: var(--om-font-size-sm) !important;
     line-height: 20px !important;
   }
 
   .ant-btn.entity-follow-button {
-    padding: 2px 4px;
+    padding: var(--om-space-2) var(--om-space-4);
   }
 
   .entity-follow-button svg {
@@ -64,7 +64,7 @@
   }
 
   .entity-follow-button > .ant-typography {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     line-height: 18px;
   }
 
@@ -89,7 +89,7 @@
   .right-panel-documentation-tab
     > .ant-card:first-child
     > .ant-card-body:first-child {
-    padding: 0 0 0 18px;
+    padding: 0 0 0 var(--om-space-18);
   }
 
   &.domain-tree-view-variant {
@@ -99,7 +99,7 @@
 
 .domain-details-page-tabs {
   .announcement-card {
-    margin-top: 4px;
+    margin-top: var(--om-space-4);
   }
 
   .ant-tabs.tabs-new {
@@ -110,7 +110,7 @@
     .ant-tabs-nav {
       .ant-tabs-nav-list {
         > div.ant-tabs-tab:nth-last-of-type(2) {
-          margin-right: 36px;
+          margin-right: var(--om-space-36);
         }
       }
     }
@@ -138,13 +138,13 @@
 
   .ant-tooltip-inner {
     background: var(--tw-color-bg-primary);
-    padding: 20px;
+    padding: var(--om-space-20);
   }
 }
 
 .add-data-product-modal .form-item-horizontal,
 .add-subdomain-modal .form-item-horizontal {
-  margin-bottom: 8px;
+  margin-bottom: var(--om-space-8);
 }
 
 .domain-tree-view-variant.domain-tree-view-variant {

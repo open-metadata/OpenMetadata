@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -39,6 +46,7 @@ import {
 import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
+import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -96,6 +104,8 @@ const TagsPage = () => {
   const [isTagDrawerOpen, setIsTagDrawerOpen] = useState<boolean>(false);
   const [isClassificationDrawerOpen, setIsClassificationDrawerOpen] =
     useState<boolean>(false);
+  const [editClassification, setEditClassification] =
+    useState<Classification>();
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -571,6 +581,20 @@ const TagsPage = () => {
     ]
   );
 
+  const classificationFormPermissions = useMemo(
+    () => ({
+      createTags: createClassificationPermission,
+      editAll: classificationPermissions.EditAll,
+      editDescription:
+        classificationPermissions.EditAll ||
+        classificationPermissions.EditDescription,
+      editDisplayName:
+        classificationPermissions.EditAll ||
+        classificationPermissions.EditDisplayName,
+    }),
+    [createClassificationPermission, classificationPermissions]
+  );
+
   const disableEditButton = useMemo(
     () =>
       !(
@@ -610,13 +634,20 @@ const TagsPage = () => {
 
   const handleClassificationDrawerClose = useCallback(() => {
     setIsClassificationDrawerOpen(false);
+    setEditClassification(undefined);
     classificationForm.reset();
   }, [classificationForm]);
 
   const handleClassificationDrawerOpen = useCallback(() => {
+    setEditClassification(undefined);
     setIsClassificationDrawerOpen(true);
     classificationForm.reset();
   }, [classificationForm]);
+
+  const handleEditClassificationClick = useCallback(() => {
+    setEditClassification(currentClassification);
+    setIsClassificationDrawerOpen(true);
+  }, [currentClassification]);
 
   const handleTagFormSubmit = useCallback(
     async (formData: CreateTag) => {
@@ -635,13 +666,25 @@ const TagsPage = () => {
     async (formData: CreateClassification) => {
       setIsClassificationFormLoading(true);
       try {
-        await handleCreateClassification(formData);
+        if (editClassification) {
+          await handleUpdateClassification({
+            ...editClassification,
+            ...formData,
+          } as Classification);
+        } else {
+          await handleCreateClassification(formData);
+        }
         handleClassificationDrawerClose();
       } finally {
         setIsClassificationFormLoading(false);
       }
     },
-    [handleCreateClassification, handleClassificationDrawerClose]
+    [
+      editClassification,
+      handleUpdateClassification,
+      handleCreateClassification,
+      handleClassificationDrawerClose,
+    ]
   );
 
   const handleEditTagClick = useCallback(
@@ -742,6 +785,49 @@ const TagsPage = () => {
     ]
   );
 
+  const classificationEmptyState = (
+    <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
+      <EmptyPlaceholder
+        actions={
+          createClassificationPermission
+            ? [
+                {
+                  key: 'new-classification',
+                  label: t('label.new-classification'),
+                  color: 'primary',
+                  iconLeading: Plus,
+                  onPress: handleClassificationDrawerOpen,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.classification-empty-state-description')}
+        features={[
+          {
+            key: 'create',
+            icon: <Grid01 className="tw:text-fg-brand-primary" />,
+            title: t('label.create-a-classification'),
+            description: t('message.classification-create-description'),
+          },
+          {
+            key: 'tags',
+            icon: <Tag01 className="tw:text-fg-warning-primary" />,
+            title: t('label.add-tags-inside-it'),
+            description: t('message.classification-add-tags-description'),
+          },
+          {
+            key: 'assets',
+            icon: <Star01 className="tw:text-fg-success-primary" />,
+            title: t('label.tag-your-assets'),
+            description: t('message.classification-tag-assets-description'),
+          },
+        ]}
+        title={t('message.classification-empty-state-title')}
+        variant="features"
+      />
+    </Box>
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -757,59 +843,67 @@ const TagsPage = () => {
 
   return (
     <div>
-      <ResizableLeftPanels
-        showLearningIcon
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          children: leftPanelLayout,
-          title: t('label.classification-plural'),
-        }}
-        learningPageId={LEARNING_PAGE_IDS.CLASSIFICATION}
-        learningTitle={t('label.classification-plural')}
-        pageTitle={getEntityName(currentClassification)}
-        secondPanel={{
-          children: (
-            <>
-              <ClassificationDetails
-                classificationPermissions={classificationPermissions}
-                currentClassification={currentClassification}
-                deleteTags={deleteTags}
-                disableEditButton={disableEditButton}
-                handleActionDeleteTag={handleActionDeleteTag}
-                handleAddNewTagClick={handleAddNewTagClick}
-                handleAfterDeleteAction={handleAfterDeleteAction}
-                handleEditTagClick={handleEditTagClick}
-                handleToggleDisable={handleToggleDisable}
-                handleUpdateClassification={handleUpdateClassification}
-                isAddingTag={false}
-                isClassificationLoading={isClassificationLoading}
-                ref={classificationDetailsRef}
-              />
+      {classifications.length === 0 ? (
+        classificationEmptyState
+      ) : (
+        <ResizableLeftPanels
+          showLearningIcon
+          className="content-height-with-resizable-panel"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            minWidth: 280,
+            flex: 0.13,
+            children: leftPanelLayout,
+            title: t('label.classification-plural'),
+          }}
+          learningPageId={LEARNING_PAGE_IDS.CLASSIFICATION}
+          learningTitle={t('label.classification-plural')}
+          pageTitle={getEntityName(currentClassification)}
+          secondPanel={{
+            children: (
+              <>
+                <ClassificationDetails
+                  classificationPermissions={classificationPermissions}
+                  currentClassification={currentClassification}
+                  deleteTags={deleteTags}
+                  disableEditButton={disableEditButton}
+                  handleActionDeleteTag={handleActionDeleteTag}
+                  handleAddNewTagClick={handleAddNewTagClick}
+                  handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleEditClassificationClick={handleEditClassificationClick}
+                  handleEditTagClick={handleEditTagClick}
+                  handleToggleDisable={handleToggleDisable}
+                  handleUpdateClassification={handleUpdateClassification}
+                  isAddingTag={false}
+                  isClassificationLoading={isClassificationLoading}
+                  ref={classificationDetailsRef}
+                />
 
-              <DeleteModal
-                entityTitle={deleteTags.data?.name ?? ''}
-                message={t('message.delete-entity-message', {
-                  entity: deleteTags.data?.name ?? '',
-                })}
-                open={deleteTags.state}
-                onCancel={handleCancelClassificationDelete}
-                onDelete={handleConfirmClick}
-              />
-            </>
-          ),
-          className: 'content-resizable-panel-container',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
+                <DeleteModal
+                  entityTitle={deleteTags.data?.name ?? ''}
+                  message={t('message.delete-entity-message', {
+                    entity: deleteTags.data?.name ?? '',
+                  })}
+                  open={deleteTags.state}
+                  onCancel={handleCancelClassificationDelete}
+                  onDelete={handleConfirmClick}
+                />
+              </>
+            ),
+            className: 'content-resizable-panel-container',
+            minWidth: 800,
+            flex: 0.87,
+          }}
+        />
+      )}
 
       <TagFormDrawer
         editTag={editTag}
         form={tagForm}
         isLoading={isTagFormLoading}
+        isParentAutoClassificationEnabled={
+          currentClassification?.autoClassificationConfig?.enabled ?? false
+        }
         isTier={isTier}
         open={isTagDrawerOpen}
         permissions={tagsFormPermissions}
@@ -820,10 +914,15 @@ const TagsPage = () => {
 
       <ClassificationFormDrawer
         classifications={classifications}
+        editClassification={editClassification}
         form={classificationForm}
         isLoading={isClassificationFormLoading}
+        isSystemClassification={
+          editClassification?.provider === ProviderType.System
+        }
         isTier={isTier}
         open={isClassificationDrawerOpen}
+        permissions={classificationFormPermissions}
         onClose={handleClassificationDrawerClose}
         onSubmit={handleClassificationFormSubmit}
       />

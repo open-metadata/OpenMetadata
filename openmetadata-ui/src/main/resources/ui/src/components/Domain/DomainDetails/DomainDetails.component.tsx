@@ -73,6 +73,7 @@ import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
@@ -91,7 +92,10 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import {
+  setCreateEntityFieldError,
+  submitAndClose,
+} from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
@@ -180,10 +184,6 @@ const DomainDetails = ({
       (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
     [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
   );
-  const activeTab = useMemo(
-    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
-    [activeTabOverride, routeParams.tab]
-  ) as EntityTabs;
   const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
@@ -226,6 +226,10 @@ const DomainDetails = ({
   );
   const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
+  // Explicit selection (tree-view override or URL); undefined on the landing URL.
+  const selectedTab = (activeTabOverride ?? routeParams.tab) as
+    | EntityTabs
+    | undefined;
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
@@ -322,6 +326,7 @@ const DomainDetails = ({
       // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
     if (activeKey !== activeTab) {
       if (onActiveTabChange) {
         onActiveTabChange(activeKey as EntityTabs);
@@ -397,7 +402,22 @@ const DomainDetails = ({
             dataProductForm.reset();
           },
           t,
+          suppressErrorToast: true,
         });
+      } catch (error) {
+        setCreateEntityFieldError(
+          error,
+          dataProductForm,
+          'name',
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.data-product'),
+          }),
+          t('server.add-entity-error', {
+            entity: t('label.data-product').toLowerCase(),
+          })
+        );
+
+        throw error;
       } finally {
         setIsDataProductLoading(false);
       }
@@ -556,7 +576,22 @@ const DomainDetails = ({
             subDomainForm.reset();
           },
           t,
+          suppressErrorToast: true,
         });
+      } catch (error) {
+        setCreateEntityFieldError(
+          error,
+          subDomainForm,
+          'name',
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.sub-domain'),
+          }),
+          t('server.add-entity-error', {
+            entity: t('label.sub-domain').toLowerCase(),
+          })
+        );
+
+        throw error;
       } finally {
         setIsSubDomainLoading(false);
       }
@@ -731,6 +766,7 @@ const DomainDetails = ({
         const newFqn = domain.parent
           ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
           : newName.trim();
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
         navigate(getDomainDetailsPath(newFqn, activeTab));
       }
     } catch {
@@ -862,7 +898,7 @@ const DomainDetails = ({
       subDomainsCount,
       dataProductsCount,
       assetCount,
-      activeTab,
+      activeTab: selectedTab,
       onAddDataProduct,
       queryFilter,
       assetTabRef,
@@ -874,6 +910,7 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- derived below from `tabs`
         activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
@@ -897,7 +934,7 @@ const DomainDetails = ({
     handleAssetClick,
     assetCount,
     dataProductsCount,
-    activeTab,
+    selectedTab,
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
@@ -906,6 +943,13 @@ const DomainDetails = ({
     fetchDomainAssets,
     handleTabChange,
   ]);
+
+  // Resolve to the first rendered tab when the selection is absent/not rendered.
+  const activeTab = getRenderedActiveTab(
+    tabs,
+    selectedTab,
+    EntityTabs.DOCUMENTATION
+  );
 
   useEffect(() => {
     fetchDomainPermission();
@@ -953,8 +997,12 @@ const DomainDetails = ({
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
-        <Box align="end" className="entity-header tw:mx-5">
-          <div className="tw:flex-1">
+        <Box
+          align="center"
+          className="entity-header tw:mx-5 tw:gap-y-3"
+          justify="between"
+          wrap="wrap">
+          <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
               entityData={{ ...domain, displayName, name }}
@@ -975,9 +1023,10 @@ const DomainDetails = ({
           </div>
           <Box
             align="center"
-            className="domain-header-action-container tw:pb-1"
+            className="domain-header-action-container tw:pb-1 tw:shrink-0 tw:max-w-full"
             gap={3}
-            justify="end">
+            justify="end"
+            wrap="wrap">
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
                 data-testid="domain-details-add-button-menu"
@@ -1070,7 +1119,8 @@ const DomainDetails = ({
         </Box>
 
         <GenericProvider<Domain>
-          muiTags
+          newTagsUI
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}

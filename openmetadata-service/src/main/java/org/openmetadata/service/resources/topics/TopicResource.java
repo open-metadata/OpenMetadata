@@ -29,6 +29,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -375,7 +376,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleTopics",
@@ -401,7 +402,17 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
-      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
     return deleteStaleEntities(securityContext, request);
   }
 
@@ -539,6 +550,33 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     Topic topic = repository.getSampleData(id, authorizePII);
+    return addHref(uriInfo, topic);
+  }
+
+  @DELETE
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "deleteSampleData",
+      summary = "Delete sample data",
+      description = "Delete sample data from the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted sample data from the Topic",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class)))
+      })
+  public Topic deleteSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Topic topic = repository.deleteSampleData(id);
     return addHref(uriInfo, topic);
   }
 

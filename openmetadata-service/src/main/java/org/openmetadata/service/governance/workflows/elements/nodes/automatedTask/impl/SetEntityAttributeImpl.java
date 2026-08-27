@@ -6,7 +6,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -16,8 +15,8 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityFieldUtils;
 
@@ -31,10 +30,8 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      // Extract entity from workflow context
-      Map<String, Object> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-      String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
+      String relatedEntityNamespace = inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE);
       String relatedEntityValue =
           (String)
               varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
@@ -45,7 +42,6 @@ public class SetEntityAttributeImpl implements JavaDelegate {
 
       String fieldName = fieldNameExpr != null ? (String) fieldNameExpr.getValue(execution) : "";
 
-      // Simple null check - if fieldValueExpr is null, treat as empty/null value
       String fieldValue = null;
       if (fieldValueExpr != null) {
         Object value = fieldValueExpr.getValue(execution);
@@ -54,22 +50,18 @@ public class SetEntityAttributeImpl implements JavaDelegate {
         }
       }
 
-      String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
+      String updatedByNamespace = inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE);
       String actualUser =
           Optional.ofNullable(updatedByNamespace)
               .map(ns -> (String) varHandler.getNamespacedVariable(ns, UPDATED_BY_VARIABLE))
               .orElse(null);
 
-      // Apply the field change using shared utility with bot impersonation
-      // Note: fieldValue can be null to clear/remove a field value
-      // When actualUser is available, use it as the user and mark 'governance-bot' as impersonator
-      // Otherwise, use 'governance-bot' directly (for system-initiated workflows)
+      // fieldValue==null clears the field. When we have an acting user, preserve it and mark
+      // governance-bot as impersonator; otherwise attribute the write to governance-bot directly.
       if (actualUser != null && !actualUser.isEmpty()) {
-        // User-initiated workflow: preserve actual user, mark bot as impersonator
         EntityFieldUtils.setEntityField(
             entity, entityType, actualUser, fieldName, fieldValue, true, "governance-bot");
       } else {
-        // System-initiated workflow: use governance-bot directly
         EntityFieldUtils.setEntityField(
             entity, entityType, "governance-bot", fieldName, fieldValue, true, null);
       }

@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 
 type PaginationPage = {
   /** The type of the pagination item. */
@@ -78,6 +79,7 @@ const PaginationRoot = ({
   style,
   className,
 }: PaginationRootProps) => {
+  const { t } = useCoreTranslation();
   const [pages, setPages] = useState<PaginationItemType[]>([]);
 
   const createPaginationItems = useCallback((): PaginationItemType[] => {
@@ -213,7 +215,7 @@ const PaginationRoot = ({
   return (
     <PaginationContext.Provider value={paginationContextValue}>
       <nav
-        aria-label="Pagination Navigation"
+        aria-label={t('label.pagination-navigation', 'Pagination Navigation')}
         className={className}
         style={style}>
         {children}

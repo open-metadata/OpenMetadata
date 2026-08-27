@@ -15,6 +15,8 @@ for any source.
 """
 
 import traceback
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, Callable, Optional, Type  # noqa: UP035
 
 from pydantic import BaseModel
@@ -43,7 +45,7 @@ def _get_connection_class_from_spec(
     Helper method to get the connection class from the connection spec.
     Returns the connection class if successful, None otherwise.
     """
-    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel
         BaseSpec,
         import_connection_class,
     )
@@ -73,6 +75,22 @@ def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> N
     """Test an already-built connection owner, reusing its live client, and raise
     on failure. Does not close it; the source owns and closes the connection."""
     raise_test_connection_exception(connection.test_connection(metadata))
+
+
+@contextmanager
+def close_on_failure(connection: Optional[BaseConnection]) -> Iterator[None]:  # noqa: UP045
+    """Release the owned connection if the wrapped verification fails. A teardown
+    that fails is logged, never raised: the verification error is the one the
+    caller needs."""
+    try:
+        yield
+    except Exception:
+        if connection is not None:
+            try:
+                connection.close()
+            except Exception:
+                logger.warning("Failed to release the connection after a failed verification", exc_info=True)
+        raise
 
 
 def get_test_connection_fn(connection: BaseModel) -> Callable:

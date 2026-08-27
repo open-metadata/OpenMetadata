@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { APIRequestContext, expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
@@ -23,13 +25,19 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
+import {
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
+  selectNullOption,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
+const dataProduct = new DataProduct([domain]);
 const table = new TableClass();
 const tier = new TagClass({
   classification: 'Tier',
@@ -38,6 +46,39 @@ const tier = new TagClass({
 const tierWithoutAsset = new TagClass({
   classification: 'Tier',
 });
+let user: UserClass;
+
+// Adding an asset to a data product updates the asset's search document
+// asynchronously, and the Data Products dropdown reads its options from that
+// aggregation — so the option only exists once the table doc carries the link.
+const waitForDataProductOnAsset = async (
+  apiContext: APIRequestContext,
+  assetFqn: string,
+  dataProductName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            `"${assetFqn}"`
+          )}&index=table&from=0&size=1`
+        );
+
+        if (!response.ok()) {
+          return false;
+        }
+
+        const data = await response.json();
+        const dataProducts: { name?: string }[] =
+          data?.hits?.hits?.[0]?._source?.dataProducts ?? [];
+
+        return dataProducts.some((product) => product.name === dataProductName);
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -48,6 +89,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tier.create(apiContext);
   // Create second tier but do NOT assign it to any asset
   await tierWithoutAsset.create(apiContext);
+  user = new UserClass();
+  await user.create(apiContext);
 
   await table.patch({
     apiContext,
@@ -68,16 +111,43 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-          name: domain.responseData.name,
-          displayName: domain.responseData.displayName,
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        ],
+      },
+      {
+        op: 'add',
+        path: '/owners/0',
+        value: { id: user.responseData.id, type: 'user' },
       },
     ],
   });
+
+  // The data product is created after the table is patched with its domain so
+  // the asset already belongs to the domain the data product lives in.
+  await dataProduct.create(apiContext);
+  await dataProduct.addAssets(apiContext, [
+    { id: table.entityResponseData.id, type: 'table' },
+  ]);
+  await waitForDataProductOnAsset(
+    apiContext,
+    table.entityResponseData.fullyQualifiedName,
+    dataProduct.data.name
+  );
+
+  await afterAction();
+});
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await dataProduct.delete(apiContext);
+  await user.delete(apiContext);
   await afterAction();
 });
 
@@ -126,6 +196,10 @@ test('should search for empty or null filters', async ({ page }) => {
     { label: 'Owners', key: 'ownerDisplayName' },
     { label: 'Tag', key: 'tags.tagFQN' },
     { label: 'Domains', key: 'domains.displayName.keyword' },
+    {
+      label: 'Data Products',
+      key: 'dataProducts.displayName.keyword',
+    },
     { label: 'Tier', key: 'tier.tagFQN' },
   ];
 
@@ -183,6 +257,33 @@ test('should search for multiple values along with null filters', async ({
   for (const filter of items) {
     await selectNullOption(page, filter);
   }
+});
+
+test('should filter assets by data product', async ({ page }) => {
+  const filter = {
+    label: 'Data Products',
+    key: 'dataProducts.displayName.keyword',
+    // addAssets overwrites responseData with the bulk-operation report, so the
+    // display name is read from the create payload instead.
+    value: dataProduct.data.displayName,
+  };
+
+  await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+  await searchAndClickOnOption(page, filter, true);
+  await clickUpdateButtonIfVisible(page);
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.getByTestId(`search-dropdown-${filter.label}`)
+  ).toContainText('(1)');
+
+  await expect(
+    page.getByTestId(
+      `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+    )
+  ).toBeVisible();
+
+  await page.getByTestId('clear-all-chips').click();
 });
 
 test('should persist quick filter on global search', async ({ page }) => {
@@ -435,6 +536,155 @@ test.describe('Filter persistence after bug fixes', () => {
   });
 });
 
+test.describe('Quick filter options - proper casing from top_hits', () => {
+  test('domain filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const domainName = domain.responseData.displayName as string;
+
+    await test.step('Open Domains filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
+      );
+      await page.click('[data-testid="search-dropdown-Domains"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing, not lowercased bucket key', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
+      );
+      await page.fill('[data-testid="search-input"]', domainName);
+      await searchRes;
+
+      // The rendered option text must match the original-cased displayName
+      const optionEl = page.getByTestId(domainName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(domainName);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('tier filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const tierFqn = tier.responseData.fullyQualifiedName as string;
+
+    await test.step('Open Tier filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+      );
+      await page.click('[data-testid="search-dropdown-Tier"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original FQN casing', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+      );
+      await page.fill('[data-testid="search-input"]', tierFqn);
+      await searchRes;
+
+      const optionEl = page.getByTestId(tierFqn.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(tierFqn);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('tag filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const tagFqn = 'PersonalData.Personal';
+
+    await test.step('Open Tag filter and search for the tag', async () => {
+      await page.click('[data-testid="search-dropdown-Tag"]');
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tags.tagFQN*'
+      );
+      await page.fill('[data-testid="search-input"]', tagFqn);
+      await searchRes;
+    });
+
+    await test.step('Option label matches original FQN casing', async () => {
+      const optionEl = page.getByTestId(tagFqn.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(tagFqn);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('owner filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const ownerName = (user.responseData.displayName ??
+      user.responseData.name) as string;
+
+    await test.step('Open Owners filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
+      );
+      await page.click('[data-testid="search-dropdown-Owners"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing, not lowercased bucket key', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
+      );
+      await page.fill('[data-testid="search-input"]', ownerName);
+      await searchRes;
+
+      const optionEl = page.getByTestId(ownerName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(ownerName);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('service filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const serviceName = (table.serviceResponseData.displayName ??
+      table.serviceResponseData.name) as string;
+
+    await test.step('Open Service filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
+      );
+      await page.click('[data-testid="search-dropdown-Service"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
+      );
+      await page.fill('[data-testid="search-input"]', serviceName);
+      await searchRes;
+
+      const optionEl = page.getByTestId(serviceName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(serviceName);
+    });
+
+    await clickOutside(page);
+  });
+});
+
 test.describe('Metric search result highlight', () => {
   const metric = new MetricClass();
 
@@ -455,7 +705,7 @@ test.describe('Metric search result highlight', () => {
     await afterAction();
   });
 
-  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+  test('breadcrumb shows the entity category and display name header should have highlighted terms', async ({
     page,
   }) => {
     await test.step('Select Metric search index and search', async () => {
@@ -496,24 +746,23 @@ test.describe('Metric search result highlight', () => {
       await page.getByTestId('search-results').waitFor({ state: 'visible' });
     });
 
-    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+    await test.step('Verify breadcrumb shows the Metrics category without HTML tags', async () => {
       const entityCard = page.getByTestId(
         `table-data-card_${metric.entity.name}`
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      // The result-card breadcrumb migrated to the core Breadcrumbs component:
-      // the category ("Metrics") renders as a link and the entity name is the
-      // current (last) crumb marked aria-current="page". `exact` keeps the link
-      // match off the entity-name link (which contains "metric").
-      await expect(
-        entityCard.getByRole('link', { exact: true, name: 'Metrics' })
-      ).toBeVisible();
-
-      const currentCrumb = entityCard.locator('[aria-current="page"]');
-      await expect(currentCrumb).toHaveText(metric.entity.name);
-      await expect(currentCrumb).not.toContainText('<span');
-      await expect(currentCrumb).not.toContainText('text-highlighter');
+      // The result-card breadcrumb (core Breadcrumbs) shows only the ancestor
+      // trail — it excludes the current entity, which the card renders as its
+      // title. A Metric's sole ancestor is the "Metrics" category, so it is the
+      // last (plain, non-link) crumb. The entity name lives in the card title
+      // (asserted below), so search-highlight markup can never leak into the
+      // breadcrumb.
+      const breadcrumb = entityCard.getByRole('list', { name: 'Breadcrumb' });
+      await expect(breadcrumb).toBeVisible();
+      await expect(breadcrumb).toContainText('Metrics');
+      await expect(breadcrumb).not.toContainText('<span');
+      await expect(breadcrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {

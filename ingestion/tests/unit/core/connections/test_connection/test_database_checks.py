@@ -137,7 +137,7 @@ def test_list_schemas_warns_when_no_schemas_visible(engine):
     with patch(f"{_MODULE}.inspect") as inspect_mock:
         inspect_mock.return_value.get_schema_names.return_value = []
         evidence = list_schemas(engine)
-    assert evidence.summary == "0 schemas enumerated"
+    assert evidence.summary == "no schemas enumerated"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No schemas visible in the database"
 

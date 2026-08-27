@@ -576,8 +576,7 @@ public class RdfResource {
       String query =
           buildLineageQuery(
               entityId, validatedEntityType, direction, getRdfRepository().getBaseUri());
-      String results =
-          getRdfRepository().executeSparqlQueryWithInference(query, SPARQL_JSON, "custom");
+      String results = getRdfRepository().executeSparqlQueryDirect(query, SPARQL_JSON);
       return Response.ok(results).build();
     } catch (IllegalArgumentException e) {
       return Response.status(Response.Status.BAD_REQUEST)
@@ -591,7 +590,7 @@ public class RdfResource {
     }
   }
 
-  private String buildLineageQuery(
+  static String buildLineageQuery(
       UUID entityId, String entityType, String direction, String baseUri) {
     String normalizedBaseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
     String entityUri = normalizedBaseUri + "entity/" + entityType + "/" + entityId;
@@ -600,9 +599,10 @@ public class RdfResource {
       case "upstream" -> String.format(
           """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> om:upstream+ ?entity .
+            <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
             ?entity om:name ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
@@ -614,9 +614,10 @@ public class RdfResource {
       case "downstream" -> String.format(
           """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> om:downstream+ ?entity .
+            <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
             ?entity om:name ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
@@ -628,13 +629,14 @@ public class RdfResource {
       default -> String.format(
           """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT DISTINCT ?entity ?name ?type ?relationship
           WHERE {
             {
-              <%s> om:upstream+ ?entity .
+              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
               BIND("upstream" as ?relationship)
             } UNION {
-              <%s> om:downstream+ ?entity .
+              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
               BIND("downstream" as ?relationship)
             }
             ?entity om:name ?name .

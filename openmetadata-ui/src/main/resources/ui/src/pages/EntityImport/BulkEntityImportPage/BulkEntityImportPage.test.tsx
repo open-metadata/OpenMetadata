@@ -334,7 +334,16 @@ describe('BulkEntityImportPage', () => {
 
     jest.clearAllMocks();
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
-    mockValidateCsvString.mockResolvedValue(undefined);
+    mockValidateCsvString.mockResolvedValue({
+      jobId: 'test-job-id',
+      message: 'Import is in progress.',
+    });
+    mockGetImportValidateAPIEntityType.mockReturnValue(
+      jest.fn().mockResolvedValue({
+        jobId: 'test-job-id',
+        message: 'Import is in progress.',
+      })
+    );
     mockGetImportedEntityType.mockImplementation(
       (entityType: EntityType) => entityType
     );
@@ -530,7 +539,8 @@ describe('BulkEntityImportPage', () => {
         { user: true, team: true },
         true,
         false,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;
@@ -1027,7 +1037,7 @@ describe('BulkEntityImportPage', () => {
       expect(mockReadString).not.toHaveBeenCalled();
     });
 
-    it('should ignore websocket messages for different jobs', async () => {
+    it('should correlate websocket messages with the requested job', async () => {
       renderComponent();
 
       await uploadCsv();
@@ -1073,6 +1083,16 @@ describe('BulkEntityImportPage', () => {
 
       // Should not process the message
       expect(mockReadString).not.toHaveBeenCalled();
+
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        socketCallback?.(JSON.stringify(mockWebSocketResponse));
+      });
+
+      expect(mockReadString).toHaveBeenCalled();
     });
   });
 

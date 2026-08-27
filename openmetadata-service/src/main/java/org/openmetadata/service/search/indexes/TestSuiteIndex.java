@@ -41,6 +41,21 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
     return Collections.unmodifiableSet(fields);
   }
 
+  @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      Long revision = ctx.relationshipRevision();
+      if (revision == null) {
+        revision =
+            TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuite.getId()))
+                .getOrDefault(testSuite.getId(), 0L);
+      }
+      doc.put(TestSuiteRepository.TESTS_REVISION_FIELD, revision);
+    }
+    return doc;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     setParentRelationships(doc, testSuite);
 

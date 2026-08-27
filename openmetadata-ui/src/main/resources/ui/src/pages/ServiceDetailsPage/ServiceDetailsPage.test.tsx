@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  RenderResult,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 
@@ -25,22 +31,25 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ServiceInsightsTabProps } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CursorType } from '../../enums/pagination.enum';
-import { ServiceCategory } from '../../enums/service.enum';
-import { AgentType } from '../../generated/entity/applications/app';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstanceState';
 import { Include } from '../../generated/type/include';
-import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
-import { getApplicationList } from '../../rest/applicationAPI';
+import { getAiAutomationsByService } from '../../rest/applicationAPI';
 import { getDashboards, getDataModels } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
+import {
+  getIngestionPipelines,
+  getPipelineServiceHostIp,
+} from '../../rest/ingestionPipelineAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   addServiceFollower,
   getServiceByFQN,
@@ -220,10 +229,20 @@ jest.mock('../../rest/applicationAPI', () => ({
       },
     })
   ),
+  getAiAutomationsByService: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: {
+        total: 0,
+      },
+    })
+  ),
 }));
 jest.mock('../../rest/searchAPI', () => ({
+  // The agents search reads `hits.hits`/`hits.total`, so the stub has to carry that shape.
   searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
+      hits: { hits: [], total: { value: 0 } },
       paging: {
         total: 0,
       },
@@ -381,9 +400,29 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="ingestion-component">Ingestion</div>
-      ))
+      .mockImplementation(
+        ({
+          handleSearchChange,
+          refreshAgentsList,
+        }: {
+          handleSearchChange: (value: string) => void;
+          refreshAgentsList: (agentListType: ServiceAgentSubTabs) => void;
+        }) => (
+          <div data-testid="ingestion-component">
+            Ingestion
+            <button
+              data-testid="trigger-agents-search"
+              onClick={() => handleSearchChange('agent')}>
+              search
+            </button>
+            <button
+              data-testid="trigger-metadata-refresh"
+              onClick={() => refreshAgentsList(ServiceAgentSubTabs.METADATA)}>
+              refresh metadata
+            </button>
+          </div>
+        )
+      )
 );
 
 // The hook owns the SSE connection; mock it so jsdom never opens a stream.
@@ -416,11 +455,13 @@ jest.mock('../../components/ServiceInsights/ServiceInsightsTab', () =>
 );
 
 jest.mock('./ServiceMainTabContent', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="service-main-tab-content">ServiceMainTabContent</div>
-    ))
+  jest.fn().mockImplementation(({ isServiceLoading }) => (
+    <div
+      data-service-loading={String(isServiceLoading)}
+      data-testid="service-main-tab-content">
+      ServiceMainTabContent
+    </div>
+  ))
 );
 
 jest.mock(
@@ -509,7 +550,10 @@ jest.mock('../../utils/ServicePureUtils', () => ({
   getResourceEntityFromServiceCategory: jest
     .fn()
     .mockReturnValue('databaseService'),
-  getServiceDisplayNameQueryFilter: jest.fn().mockReturnValue(''),
+  // Shape matters: searchPipelines spreads `query.bool.must` out of this filter.
+  getServiceDisplayNameQueryFilter: jest
+    .fn()
+    .mockReturnValue({ query: { bool: { must: [] } } }),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('database'),
   shouldTestConnection: jest.fn().mockReturnValue(true),
 }));
@@ -596,6 +640,11 @@ jest.mock('../../hooks/useTableFilters', () => ({
 describe('ServiceDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'airflow',
+    }));
   });
 
   const renderComponent = async (props = {}) => {
@@ -607,6 +656,61 @@ describe('ServiceDetailsPage', () => {
       );
     });
   };
+
+  describe('Agents refresh', () => {
+    beforeEach(() => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.AGENTS,
+      });
+    });
+
+    it('should refetch the metadata list once per refresh', async () => {
+      await renderComponent();
+
+      (getIngestionPipelines as jest.Mock).mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-metadata-refresh'));
+      });
+
+      expect(getIngestionPipelines).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-run the active search instead of discarding it', async () => {
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-agents-search'));
+      });
+
+      (getIngestionPipelines as jest.Mock).mockClear();
+      (searchQuery as jest.Mock).mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-metadata-refresh'));
+      });
+
+      // Exactly one request, and it is the filtered read — a refresh must neither wipe the user's
+      // search nor fall back to the unfiltered list.
+      expect(searchQuery).toHaveBeenCalledTimes(1);
+      expect(getIngestionPipelines).not.toHaveBeenCalled();
+    });
+
+    it('should fetch the metadata list even when the pipeline service is unreachable', async () => {
+      (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+        isAirflowAvailable: false,
+        isFetchingStatus: false,
+        platform: 'airflow',
+      }));
+      (getIngestionPipelines as jest.Mock).mockClear();
+
+      await renderComponent();
+
+      // Pipelines are OpenMetadata entities; only the actions on them need that service.
+      expect(getIngestionPipelines).toHaveBeenCalled();
+    });
+  });
 
   describe('Component Rendering', () => {
     it('should render loading state initially', async () => {
@@ -1122,6 +1226,87 @@ describe('ServiceDetailsPage', () => {
     });
   });
 
+  // The data model count fetch owns `isServiceLoading` for dashboard services and
+  // re-runs on every tab change, so failing to clear it leaves the previously
+  // visited (still mounted) entity tab spinning forever.
+  describe('Data Model Tab Count loading state', () => {
+    beforeEach(() => {
+      (getServiceByFQN as jest.Mock).mockResolvedValue(mockServiceDetails);
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {},
+        setFilters: mockSetFilters,
+      });
+      // `getCountLabel` is mocked to 'Databases', so this is the tab key that
+      // renders ServiceMainTabContent.
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+        tab: 'databases',
+      });
+    });
+
+    const expectEntityTabNotLoading = async () => {
+      await waitFor(() => {
+        expect(screen.getByTestId('service-main-tab-content')).toHaveAttribute(
+          'data-service-loading',
+          'false'
+        );
+      });
+    };
+
+    const switchToAgentsTab = async (view: RenderResult) => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+        tab: EntityTabs.AGENTS,
+      });
+
+      await act(async () => {
+        view.rerender(
+          <MemoryRouter>
+            <ServiceDetailsPage />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    it('should clear the loading state after moving off the entity tab', async () => {
+      (getDataModels as jest.Mock).mockResolvedValue({ paging: { total: 3 } });
+
+      let view!: RenderResult;
+      await act(async () => {
+        view = render(
+          <MemoryRouter>
+            <ServiceDetailsPage />
+          </MemoryRouter>
+        );
+      });
+
+      await expectEntityTabNotLoading();
+
+      await switchToAgentsTab(view);
+
+      await expectEntityTabNotLoading();
+    });
+
+    it('should clear the loading state when the data model count fails', async () => {
+      (getDataModels as jest.Mock).mockRejectedValue(
+        new Error('Data model fetch failed')
+      );
+
+      let view!: RenderResult;
+      await act(async () => {
+        view = render(
+          <MemoryRouter>
+            <ServiceDetailsPage />
+          </MemoryRouter>
+        );
+      });
+
+      await switchToAgentsTab(view);
+
+      await expectEntityTabNotLoading();
+    });
+  });
+
   describe('Airflow Integration', () => {
     it('should fetch host IP when airflow is available', async () => {
       (getPipelineServiceHostIp as jest.Mock).mockResolvedValue({
@@ -1501,112 +1686,56 @@ describe('ServiceDetailsPage', () => {
         serviceCategory: ServiceCategory.DATABASE_SERVICES,
         tab: EntityTabs.AGENTS,
       });
+      // clearAllMocks keeps implementations, so reset the fqn an earlier test
+      // pointed at the OpenMetadata service.
+      (useFqn as jest.Mock).mockImplementation(() => ({
+        fqn: 'test-service',
+      }));
     });
 
-    it('should call getApplicationList with multiple agent types', async () => {
-      const mockAgentsData = [
-        {
-          id: 'agent1',
-          name: 'CollateAI Agent 1',
-          agentType: AgentType.CollateAI,
-        },
-        {
-          id: 'agent2',
-          name: 'CollateAI Quality Agent',
-          agentType: AgentType.CollateAIQualityAgent,
-        },
-        {
-          id: 'agent3',
-          name: 'CollateAI Tier Agent',
-          agentType: AgentType.CollateAITierAgent,
-        },
-      ];
-
-      (getApplicationList as jest.Mock).mockResolvedValue({
-        data: mockAgentsData,
-        paging: { total: 3 },
+    it('should fetch the service-scoped AI Automations', async () => {
+      (getAiAutomationsByService as jest.Mock).mockResolvedValue({
+        data: [
+          { id: 'automation1', name: 'test-service_TierAutomation' },
+          { id: 'automation2', name: 'test-service_DescriptionAutomation' },
+        ],
+        paging: { total: 2 },
       });
 
       await renderComponent();
 
-      // Wait for the agents to be fetched
       await waitFor(() => {
-        expect(getApplicationList).toHaveBeenCalledWith({
-          agentType: [
-            AgentType.CollateAI,
-            AgentType.CollateAIQualityAgent,
-            AgentType.CollateAITierAgent,
-          ],
-          limit: 10,
-        });
+        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
       });
     });
 
-    it('should handle agent list fetching with paging parameters', async () => {
-      const mockPagingInfo = {
-        after: 'cursor123',
-        before: 'cursor456',
-        limit: 25,
-      };
-
-      (getApplicationList as jest.Mock).mockResolvedValue({
+    it('fetches the bounded automation list without paging parameters', async () => {
+      (getAiAutomationsByService as jest.Mock).mockResolvedValue({
         data: [],
         paging: { total: 0 },
       });
 
-      // We need to mock usePaging specifically for collate agent paging
-      (usePaging as jest.Mock)
-        .mockReturnValueOnce({
-          // ingestionPagingInfo
-          paging: {},
-          pageSize: 15,
-          pagingCursor: {},
-          handlePageChange: jest.fn(),
-          handlePagingChange: jest.fn(),
-        })
-        .mockReturnValueOnce({
-          // collateAgentPagingInfo
-          paging: mockPagingInfo,
-          pageSize: 25,
-          pagingCursor: {},
-          handlePageChange: jest.fn(),
-          handlePagingChange: jest.fn(),
-        })
-        .mockReturnValue({
-          // Default for other usages
-          paging: {},
-          pageSize: 15,
-          pagingCursor: {},
-          handlePageChange: jest.fn(),
-          handlePagingChange: jest.fn(),
-        });
-
       await renderComponent();
 
+      // AutoPilot creates at most one automation per template, so the list is
+      // requested in a single unpaginated call scoped to the service.
       await waitFor(() => {
-        expect(getApplicationList).toHaveBeenCalledWith(
-          expect.objectContaining({
-            agentType: [
-              AgentType.CollateAI,
-              AgentType.CollateAIQualityAgent,
-              AgentType.CollateAITierAgent,
-            ],
-          })
-        );
+        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
       });
+
+      expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
     });
 
     it('should handle errors during agent list fetching', async () => {
       const mockError = new Error('Failed to fetch agents');
-      (getApplicationList as jest.Mock).mockRejectedValue(mockError);
+      (getAiAutomationsByService as jest.Mock).mockRejectedValue(mockError);
 
       await renderComponent();
 
       await waitFor(() => {
-        expect(getApplicationList).toHaveBeenCalled();
+        expect(getAiAutomationsByService).toHaveBeenCalled();
       });
 
-      // The showErrorToast should be called with the error
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
       });
@@ -1621,12 +1750,10 @@ describe('ServiceDetailsPage', () => {
 
       await renderComponent();
 
-      // Should not call getApplicationList for non-DB services
-      expect(getApplicationList).not.toHaveBeenCalled();
+      expect(getAiAutomationsByService).not.toHaveBeenCalled();
     });
 
     it('should properly handle CollateAI widget support check', async () => {
-      // Mock serviceUtilClassBase.getAgentsTabWidgets to return CollateAI widget
       const mockCollateAIWidget = jest
         .fn()
         .mockReturnValue(<div data-testid="collate-ai-widget" />);
@@ -1637,14 +1764,13 @@ describe('ServiceDetailsPage', () => {
 
       await renderComponent();
 
-      // For database services, the CollateAI widget should be supported
       await waitFor(() => {
-        expect(getApplicationList).toHaveBeenCalled();
+        expect(getAiAutomationsByService).toHaveBeenCalled();
       });
     });
 
     it('should handle empty agent list response', async () => {
-      (getApplicationList as jest.Mock).mockResolvedValue({
+      (getAiAutomationsByService as jest.Mock).mockResolvedValue({
         data: [],
         paging: { total: 0 },
       });
@@ -1652,46 +1778,8 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getApplicationList).toHaveBeenCalledWith({
-          agentType: [
-            AgentType.CollateAI,
-            AgentType.CollateAIQualityAgent,
-            AgentType.CollateAITierAgent,
-          ],
-          limit: 15,
-        });
+        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
       });
-    });
-
-    it('should call fetchCollateAgentsList with correct agent types instead of single agent type', async () => {
-      // This test ensures the refactor from single agentType to array is correct
-      const expectedAgentTypes = [
-        AgentType.CollateAI,
-        AgentType.CollateAIQualityAgent,
-        AgentType.CollateAITierAgent,
-      ];
-
-      (getApplicationList as jest.Mock).mockResolvedValue({
-        data: [],
-        paging: { total: 0 },
-      });
-
-      await renderComponent();
-
-      await waitFor(() => {
-        expect(getApplicationList).toHaveBeenCalledWith(
-          expect.objectContaining({
-            agentType: expectedAgentTypes,
-          })
-        );
-      });
-
-      // Ensure it was NOT called with the old single agent type format
-      expect(getApplicationList).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          agentType: AgentType.CollateAI, // Single value (old format)
-        })
-      );
     });
   });
 });

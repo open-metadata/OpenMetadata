@@ -83,7 +83,7 @@ import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -168,8 +168,20 @@ const TeamDetailsV1 = ({
       return activeTab;
     }
 
-    return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
-  }, [activeTab, isGroupType]);
+    // Derive the default from the actual tab list so a team with inconsistent
+    // name/teamType data (e.g. root team mistyped as Group) can't default to a
+    // tab that isn't rendered, which would leave the page blank.
+    const [defaultTab] = getTabs(
+      currentTeam,
+      isGroupType,
+      isOrganization,
+      0,
+      0,
+      false
+    );
+
+    return defaultTab?.key ?? TeamsPageTab.TEAMS;
+  }, [activeTab, currentTeam, isGroupType, isOrganization]);
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
@@ -662,7 +674,12 @@ const TeamDetailsV1 = ({
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <a href={GLOSSARIES_DOCS} rel="noreferrer" target="_blank" />
+              <a
+                aria-label={t('label.doc-plural-lowercase')}
+                href={GLOSSARIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+              />
             }
             values={{
               doc: t('label.doc-plural-lowercase'),
@@ -1033,7 +1050,7 @@ const TeamDetailsV1 = ({
           />
         </div>
         <div className="m-t-md">
-          <DescriptionV1
+          <Description
             wrapInCard
             description={currentTeam.description ?? ''}
             entityName={getEntityName(currentTeam)}

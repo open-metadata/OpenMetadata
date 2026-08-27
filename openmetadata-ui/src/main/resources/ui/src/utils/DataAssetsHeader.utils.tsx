@@ -120,7 +120,6 @@ export const ExtraInfoLabel = ({
           as="span"
           className="tw:whitespace-nowrap tw:text-secondary"
           data-testid={dataTestId ? `${dataTestId}-label` : undefined}
-          ellipsis={{ tooltip: true }}
           size="text-sm"
           weight="medium">
           {label}
@@ -464,8 +463,7 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.breadcrumbs = getEntityBreadcrumbs(
         databaseSchemaDetails,
-        EntityType.DATABASE_SCHEMA,
-        true
+        EntityType.DATABASE_SCHEMA
       );
 
       break;
@@ -878,11 +876,8 @@ export const isDataAssetsWithServiceField = (
 };
 
 export const getEntityExtraInfoLength = (element: ReactNode): number => {
-  if (React.isValidElement(element)) {
-    if (isArray(element.props.children)) {
-      return element.props.children?.filter((child?: ReactNode) => child)
-        .length;
-    }
+  if (React.isValidElement(element) && isArray(element.props.children)) {
+    return element.props.children?.filter((child?: ReactNode) => child).length;
   }
 
   return 0;

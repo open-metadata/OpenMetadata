@@ -81,7 +81,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -89,7 +88,6 @@ import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -619,10 +617,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // update field relationships for feed
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    MessageParser.EntityLink newAbout = new MessageParser.EntityLink(entityType, newFqn);
-
-    Entity.getFeedRepository()
-        .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+    ConversationRepository conversations = Entity.getConversationRepository();
+    conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
@@ -634,11 +630,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     Map<String, String> taskFqnHashUpdates = new HashMap<>();
     for (GlossaryTerm child : childTerms) {
       String childNewFqn = child.getFullyQualifiedName();
-      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, childNewFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
       if (!nullOrEmpty(childNewFqn) && childNewFqn.startsWith(newFqn)) {
         String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        conversations.updateEntityReference(child.getEntityReference(), childOldFqn);
         taskFqnHashUpdates.put(
             FullyQualifiedName.buildHash(childOldFqn), FullyQualifiedName.buildHash(childNewFqn));
       }
@@ -676,13 +670,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       compareAndUpdate("name", () -> updateName(updated));
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
-      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
-    }
-
-    private boolean managedFieldChanged() {
-      return !Objects.equals(original.getName(), updated.getName())
-          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
-          || !Objects.equals(original.getDescription(), updated.getDescription());
     }
 
     public void updateName(Glossary updated) {

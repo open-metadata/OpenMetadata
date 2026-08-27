@@ -13,6 +13,7 @@
 import json
 from pathlib import Path
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import collect_checks
 from metadata.ingestion.source.database.mysql.connection import MYSQL_ERRORS, MySQLChecks
 
@@ -24,7 +25,7 @@ _SEED = (
 
 
 def _check_names():
-    checks = MySQLChecks(client=None, schema=None, queries_statement="")
+    checks = MySQLChecks(db=Borrowed.of(None), schema=None, queries_statement="")
     return {step.value for step in collect_checks(checks)}
 
 

@@ -366,10 +366,30 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INT NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL DEFAULT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
   PRIMARY KEY (entityId, entityFqn),
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Migration statements are deduplicated by checksum. Use a block-specific prepared statement
+-- name so earlier PREPARE/EXECUTE helpers in this file cannot suppress this ALTER.
+SET @search_index_retry_claim_token_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_retry_queue'
+        AND column_name = 'claimToken'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_retry_queue ADD COLUMN claimToken VARCHAR(36) DEFAULT NULL'
+  )
+);
+PREPARE search_index_retry_claim_token_stmt FROM @search_index_retry_claim_token_ddl;
+EXECUTE search_index_retry_claim_token_stmt;
+DEALLOCATE PREPARE search_index_retry_claim_token_stmt;
 
 -- ContextMemory entity - reusable Context Center memory.
 CREATE TABLE IF NOT EXISTS context_memory (
@@ -470,35 +490,6 @@ CREATE INDEX asset_entity_name_index ON asset_entity (name);
 CREATE INDEX context_file_name_index ON context_file (name);
 CREATE INDEX context_memory_name_index ON context_memory (name);
 
--- MCP conversation table for MCP Client message tracking
-CREATE TABLE IF NOT EXISTS mcp_conversation (
-  id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-  json JSON NOT NULL,
-  userId VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.user.id') NOT NULL,
-  createdAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.createdAt') NOT NULL,
-  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-  createdBy VARCHAR(50) GENERATED ALWAYS AS (json ->> '$.createdBy') NOT NULL,
-  updatedBy VARCHAR(50) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-  messageCount INT GENERATED ALWAYS AS (json ->> '$.messageCount') STORED,
-
-  PRIMARY KEY (id),
-  INDEX idx_mcp_conversation_user_updated (userId, updatedAt DESC)
-);
-
--- MCP message table for MCP Client message tracking
-CREATE TABLE IF NOT EXISTS mcp_message (
-  id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-  json JSON NOT NULL,
-  conversationId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.conversationId') STORED NOT NULL,
-  sender VARCHAR(10) GENERATED ALWAYS AS (json ->> '$.sender') STORED NOT NULL,
-  messageIndex INT GENERATED ALWAYS AS (json ->> '$.index') STORED,
-  timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
-
-  PRIMARY KEY (id),
-  CONSTRAINT fk_mcp_message_conversation FOREIGN KEY (conversationId) REFERENCES mcp_conversation(id) ON DELETE CASCADE,
-  INDEX idx_mcp_message_conversation_index (conversationId, messageIndex),
-  INDEX idx_mcp_message_conversation_created (conversationId, timestamp)
-);
 -- Task workflow cutover support - OpenMetadata 2.0.0 (moved from 2.0.1)
 -- Maps legacy thread task IDs to new task entity IDs for migration traceability and redirects.
 
@@ -510,3 +501,89 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters). MySQL has no `CREATE INDEX IF NOT EXISTS`, so guard via
+-- information_schema (mirrors the approvedById guard earlier in this file).
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'workflow_instance_state_time_series'
+        AND index_name = 'idx_wf_instance_state_execution_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_wf_instance_state_execution_id ON workflow_instance_state_time_series (workflowInstanceExecutionId)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.token'),
+    '$.connection.config.authType',
+    JSON_OBJECT(
+        'token',
+        JSON_EXTRACT(json, '$.connection.config.token')
+    )
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND JSON_EXTRACT(json, '$.connection.config.token') IS NOT NULL
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.connection.config.authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (userId)
+);
+
+-- The Postgres counterpart of this version adds idx_profiler_data_time_series_fqnhash_pattern, a
+-- text_pattern_ops index that lets the table hard-delete profiler purge (issue #27041) serve
+--   entityFQNHash LIKE '<table hash>.%'
+-- from an index instead of a sequential scan.
+--
+-- MySQL needs no equivalent. profiler_data_time_series.entityFQNHash is declared
+--   VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+-- since 1.1.5 — a binary collation — so InnoDB can already answer a LIKE prefix predicate with a
+-- range scan on the leading column of the existing unique index
+-- profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation,
+-- timestamp). Adding a second index on the same leading column would be write overhead with no
+-- read benefit.

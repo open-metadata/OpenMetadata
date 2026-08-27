@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Kapat",
+    "close-navigation-menu": "Gezinme menüsünü kapat",
+    "copy-link": "Bağlantıyı kopyala",
+    "current-page": "Geçerli sayfa",
+    "date-range-picker": "Tarih aralığı seçici",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "expand-navigation-menu": "Gezinme menüsünü genişlet",
+    "field-documentation": "Alan belgeleri",
+    "hidden-breadcrumbs": "Gizli içerik haritası",
+    "loading": "Yükleniyor…",
+    "next-page": "Sonraki sayfaya git",
+    "open-menu": "Menüyü aç",
+    "page": "Sayfa",
+    "pagination": "Sayfalandırma",
+    "pagination-navigation": "Sayfalandırma gezintisi",
+    "previous-page": "Önceki sayfaya git",
+    "records": "Kayıtlar",
+    "remove-filter": "Filtreyi kaldır",
+    "select-dates": "Tarihleri seç",
+    "show-hidden-breadcrumbs": "Gizli içerik haritasını göster",
+    "today": "Bugün"
+  }
+}

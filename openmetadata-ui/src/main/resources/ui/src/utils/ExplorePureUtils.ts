@@ -113,12 +113,21 @@ export const getSelectedValuesFromQuickFilter = (
 
 export const findActiveSearchIndex = (
   obj: SearchHitCounts,
-  tabsData: Record<ExploreSearchIndex, TabsInfoData>
+  tabsData: Record<ExploreSearchIndex, TabsInfoData>,
+  topHitIndex?: ExploreSearchIndex
 ): ExploreSearchIndex | null => {
   const keysInOrder = Object.keys(tabsData) as ExploreSearchIndex[];
-  const filteredKeys = keysInOrder.filter((key) => obj[key] > 0);
+  const keysWithHits = keysInOrder.filter((key) => obj[key] > 0);
 
-  return filteredKeys.length > 0 ? filteredKeys[0] : null;
+  if (topHitIndex && keysWithHits.includes(topHitIndex)) {
+    return topHitIndex;
+  }
+
+  return keysWithHits.reduce<ExploreSearchIndex | null>(
+    (activeKey, key) =>
+      activeKey === null || obj[key] > obj[activeKey] ? key : activeKey,
+    null
+  );
 };
 
 export const getAggregations = (data: Aggregations) => {

@@ -34,7 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -164,7 +164,7 @@ const PoliciesDetailPage = () => {
     const patch = compare(policy, { ...policy, description });
     try {
       const data = await patchPolicy(patch, policy.id);
-      setPolicy({ ...policy, description: data.description });
+      setPolicy((prev) => ({ ...prev, description: data.description }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -524,9 +524,12 @@ const PoliciesDetailPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.policy'),
-      })}>
+      pageTitle={
+        policyName ||
+        t('label.entity-detail-plural', {
+          entity: t('label.policy'),
+        })
+      }>
       <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
@@ -582,7 +585,7 @@ const PoliciesDetailPage = () => {
                   />
                 </Col>
               </Row>
-              <DescriptionV1
+              <Description
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}

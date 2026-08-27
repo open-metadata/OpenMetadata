@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -28,12 +29,17 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import {
+  CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -54,6 +60,7 @@ const ContextCenterArchivePage: FC = () => {
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [hasEverHadItems, setHasEverHadItems] = useState(false);
   const fetchGenerationRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
 
@@ -115,6 +122,9 @@ const ContextCenterArchivePage: FC = () => {
         setItems((prev) =>
           after ? [...prev, ...documentItems] : documentItems
         );
+        if (documentItems.length > 0) {
+          setHasEverHadItems(true);
+        }
         handlePagingChange(response.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -155,6 +165,12 @@ const ContextCenterArchivePage: FC = () => {
     async (item: ArchiveItem) => {
       try {
         await restoreDriveFile(item.id);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+        });
         showSuccessToast(
           t('message.entity-restored-success', { entity: item.name })
         );
@@ -182,72 +198,86 @@ const ContextCenterArchivePage: FC = () => {
     try {
       setIsDeleting(true);
       await deleteDriveFile(itemToDelete.id, true);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
+      setItems((prev) => prev.filter((item) => item.id !== itemToDelete.id));
+      handlePagingChange((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+      }));
       setItemToDelete(undefined);
-      await fetchArchivedItems();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeleting(false);
     }
-  }, [itemToDelete, t, fetchArchivedItems]);
+  }, [itemToDelete, t, handlePagingChange]);
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
-      <ContextCenterHeader
-        breadcrumbs={[
-          {
-            label: t('label.archive'),
-          },
-        ]}
-        hasPermission={permissions?.Create}
-        subtitle={t('label.view-archived-document-plural')}
-        title={t('label.archive-plural')}
-      />
-      <div className="tw:pb-5">
-        <Tabs
-          className="tw:w-max"
-          selectedKey={activeFilter}
-          onSelectionChange={(key) => handleFilterChange(key as FilterKey)}>
-          <Tabs.List
-            className="tw:gap-2"
-            items={filterTabItems}
-            type="button-brand">
-            {(tab) => (
-              <Tabs.Item
-                {...tab}
-                className={({ isSelected }) =>
-                  classNames(
-                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
-                    {
-                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
-                        isSelected,
-                      'tw:border-primary tw:bg-primary tw:text-secondary':
-                        !isSelected,
-                    }
-                  )
-                }
-              />
-            )}
-          </Tabs.List>
-        </Tabs>
-      </div>
-      <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
-        <ArchiveView
-          canDelete={permissions?.Delete}
-          canRestore={permissions?.EditAll}
-          data={items}
-          isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
-          onDelete={handleDeleteClick}
-          onRestore={handleRestore}
-          onScrollEnd={handleScrollEnd}
+      <DocumentTitle title={t('label.archive')} />
+      <div className="context-center-header-section tw:px-5">
+        <ContextCenterHeader
+          breadcrumbs={[
+            {
+              label: t('label.archive'),
+            },
+          ]}
+          hasPermission={permissions?.Create}
+          subtitle={t('label.view-archived-document-plural')}
+          title={t('label.archive-plural')}
         />
-      </Card>
+      </div>
+      <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:px-5 tw:pb-5">
+        {(hasEverHadItems || items.length > 0) && (
+          <div className="tw:pb-5">
+            <Tabs
+              className="tw:w-max"
+              selectedKey={activeFilter}
+              onSelectionChange={(key) => handleFilterChange(key as FilterKey)}>
+              <Tabs.List
+                className="tw:gap-2"
+                items={filterTabItems}
+                type="button-brand">
+                {(tab) => (
+                  <Tabs.Item
+                    {...tab}
+                    className={({ isSelected }) =>
+                      classNames(
+                        'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                        {
+                          'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                            isSelected,
+                          'tw:border-primary tw:bg-primary tw:text-secondary':
+                            !isSelected,
+                        }
+                      )
+                    }
+                  />
+                )}
+              </Tabs.List>
+            </Tabs>
+          </div>
+        )}
+        <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
+          <ArchiveView
+            canDelete={permissions?.Delete}
+            canRestore={permissions?.EditAll}
+            data={items}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            onDelete={handleDeleteClick}
+            onRestore={handleRestore}
+            onScrollEnd={handleScrollEnd}
+          />
+        </Card>
+      </div>
 
       {itemToDelete && (
         <DeleteModal

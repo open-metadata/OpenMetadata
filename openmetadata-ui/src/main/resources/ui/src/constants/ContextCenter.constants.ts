@@ -24,6 +24,7 @@ export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
 export const RECENT_DASHBOARD_MEMORIES_LIMIT = 3;
 export const FOLDER_FILES_PAGE_SIZE = 10;
+export const FOLDER_PAGE_SIZE = 25;
 export const MOST_CITED_MEMORIES_LIMIT = 10;
 export const FOLDER_CARD_CHILDREN_LIMIT = 5;
 
@@ -51,7 +52,7 @@ export const VISIBILITY_OPTIONS = [
   {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
-    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    descriptionKey: 'message.visible-to-specific-people',
     badgeColor: 'brand' as const,
     iconName: 'Share07' as const,
   },

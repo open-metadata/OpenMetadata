@@ -48,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +87,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -97,6 +97,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -482,7 +483,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     CollectionDAO.SearchIndexRetryQueueDAO retryQueueDAO =
         Entity.getCollectionDAO().searchIndexRetryQueueDAO();
-    var records = retryQueueDAO.listAll(limitParam, offset);
+    var records =
+        retryQueueDAO.listAll(limitParam, offset).stream()
+            .map(
+                record ->
+                    new CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord(
+                        record.getEntityId(),
+                        record.getEntityFqn(),
+                        SearchIndexRetryQueue.visibleFailureReason(record.getFailureReason()),
+                        record.getStatus(),
+                        record.getEntityType(),
+                        record.getRetryCount(),
+                        record.getClaimedAt()))
+            .toList();
     int total = retryQueueDAO.countAll();
     return Response.ok(new ResultList<>(records, offset, total)).build();
   }
@@ -655,7 +668,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         Object logs = lastLogs.remove("logs");
         if (logs != null) {
           lastLogs.put(
-              PipelineServiceClientInterface.TYPE_TO_TASK.get(
+              PipelineServiceClientInterface.taskKeyOf(
                   ingestionPipeline.getPipelineType().toString()),
               logs.toString());
         }
@@ -1329,6 +1342,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
+        ((IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+            .recordQueuedPipelineStatus(
+                uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
         return Response.status(response.getCode()).entity(response).build();
       }
     }
@@ -1658,33 +1674,35 @@ public class AppResource extends EntityResource<App, AppRepository> {
     app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            ApplicationHandler.getInstance()
-                .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.APP_OPERATION,
+            jobId,
+            () -> {
+              try {
+                ApplicationHandler.getInstance()
+                    .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
 
-            // Remove from Pipeline Service
-            deleteApp(securityContext, app);
+                // Remove from Pipeline Service
+                deleteApp(securityContext, app);
 
-            // Remove from repository
-            RestUtil.DeleteResponse<App> deleteResponse =
-                repository.delete(userName, id, recursive, hardDelete);
+                // Remove from repository
+                RestUtil.DeleteResponse<App> deleteResponse =
+                    repository.delete(userName, id, recursive, hardDelete);
 
-            if (hardDelete) {
-              limits.invalidateCache(entityType);
-            }
+                if (hardDelete) {
+                  limits.invalidateCache(entityType);
+                }
 
-            repository.storeChangeEventForAsyncOperation(
-                deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
-            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                jobId, securityContext, deleteResponse.entity());
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, app, e.getMessage());
-          }
-        });
+                repository.storeChangeEventForAsyncOperation(
+                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, deleteResponse.entity());
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId, securityContext, app, e.getMessage());
+              }
+            });
 
     response =
         Response.accepted()

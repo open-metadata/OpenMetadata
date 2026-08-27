@@ -13,22 +13,22 @@
 
 @import '../../styles/variables.less';
 
-@trigger-btn-hover-bg: #efefef;
-@remove-icon-color: #bbb;
-@remove-icon-hover-color: #373737;
-@update-btn-hover-bg: #e2e2e2;
+@trigger-btn-hover-bg: var(--om-legacy-color-efefef);
+@remove-icon-color: var(--om-legacy-color-bbbbbb);
+@remove-icon-hover-color: var(--om-legacy-color-373737);
+@update-btn-hover-bg: var(--om-legacy-color-e2e2e2);
 
 .custom-dropdown-render {
   flex-direction: row-reverse;
   .ant-dropdown-menu {
     box-shadow: none;
-    padding: 0px;
+    padding: 0;
     max-height: 200px;
     overflow-y: scroll;
-    margin-bottom: 8px;
+    margin-bottom: var(--om-space-8);
 
     .ant-dropdown-menu-item {
-      padding: 4px 0px;
+      padding: var(--om-space-4) 0;
     }
   }
 
@@ -48,16 +48,16 @@
   }
 
   mark {
-    background-color: #ffe1a6;
+    background-color: var(--om-legacy-color-ffe1a6);
   }
 }
 
 .quick-filter-dropdown-trigger-btn {
-  padding: 4px 8px;
+  padding: var(--om-space-4) var(--om-space-8);
 
   .remove-field-icon {
     color: @remove-icon-color;
-    padding-bottom: 2px;
+    padding-bottom: var(--om-space-2);
   }
 
   .remove-field-icon:hover {
@@ -80,18 +80,18 @@
 .immediate-apply-dropdown {
   .ant-dropdown-menu {
     box-shadow: none;
-    padding: 4px;
+    padding: var(--om-space-4);
   }
 
   .ant-dropdown-menu-item {
-    border-radius: 8px;
-    padding: 6px 8px;
+    border-radius: var(--om-radius-lg);
+    padding: var(--om-space-6) var(--om-space-8);
   }
 
   .ant-checkbox-inner {
     width: 18px;
     height: 18px;
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
   }
 
   .ant-checkbox-checked .ant-checkbox-inner {
@@ -107,8 +107,8 @@
       transform: translate(-50%, -54%);
       content: '+';
       color: @white;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-semibold);
       line-height: 1;
     }
   }
@@ -117,10 +117,10 @@
     border: none;
     background: transparent;
     color: @grey-4;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .dropdown-option-label {
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
   }
 }

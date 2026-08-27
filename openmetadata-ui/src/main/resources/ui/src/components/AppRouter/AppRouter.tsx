@@ -15,10 +15,12 @@ import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
+import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
+import { useResolvedAppMode } from '../../hooks/useResolvedAppMode';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
@@ -81,6 +83,19 @@ const AppRouter = () => {
   const appMode = useAppMode();
   const ModeRoutes = useAppRoutesRegistry((state) => state.routes[appMode]);
 
+  const isRegistrySettled = useResolvedAppMode();
+
+  // A non-default mode's routes are registered by the plugin that owns the
+  // mode, in an effect that waits for `applications` to load. Until then the
+  // registry looks empty, and falling through to `AuthenticatedRoutes` mounts
+  // its `path="*"` catch-all, which navigates to /404 and destroys the
+  // requested URL before the real routes ever mount — a deep link or a reload
+  // on any mode-specific route lands on Not Found, non-deterministically.
+  // `registrySettled` is what distinguishes that startup window from a mode
+  // whose plugin is genuinely uninstalled, where falling back is correct.
+  const isModeRoutesPending =
+    appMode !== DEFAULT_APP_MODE && !ModeRoutes && !isRegistrySettled;
+
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
@@ -96,9 +111,17 @@ const AppRouter = () => {
   if (isAuthenticated) {
     const AuthenticatedRoutesComponent = ModeRoutes ?? AuthenticatedRoutes;
 
+    // The loader has to sit INSIDE AuthenticatedApp: `ApplicationsProvider`
+    // lives there, and it is what flips `applicationsLoaded` and so unblocks
+    // registration. Short-circuiting above this point would deadlock — the
+    // routes could never register, so the loader would never clear.
     return (
       <AuthenticatedApp>
-        <AuthenticatedRoutesComponent />
+        {isModeRoutesPending ? (
+          <Loader fullScreen />
+        ) : (
+          <AuthenticatedRoutesComponent />
+        )}
       </AuthenticatedApp>
     );
   }

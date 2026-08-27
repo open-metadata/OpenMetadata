@@ -169,7 +169,7 @@ const AdvancedPropertiesSection: FunctionComponent<
         </div>
       ) : (
         <div className="tw:my-3">
-          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg">
+          <Accordion className="tw:outline-0 tw:divide-y-0 tw:rounded-lg">
             <AccordionItem id={`${idSchema.$id}-advanced`}>
               <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50">
                 {closedLabel}

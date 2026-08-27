@@ -15,22 +15,22 @@
 @keyframes resize-show-animation {
   from {
     height: 0px;
-    padding: 0 16px;
+    padding: 0 var(--om-space-16);
   }
   to {
     height: max-content;
-    padding: 8px 16px;
+    padding: var(--om-space-8) var(--om-space-16);
   }
 }
 
 @keyframes resize-hide-animation {
   from {
     height: max-content;
-    padding: 8px 16px;
+    padding: var(--om-space-8) var(--om-space-16);
   }
   to {
     height: 0px;
-    padding: 0 16px;
+    padding: 0 var(--om-space-16);
   }
 }
 
@@ -46,7 +46,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-height: 3em; /* Approx height for 2 lines */
-    transition: max-height 0.3s ease;
+    transition: max-height var(--om-duration-300) ease;
   }
 
   .alert-message.expanded {
@@ -59,26 +59,26 @@
     border: none;
     cursor: pointer;
     padding: 0;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     text-decoration: underline;
   }
 
   #alert-icon {
-    font-size: 20px;
+    font-size: var(--om-font-size-xl);
     border-radius: 50%;
-    padding: 8px;
+    padding: var(--om-space-8);
   }
 
   &.show-alert {
-    animation: resize-show-animation 0.3s ease-in-out forwards;
+    animation: resize-show-animation var(--om-duration-300) ease-in-out forwards;
     display: flex;
     align-items: center;
-    border-radius: 12px;
-    margin-bottom: 12px;
+    border-radius: var(--om-radius-xl);
+    margin-bottom: var(--om-space-12);
   }
 
   &.hide-alert {
-    animation: resize-hide-animation 0.2s ease-in-out forwards;
+    animation: resize-hide-animation var(--om-duration-200) ease-in-out forwards;
   }
 
   &.info {
@@ -97,7 +97,7 @@
     border-radius: @border-rad-xs;
 
     /* Shadows/shadow-xs */
-    box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+    box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
 
     #alert-icon {
       background-color: var(--tw-color-bg-primary);
@@ -106,9 +106,9 @@
       color: @grey-700;
 
       /* Shadows/shadow-xs-skeuomorphic */
-      box-shadow: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
-        0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset,
-        0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+      box-shadow: 0px 0px 0px 1px var(--om-legacy-color-10-13-18-0-18) inset,
+        0px -2px 0px 0px var(--om-legacy-color-10-13-18-0-05) inset,
+        0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
     }
   }
 
@@ -138,10 +138,10 @@
   }
 
   .ant-alert-description {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     line-height: 20px;
     text-align: left;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .alert-close-icon {
@@ -149,12 +149,12 @@
     align-items: center;
     width: 10px;
     height: 10px;
-    margin-right: 13px;
+    margin-right: var(--om-space-13);
   }
 
   &.custom-alert-description {
     .ant-alert-description {
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
     }
   }
 }

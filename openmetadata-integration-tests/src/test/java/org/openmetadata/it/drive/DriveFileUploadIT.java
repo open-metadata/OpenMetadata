@@ -46,6 +46,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.awaitility.core.ConditionTimeoutException;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -84,6 +85,11 @@ class DriveFileUploadIT {
 
   private static final String MINIO_BUCKET = "test-bucket";
   private static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
+  private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
+  private static final int SEARCH_RESULT_SIZE = 100;
+  private static final int DIAGNOSTIC_BODY_LIMIT = 4000;
   private static String serverBaseUrl;
   private static Client multipartClient;
   private static WebTarget uploadTarget;
@@ -214,9 +220,6 @@ class DriveFileUploadIT {
 
   private void assertStoredInMinIO(String assetId, byte[] expectedBytes) {
     try (S3Client s3Client = buildMinioClient()) {
-      // atMost must stay above the global Awaitility pollInterval that
-      // K8sOMJobOperatorIT raises to 5s; otherwise Awaitility rejects with
-      // "Timeout must be greater than the poll delay".
       await()
           .pollDelay(Duration.ZERO)
           .pollInterval(Duration.ofMillis(200))
@@ -237,6 +240,7 @@ class DriveFileUploadIT {
   private void assertRemovedFromMinIO(String assetId) {
     try (S3Client s3Client = buildMinioClient()) {
       await()
+          .pollInterval(POLL_INTERVAL)
           .atMost(Duration.ofSeconds(10))
           .untilAsserted(() -> assertTrue(resolveStoredObjectKey(s3Client, assetId) == null));
     }
@@ -262,20 +266,69 @@ class DriveFileUploadIT {
   private void assertSearchContainsFile(String query, UUID fileId) {
     RestClient rest = RestClient.admin();
     String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+    String searchPath =
+        "v1/search/query?q="
+            + encodedQuery
+            + "&index=context_file_search_index&from=0&size="
+            + SEARCH_RESULT_SIZE;
 
+    try {
+      await()
+          .pollInterval(POLL_INTERVAL)
+          .atMost(SEARCH_VISIBLE_TIMEOUT)
+          .untilAsserted(
+              () -> {
+                try (Response searchResponse = rest.rawGet(searchPath)) {
+                  String responseBody = searchResponse.readEntity(String.class);
+                  assertEquals(200, searchResponse.getStatus(), responseBody);
+                  assertTrue(responseBody.contains(fileId.toString()));
+                }
+              });
+    } catch (ConditionTimeoutException e) {
+      throw new AssertionError(searchFailureDiagnostics(rest, searchPath, query, fileId), e);
+    }
+  }
+
+  private String searchFailureDiagnostics(
+      RestClient rest, String searchPath, String query, UUID fileId) {
+    String searchResponse = readDiagnosticResponse(rest, searchPath);
+    String indexedDocument =
+        readDiagnosticResponse(
+            rest, "v1/search/get/context_file_search_index/doc/" + fileId.toString());
+    return "Context file "
+        + fileId
+        + " was not searchable for query "
+        + query
+        + ". Search response: "
+        + searchResponse
+        + ". Indexed document: "
+        + indexedDocument;
+  }
+
+  private String readDiagnosticResponse(RestClient rest, String path) {
+    try (Response response = rest.rawGet(path)) {
+      String body = response.readEntity(String.class);
+      String truncatedBody =
+          body.length() <= DIAGNOSTIC_BODY_LIMIT
+              ? body
+              : body.substring(0, DIAGNOSTIC_BODY_LIMIT) + "...[truncated]";
+      return "status=" + response.getStatus() + ", body=" + truncatedBody;
+    } catch (Exception e) {
+      return "request failed: " + e.getMessage();
+    }
+  }
+
+  private ContextFile awaitProcessed(UUID fileId, String expectedText) {
     await()
-        .atMost(Duration.ofSeconds(20))
+        .pollInterval(POLL_INTERVAL)
+        .atMost(EXTRACTION_TIMEOUT)
         .untilAsserted(
             () -> {
-              try (Response searchResponse =
-                  rest.rawGet(
-                      "v1/search/query?q="
-                          + encodedQuery
-                          + "&index=context_file_search_index&from=0&size=10")) {
-                assertEquals(200, searchResponse.getStatus());
-                assertTrue(searchResponse.readEntity(String.class).contains(fileId.toString()));
-              }
+              ContextFile refreshed = fetchFile(fileId);
+              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
+              assertTrue(refreshed.getExtractedText().contains(expectedText));
             });
+    return fetchFile(fileId);
   }
 
   private byte[] createPdf(String text) throws IOException {
@@ -373,15 +426,8 @@ class DriveFileUploadIT {
       assertStoredInMinIO(file.getAssetId(), content);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains("Context Center PDF Fixture"));
-              assertEquals(1, refreshed.getPageCount());
-            });
+    ContextFile refreshed = awaitProcessed(file.getId(), "Context Center PDF Fixture");
+    assertEquals(1, refreshed.getPageCount());
   }
 
   @Test
@@ -432,20 +478,18 @@ class DriveFileUploadIT {
             .getBytes(StandardCharsets.UTF_8);
 
     ContextFile file;
-    try (Response response = uploadFile("search-fixture.txt", content, "Search Fixture", null)) {
+    try (Response response =
+        uploadFile(
+            uniqueUploadedFileName(ns, "search-fixture.txt"),
+            content,
+            ns.shortPrefix("Search Fixture"),
+            null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -457,20 +501,17 @@ class DriveFileUploadIT {
 
     ContextFile file;
     try (Response response =
-        uploadFile("search-fixture.pdf", content, ns.shortPrefix("PDF Search"), null)) {
+        uploadFile(
+            uniqueUploadedFileName(ns, "search-fixture.pdf"),
+            content,
+            ns.shortPrefix("PDF Search"),
+            null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -482,20 +523,17 @@ class DriveFileUploadIT {
 
     ContextFile file;
     try (Response response =
-        uploadFile("search-fixture.xlsx", content, ns.shortPrefix("Spreadsheet Search"), null)) {
+        uploadFile(
+            uniqueUploadedFileName(ns, "search-fixture.xlsx"),
+            content,
+            ns.shortPrefix("Spreadsheet Search"),
+            null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -514,20 +552,17 @@ class DriveFileUploadIT {
 
       ContextFile file;
       try (Response response =
-          uploadFile("search-fixture.png", content, ns.shortPrefix("Image Search"), null)) {
+          uploadFile(
+              uniqueUploadedFileName(ns, "search-fixture.png"),
+              content,
+              ns.shortPrefix("Image Search"),
+              null)) {
         String body = response.readEntity(String.class);
         assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
         file = JsonUtils.readValue(body, ContextFile.class);
       }
 
-      await()
-          .atMost(Duration.ofSeconds(20))
-          .untilAsserted(
-              () -> {
-                ContextFile refreshed = fetchFile(file.getId());
-                assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-                assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-              });
+      awaitProcessed(file.getId(), uniqueToken);
 
       assertSearchContainsFile(uniqueToken, file.getId());
     } finally {

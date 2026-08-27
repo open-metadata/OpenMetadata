@@ -12,6 +12,7 @@
  */
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
+import { FOLDER_PAGE_SIZE } from '../constants/ContextCenter.constants';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
@@ -88,13 +89,15 @@ export const createFolder = async (
   return response.data;
 };
 
-export const listFolders = async (): Promise<Folder[]> => {
-  const response = await APIClient.get<{ data: Folder[] }>(
+export const listFolders = async (
+  params: ListParams = {}
+): Promise<PagingResponse<Folder[]>> => {
+  const response = await APIClient.get<PagingResponse<Folder[]>>(
     '/contextCenter/drive/folders',
-    { params: { fields: 'childrenCount' } }
+    { params: { fields: 'childrenCount', limit: FOLDER_PAGE_SIZE, ...params } }
   );
 
-  return response.data.data ?? [];
+  return response.data;
 };
 
 export const deleteFolder = async (
@@ -257,12 +260,16 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
 };
 
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
-  const response = await APIClient.get<Blob>(
-    `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: true, expiry: 300 }, responseType: 'blob' }
-  );
+  try {
+    const response = await APIClient.get<Blob>(
+      `/contextCenter/drive/files/${id}/download`,
+      { params: { redirect: false }, responseType: 'blob' }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 };
 
 export const downloadDriveFiles = async (ids: string[]): Promise<Blob> => {

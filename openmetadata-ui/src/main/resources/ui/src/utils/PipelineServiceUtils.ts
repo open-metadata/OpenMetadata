@@ -79,6 +79,10 @@ const pipelineSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json'
     ),
+  [PipelineServiceType.Prefect]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/pipeline/prefectConnection.json'
+    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

@@ -23,6 +23,7 @@ import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { activateOnEnterOrSpace } from '../../../utils/InteractiveTargetUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
@@ -41,17 +42,17 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  let muiTags = false;
+  let newTagsUI = false;
   try {
     const context = useGenericContext();
-    muiTags = context.muiTags || false;
+    newTagsUI = context.newTagsUI || false;
   } catch {
     // Context not available, use default TagsV1
   }
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
-      if (muiTags) {
+      if (newTagsUI) {
         const tagName = getTagName(tag, true);
         const redirectLink = getTagRedirectLink(tag);
 
@@ -102,7 +103,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         />
       );
     },
-    [muiTags, newLook, entityFqn]
+    [newTagsUI, newLook, entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -153,11 +154,17 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             overlayClassName="tag-popover-container"
             placement="bottom"
             trigger="click">
+            {/* antd Tag renders a bare span, so without these the control is unreachable by
+                keyboard and invisible to isInteractiveTarget — a clickable row or card then
+                swallowed the click and navigated instead of opening the remaining tags. */}
             <Tag
               className={classNames('cursor-pointer plus-more-tag', {
                 'new-look': newLook,
               })}
-              data-testid="plus-more-count">{`+${
+              data-testid="plus-more-count"
+              role="button"
+              tabIndex={0}
+              onKeyDown={activateOnEnterOrSpace}>{`+${
               sortedTagsBySource.length - (sizeCap ?? 0)
             } more`}</Tag>
           </Popover>

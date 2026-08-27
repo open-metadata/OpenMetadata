@@ -249,10 +249,6 @@ const UpdateTagsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const LogsViewerPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/LogsViewerPage/LogsViewerPage'))
-);
-
 const DataInsightPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/DataInsightPage/DataInsightPage.component')
@@ -335,10 +331,6 @@ const ColumnBulkOperationsPage = withPageSuspenseFallback(
     () =>
       import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
-);
-
-const McpChatPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/McpChatPage/McpChatPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -582,7 +574,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<TestSuiteDetailsPage />}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
-      <Route element={<LogsViewerPage />} path={ROUTES.LOGS} />
       <Route
         element={
           <TestSuiteIngestionPage
@@ -596,8 +587,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.test-suite'),
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.ingestion'),
             })}
           />
         }
@@ -610,11 +601,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
@@ -626,11 +613,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_TAB}
@@ -642,11 +625,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY}
@@ -759,8 +738,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddObservabilityPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.observability'),
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.observability-alert'),
             })}
           />
         }
@@ -836,8 +815,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
-      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT} />
-      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT_WITH_ID} />
 
       <Route
         element={<EntityRouter />}

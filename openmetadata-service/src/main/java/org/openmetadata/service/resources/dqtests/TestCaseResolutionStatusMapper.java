@@ -4,6 +4,7 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityTimeSeriesMapper;
@@ -17,13 +18,19 @@ public class TestCaseResolutionStatusMapper
         Entity.getEntityByName(Entity.TEST_CASE, create.getTestCaseReference(), null, Include.ALL);
     User userEntity = Entity.getEntityByName(Entity.USER, user, null, Include.ALL);
 
+    return createToEntity(create, userEntity.getEntityReference(), testCaseEntity);
+  }
+
+  /** Variant for bulk callers that have already resolved the test case and the caller. */
+  public TestCaseResolutionStatus createToEntity(
+      CreateTestCaseResolutionStatus create, EntityReference updatedBy, TestCase testCase) {
     return new TestCaseResolutionStatus()
         .withTimestamp(System.currentTimeMillis())
         .withTestCaseResolutionStatusType(create.getTestCaseResolutionStatusType())
         .withTestCaseResolutionStatusDetails(create.getTestCaseResolutionStatusDetails())
-        .withUpdatedBy(userEntity.getEntityReference())
+        .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
-        .withTestCaseReference(testCaseEntity.getEntityReference())
+        .withTestCaseReference(testCase.getEntityReference())
         .withSeverity(create.getSeverity());
   }
 }

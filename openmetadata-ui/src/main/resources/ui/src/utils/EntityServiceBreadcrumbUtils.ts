@@ -14,33 +14,27 @@
 import { startCase } from 'lodash';
 import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import type { Database } from '../generated/entity/data/database';
 import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getBreadcrumbForEntitiesWithServiceOnly } from './EntityDataBreadcrumbUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
-import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-  getSettingPath,
-} from './RouterUtils';
-import {
-  getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
-} from './ServicePureUtils';
+import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
 
 export const getServiceCategoryBreadcrumb = (
   serviceCategory: ServiceCategory
 ): TitleLink[] => [
   {
     name: startCase(serviceCategory),
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.SERVICES,
-      getServiceRouteFromServiceType(serviceCategory)
-    ),
+    // Delegated rather than built here so the destination follows whatever surface owns the
+    // service listing. The base implementation returns this same settings path; an embedded
+    // experience that lists services elsewhere overrides it, and every entity breadcrumb that
+    // reaches a service — API collection, database, topic, dashboard, container — follows.
+    url: connectionsRouterClassBase.getSettingsServicesPath(serviceCategory),
     iconType: getEntityTypeFromServiceCategory(serviceCategory),
   },
 ];
@@ -63,51 +57,72 @@ export const getBreadcrumbForDatabaseService = (
   return items;
 };
 
-export const getBreadcrumbForDatabase = (entity: Database) => [
-  ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  ...getBreadcrumbForEntitiesWithServiceOnly(entity),
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
-    ),
-    iconType:
-      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE,
-  },
-];
+export const getBreadcrumbForDatabase = (
+  entity: Database,
+  includeCurrent = false
+) => {
+  const items = [
+    ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
+    ...getBreadcrumbForEntitiesWithServiceOnly(entity),
+  ];
 
-export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
-  ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  {
-    name: getEntityName(entity.service),
-    url: entity.service?.name
-      ? getServiceDetailsPath(
-          entity.service?.name ?? '',
-          ServiceCategoryPlural[
-            entity.service?.type as keyof typeof ServiceCategoryPlural
-          ]
-        )
-      : '',
-    isServiceBreadcrumb: true,
-  },
-  {
-    name: getEntityName(entity.database),
-    url: getEntityDetailsPath(
-      EntityType.DATABASE,
-      entity.database?.fullyQualifiedName ?? ''
-    ),
-    iconType: EntityType.DATABASE,
-  },
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as unknown as SourceType).entityType as EntityType) ??
-        EntityType.DATABASE_SCHEMA
-    ),
-    iconType:
-      ((entity as unknown as SourceType).entityType as EntityType) ??
-      EntityType.DATABASE_SCHEMA,
-  },
-];
+  if (includeCurrent) {
+    items.push({
+      name: entity.name,
+      url: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
+      ),
+      iconType:
+        ((entity as SourceType).entityType as EntityType) ??
+        EntityType.DATABASE,
+    });
+  }
+
+  return items;
+};
+
+export const getBreadcrumbForDatabaseSchema = (
+  entity: DatabaseSchema,
+  includeCurrent = false
+) => {
+  const items = [
+    ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
+    {
+      name: getEntityName(entity.service),
+      url: entity.service?.name
+        ? getServiceDetailsPath(
+            entity.service?.name ?? '',
+            ServiceCategoryPlural[
+              entity.service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+      isServiceBreadcrumb: true,
+    },
+    {
+      name: getEntityName(entity.database),
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
+        entity.database?.fullyQualifiedName ?? ''
+      ),
+      iconType: EntityType.DATABASE,
+    },
+  ];
+
+  if (includeCurrent) {
+    items.push({
+      name: entity.name,
+      url: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        ((entity as unknown as SourceType).entityType as EntityType) ??
+          EntityType.DATABASE_SCHEMA
+      ),
+      iconType:
+        ((entity as unknown as SourceType).entityType as EntityType) ??
+        EntityType.DATABASE_SCHEMA,
+    });
+  }
+
+  return items;
+};

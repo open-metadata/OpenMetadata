@@ -211,7 +211,7 @@ class HexQueryFetcher:
             SQLAlchemy Engine or None if creation fails
         """
         try:
-            from metadata.utils.ssl_manager import get_ssl_connection  # noqa: PLC0415
+            from metadata.utils.ssl_manager import get_ssl_connection
 
             # Use get_ssl_connection which handles SSL setup and calls the appropriate get_connection
             # This is the same approach used in LineageSource and QueryParserSource

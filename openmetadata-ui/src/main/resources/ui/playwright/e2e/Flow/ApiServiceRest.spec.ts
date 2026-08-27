@@ -13,6 +13,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   descriptionBox,
@@ -20,6 +21,7 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import { testConnection } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
@@ -123,9 +125,18 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.getByTestId('Rest').click();
     await page.locator('#service-name').waitFor();
 
+    const serviceNameValidation = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/services/apiServices/name/${encodeURIComponent(
+            apiServiceConfig.name
+          )}`
+    );
     await page.locator('#service-name').fill(apiServiceConfig.name);
     await page.getByTestId('add-description-button').click();
     await page.locator(descriptionBox).fill(apiServiceConfig.description);
+    await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
 
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
@@ -133,6 +144,7 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
 
+    await serviceNameValidation;
     await testConnection(page);
 
     await page.getByTestId('next-button').click();

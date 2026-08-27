@@ -64,6 +64,10 @@
             "MODE",
             "STANDARD_DEVIATION",
             "VARIANCE",
+            "SIMPLE",
+            "CUMULATIVE",
+            "DERIVED",
+            "CONVERSION",
             "OTHER"
         ]
     },
@@ -97,6 +101,75 @@
         "QUARTER",
         "YEAR"
       ]
+    },
+    "metricDimension": {
+      "type": "object",
+      "description": "A dimension associated with a metric from a semantic layer.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the dimension."
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the dimension, in the format 'metricFQN.dimension.<name>'.",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the dimension.",
+          "enum": ["CATEGORICAL", "TIME"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the dimension."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Expression used to compute the dimension."
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "metricMeasure": {
+      "type": "object",
+      "description": "A measure associated with a metric from a semantic layer.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the measure."
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the measure, in the format 'metricFQN.measure.<name>'.",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "aggregation": {
+          "type": "string",
+          "description": "Aggregation function for the measure (e.g., sum, count, average)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the measure."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Expression used to compute the measure."
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "metricFilter": {
+      "type": "object",
+      "description": "A filter applied to a metric.",
+      "properties": {
+        "where": {
+          "type": "string",
+          "description": "SQL WHERE clause for the filter."
+        }
+      },
+      "required": ["where"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -139,6 +212,30 @@
     "granularity": {
       "description": "Metric's granularity.",
       "$ref": "#/definitions/metricGranularity"
+    },
+    "dimensions": {
+      "description": "Dimensions associated with this metric from a semantic layer.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricDimension"
+      },
+      "default": null
+    },
+    "measures": {
+      "description": "Measures associated with this metric from a semantic layer.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricMeasure"
+      },
+      "default": null
+    },
+    "filters": {
+      "description": "Filters applied to this metric.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricFilter"
+      },
+      "default": null
     },
     "relatedMetrics": {
       "description": "Related Metrics.",

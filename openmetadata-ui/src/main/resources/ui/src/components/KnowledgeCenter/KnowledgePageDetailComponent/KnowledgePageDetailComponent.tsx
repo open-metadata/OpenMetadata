@@ -24,7 +24,6 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -56,10 +55,6 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -72,7 +67,6 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,
   getKnowledgePageByFqn,
@@ -80,6 +74,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
@@ -98,22 +93,23 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
-  fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
+  // Called after a successful save so the left-tree can re-fetch and reflect the
+  // updatedAt-desc order (the edited page moves to the top of its branch).
+  onArticleSaved?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
-  fetchKnowledgePageHierarchy,
   isRightPanelOpen = true,
   onToggleRightPanel,
+  onArticleSaved,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
@@ -126,7 +122,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { setDraft, removeDraft, getDraft } = useArticleDraftStore();
   const USERId = currentUser?.id ?? '';
 
@@ -360,14 +355,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   // Multiple saves (content/displayName) can be in flight at once since they
   // are debounced independently, and saves for an article the user has
   // navigated away from can still resolve in the background. Track pending
@@ -450,6 +437,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           };
         });
         didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -462,6 +450,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       permissions,
       beginTrackedSave,
       endTrackedSave,
+      onArticleSaved,
     ]
   );
 
@@ -482,14 +471,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleContentOnChange = useCallback(
     (content: string) => {
-      const isChanged = !isEqual(knowledgePage?.description ?? '', content);
+      const persistableContent = stripPendingUploadNodes(content);
+      const isChanged = !isEqual(
+        knowledgePage?.description ?? '',
+        persistableContent
+      );
       if (isChanged) {
         setContentChangeState(ContentChangeState.UN_SAVED);
         if (knowledgePage?.id) {
           saveDraftContent(
             knowledgePage.id,
             knowledgePage.fullyQualifiedName,
-            content,
+            persistableContent,
             knowledgePage.version
           );
         }
@@ -499,7 +492,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
-      handleContentSave(content);
+      handleContentSave(persistableContent);
     },
     [knowledgePage, handleContentSave, saveDraftContent]
   );
@@ -527,6 +520,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (existingDraft) {
         setDraft(currentKnowledgePage.id, { version: response.version });
       }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -558,6 +552,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (existingDraft) {
         setDraft(currentKnowledgePage.id, { version: response.version });
       }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -609,6 +604,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           };
         });
         didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -621,6 +617,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       permissions,
       beginTrackedSave,
       endTrackedSave,
+      onArticleSaved,
     ]
   );
 
@@ -768,6 +765,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         children: (
           <>
             <TitleComponent
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when creating a new page
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
               placeholder={getKnowledgePageName(knowledgePage)}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
@@ -826,33 +824,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const isContentUnsaved = useMemo(
     () => KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE.includes(contentChangeState),
     [contentChangeState]
-  );
-
-  const getHeaderElement = useCallback(
-    () => (
-      <KnowledgeDetailPageHeader
-        contentChangeState={contentChangeState}
-        fetchKnowledgePageHierarchy={fetchKnowledgePageHierarchy}
-        isLoading={isLoading}
-        knowledgePage={knowledgePage}
-        permissions={permissions}
-        onFollowChange={handleFollowChange}
-        onSave={handleSave}
-        onSetThreadLink={setThreadLink}
-        onToggleDelete={handleToggleDelete}
-        onVoteChange={handleVoteChange}
-      />
-    ),
-    [
-      contentChangeState,
-      isLoading,
-      knowledgePage,
-      permissions,
-      setThreadLink,
-      handleToggleDelete,
-      handleVoteChange,
-      handleSave,
-    ]
   );
 
   useEffect(() => {
@@ -970,7 +941,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
-      header: <div className="tw:mb-5 tw:rounded-xl">{getHeaderElement()}</div>,
       isRightPanelOpen,
       onTabChange: handleTabChange,
       onToggleRightPanel,
@@ -988,7 +958,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
-    getHeaderElement,
   ]);
 
   useEffect(() => {
@@ -1004,7 +973,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-page'),
+          entity: t('label.article'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -1020,13 +989,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
           threadLink={threadLink}
-          threadType={ThreadType.Conversation}
-          updateThreadHandler={updateFeed}
           onCancel={() => setThreadLink('')}
         />
       ) : null}

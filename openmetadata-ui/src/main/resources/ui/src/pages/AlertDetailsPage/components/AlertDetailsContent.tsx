@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -163,7 +163,7 @@ function AlertDetailsContent({
           className="alert-description"
           data-testid="alert-description"
           span={24}>
-          <DescriptionV1
+          <Description
             description={alertDetails?.description}
             entityType={EntityType.EVENT_SUBSCRIPTION}
             hasEditAccess={editDescriptionPermission}

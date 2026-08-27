@@ -32,9 +32,8 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
   placeholder,
   renderTrigger,
   popoverClassName,
-  popoverAlign,
   selectionMode = 'multiple',
-  popoverPlacement = 'top',
+  popoverPlacement = 'top start',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<DataAssetOption[]>(
@@ -132,7 +131,6 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
       isLoading={isLoading}
       options={pickerOptions}
       placeholder={placeholder}
-      popoverAlign={popoverAlign}
       popoverClassName={popoverClassName}
       popoverPlacement={popoverPlacement}
       renderTrigger={renderTrigger}

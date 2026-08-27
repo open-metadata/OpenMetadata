@@ -9,6 +9,7 @@ import type {
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 import { cx, sortCx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 import {
   AppleLogo,
   DribbleLogo,
@@ -45,21 +46,36 @@ export const styles = sortCx({
 
   colors: {
     gray: {
-      root: 'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover',
+      root: `tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover ${borderAfter} tw:after:outline-primary`,
       icon: 'tw:text-fg-quaternary tw:group-hover:text-fg-quaternary_hover',
     },
     black: {
-      root: 'tw:bg-black tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+      root: [
+        'tw:bg-black tw:text-white tw:shadow-xs-skeuomorphic',
+        'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+        borderAfter,
+        'tw:after:outline-transparent',
+      ].join(' '),
       icon: '',
     },
 
     facebook: {
-      root: 'tw:bg-[#1877F2] tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0% tw:hover:bg-[#0C63D4]',
+      root: [
+        'tw:bg-[#1877F2] tw:text-white tw:shadow-xs-skeuomorphic tw:hover:bg-[#0C63D4]',
+        'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+        borderAfter,
+        'tw:after:outline-transparent',
+      ].join(' '),
       icon: '',
     },
 
     dribble: {
-      root: 'tw:bg-[#EA4C89] tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0% tw:hover:bg-[#E62872]',
+      root: [
+        'tw:bg-[#EA4C89] tw:text-white tw:shadow-xs-skeuomorphic tw:hover:bg-[#E62872]',
+        'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+        borderAfter,
+        'tw:after:outline-transparent',
+      ].join(' '),
       icon: '',
     },
   },

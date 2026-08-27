@@ -110,6 +110,7 @@ describe('useTestCaseList', () => {
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TESTSUITE,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
     ]);
     expect(payload.includeAllTests).toBe(true);
     expect(payload.limit).toBe(10);
@@ -125,7 +126,16 @@ describe('useTestCaseList', () => {
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(lastPayload().q).toBe('*orders*');
+    expect(lastPayload().q).toBe('orders');
+  });
+
+  it('should send a reserved-character term verbatim, since the server parses q as literal text', async () => {
+    const url = 'https://example.com/data-quality/test-case-results';
+    renderList({ searchValue: url });
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    expect(lastPayload().q).toBe(url);
   });
 
   it('should pass a non-empty testCaseStatus through as-is', async () => {
@@ -136,6 +146,23 @@ describe('useTestCaseList', () => {
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
     expect(lastPayload().testCaseStatus).toBe(TestCaseStatus.Failed);
+  });
+
+  it('should apply a redirected lastRunRange to the list request', async () => {
+    const { result } = renderList({
+      params: {
+        lastRunRange: { startTs: 100, endTs: 200 },
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(lastPayload()).toEqual(
+      expect.objectContaining({
+        startTimestamp: 100,
+        endTimestamp: 200,
+      })
+    );
   });
 
   it('should not fetch and should stop loading when the view permission is missing', async () => {
@@ -186,6 +213,18 @@ describe('useTestCaseList', () => {
     ]);
     expect(props.form.setFieldsValue).toHaveBeenCalledWith({
       serviceName: 'sample_data',
+    });
+  });
+
+  it('should normalize a single URL status for the multi-select form', async () => {
+    const { props } = renderList({
+      params: { testCaseStatus: TestCaseStatus.Failed },
+    });
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+      testCaseStatus: [TestCaseStatus.Failed],
     });
   });
 

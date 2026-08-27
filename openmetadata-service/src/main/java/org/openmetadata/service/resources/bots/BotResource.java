@@ -61,7 +61,6 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -70,6 +69,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -96,15 +96,19 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    boolean shouldSeed = SeedDataGate.getInstance().shouldSeed();
     String domain = SecurityUtil.getDomain(config);
     // First, load the bot users and assign their roles
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
     for (User botUser : botUsers) {
+      // Seeded grant applies on first creation only: UserUpdater preserves the stored value on
+      // every subsequent PUT, so restarts never upgrade an already-created bot's token holders.
       User user =
           UserUtil.user(botUser.getName(), domain, botUser.getName())
               .withIsBot(true)
-              .withIsAdmin(false);
+              .withIsAdmin(false)
+              .withAllowImpersonation(botUser.getAllowImpersonation());
       user.setRoles(
           listOrEmpty(botUser.getRoles()).stream()
               .map(
@@ -121,9 +125,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               .toList());
       // Add or update User Bot
       UserUtil.addOrUpdateBotUser(user);
-      if (Boolean.TRUE.equals(botUser.getAllowImpersonation())) {
-        grantBotImpersonation(userRepository, botUser.getName());
-      }
+    }
+
+    if (!shouldSeed) {
+      return;
     }
 
     // Then, load the bots and bind them to the users
@@ -136,14 +141,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               .getEntityReference());
       repository.initializeEntity(bot);
     }
-  }
-
-  private void grantBotImpersonation(UserRepository userRepository, String botName) {
-    User botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
-    EntityReference impersonationRole =
-        Entity.getEntityReferenceByName(
-            Entity.ROLE, AppRepository.APP_BOT_IMPERSONATION_ROLE, Include.NON_DELETED);
-    userRepository.updateBotImpersonation(botUser.getId(), true, impersonationRole);
   }
 
   @Override

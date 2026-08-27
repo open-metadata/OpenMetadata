@@ -30,14 +30,20 @@ const mockSchemaEditor = jest
       value,
       mode,
       readOnly,
+      autoFormat,
+      options,
     }: {
       value: string;
       mode?: { name?: string; json?: boolean };
       readOnly?: boolean;
+      autoFormat?: boolean;
+      options?: { placeholder?: string };
     }) => (
       <div
+        data-autoformat={String(Boolean(autoFormat))}
         data-mode-json={String(Boolean(mode?.json))}
         data-mode-name={mode?.name}
+        data-placeholder={options?.placeholder ?? ''}
         data-readonly={String(Boolean(readOnly))}
         data-testid="schema-editor">
         {value || '<empty>'}
@@ -360,19 +366,24 @@ describe('ManifestJsonWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('displays the sample JSON as a placeholder when value is empty (without writing it to form state)', async () => {
+  it('shows the sample only as a placeholder when value is empty, keeping the editor value empty', async () => {
     const onChange = jest.fn();
     render(<ManifestJsonWidget {...makeProps({ value: '', onChange })} />);
 
-    expect(await screen.findByTestId('schema-editor')).toBeInTheDocument();
-    // Sample is displayed in the editor...
-    expect(screen.getByTestId('schema-editor')).toHaveTextContent(/"entries"/);
-    // ...but we do NOT call onChange on mount — the field may be
-    // populated asynchronously from the saved pipeline config.
+    const editor = await screen.findByTestId('schema-editor');
+
+    // The editor value stays empty — the sample must not leak into form state...
+    expect(editor).toHaveTextContent('<empty>');
+    // ...it is passed only as a placeholder, and typing is not auto-formatted.
+    expect(editor).toHaveAttribute(
+      'data-placeholder',
+      expect.stringContaining('"entries"')
+    );
+    expect(editor).toHaveAttribute('data-autoformat', 'false');
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('displays the sample when value is null without mutating form state', () => {
+  it('keeps the editor empty with a placeholder when value is null', () => {
     const onChange = jest.fn();
     render(
       <ManifestJsonWidget
@@ -380,7 +391,13 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    expect(screen.getByTestId('schema-editor')).toHaveTextContent(/"entries"/);
+    const editor = screen.getByTestId('schema-editor');
+
+    expect(editor).toHaveTextContent('<empty>');
+    expect(editor).toHaveAttribute(
+      'data-placeholder',
+      expect.stringContaining('"entries"')
+    );
     expect(onChange).not.toHaveBeenCalled();
   });
 

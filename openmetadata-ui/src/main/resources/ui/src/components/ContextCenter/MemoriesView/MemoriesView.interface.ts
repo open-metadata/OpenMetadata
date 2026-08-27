@@ -33,6 +33,9 @@ export interface MemoriesViewProps {
   onTogglePin?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
   isPinningMemoryId?: string;
+  isSearching?: boolean;
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
 }
 
 export interface MemoryActionsProps {

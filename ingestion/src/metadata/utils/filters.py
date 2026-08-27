@@ -412,3 +412,15 @@ def filter_by_server(server_filter_pattern: Optional[FilterPattern], server_name
     :return: True for filtering, False otherwise
     """
     return _filter(server_filter_pattern, server_name)
+
+
+def filter_pattern_enabled(filter_pattern: Optional[FilterPattern]) -> bool:  # noqa: UP045
+    """
+    Return True when the pattern would actually include or exclude something,
+    i.e. the user configured includes or excludes. An unset (None) or empty
+    pattern returns False.
+
+    :param filter_pattern: Model defining filtering logic
+    :return: True when includes/excludes are configured, False otherwise
+    """
+    return bool(filter_pattern and (filter_pattern.includes or filter_pattern.excludes))

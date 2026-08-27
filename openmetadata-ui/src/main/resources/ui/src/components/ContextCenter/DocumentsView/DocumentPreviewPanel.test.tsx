@@ -12,127 +12,197 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import {
-  ContextFile,
-  ProcessingStatus,
-} from '../../../generated/entity/data/contextFile';
-import { getListContextMemories } from '../../../rest/contextMemoryAPI';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import DocumentPreviewPanel from './DocumentPreviewPanel.component';
 
-jest.mock('../../../rest/contextMemoryAPI', () => ({
-  getListContextMemories: jest.fn(),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    )
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      'data-testid': testId,
+    }: {
+      onClick?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        btn
+      </button>
+    )
+  ),
+  Card: jest.fn(
+    ({
+      children,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>
+  ),
+  FileIcon: jest.fn(({ type }: { type: string }) => (
+    <span data-testid={`file-icon-${type}`} />
+  )),
+  Typography: jest.fn(
+    ({
+      children,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <span data-testid={testId}>{children}</span>
+  ),
 }));
 
 jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
-  jest.fn(() => <span data-testid="copy-link" />)
+  jest.fn(({ url }: { url: string }) => (
+    <button data-testid="copy-link-btn" data-url={url}>
+      copy
+    </button>
+  ))
 );
 
-jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
-  jest.fn(() => <span data-testid="status-badge" />)
-);
-
-jest.mock('../CreateMemoryModal/CreateMemoryModal.component', () =>
-  jest.fn(({ isOpen, memoryToEdit, viewOnly }) =>
-    isOpen && viewOnly ? (
-      <div data-testid="view-memory-modal">{memoryToEdit?.title}</div>
-    ) : null
-  )
-);
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({
-    currentUser: { name: 'admin', isAdmin: true },
-  }),
-}));
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-const mockGetListContextMemories = getListContextMemories as jest.Mock;
-
-const file: ContextFile = {
+const baseFile: ContextFile = {
   id: 'file-1',
   name: 'report.pdf',
-  fileSize: 1024,
-  processingStatus: ProcessingStatus.Processed,
+  fileExtension: 'pdf',
+  fileSize: 2097152,
+};
+
+const fullFile: ContextFile = {
+  ...baseFile,
+  folder: { id: 'folder-1', type: 'folder', name: 'Reports' },
+  updatedBy: 'alice',
+  updatedAt: Date.now() - 60000,
 };
 
 describe('DocumentPreviewPanel', () => {
-  beforeEach(() => {
-    mockGetListContextMemories.mockResolvedValue({
-      data: [
-        {
-          id: 'm1',
-          name: 'pill-1',
-          title: 'VAT policy',
-          question: 'What is the VAT rate?',
-        },
-        { id: 'm2', name: 'pill-2', title: 'Refund window' },
-      ],
-      paging: { total: 2 },
-    });
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('lists the memories extracted from the file', async () => {
-    render(
-      <DocumentPreviewPanel file={file} url="http://x" onClose={jest.fn()} />
-    );
-
-    expect(await screen.findByText('VAT policy')).toBeInTheDocument();
-    expect(screen.getByText('What is the VAT rate?')).toBeInTheDocument();
-    expect(screen.getByText('Refund window')).toBeInTheDocument();
-    expect(mockGetListContextMemories).toHaveBeenCalledWith({
-      sourceEntityId: 'file-1',
-      fields: 'owners,sourceEntity',
-      limit: 50,
-    });
-  });
-
-  it('opens the view-only memory modal when a memory is clicked', async () => {
-    render(
-      <DocumentPreviewPanel file={file} url="http://x" onClose={jest.fn()} />
-    );
-
-    fireEvent.click(await screen.findByTestId('extracted-memory-m1'));
-
-    expect(screen.getByTestId('view-memory-modal')).toHaveTextContent(
-      'VAT policy'
-    );
-  });
-
-  it('shows an empty message when the file has no memories', async () => {
-    mockGetListContextMemories.mockResolvedValue({
-      data: [],
-      paging: { total: 0 },
-    });
-
-    render(
-      <DocumentPreviewPanel file={file} url="http://x" onClose={jest.fn()} />
-    );
-
-    expect(await screen.findByText('label.no-entity')).toBeInTheDocument();
-  });
-
-  it('shows the processing error for a failed file', async () => {
+  it('renders the preview panel container', () => {
     render(
       <DocumentPreviewPanel
-        file={{
-          ...file,
-          processingStatus: ProcessingStatus.Failed,
-          processingError: 'Object storage is not configured',
-        }}
+        file={baseFile}
         url="http://x"
         onClose={jest.fn()}
       />
     );
 
-    expect(await screen.findByTestId('processing-error')).toHaveTextContent(
-      'Object storage is not configured'
+    expect(screen.getByTestId('document-preview-panel')).toBeInTheDocument();
+  });
+
+  it('renders the file name', () => {
+    render(
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('preview-file-name')).toHaveTextContent(
+      'report.pdf'
+    );
+  });
+
+  it('prefers displayName over name when rendering the file name', () => {
+    render(
+      <DocumentPreviewPanel
+        file={{ ...baseFile, displayName: 'Report Display Name' }}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('preview-file-name')).toHaveTextContent(
+      'Report Display Name'
+    );
+  });
+
+  it('renders the file icon based on file extension', () => {
+    render(
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
+  });
+
+  it('renders the formatted file size', () => {
+    render(
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('2.0 MB')).toBeInTheDocument();
+  });
+
+  it('renders folder, updated-by and updated-at rows when present', () => {
+    render(
+      <DocumentPreviewPanel
+        file={fullFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Reports')).toBeInTheDocument();
+    expect(screen.getByText('alice')).toBeInTheDocument();
+  });
+
+  it('does not render folder, updated-by or updated-at rows when absent', () => {
+    render(
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+    expect(screen.queryByText('alice')).not.toBeInTheDocument();
+  });
+
+  it('calls onClose when the close button is clicked', () => {
+    const onClose = jest.fn();
+    render(
+      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={onClose} />
+    );
+
+    fireEvent.click(screen.getByTestId('close-preview-btn'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the copy link button with the given url', () => {
+    render(
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://example.com/file"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('copy-link-btn')).toHaveAttribute(
+      'data-url',
+      'http://example.com/file'
     );
   });
 });

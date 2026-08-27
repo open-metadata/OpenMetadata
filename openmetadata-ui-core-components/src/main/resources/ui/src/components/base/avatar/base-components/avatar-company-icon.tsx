@@ -6,7 +6,7 @@ const sizes = {
   md: 'size-3.5',
   lg: 'size-4',
   xl: 'size-4.5',
-  '2xl': 'size-5 ring-[1.67px]',
+  '2xl': 'size-5',
 };
 
 interface AvatarCompanyIconProps {
@@ -23,7 +23,7 @@ export const AvatarCompanyIcon = ({
   <img
     alt={alt}
     className={cx(
-      'tw:bg-primary-25 tw:absolute tw:-right-0.5 tw:-bottom-0.5 tw:rounded-full tw:object-cover tw:ring-[1.5px] tw:ring-bg-primary',
+      'tw:bg-primary-25 tw:absolute tw:-right-0.5 tw:-bottom-0.5 tw:rounded-full tw:object-cover tw:outline-[1.5px] tw:outline-bg-primary',
       sizes[size]
     )}
     src={src}

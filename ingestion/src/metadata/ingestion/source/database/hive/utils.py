@@ -63,11 +63,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
             charlen = charlen.group(1)
-            if attype == "decimal":
+            if any(col_type.startswith(prefix) for prefix in complex_data_types):
+                # For complex types the regex above matches the parameters of a nested
+                # type instead, e.g. array<struct<a:decimal(16,4)>> yields "16,4".
+                # The nested fields are resolved later from `system_data_type`.
+                args = []
+            elif attype == "decimal":
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
-            elif attype.startswith("struct"):
-                args = []
             else:
                 args = (int(charlen),)
             coltype = coltype(*args)
@@ -157,9 +160,9 @@ def get_table_comment(  # pylint: disable=unused-argument
     cursor = connection.execute(text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)))
     try:
         for result in list(cursor):
-            data = result.values()
+            data = tuple(result)
             if data[1] and data[1].strip() == "comment":
-                return {"text": data[2] if data and data[2] else None}
+                return {"text": data[2].strip() if data[2] else None}
     except Exception:
         return {"text": None}
     return {"text": None}

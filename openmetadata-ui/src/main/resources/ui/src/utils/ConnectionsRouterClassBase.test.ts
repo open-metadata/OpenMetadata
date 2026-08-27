@@ -26,11 +26,6 @@ jest.mock('./RouterUtils', () => ({
     `/${serviceCategory}/add-service`,
   getPathByServiceFQN: (serviceCategory: string, fqn: string) =>
     `/service/${serviceCategory}/${fqn}/connection`,
-  getLogsViewerPath: (
-    logEntityType: string,
-    logEntityName: string,
-    ingestionName: string
-  ) => `/logs/${logEntityType}/${logEntityName}/${ingestionName}`,
   getSettingPath: (category: string, option: string) =>
     `/settings/${category}/${option}`,
 }));
@@ -68,6 +63,15 @@ describe('ConnectionsRouterClassBase', () => {
 
     it('isEmbeddedMode should always return false', () => {
       expect(router.isEmbeddedMode()).toBe(false);
+    });
+
+    // The settings services route exists by default. Only a mode that replaces the listing
+    // outright overrides this — and deliberately not isEmbeddedMode(), which is also true while
+    // Classic is merely displaying an embedded experience.
+    it('isServicesSettingsRouteDisabled should always return false', () => {
+      router.setEmbeddedMode(true);
+
+      expect(router.isServicesSettingsRouteDisabled()).toBe(false);
     });
   });
 
@@ -118,14 +122,6 @@ describe('ConnectionsRouterClassBase', () => {
       expect(router.getPathByServiceFQN('databaseServices', 'my-db')).toBe(
         '/service/databaseServices/my-db/connection'
       );
-    });
-  });
-
-  describe('getLogsViewerPath', () => {
-    it('should return the logs viewer path', () => {
-      expect(
-        router.getLogsViewerPath('databaseServices', 'my-db', 'pipeline-1')
-      ).toBe('/logs/databaseServices/my-db/pipeline-1');
     });
   });
 

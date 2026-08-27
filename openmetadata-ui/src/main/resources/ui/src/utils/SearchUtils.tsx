@@ -150,7 +150,7 @@ export const getGroupLabel = (index: string) => {
       break;
 
     case SearchIndex.KNOWLEDGE_PAGE_INDEX:
-      label = i18n.t('label.knowledge-center');
+      label = i18n.t('label.context-center');
       GroupIcon = ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon;
 
       break;

@@ -64,6 +64,7 @@ jest.mock('../utils/EdgeStyleUtils', () => ({
     opacity: 1,
     strokeWidth: 2,
   }),
+  computeEdgeVisualState: jest.fn().mockReturnValue('default'),
 }));
 
 jest.mock('../utils/EntityLineageEdgeUtils', () => ({

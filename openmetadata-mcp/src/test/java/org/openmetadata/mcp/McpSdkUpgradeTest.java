@@ -175,18 +175,120 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
-  void testServerCapabilitiesDoNotAdvertiseLogging() {
-    // The stateless MCP server has no handler for logging/setLevel.
-    // Advertising logging capability causes spec-compliant clients (e.g. VSCode)
-    // to call logging/setLevel, which fails with MethodNotFound.
-    McpSchema.ServerCapabilities capabilities =
-        McpSchema.ServerCapabilities.builder()
-            .tools(true)
-            .prompts(true)
-            .resources(true, true)
-            .build();
+  void testMcpUtilsGetToolPropertiesSetsTitleAndReadOnlyAnnotation() {
+    // Anthropic's Claude Connectors Directory requires every tool to carry a title plus
+    // readOnlyHint/destructiveHint. Verify a read-only tool is annotated correctly.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
 
+    McpSchema.Tool searchTool =
+        tools.stream().filter(t -> "search_metadata".equals(t.name())).findFirst().orElse(null);
+
+    assertThat(searchTool).isNotNull();
+    assertThat(searchTool.title()).isEqualTo("Search Metadata");
+    assertThat(searchTool.annotations()).isNotNull();
+    assertThat(searchTool.annotations().readOnlyHint()).isTrue();
+    assertThat(searchTool.annotations().destructiveHint()).isFalse();
+  }
+
+  @Test
+  void testMcpUtilsGetToolPropertiesMarksPatchEntityAsDestructive() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    McpSchema.Tool patchTool =
+        tools.stream().filter(t -> "patch_entity".equals(t.name())).findFirst().orElse(null);
+
+    assertThat(patchTool).isNotNull();
+    assertThat(patchTool.annotations()).isNotNull();
+    assertThat(patchTool.annotations().readOnlyHint()).isFalse();
+    assertThat(patchTool.annotations().destructiveHint()).isTrue();
+    // A JSONPatch is not idempotent in general - an 'add' to '/owners/-' appends again on a retry -
+    // so a client must not treat a retry as free. The MCP default is false, but state it.
+    assertThat(patchTool.annotations().idempotentHint()).isFalse();
+  }
+
+  /**
+   * Guards against copy-paste duplication when a tool description is edited. These are sent to the
+   * model on every request, so a repeated sentence is paid for on every call - and folding two tools
+   * together left exactly that in patch_entity once already.
+   */
+  @Test
+  void testToolDescriptionsDoNotRepeatThemselves() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    for (McpSchema.Tool tool : tools) {
+      List<String> sentences =
+          java.util.Arrays.stream(tool.description().split("(?<=[.!?])\\s+"))
+              .map(String::trim)
+              .filter(sentence -> sentence.length() > 40)
+              .toList();
+      assertThat(sentences)
+          .as("tool '%s' repeats a sentence in its description", tool.name())
+          .doesNotHaveDuplicates();
+    }
+  }
+
+  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
+      List.of("create_entity", "create_test_case");
+
+  @Test
+  void testMcpUtilsGetToolPropertiesMarksUpsertCapableCreateToolsAsDestructive() {
+    // These tools call repository.createOrUpdate(), so an existing entity with the requested
+    // name/FQN is silently overwritten instead of producing a create conflict. destructiveHint
+    // must be true so MCP clients require confirmation before the overwrite.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .filteredOn(tool -> UPSERT_CAPABLE_CREATE_TOOLS.contains(tool.name()))
+        .hasSize(UPSERT_CAPABLE_CREATE_TOOLS.size())
+        .allSatisfy(
+            tool ->
+                assertThat(tool.annotations().destructiveHint())
+                    .as("destructiveHint for tool %s", tool.name())
+                    .isTrue());
+  }
+
+  @Test
+  void testMcpUtilsGetToolPropertiesEveryToolHasTitleAndAnnotations() {
+    // Regression guard: a new tool added to tools.json without title/annotations would fail
+    // Claude Connectors Directory review. Fail the build instead of failing review.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .allSatisfy(
+            tool -> {
+              assertThat(tool.title()).as("title for tool %s", tool.name()).isNotBlank();
+              assertThat(tool.annotations()).as("annotations for tool %s", tool.name()).isNotNull();
+            });
+  }
+
+  @Test
+  void testMcpUtilsGetToolPropertiesEveryToolHasExplicitOpenWorldHintFalse() {
+    // Regression guard: openWorldHint defaults to true when omitted, which would mislabel
+    // every tool as reaching external/public systems and fail OpenAI Apps SDK review
+    // ("incorrect or missing action labels"). All tools only touch our own OpenMetadata
+    // catalog, so every tool must set this explicitly to false.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .allSatisfy(
+            tool ->
+                assertThat(tool.annotations().openWorldHint())
+                    .as("openWorldHint for tool %s", tool.name())
+                    .isFalse());
+  }
+
+  @Test
+  void testServerAdvertisesOnlyHandledCapabilities() {
+    // Every advertised capability must have a handler. Logging would make spec-compliant clients
+    // (e.g. VSCode) call logging/setLevel; resources would let them call resources/list and
+    // resources/subscribe. The stateless server handles none of those, so they must stay absent.
+    McpSchema.ServerCapabilities capabilities = new McpServer().buildServerCapabilities();
+
+    assertThat(capabilities.tools()).isNotNull();
+    assertThat(capabilities.prompts()).isNotNull();
     assertThat(capabilities.logging()).isNull();
+    assertThat(capabilities.resources()).isNull();
+    assertThat(capabilities.completions()).isNull();
   }
 
   @Test

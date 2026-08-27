@@ -27,7 +27,6 @@ import { LabelType, TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/ColorUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { renderIcon } from '../../../utils/IconUtils';
 import {
   getClassificationTagPath,
   getGlossaryPath,
@@ -35,6 +34,7 @@ import {
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
+import { Icon } from '../../common/Icon/Icon';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
@@ -145,14 +145,14 @@ const TagsV1 = ({
       return null;
     }
 
-    if (tag.style?.iconURL) {
-      return renderIcon(tag.style.iconURL, {
-        size: 12,
-        style: { marginRight: 4, flexShrink: 0 },
-      });
-    }
-
-    return startIcon;
+    return (
+      <Icon
+        className="tw:mr-1 tw:shrink-0"
+        fallback={startIcon}
+        iconValue={tag.style?.iconURL}
+        size={12}
+      />
+    );
   }, [hideIcon, tag.style?.iconURL, startIcon]);
 
   const tagContent = useMemo(
@@ -185,7 +185,7 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <Badge
-          className="tw:cursor-pointer tw:text-utility-brand-700 tw:ring-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50"
+          className="tw:cursor-pointer tw:text-utility-brand-700 tw:outline-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50"
           color="brand"
           size="sm"
           type="color">

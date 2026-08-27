@@ -395,6 +395,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
             <Suspense fallback={<Loader />}>
               <KnowledgeGraph3DScene
                 data={view}
+                focusNodeId={entity.id}
                 gaps={gaps}
                 getLinkTooltip={getLinkTooltip}
                 getNodeTooltip={getNodeTooltip}
@@ -440,6 +441,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
                   graph={adapted}
                   node={selectedNode}
                   onClose={clearSelection}
+                  onSelectNode={handleSelectNode}
                 />
               )
             )}

@@ -176,8 +176,8 @@ public final class TableDataQualityPage extends PageObject {
   }
 
   /**
-   * Opens the action-dropdown for the named test case and clicks Edit. Waits for
-   * the edit drawer title — works regardless of test type (table or column).
+   * Opens the action-dropdown for the named test case and clicks Edit. Waits for the
+   * prefetched form body, which works regardless of test type (table or column).
    */
   public TableDataQualityPage openEditDrawer(final String testCaseName) {
     byTestId("action-dropdown-" + testCaseName).click();
@@ -198,7 +198,7 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("update-btn").click());
+        () -> byTestId("create-btn").click());
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
@@ -226,7 +226,7 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("update-btn").click());
+        () -> byTestId("create-btn").click());
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
@@ -253,7 +253,7 @@ public final class TableDataQualityPage extends PageObject {
     return value;
   }
 
-  /** Deletes the test case through the action menu + "DELETE" confirm dialog. */
+  /** Deletes the test case through the action menu and confirmation button. */
   public TableDataQualityPage deleteTestCase(final String testCaseName) {
     byTestId("action-dropdown-" + testCaseName).click();
     byTestId("delete-" + testCaseName).click();

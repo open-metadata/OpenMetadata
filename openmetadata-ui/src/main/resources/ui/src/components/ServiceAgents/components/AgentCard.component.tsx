@@ -12,9 +12,11 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   Card,
+  Skeleton,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
@@ -32,9 +34,11 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { useScheduleDescriptionTexts } from '../../../hooks/useScheduleDescriptionTexts';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
+  canRunAgent,
   fmtNum,
   formatEtaLong,
   getAgentTypeLabelKey,
@@ -52,8 +56,9 @@ import StatusPill from './shared/StatusPill.component';
 
 interface AgentCardProps {
   agent: Agent;
+  allowedActions?: string[];
   permissions?: AgentActionPermissions;
-  onAction: (action: string, agent: Agent) => void;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
@@ -61,6 +66,7 @@ interface AgentCardProps {
 
 const AgentCard: FC<AgentCardProps> = ({
   agent,
+  allowedActions,
   permissions = NO_AGENT_PERMISSIONS,
   onAction,
   onLogs,
@@ -68,6 +74,7 @@ const AgentCard: FC<AgentCardProps> = ({
   onRunDetails,
 }) => {
   const { t } = useTranslation();
+  const { isPending, isUnavailable } = useAgentActionAvailability();
   const { descriptionFirstPart, descriptionSecondPart } =
     useScheduleDescriptionTexts(agent.schedule);
   const scheduleText = [descriptionFirstPart, descriptionSecondPart]
@@ -80,6 +87,9 @@ const AgentCard: FC<AgentCardProps> = ({
   const isQueued = agent.status === 'queued';
   const isSuccess = agent.status === 'success';
   const isNone = agent.status === 'none';
+  // `enabled` defaults to true in the IngestionPipeline schema, so an absent
+  // flag means the agent is running and only an explicit false means paused.
+  const isPaused = agent.enabled === false;
   const showLastRunMetric =
     isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
   const finishedSuffix = agent.finishedAt
@@ -94,6 +104,8 @@ const AgentCard: FC<AgentCardProps> = ({
     ) : (
       <Database01 size={15} />
     );
+  // Runs read oldest-to-newest, so the latest one is the rightmost dot.
+  const latestRunIndex = agent.recentRuns.length - 1;
 
   return (
     <Card
@@ -151,46 +163,50 @@ const AgentCard: FC<AgentCardProps> = ({
           <Box
             align="center"
             className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
-            <StatusPill status={agent.status} />
-            {isRunning && (
-              <Metric
-                dataTestId="agent-assets-metric"
-                icon={unitIcon}
-                label={unitVerbLabel}
-                value={fmtNum(agent.assets)}
-              />
-            )}
-            {isRunning && (
-              <Metric
-                dataTestId="agent-eta-metric"
-                icon={<Clock size={15} />}
-                value={etaLabel}
-              />
-            )}
-            {showLastRunMetric && (
-              <Metric
-                icon={unitIcon}
-                label={`${unitLabel}${finishedSuffix}`}
-                value={fmtNum(agent.assets)}
-              />
-            )}
-            {isQueued && agent.after && (
-              <span className="tw:text-sm tw:text-tertiary">
-                {t('label.starts-after')}{' '}
-                <strong className="tw:font-semibold tw:text-secondary">
-                  {agent.after}
-                </strong>
-              </span>
-            )}
-            {isFailed && agent.failStep && (
-              <Metric
-                icon={<AlertCircle size={15} />}
-                label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                  'label.before-error'
-                )}`}
-                tone="error"
-                value={`${t('label.failed-at')} ${agent.failStep}`}
-              />
+            {isPaused ? (
+              <Badge
+                className="tw:gap-1.5 tw:font-semibold"
+                color="warning"
+                data-testid="paused-pipeline-badge"
+                size="sm"
+                type="pill-color">
+                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
+                {t('label.paused')}
+              </Badge>
+            ) : (
+              <>
+                <StatusPill status={agent.status} />
+                {isRunning && (
+                  <Metric
+                    dataTestId="agent-assets-metric"
+                    icon={unitIcon}
+                    label={unitVerbLabel}
+                    value={fmtNum(agent.assets)}
+                  />
+                )}
+                {isRunning && (
+                  <Metric
+                    dataTestId="agent-eta-metric"
+                    icon={<Clock size={15} />}
+                    value={etaLabel}
+                  />
+                )}
+                {showLastRunMetric && (
+                  <Metric
+                    icon={unitIcon}
+                    label={`${unitLabel}${finishedSuffix}`}
+                    value={fmtNum(agent.assets)}
+                  />
+                )}
+                {isQueued && agent.after && (
+                  <span className="tw:text-sm tw:text-tertiary">
+                    {t('label.starts-after')}{' '}
+                    <strong className="tw:font-semibold tw:text-secondary">
+                      {agent.after}
+                    </strong>
+                  </span>
+                )}
+              </>
             )}
           </Box>
           {isRunning && (
@@ -206,9 +222,13 @@ const AgentCard: FC<AgentCardProps> = ({
               <Box className="tw:gap-1">
                 {agent.recentRuns.map((run, index) => (
                   <button
+                    aria-label={t('message.run-status-click-details', {
+                      status: t(RUN_META[run.status].labelKey),
+                    })}
                     className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
                       RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
-                    }${index === 0 ? '' : ' tw:opacity-[0.55]'}`}
+                    }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
+                    data-run-status={run.status}
                     data-testid="agent-run-dot"
                     key={run.id}
                     title={t('message.run-status-click-details', {
@@ -256,9 +276,10 @@ const AgentCard: FC<AgentCardProps> = ({
           </Box>
         )}
 
-        {/* actions */}
+        {/* actions — Diagnose opens the run history, which is read from OpenMetadata's own
+            tables, so it stays available while the pipeline service does not answer */}
         <Box align="center" className="tw:shrink-0 tw:gap-2">
-          {isFailed ? (
+          {isFailed && (
             <Button
               className="tw:font-semibold"
               color="primary"
@@ -268,33 +289,54 @@ const AgentCard: FC<AgentCardProps> = ({
               onClick={() => onRunDetails(agent)}>
               {t('label.diagnose')}
             </Button>
+          )}
+          {isPending ? (
+            <span
+              aria-busy
+              aria-label={t('label.loading')}
+              aria-live="polite"
+              className="tw:flex tw:items-center tw:gap-2"
+              data-testid="agent-card-actions-skeleton"
+              role="status">
+              <Skeleton height={32} variant="rounded" width={88} />
+              <Skeleton className="tw:size-8.5" variant="rounded" />
+            </span>
           ) : (
-            <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
-              color="secondary"
-              data-testid="logs-button"
-              iconLeading={<AlignLeft size={15} />}
-              size="sm"
-              onClick={() => onLogs(agent)}>
-              {t('label.log-plural')}
-            </Button>
+            <>
+              {!isFailed && (
+                <Button
+                  className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+                  color="secondary"
+                  data-testid="logs-button"
+                  iconLeading={<AlignLeft size={15} />}
+                  isDisabled={isUnavailable}
+                  size="sm"
+                  onClick={() => onLogs(agent)}>
+                  {t('label.log-plural')}
+                </Button>
+              )}
+              {canRunAgent(agent, permissions) && (
+                <Button
+                  className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+                  color="secondary"
+                  data-testid="run-agent-button"
+                  iconLeading={<PlayIcon height={14} width={14} />}
+                  isDisabled={isUnavailable}
+                  size="sm"
+                  onClick={() => onRun(agent)}>
+                  {t('label.run')}
+                </Button>
+              )}
+              <AgentOverflowMenu
+                allowedActions={allowedActions}
+                enabled={agent.enabled}
+                isDisabled={isUnavailable}
+                permissions={permissions}
+                status={agent.status}
+                onAction={(action) => onAction(action, agent)}
+              />
+            </>
           )}
-          {!isRunning && permissions.trigger && (
-            <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
-              color="secondary"
-              data-testid="run-agent-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
-              size="sm"
-              onClick={() => onRun(agent)}>
-              {t('label.run')}
-            </Button>
-          )}
-          <AgentOverflowMenu
-            permissions={permissions}
-            status={agent.status}
-            onAction={(action) => onAction(action, agent)}
-          />
         </Box>
       </Box>
     </Card>

@@ -22,6 +22,13 @@ import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
 
 interface DeploymentSummaryCardProps {
   agents: Agent[];
+  /**
+   * How many agents the service has in total, when the caller knows it. `agents` is one page of a
+   * paginated — and filterable — list, so without this the card would present a page as the whole
+   * deployment ("8 of 12 finished" beside a tab badge reading 30). Agents outside the page count as
+   * unfinished, making the summary a lower bound rather than an overstatement.
+   */
+  totalAgents?: number;
 }
 
 interface SummaryStatProps {
@@ -52,12 +59,17 @@ const SummaryStat: FC<SummaryStatProps> = ({
   </div>
 );
 
-const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
+const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
+  agents,
+  totalAgents,
+}) => {
   const { t } = useTranslation();
   // Agents with status 'none' have never run — they are not part of any
   // deployment and must not surface as queued/in-progress in the banner.
   const activeAgents = agents.filter((a) => a.status !== 'none');
-  const total = activeAgents.length;
+  // Denominator counts the agents this page cannot see; the render gate below stays on the page's own
+  // active agents, so a service whose agents have all never run still shows nothing.
+  const total = Math.max(activeAgents.length, totalAgents ?? 0);
   const running = activeAgents.filter((a) => a.status === 'running').length;
   const done = activeAgents.filter((a) => a.status === 'success').length;
   const failed = activeAgents.filter((a) => a.status === 'failed').length;
@@ -65,9 +77,26 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
   // Assets ingested reflects only the Metadata agent — other agents count
   // different units (queries, models) or profile existing assets rather than
   // ingesting new ones.
-  const assets = activeAgents
-    .filter((a) => a.pipelineType === PipelineType.Metadata)
-    .reduce((sum, a) => sum + a.assets, 0);
+  //
+  // Of several Metadata agents, the newest run wins rather than their sum: each agent's `assets` is
+  // already its own latest-run figure, so adding them reports the same catalog two or three times
+  // over — most visibly after re-running one pipeline. A running run carries a fresh timestamp, so
+  // it takes precedence while it is in flight. (Metadata pipelines with disjoint filters do ingest
+  // different assets, and this under-reports that case; the card is a deployment snapshot, not an
+  // all-time total.)
+  const latestMetadataAgent = activeAgents
+    .filter(
+      (a) =>
+        // A queued agent's run has not started, so it has nothing to report; picking it because it is
+        // "newest" would blank the figure the moment the next run is scheduled.
+        a.pipelineType === PipelineType.Metadata && a.status !== 'queued'
+    )
+    .reduce<Agent | undefined>(
+      (latest, a) =>
+        !latest || (a.lastRunAt ?? 0) > (latest.lastRunAt ?? 0) ? a : latest,
+      undefined
+    );
+  const assets = latestMetadataAgent?.assets ?? 0;
   const errors = activeAgents.reduce((sum, a) => sum + a.errors, 0);
   const etas = activeAgents
     .filter((a) => a.status === 'running' && a.eta !== null)
@@ -79,7 +108,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
       : 0;
   const allDone = running === 0 && done + failed === total;
 
-  if (total === 0) {
+  if (activeAgents.length === 0) {
     return null;
   }
 

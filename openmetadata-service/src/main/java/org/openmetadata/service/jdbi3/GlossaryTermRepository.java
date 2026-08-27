@@ -109,10 +109,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.rdf.RdfUpdater;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -127,7 +124,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
-import org.openmetadata.service.util.MemoryOwnership;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -138,9 +134,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms,style";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms,style";
-  static final String FIELD_DERIVED_FROM = "derivedFrom";
 
-  final FeedRepository feedRepository = Entity.getFeedRepository();
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
@@ -258,20 +252,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
-    if (fields.contains(FIELD_DERIVED_FROM)) {
-      entity.setDerivedFrom(getDerivedFrom(entity));
-    }
-  }
-
-  /**
-   * Returns the context memory from which the Memory Agent created this glossary term.
-   * Edge direction: from=term → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
-   */
-  private EntityReference getDerivedFrom(GlossaryTerm entity) {
-    final List<EntityReference> refs =
-        findTo(
-            entity.getId(), Entity.GLOSSARY_TERM, Relationship.DERIVED_FROM, Entity.CONTEXT_MEMORY);
-    return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
   @Override
@@ -386,9 +366,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
     entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
     entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
-    if (!fields.contains(FIELD_DERIVED_FROM)) {
-      entity.setDerivedFrom(null);
-    }
   }
 
   @Override
@@ -1574,12 +1551,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
   protected EntityReference getParentReference(GlossaryTerm entity) {
     return entity.getParent() != null ? entity.getParent() : entity.getGlossary();
   }
@@ -1745,15 +1716,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void updateEntityLinks(String oldFqn, String newFqn, GlossaryTerm updated) {
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    EntityLink newAbout = new EntityLink(GLOSSARY_TERM, newFqn);
-    feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+    ConversationRepository conversations = Entity.getConversationRepository();
+    conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
     List<EntityReference> childTerms =
         findTo(updated.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
 
     for (EntityReference child : childTerms) {
-      newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
-      feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+      String childNewFqn = child.getFullyQualifiedName();
+      String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+      conversations.updateEntityReference(child, childOldFqn);
     }
 
     // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
@@ -2095,13 +2067,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
-      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
-    }
-
-    private boolean managedFieldChanged() {
-      return !Objects.equals(original.getName(), updated.getName())
-          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
-          || !Objects.equals(original.getDescription(), updated.getDescription());
     }
 
     /**

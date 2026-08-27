@@ -67,13 +67,13 @@ export const mockEntitySearchConfig = {
   fieldValueBoosts: [
     {
       field: 'usageSummary.monthlyStats.count',
-      factor: 0.002,
+      factor: 0.000025,
       modifier: 'log1p',
       missing: 0,
     },
     {
       field: 'usageSummary.monthlyStats.percentileRank',
-      factor: 0.0005,
+      factor: 0.0025,
       modifier: 'none',
       missing: 0,
     },

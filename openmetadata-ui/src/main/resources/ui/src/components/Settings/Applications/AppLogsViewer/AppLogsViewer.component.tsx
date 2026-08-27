@@ -12,7 +12,6 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { LazyLog } from '@melloware/react-logviewer';
 import {
   Badge,
   Button,
@@ -24,7 +23,7 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { capitalize, isEmpty, isNil } from 'lodash';
+import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
@@ -32,12 +31,12 @@ import { StepStats } from '../../../../generated/entity/applications/appRunRecor
 import {
   formatLatencyAverage,
   formatThroughput,
+  getAppRunFailureLogs,
   getEntityStatsData,
 } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
-import { formatJsonString } from '../../../../utils/StringUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
-import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import './app-logs-viewer.less';
 import {
   AppLogsViewerProps,
@@ -49,6 +48,7 @@ import ReindexFailures from './ReindexFailures.component';
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
   const {
     successContext,
@@ -95,50 +95,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
     return Math.max(0, end - startTime);
   }, [startTime, endTime, now]);
 
-  const handleJumpToEnd = () => {
-    const logsBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
-    }
-  };
-
-  const logsRender = useCallback(
-    (logs: string) =>
-      logs && (
-        <Row className="p-t-sm">
-          <Col className="d-flex justify-end" span={24}>
-            <Space size="small">
-              <Button
-                ghost
-                data-testid="jump-to-end-button"
-                type="primary"
-                onClick={handleJumpToEnd}>
-                {t('label.jump-to-end')}
-              </Button>
-
-              <CopyToClipboardButton copyText={logs} />
-            </Space>
-          </Col>
-
-          <Col
-            className="p-t-md h-min-400 lazy-log-container"
-            data-testid="lazy-log"
-            span={24}>
-            <LazyLog
-              caseInsensitive
-              enableSearch
-              selectableLines
-              extraLines={1} // 1 is to be add so that linux users can see last line of the log
-              text={logs}
-            />
-          </Col>
-        </Row>
-      ),
-    [handleJumpToEnd]
-  );
+  const failureLogs = useMemo(() => getAppRunFailureLogs(data), [data]);
 
   const statsRender = useCallback(
     (
@@ -500,7 +457,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats total m-l-sm"
-              label={totalProcessed}
+              label={toString(totalProcessed)}
             />
           </div>
         ),
@@ -520,7 +477,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats success m-l-sm"
-              label={totalSuccess}
+              label={toString(totalSuccess)}
             />
           </div>
         ),
@@ -540,7 +497,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats failure m-l-sm"
-              label={totalFailed}
+              label={toString(totalFailed)}
             />
           </div>
         ),
@@ -717,12 +674,15 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {failureContext?.stats?.entityStats &&
         entityStatsRenderer(failureContext.stats.entityStats)}
 
-      {logsRender(
-        formatJsonString(
-          JSON.stringify(
-            failureContext?.stackTrace ?? failureContext?.failure ?? {}
-          )
-        )
+      {failureLogs && (
+        <div className="m-t-md">
+          <Button
+            data-testid="view-logs-button"
+            type="link"
+            onClick={() => setShowLogsModal(true)}>
+            {t('label.view-entity', { entity: t('label.log-plural') })}
+          </Button>
+        </div>
       )}
 
       {hasFailures && (
@@ -739,6 +699,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       <ReindexFailures
         visible={showFailuresDrawer}
         onClose={() => setShowFailuresDrawer(false)}
+      />
+
+      <LogViewerModal
+        logs={failureLogs}
+        open={showLogsModal}
+        title={t('label.log-plural')}
+        onClose={() => setShowLogsModal(false)}
       />
     </>
   );

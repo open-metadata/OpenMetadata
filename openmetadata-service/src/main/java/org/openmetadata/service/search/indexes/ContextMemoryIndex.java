@@ -16,10 +16,13 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
@@ -72,26 +75,38 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   private void applyShareConfig(Map<String, Object> doc) {
-    if (memory.getShareConfig() == null) {
-      doc.put("visibility", null);
-      doc.put("sharedWithIds", List.of());
-      return;
-    }
-    doc.put(
-        "visibility",
-        memory.getShareConfig().getVisibility() != null
-            ? memory.getShareConfig().getVisibility().value()
-            : null);
+    doc.putAll(shareConfigFields(memory));
+  }
+
+  /**
+   * The share-config fields the search-time privacy filter matches on, as indexed. Exposed as a
+   * static so the vector chunk documents ({@link
+   * org.openmetadata.service.search.vector.VectorDocBuilder}) stamp byte-identical values to the
+   * entity document: {@link
+   * org.openmetadata.service.search.security.ContextMemorySearchVisibility} is applied to both, so
+   * any divergence between them is a privacy bug rather than a cosmetic inconsistency.
+   */
+  public static Map<String, Object> shareConfigFields(ContextMemory memory) {
+    MemoryShareConfig shareConfig = memory.getShareConfig();
+    MemoryVisibility visibility = shareConfig == null ? null : shareConfig.getVisibility();
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put("visibility", visibility == null ? null : visibility.value());
+    fields.put("sharedWithIds", sharedWithIds(shareConfig));
+    return fields;
+  }
+
+  private static List<String> sharedWithIds(MemoryShareConfig shareConfig) {
     List<String> sharedWithIds = new ArrayList<>();
-    for (MemorySharedPrincipal principal : listOrEmpty(memory.getShareConfig().getSharedWith())) {
-      if (principal == null
-          || principal.getPrincipal() == null
-          || principal.getPrincipal().getId() == null) {
-        continue;
+    List<MemorySharedPrincipal> sharedWith =
+        shareConfig == null ? List.of() : listOrEmpty(shareConfig.getSharedWith());
+    for (MemorySharedPrincipal principal : sharedWith) {
+      if (principal != null
+          && principal.getPrincipal() != null
+          && principal.getPrincipal().getId() != null) {
+        sharedWithIds.add(principal.getPrincipal().getId().toString());
       }
-      sharedWithIds.add(principal.getPrincipal().getId().toString());
     }
-    doc.put("sharedWithIds", sharedWithIds);
+    return sharedWithIds;
   }
 
   private void applyEntityReferences(Map<String, Object> doc) {
@@ -100,7 +115,6 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("relatedEntities", related);
     doc.put("rootMemory", getEntityWithDisplayName(memory.getRootMemory()));
     doc.put("parentMemory", getEntityWithDisplayName(memory.getParentMemory()));
-    doc.put("sourceFile", getEntityWithDisplayName(memory.getSourceFile()));
   }
 
   public static Map<String, Float> getFields() {

@@ -108,6 +108,8 @@ export default defineConfig(async ({ mode }) => {
     env.VITE_DEV_SERVER_TARGET ||
     env.DEV_SERVER_TARGET ||
     'http://localhost:8585/';
+  const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
+  const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
 
   // Use empty base so dynamic imports use relative paths
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
@@ -117,6 +119,37 @@ export default defineConfig(async ({ mode }) => {
       cspNonce: '${cspNonce}', // Placeholder replaced by Java backend at runtime
     },
     plugins: [
+      // Rewrites `import { Home02, User01 } from '@untitledui/icons'` (a barrel
+      // import that forces Rollup to visit ~1,200 icon files during transform)
+      // into per-icon deep imports. sideEffects: false in the package, so this
+      // is behaviour-preserving; the icons library ships one .mjs per icon.
+      // Measured: ~1,000 fewer transforms → ~35 s off vite build on M-series,
+      // more on 2-core Actions runners. Kept minimal on purpose; other barrel
+      // packages (@ant-design/icons, lodash, react-aria) did not move the
+      // needle in the same experiment because their code paths default-import
+      // or transitively re-import the barrel from antd internals.
+      {
+        name: 'barrel-optimize-untitled-icons',
+        enforce: 'pre' as const,
+        transform(code: string, id: string) {
+          if (!/\.(tsx?|jsx?)$/.test(id.split('?')[0])) return null;
+          if (!code.includes('@untitledui/icons')) return null;
+          const out = code.replace(
+            /import\s*\{([^}]+)\}\s*from\s*['"]@untitledui\/icons['"];?/g,
+            (_m, names: string) =>
+              names
+                .split(',')
+                .map((n) => n.trim())
+                .filter(Boolean)
+                .map((spec) => {
+                  const [orig] = spec.split(/\s+as\s+/);
+                  return `import { ${spec} } from '@untitledui/icons/${orig.trim()}';`;
+                })
+                .join('\n'),
+          );
+          return out === code ? null : { code: out, map: null };
+        },
+      },
       {
         name: 'html-transform',
         transformIndexHtml(html: string) {
@@ -164,10 +197,12 @@ export default defineConfig(async ({ mode }) => {
           filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,
         }),
       mode === 'production' &&
+        !isPlaywrightBundle &&
         viteCompression({
           algorithm: 'brotliCompress',
           ext: '.br',
-          threshold: 1024, // Only compress files larger than 1KB
+          // Keep deployed artifacts and the Brotli bundle budget on one compression path.
+          threshold: 0,
           deleteOriginFile: false, // Keep original files for fallback
           // Same exclusion list — woff2 is already brotli-compressed internally.
           filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,
@@ -205,10 +240,6 @@ export default defineConfig(async ({ mode }) => {
       dedupe: [
         'react',
         'react-dom',
-        '@mui/material',
-        '@mui/system',
-        '@emotion/react',
-        '@emotion/styled',
         'react-aria',
         'react-aria-components',
         'react-stately',
@@ -223,7 +254,7 @@ export default defineConfig(async ({ mode }) => {
     },
 
     css: {
-      preprocessorMaxWorkers: 1, // Disable parallel Less processing to avoid race conditions in CI
+      preprocessorMaxWorkers: true,
       preprocessorOptions: {
         less: {
           javascriptEnabled: true,
@@ -291,7 +322,7 @@ export default defineConfig(async ({ mode }) => {
       target: ['chrome93', 'edge93', 'firefox91', 'safari16'],
       minify: mode === 'production' ? 'esbuild' : false,
       cssMinify: 'esbuild',
-      cssCodeSplit: true,
+      cssCodeSplit: !isPlaywrightBundle,
       reportCompressedSize: false,
       chunkSizeWarningLimit: 1500,
       // Vite auto-emits <link rel="modulepreload"> for the entry chunk's
@@ -303,7 +334,16 @@ export default defineConfig(async ({ mode }) => {
       // count, and we're not the right project to be carrying it.
       modulePreload: { polyfill: false },
       rollupOptions: {
+        onwarn(warning, warn) {
+          if (isPlaywrightBundle && warning.code === 'CIRCULAR_CHUNK') {
+            throw new Error(warning.message);
+          }
+          warn(warning);
+        },
         output: {
+          entryFileNames: isPlaywrightBuild
+            ? 'assets/app-entry-[hash].js'
+            : 'assets/[name]-[hash].js',
           assetFileNames: (assetInfo: PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
@@ -316,105 +356,104 @@ export default defineConfig(async ({ mode }) => {
             return `assets/[name]-[hash][extname]`;
           },
           manualChunks: (id: string) => {
-            if (!id.includes('node_modules')) {
+            const normalizedId = id.split('?')[0].replaceAll('\\', '/');
+
+            if (isPlaywrightBundle) {
+              // Keep every connector schema independently lazy so the minimum
+              // chunk-size pass cannot attach shared shell code and preload the
+              // full connector catalog during an authenticated app boot.
+              if (normalizedId.includes('/src/jsons/connectionSchemas/')) {
+                const schemaPath = normalizedId.split(
+                  '/src/jsons/connectionSchemas/'
+                )[1];
+
+                return `app-e2e-schema-${schemaPath
+                  .replace(/\.json$/, '')
+                  .replaceAll(/[^a-zA-Z0-9_-]/g, '-')}`;
+              }
+              if (
+                normalizedId.includes('/src/components/MyData/') ||
+                normalizedId.includes('/src/pages/MyDataPage/') ||
+                normalizedId.includes('/src/components/KnowledgeCenter/') ||
+                normalizedId.includes('/src/utils/LandingPageWidget/') ||
+                /\/src\/utils\/(?:CustomizeMyDataPage|CustomizableLandingPage|DataAssetService|LandingPageWidgetIconUtils)/.test(
+                  normalizedId
+                )
+              ) {
+                return 'app-e2e-runtime';
+              }
+            }
+
+            if (!normalizedId.includes('/node_modules/')) {
               return;
             }
-            // Antd remains its own vendor chunk — almost every route touches some
-            // part of it, so the cache-sharing argument holds. Tree-shaking inside
-            // a single chunk keeps the unused subtrees out anyway.
-            if (id.includes('antd')) {
+            if (isPlaywrightBundle) {
+              if (
+                id.includes('node_modules/elkjs') ||
+                id.includes('node_modules/@reactflow') ||
+                id.includes('node_modules/reactflow')
+              ) {
+                return 'vendor-e2e-lineage';
+              }
+              const packagePath = id.split(/node_modules[\\/]/).pop() ?? id;
+              const [scopeOrName, scopedName] = packagePath.split(/[\\/]/);
+              const packageName = scopeOrName.startsWith('@')
+                ? `${scopeOrName}/${scopedName}`
+                : scopeOrName;
+
+              return ['react', 'react-dom', 'scheduler'].includes(packageName)
+                ? 'vendor-e2e-framework'
+                : 'app-e2e-runtime';
+            }
+            const packagePath =
+              normalizedId.split('/node_modules/').pop() ?? normalizedId;
+            const [scopeOrName, scopedName] = packagePath.split('/');
+            const packageName = scopeOrName.startsWith('@')
+              ? `${scopeOrName}/${scopedName}`
+              : scopeOrName;
+
+            if (
+              ['react', 'react-dom', 'scheduler'].includes(packageName) ||
+              packageName.startsWith('react-router')
+            ) {
+              return 'vendor-react';
+            }
+
+            if (
+              packageName.startsWith('@react-aria/') ||
+              packageName.startsWith('@react-stately/') ||
+              packageName.startsWith('@react-types/') ||
+              packageName === 'react-aria' ||
+              packageName === 'react-aria-components' ||
+              packageName === 'react-stately'
+            ) {
+              return 'vendor-aria';
+            }
+
+            // Antd and the core component library are shared by nearly every
+            // route, so stable cache buckets pay off. Route-specific dependencies
+            // are left to Rollup so they stay behind their dynamic import.
+            if (normalizedId.includes('/node_modules/antd/')) {
               return 'vendor-antd';
             }
-            if (id.includes('@openmetadata/ui-core-components')) {
+            if (
+              normalizedId.includes(
+                '/node_modules/@openmetadata/ui-core-components/'
+              )
+            ) {
               return 'vendor-untitled';
             }
-            if (id.includes('@untitledui/icons')) {
+            if (normalizedId.includes('/node_modules/@untitledui/icons/')) {
               return 'vendor-untitled-icons';
             }
-            // Heavy specialists — each used by a small number of routes. Naming
-            // them explicitly stops Rollup from co-locating them in a giant shared
-            // chunk (the prior bundle showed an 8.7 MB chunk containing all of
-            // these mixed together). Each becomes its own ~100-300 KB chunk that
-            // routes lazy-load via React.lazy boundaries.
-            if (id.includes('node_modules/elkjs')) {
-              return 'vendor-elkjs'; // graph layout, used only by lineage views
-            }
-            if (id.includes('node_modules/@reactflow')) {
-              return 'vendor-reactflow'; // lineage canvas
-            }
-            if (
-              id.includes('node_modules/prosemirror') ||
-              id.includes('node_modules/@tiptap')
-            ) {
-              return 'vendor-prosemirror'; // rich text editor (description editing)
-            }
-            if (
-              id.includes('node_modules/codemirror') ||
-              id.includes('node_modules/@codemirror')
-            ) {
-              return 'vendor-codemirror'; // SQL / query editor
-            }
-            if (id.includes('node_modules/recharts')) {
-              return 'vendor-recharts'; // data insights charts
-            }
-            if (id.includes('node_modules/react-latex-next')) {
-              return 'vendor-latex'; // LaTeX rendering in markdown
-            }
-            if (id.includes('node_modules/@melloware/react-logviewer')) {
-              return 'vendor-logviewer'; // ingestion log viewer
-            }
-            if (id.includes('node_modules/showdown')) {
-              return 'vendor-showdown'; // markdown -> HTML in legacy paths
-            }
-            if (
-              id.includes('node_modules/quill') ||
-              id.includes('node_modules/@windmillcode/quill-emoji')
-            ) {
-              return 'vendor-quill'; // (alternative editor surface)
-            }
-            if (id.includes('node_modules/dompurify')) {
-              return 'vendor-dompurify'; // HTML sanitizer
-            }
-            if (id.includes('node_modules/react-data-grid')) {
-              return 'vendor-datagrid'; // wide-table view
-            }
-            if (id.includes('node_modules/luxon')) {
-              return 'vendor-luxon'; // date library
-            }
-            if (id.includes('node_modules/js-yaml')) {
-              return 'vendor-yaml';
-            }
-            // Linear-style per-package chunking, but with a twist: scoped packages
-            // get grouped by SCOPE (e.g. every @analytics/foo lands in
-            // vendor-analytics, every @react-aria/foo lands in vendor-react-aria).
-            // That's a coarser split than strict per-package but still wins on the
-            // cache invalidation story — bumping ONE @analytics package invalidates
-            // ONE chunk, not the whole vendor graph. The reason for grouping by
-            // scope: many scopes ship dozens of micro-packages (@analytics has 8+,
-            // @react-aria has 30+), and giving each a 2-3 KB chunk means a
-            // long tail of HTTP requests that hurts more than the granular cache
-            // wins. Unscoped packages still get their own chunk.
-            //
-            // For specialist scopes that are already explicitly named above
-            // (@reactflow, @tiptap, @codemirror, @melloware), the explicit rule
-            // wins and this generic regex never reaches them.
-            const scopedMatch = id.match(/node_modules[\\/](@[^\\/]+)[\\/]/);
-            if (scopedMatch) {
-              const scope = scopedMatch[1].replace('@', '');
-              return `vendor-${scope}`;
-            }
-            const unscopedMatch = id.match(/node_modules[\\/]([^\\/]+)/);
-            if (unscopedMatch) {
-              return `vendor-${unscopedMatch[1]}`;
-            }
+
+            return;
           },
-          // Merge any chunk smaller than this back into its primary importer. Keeps
-          // the per-package split sane for big packages while preventing the long
-          // tail of ~1 KB utility packages from each becoming their own HTTP
-          // request. 10 KB is a balance — small enough that lodash / dayjs /
-          // classnames stay separable, large enough that 200 tiny packages don't
-          // each get a network roundtrip.
-          experimentalMinChunkSize: 10 * 1024,
+          // Production merges application chunks below 50 KiB so route-level
+          // boundaries remain useful without turning shared helpers into hundreds
+          // of network round trips. The CI-only coarse bundle keeps its separately
+          // measured threshold and explicit runtime/schema buckets.
+          experimentalMinChunkSize: isPlaywrightBundle ? 32 * 1024 : 50 * 1024,
         },
       },
     },
@@ -435,6 +474,7 @@ export default defineConfig(async ({ mode }) => {
     cacheDir: 'node_modules/.vite',
 
     define: {
+      'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild),
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'

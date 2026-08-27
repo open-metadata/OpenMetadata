@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
@@ -49,4 +50,5 @@ export interface SearchDropdownOption {
   labelKeyOptions?: Record<string, string | number | boolean>;
   count?: number;
   description?: string;
+  icon?: ReactNode;
 }

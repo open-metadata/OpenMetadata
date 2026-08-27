@@ -37,9 +37,11 @@ const test = base.extend<{
   page: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
 });
 
@@ -655,8 +657,8 @@ test.describe('Domain Assets Tab Operations', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -666,8 +668,8 @@ test.describe('Domain Assets Tab Operations', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -873,8 +875,8 @@ test.describe('Delete Domain with Dependencies', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });

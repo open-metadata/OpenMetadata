@@ -55,9 +55,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -138,11 +140,13 @@ test.describe('Data Products', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -244,7 +248,7 @@ test.describe('Data Products', () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -326,32 +330,32 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByTestId('pagination');
+      const pagination = page.getByLabel('Pagination Navigation');
       await expect(pagination).toBeVisible();
       await expect(
-        pagination.getByRole('button', { name: 'page 1', exact: true })
+        pagination.getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate to page 2', async () => {
-      await page.getByTestId('next').click();
+      await page.getByLabel('Next Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 2', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 2', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate back to page 1', async () => {
-      await page.getByTestId('previous').click();
+      await page.getByLabel('Previous Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 1', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
@@ -401,11 +405,18 @@ test.describe('Data Products', () => {
 
     await test.step('Verify empty state is shown', async () => {
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-      await expect(page.getByTestId('data-product-add-button')).toBeVisible();
+      await expect(
+        page
+          .getByTestId('no-data-placeholder')
+          .getByRole('button', { name: 'Add Data Product' })
+      ).toBeVisible();
     });
 
     await test.step('Click add button from empty state', async () => {
-      await page.getByTestId('data-product-add-button').click();
+      await page
+        .getByTestId('no-data-placeholder')
+        .getByRole('button', { name: 'Add Data Product' })
+        .click();
 
       await expect(
         page.getByRole('heading', { name: /add data product/i })

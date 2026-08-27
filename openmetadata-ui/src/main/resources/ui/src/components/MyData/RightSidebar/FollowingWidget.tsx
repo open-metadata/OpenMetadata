@@ -17,8 +17,8 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
+import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/widget/following.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -40,6 +40,7 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
@@ -202,8 +203,8 @@ function FollowingWidget({
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                        <div className="d-flex items-center justify-center flex-shrink">
+                          {getEntityIcon(item, EntityIconSize.Size24)}
                         </div>
                       }
                       type="text">
@@ -261,7 +262,7 @@ function FollowingWidget({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<FollowingAssetsIcon height={22} width={22} />}
+        icon={<FollowingAssetsIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
         sortOptions={translatedSortOptions}

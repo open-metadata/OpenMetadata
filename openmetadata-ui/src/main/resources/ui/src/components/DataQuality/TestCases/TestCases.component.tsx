@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
@@ -34,6 +38,7 @@ import { useTestCaseListPage } from './useTestCaseListPage';
 
 export const TestCases = () => {
   const { t } = useTranslation();
+  const { createActions } = useDataQualityProvider();
   const {
     testCasePermission,
     testSuitePermission,
@@ -42,6 +47,7 @@ export const TestCases = () => {
     form,
     searchValue,
     selectedFilter,
+    hasActiveFilters,
     handleMenuClick,
     handleSearchParam,
     handleFilterChange,
@@ -66,6 +72,21 @@ export const TestCases = () => {
     handleStatusSubmit,
     extraDropdownContent,
   } = useTestCaseListPage();
+
+  const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
+    let action: EmptyPlaceholderAction | undefined;
+    if (createActions?.canCreateTestCase && createActions?.onAddTestCase) {
+      action = {
+        key: 'new-test-case',
+        label: t('label.new-entity', { entity: t('label.test-case') }),
+        color: 'primary',
+        iconLeading: Plus,
+        onPress: createActions.onAddTestCase,
+      };
+    }
+
+    return action;
+  }, [createActions?.canCreateTestCase, createActions?.onAddTestCase, t]);
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return (
@@ -154,14 +175,15 @@ export const TestCases = () => {
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
               <Form.Item
-                className="m-0 w-40"
+                className="m-0 w-64"
                 label={t('label.status')}
                 name="testCaseStatus">
                 <Select
                   allowClear
                   data-testid="status-select-filter"
                   getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_STATUS_OPTION}
+                  mode="multiple"
+                  options={TEST_CASE_STATUS_FILTER_OPTIONS}
                   placeholder={t('label.status')}
                 />
               </Form.Item>
@@ -278,8 +300,10 @@ export const TestCases = () => {
               ),
             },
           ]}
+          emptyStateAction={emptyStateAction}
           enableBulkActions={Boolean(testSuitePermission?.Create)}
           fetchTestCases={sortTestCase}
+          hasActiveFilters={Boolean(searchValue) || hasActiveFilters}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}

@@ -16,11 +16,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +35,9 @@ import org.openmetadata.schema.api.search.RankingConfiguration;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -38,10 +45,16 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
@@ -60,6 +73,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -68,12 +82,14 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -84,6 +100,10 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+  private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
+  private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
+  private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
+  private static final String ADMIN_USER_NAME = "admin";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -108,6 +128,33 @@ public class MigrationUtil {
       };
 
   private MigrationUtil() {}
+
+  public static void migrateRdfIndexAppScheduleToWeekly(CollectionDAO collectionDAO) {
+    try {
+      List<String> applications =
+          collectionDAO
+              .applicationDAO()
+              .listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "", "");
+      for (String applicationJson : applications) {
+        try {
+          App application = JsonUtils.readValue(applicationJson, App.class);
+          if (RDF_INDEX_APP_NAME.equals(application.getName())
+              && application.getAppSchedule() != null
+              && application.getAppSchedule().getScheduleTimeline() == ScheduleTimeline.CUSTOM
+              && RDF_OLD_DAILY_CRON.equals(application.getAppSchedule().getCronExpression())) {
+            application.getAppSchedule().setCronExpression(RDF_WEEKLY_CRON);
+            collectionDAO.applicationDAO().update(application);
+            LOG.info("Migrated {} schedule from daily to weekly", RDF_INDEX_APP_NAME);
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Skipping malformed application while migrating RDF schedule: {}", e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to migrate the RDF indexing schedule; continuing upgrade", e);
+    }
+  }
 
   public static void backfillSearchRankingSettings() {
     Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
@@ -317,7 +364,7 @@ public class MigrationUtil {
    * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
    * policies are create-if-not-exists, so without this migration upgraded deployments would lose
    * the ability for non-admin users to file or patch task threads (the new authorization wired into
-   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   * legacy task endpoints would reject them with 403).
    */
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
@@ -507,7 +554,13 @@ public class MigrationUtil {
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
 
+        // Keep the field path the entityLink points at (e.g. columns.<col>.tags) so a tag
+        // suggestion lands on the suggested column, not the parent entity; fall back to
+        // entity-level tags only when the link carries no tags field.
         String fieldPath = extractFieldPathFromEntityLink(entityLink);
+        if ("Tag".equals(mappedSuggestionType) && !fieldPath.endsWith(Entity.FIELD_TAGS)) {
+          fieldPath = Entity.FIELD_TAGS;
+        }
         payload.put("fieldPath", fieldPath);
 
         if ("Tag".equals(mappedSuggestionType)) {
@@ -596,6 +649,9 @@ public class MigrationUtil {
     }
 
     LOG.info("Found {} thread-based tasks to migrate", threads.size());
+
+    Map<String, String> umbrellaWorkflowInstanceIds =
+        resolveUmbrellaWorkflowInstanceIdBatch(handle, threads);
 
     long seqVal = getSequenceValue(handle);
     int migrated = 0;
@@ -709,10 +765,13 @@ public class MigrationUtil {
         String updatedBy =
             threadJson.has("updatedBy") ? threadJson.get("updatedBy").asText() : createdByName;
 
-        // Look up createdBy user ID from user_entity by name
-        String createdByUserId = lookupUserId(handle, createdByName);
-        if (createdByUserId != null) {
+        // Preserve the original requester: createdBy ref + createdById for the filter.
+        ObjectNode createdByRef = buildUserRef(createdByName);
+        String createdByUserId = null;
+        if (createdByRef != null && createdByRef.has("id")) {
+          createdByUserId = createdByRef.get("id").asText();
           taskJson.put("createdById", createdByUserId);
+          taskJson.set("createdBy", createdByRef);
         }
 
         taskJson.put("createdAt", createdAt);
@@ -720,16 +779,25 @@ public class MigrationUtil {
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
-        taskJson.put("commentCount", 0);
+        // Migrate posts -> comments (per-post reactions ride along in taskComment.reactions).
+        // Task has no top-level reactions field, so thread-level reactions are not carried over.
+        migrateThreadPostsToComments(threadJson, taskJson);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        // Set resolution details for closed tasks
+        String umbrellaWorkflowInstanceId = umbrellaWorkflowInstanceIds.get(threadId);
+        if (umbrellaWorkflowInstanceId != null) {
+          taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
+        }
+
+        // Resolution for closed tasks: keep resolvedBy from the legacy closedBy.
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
           resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
           if (taskDetails.has("closedBy")) {
-            resolution.put("comment", "Migrated from thread-based task system");
+            ObjectNode resolvedBy = buildUserRef(taskDetails.get("closedBy").asText());
+            if (resolvedBy != null) {
+              resolution.set("resolvedBy", resolvedBy);
+            }
           }
           if (taskDetails.has("closedAt")) {
             resolution.put("resolvedAt", taskDetails.get("closedAt").asLong());
@@ -908,12 +976,12 @@ public class MigrationUtil {
       String entityFQN = entityLink.getEntityFQN();
 
       ObjectNode aboutRef = JsonUtils.getObjectNode();
-      if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
-        aboutRef.put("id", sourceJson.get("entityId").asText());
-      } else if (sourceJson.has("entityRef")
-          && sourceJson.get("entityRef").has("id")
-          && !sourceJson.get("entityRef").get("id").isNull()) {
-        aboutRef.put("id", sourceJson.get("entityRef").get("id").asText());
+      String entityId = extractEntityIdFromSource(sourceJson);
+      if (entityId == null) {
+        entityId = lookupEntityIdByFqn(entityType, entityFQN);
+      }
+      if (entityId != null) {
+        aboutRef.put("id", entityId);
       }
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
@@ -924,6 +992,46 @@ public class MigrationUtil {
     } catch (Exception e) {
       LOG.debug("Could not parse entityLink '{}': {}", entityLinkStr, e.getMessage());
     }
+  }
+
+  private static String extractEntityIdFromSource(JsonNode sourceJson) {
+    String resolvedId = null;
+    if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
+      resolvedId = sourceJson.get("entityId").asText();
+    } else if (sourceJson.has("entityRef")
+        && sourceJson.get("entityRef").has("id")
+        && !sourceJson.get("entityRef").get("id").isNull()) {
+      resolvedId = sourceJson.get("entityRef").get("id").asText();
+    }
+    return resolvedId;
+  }
+
+  /**
+   * Resolve the target entity's UUID from its fully-qualified name by delegating to the entity's
+   * repository. Suggestion rows and legacy activity threads only carry {@code entityLink} — no
+   * {@code entityId} or {@code entityRef} — so the migration needs to fetch the id here or the
+   * downstream Task V2 resolve endpoint has no anchor to patch. Repositories are available at
+   * migration time because {@code Entity.initializeRepositories()} runs before the v200 data
+   * migration. Returns {@code null} when the entity is missing (deleted upstream, unknown type)
+   * — the caller falls through to a partial {@code about} block with type + FQN only.
+   */
+  private static String lookupEntityIdByFqn(String entityType, String entityFQN) {
+    String resolvedId = null;
+    try {
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      Object entity =
+          repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
+      if (entity instanceof EntityInterface ei && ei.getId() != null) {
+        resolvedId = ei.getId().toString();
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve entity id for '{}' of type '{}': {}",
+          entityFQN,
+          entityType,
+          e.getMessage());
+    }
+    return resolvedId;
   }
 
   private static String extractFieldPathFromEntityLink(String entityLinkStr) {
@@ -1421,6 +1529,92 @@ public class MigrationUtil {
     handle.createUpdate(sql).bind("id", id).bind("json", json).bind("fqnHash", fqnHash).execute();
   }
 
+  /**
+   * Resolve the pre-2.0 umbrella {@code WorkflowInstance} UUID for a legacy Thread task by
+   * joining Flowable's process-scoped {@code workflowInstanceExecutionId} variable against
+   * {@code workflow_instance_state_time_series}. Setting this on the migrated Task closes the
+   * {@code shouldCreateWorkflowManagedTask} gate so {@code postCreate} does not spawn a
+   * duplicate task-scoped subprocess, leaving a single Flowable userTask for the resolve
+   * endpoint to complete against the existing umbrella. Returns {@code null} for closed threads
+   * (umbrella already ended) and post-2.0 tasks — those fall through the standard workflow-
+   * managed lifecycle.
+   */
+  private static String lookupLegacyUmbrellaWorkflowInstanceId(Handle handle, String threadId) {
+    Map<String, String> batch = lookupLegacyUmbrellaWorkflowInstanceIds(handle, List.of(threadId));
+    return batch.get(threadId);
+  }
+
+  /**
+   * Extract thread ids from a page of raw {@code thread_entity} rows and batch-resolve the
+   * pre-2.0 umbrella {@code workflowInstanceId} for each. Used by
+   * {@link #migrateThreadTasksToTaskEntity} and the equivalent Task V2 cutover so both migration
+   * paths share one join per page instead of two per row.
+   */
+  private static Map<String, String> resolveUmbrellaWorkflowInstanceIdBatch(
+      Handle handle, List<Map<String, Object>> threadRows) {
+    List<String> threadIds = new ArrayList<>(threadRows.size());
+    for (Map<String, Object> row : threadRows) {
+      try {
+        JsonNode json = JsonUtils.readTree(row.get("json").toString());
+        if (json != null && json.hasNonNull("id")) {
+          threadIds.add(json.get("id").asText());
+        }
+      } catch (Exception e) {
+        LOG.debug("Skipping thread row without parseable id: {}", e.getMessage());
+      }
+    }
+    return lookupLegacyUmbrellaWorkflowInstanceIds(handle, threadIds);
+  }
+
+  /**
+   * Batch variant of {@link #lookupLegacyUmbrellaWorkflowInstanceId(Handle, String)} — collapses
+   * the {@code ACT_HI_VARINST -> workflow_instance_state_time_series} join to one SQL per input
+   * page. The v200 migration processes threads and suggestions in 200-item pages; on catalogs
+   * with tens of thousands of pre-2.0 open tasks the per-row variant would issue two full scans
+   * of {@code ACT_HI_VARINST.text_} (unindexed) for every migrated row, holding the CLI JDBI
+   * handle for hours and effectively hanging the upgrade. The batched form scans the join once
+   * per page regardless of page size. Returns a map keyed by thread id; entries are only present
+   * for threads with an active pre-2.0 umbrella process (closed threads / post-2.0 tasks are
+   * absent so callers can fall through to the standard workflow-managed lifecycle).
+   */
+  private static Map<String, String> lookupLegacyUmbrellaWorkflowInstanceIds(
+      Handle handle, Collection<String> threadIds) {
+    Map<String, String> resolved = new HashMap<>();
+    if (threadIds == null || threadIds.isEmpty()) {
+      return resolved;
+    }
+    try {
+      handle
+          .createQuery(
+              "SELECT ct.text_ AS threadId, ws.workflowInstanceId "
+                  + "FROM ACT_HI_VARINST ct "
+                  + "JOIN ACT_HI_VARINST wx "
+                  + "  ON wx.proc_inst_id_ = ct.proc_inst_id_ "
+                  + " AND wx.name_ = 'workflowInstanceExecutionId' "
+                  + "JOIN workflow_instance_state_time_series ws "
+                  + "  ON ws.workflowInstanceExecutionId = wx.text_ "
+                  + "WHERE ct.name_ = 'customTaskId' "
+                  + "  AND ct.text_ IN (<threadIds>)")
+          .bindList("threadIds", List.copyOf(new LinkedHashSet<>(threadIds)))
+          .map(
+              (rs, ctx) -> {
+                String threadId = rs.getString(1);
+                String instanceId = rs.getString(2);
+                if (threadId != null && instanceId != null) {
+                  resolved.putIfAbsent(threadId, instanceId);
+                }
+                return null;
+              })
+          .list();
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve legacy umbrella workflowInstanceIds for {} threads: {}",
+          threadIds.size(),
+          e.getMessage());
+    }
+    return resolved;
+  }
+
   private static String lookupUserId(Handle handle, String userName) {
     if (userName == null || "system".equals(userName)) {
       return null;
@@ -1437,6 +1631,86 @@ public class MigrationUtil {
       LOG.debug("Could not look up user '{}': {}", userName, e.getMessage());
       return null;
     }
+  }
+
+  /**
+   * Resolve a legacy username to a user {@link EntityReference}; shared by both migration paths.
+   * A soft-deleted user keeps its real id; anything unresolvable (hard-deleted / "system" / null)
+   * falls back to the admin user, never a fabricated id. Throws only if admin is also unresolvable.
+   */
+  static EntityReference resolveUserReference(String userName) {
+    EntityReference reference = null;
+    if (!nullOrEmpty(userName)) {
+      try {
+        reference = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (Exception e) {
+        LOG.debug(
+            "Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
+      }
+    }
+    if (reference == null) {
+      reference = Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+    }
+    return reference;
+  }
+
+  /**
+   * JSON-shaped {@link #resolveUserReference} for the static path (which builds task JSON, not
+   * POJOs). Returns null only if even the admin fallback cannot be resolved.
+   */
+  private static ObjectNode buildUserRef(String userName) {
+    ObjectNode ref = null;
+    try {
+      EntityReference reference = resolveUserReference(userName);
+      if (reference != null) {
+        ref = (ObjectNode) JsonUtils.valueToTree(reference);
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
+    }
+    return ref;
+  }
+
+  /**
+   * Migrate a legacy thread's {@code posts[]} (user replies + resolve/close records) into the new
+   * task's {@code comments[]} so the task discussion history survives, and sets {@code commentCount}.
+   * Each post maps to a {@code taskComment} ({id, message, author, createdAt, reactions}). The author
+   * is resolved via {@link #buildUserRef} (soft-deleted users keep their real id; unresolvable ones
+   * fall back to the admin user) — never a synthetic id. A post is skipped only if even that fails.
+   */
+  private static void migrateThreadPostsToComments(JsonNode threadJson, ObjectNode taskJson) {
+    JsonNode posts = threadJson.get("posts");
+    ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
+    if (posts != null && posts.isArray()) {
+      for (JsonNode post : posts) {
+        ObjectNode comment = buildTaskComment(post);
+        if (comment != null) {
+          comments.add(comment);
+        }
+      }
+    }
+    taskJson.set("comments", comments);
+    taskJson.put("commentCount", comments.size());
+  }
+
+  /**
+   * Build a {@code taskComment} from a legacy post, or {@code null} to skip it (no message, or an
+   * author that cannot be resolved even to the admin fallback). Per-post reactions are carried over.
+   */
+  private static ObjectNode buildTaskComment(JsonNode post) {
+    ObjectNode comment = null;
+    ObjectNode author = post.has("message") ? buildUserRef(post.path("from").asText(null)) : null;
+    if (author != null) {
+      comment = JsonUtils.getObjectNode();
+      comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
+      comment.put("message", post.get("message").asText());
+      comment.set("author", author);
+      comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
+      if (post.has("reactions") && post.get("reactions").isArray()) {
+        comment.set("reactions", post.get("reactions"));
+      }
+    }
+    return comment;
   }
 
   /**
@@ -1528,7 +1802,7 @@ public class MigrationUtil {
         connectionType == ConnectionType.POSTGRES
             ? "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
                 + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
-                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
             : "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
                 + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
                 + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), fromEntity = VALUES(fromEntity)";
@@ -1644,10 +1918,11 @@ public class MigrationUtil {
 
   /** Task workflow cutover + recognizer feedback rewrite + mention-alert wiring for 2.0.0. */
   public static class TaskWorkflow {
-    private static final String ADMIN_USER_NAME = "admin";
     private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
     private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
         "createRecognizerFeedbackApprovalTask";
+    private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
+    private static final String ENTITY_STATUS_FIELD = "entityStatus";
     private static final String FEEDBACK_PAYLOAD_KEY = "feedback";
     private static final int BATCH_SIZE = 200;
 
@@ -1655,6 +1930,9 @@ public class MigrationUtil {
     private static final String MENTION_FILTER_NAME = "filterByMentionedName";
     private static final String CONVERSATION_RESOURCE = "conversation";
     private static final String TASK_RESOURCE = "task";
+    private static final String TEST_CASE_TABLE = "test_case";
+    private static final String INCIDENT_TIME_SERIES_TABLE =
+        "test_case_resolution_status_time_series";
     private static final String UPDATE_SUBSCRIPTION_MYSQL =
         "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
     private static final String UPDATE_SUBSCRIPTION_POSTGRES =
@@ -1680,10 +1958,11 @@ public class MigrationUtil {
       int redeployedWorkflows = redeployUserApprovalWorkflows();
       MigrationStats stats = migrateLegacyThreadTasks();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int adoptedIncidents = adoptOrphanIncidentChains();
       int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
 
       LOG.info(
-          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
+          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, adoptedIncidents={}, backfilledOpenTasks={}",
           seededDefaults,
           redeployedWorkflows,
           stats.migrated,
@@ -1691,17 +1970,138 @@ public class MigrationUtil {
           stats.skipped,
           stats.failed,
           rewrittenRecognizerFeedbackTasks,
+          adoptedIncidents,
           backfilledOpenTasks);
     }
 
     public void runRecognizerFeedbackTaskTypeMigration() {
       int seededDefaults = ensureDefaultTaskWorkflows();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int rewrittenApprovalEdges = migrateUserApprovalTaskEdgeConditions();
 
       LOG.info(
-          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}",
+          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}, rewrittenApprovalEdges={}",
           seededDefaults,
-          rewrittenRecognizerFeedbackTasks);
+          rewrittenRecognizerFeedbackTasks,
+          rewrittenApprovalEdges);
+    }
+
+    /**
+     * Rewrite outbound edges from {@code userApprovalTask} nodes across every WorkflowDefinition
+     * so they use the Task V2 condition scheme ({@code approve}/{@code reject}) instead of the
+     * legacy boolean strings ({@code true}/{@code false}) previously injected by the v1105
+     * MigrationUtil. Existing running Flowable process instances are unaffected — they continue to
+     * execute against their frozen deployed BPMN, and TaskWorkflowHandler falls back to the
+     * deployed BPMN's condition scheme at resolve time.
+     *
+     * <p>Idempotent: WorkflowDefinitions with no legacy conditions on approval outbound edges are
+     * skipped. Duplicate edges (both {@code true} and {@code approve} present after prior migration
+     * runs) are collapsed to a single {@code approve}/{@code reject} edge.
+     *
+     * <p>The {@code createOrUpdate} call intentionally triggers a fresh Flowable BPMN deployment
+     * (via {@code postUpdate}) for each affected definition — the point of the migration is to
+     * emit a new ACT_RE_PROCDEF version whose outbound sequence flows reference
+     * {@code _result == 'approve'} / {@code _result == 'reject'}. Skipping the redeploy would
+     * leave the stale duplicate-edge BPMN in Flowable's repository and future task instances
+     * would still evaluate against the pre-fix conditions. The idempotency guard in
+     * {@link #rewriteApprovalEdgesInPlace} keeps this bounded to definitions that actually carry
+     * legacy conditions.
+     */
+    private int migrateUserApprovalTaskEdgeConditions() {
+      int migrated = 0;
+      try {
+        List<WorkflowDefinition> workflowDefinitions =
+            workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+        for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
+          if (rewriteApprovalEdgesInPlace(workflowDefinition)
+              && persistMigratedApprovalEdges(workflowDefinition)) {
+            migrated++;
+          }
+        }
+      } catch (RuntimeException e) {
+        LOG.error(
+            "[v200] Failed to iterate WorkflowDefinition rows for approval-edge migration: {}",
+            e.getMessage(),
+            e);
+      }
+      return migrated;
+    }
+
+    private boolean persistMigratedApprovalEdges(WorkflowDefinition workflowDefinition) {
+      boolean persisted = false;
+      try {
+        workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
+        workflowDefinition.setUpdatedAt(System.currentTimeMillis());
+        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        LOG.info(
+            "[v200] Migrated approval-edge conditions on workflow '{}'",
+            workflowDefinition.getName());
+        persisted = true;
+      } catch (RuntimeException e) {
+        LOG.error(
+            "[v200] Failed to persist approval-edge condition migration for workflow '{}': {}",
+            workflowDefinition.getName(),
+            e.getMessage());
+      }
+      return persisted;
+    }
+
+    private boolean rewriteApprovalEdgesInPlace(WorkflowDefinition workflowDefinition) {
+      Set<String> approvalNodeNames = collectApprovalNodeNames(workflowDefinition.getNodes());
+      List<EdgeDefinition> edges = workflowDefinition.getEdges();
+      boolean modified = false;
+      if (!approvalNodeNames.isEmpty() && edges != null) {
+        List<EdgeDefinition> rewritten = rewriteEdges(edges, approvalNodeNames);
+        modified = !rewritten.equals(edges);
+        if (modified) {
+          workflowDefinition.setEdges(rewritten);
+        }
+      }
+      return modified;
+    }
+
+    private Set<String> collectApprovalNodeNames(List<WorkflowNodeDefinitionInterface> nodes) {
+      Set<String> approvalNodeNames = new HashSet<>();
+      if (nodes != null) {
+        for (WorkflowNodeDefinitionInterface node : nodes) {
+          if (USER_APPROVAL_TASK_SUBTYPE.equals(node.getSubType())) {
+            approvalNodeNames.add(node.getName());
+          }
+        }
+      }
+      return approvalNodeNames;
+    }
+
+    private List<EdgeDefinition> rewriteEdges(
+        List<EdgeDefinition> edges, Set<String> approvalNodeNames) {
+      List<EdgeDefinition> rewritten = new ArrayList<>(edges.size());
+      Set<String> seenApprovalEdgeKeys = new HashSet<>();
+      for (EdgeDefinition edge : edges) {
+        EdgeDefinition next = rewriteApprovalEdge(edge, approvalNodeNames);
+        if (approvalNodeNames.contains(edge.getFrom())) {
+          String dedupKey = edge.getFrom() + "->" + edge.getTo() + ":" + next.getCondition();
+          if (!seenApprovalEdgeKeys.add(dedupKey)) {
+            continue;
+          }
+        }
+        rewritten.add(next);
+      }
+      return rewritten;
+    }
+
+    private EdgeDefinition rewriteApprovalEdge(EdgeDefinition edge, Set<String> approvalNodeNames) {
+      String condition = edge.getCondition();
+      if (approvalNodeNames.contains(edge.getFrom()) && condition != null) {
+        if (Workflow.LEGACY_APPROVE_CONDITION.equals(condition)) {
+          condition = Workflow.APPROVE_CONDITION;
+        } else if (Workflow.LEGACY_REJECT_CONDITION.equals(condition)) {
+          condition = Workflow.REJECT_CONDITION;
+        }
+      }
+      return new EdgeDefinition()
+          .withFrom(edge.getFrom())
+          .withTo(edge.getTo())
+          .withCondition(condition);
     }
 
     private int ensureDefaultTaskWorkflows() {
@@ -1747,11 +2147,15 @@ public class MigrationUtil {
           }
 
           try {
-            workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+            if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
+              addEntityStatusToTriggerExclude(workflowDefinition);
+            }
+            WorkflowDefinition patched = backfillUserApprovalTransitionMetadata(workflowDefinition);
+            workflowDefinitionRepository.createOrUpdate(null, patched, ADMIN_USER_NAME);
             redeployed++;
             LOG.info(
                 "Redeployed workflow '{}' to activate Task V2 approval listeners",
-                workflowDefinition.getName());
+                patched.getName());
           } catch (Exception e) {
             LOG.warn(
                 "Failed to redeploy workflow '{}': {}",
@@ -1763,6 +2167,111 @@ public class MigrationUtil {
         LOG.error("Failed to redeploy user approval workflows during migration", e);
       }
       return redeployed;
+    }
+
+    /**
+     * Populate a default {@code transitionMetadata} of {@code [approve, reject]} on every
+     * {@code userApprovalTask} node whose config is missing the field or carries an empty array.
+     *
+     * <p>Round-trips the whole definition through JSON instead of calling
+     * {@link WorkflowNodeDefinitionInterface#setConfig(Map)}: that interface method is a default
+     * no-op (only the generated typed subclasses expose a real setter), so mutating through the
+     * interface reference silently drops the change and {@code createOrUpdate} then sees no diff
+     * and skips the persist.
+     */
+    private WorkflowDefinition backfillUserApprovalTransitionMetadata(
+        WorkflowDefinition workflowDefinition) {
+      List<WorkflowNodeDefinitionInterface> nodes = workflowDefinition.getNodes();
+      if (nullOrEmpty(nodes)) {
+        return workflowDefinition;
+      }
+      WorkflowDefinition result = workflowDefinition;
+      try {
+        Map<String, Object> workflowJson =
+            JsonUtils.convertValue(workflowDefinition, LinkedHashMap.class);
+        Object rawNodes = workflowJson == null ? null : workflowJson.get("nodes");
+        if (rawNodes instanceof List<?> nodeList
+            && applyBackfillToNodes(nodeList, workflowDefinition)) {
+          result = JsonUtils.convertValue(workflowJson, WorkflowDefinition.class);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to backfill transitionMetadata on workflow '{}'; leaving definition as-is: {}",
+            workflowDefinition.getName(),
+            e.getMessage());
+      }
+      return result;
+    }
+
+    private boolean applyBackfillToNodes(List<?> nodeList, WorkflowDefinition workflowDefinition) {
+      boolean modified = false;
+      for (Object rawNode : nodeList) {
+        if (!(rawNode instanceof Map<?, ?> nodeMapUntyped)) {
+          continue;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> nodeMap = (Map<String, Object>) nodeMapUntyped;
+        if (!USER_APPROVAL_TASK_SUBTYPE.equals(nodeMap.get("subType"))) {
+          continue;
+        }
+        Object rawConfig = nodeMap.get("config");
+        if (!(rawConfig instanceof Map<?, ?> configMapUntyped)) {
+          continue;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> configMap = (Map<String, Object>) configMapUntyped;
+        Object existing = configMap.get(TRANSITION_METADATA_FIELD);
+        if (existing instanceof List<?> list && !list.isEmpty()) {
+          continue;
+        }
+        configMap.put(TRANSITION_METADATA_FIELD, defaultUserApprovalTransitionMetadata());
+        modified = true;
+        LOG.info(
+            "Backfilled default transitionMetadata on userApprovalTask '{}' in workflow '{}'",
+            nodeMap.get("name"),
+            workflowDefinition.getName());
+      }
+      return modified;
+    }
+
+    private List<Map<String, Object>> defaultUserApprovalTransitionMetadata() {
+      Map<String, Object> approve = new LinkedHashMap<>();
+      approve.put("id", "approve");
+      approve.put("label", "Approve");
+      approve.put("targetStageId", "approved");
+      approve.put("targetTaskStatus", TaskEntityStatus.Approved.value());
+      approve.put("resolutionType", TaskResolutionType.Approved.value());
+      approve.put("requiresComment", false);
+
+      Map<String, Object> reject = new LinkedHashMap<>();
+      reject.put("id", "reject");
+      reject.put("label", "Reject");
+      reject.put("targetStageId", "rejected");
+      reject.put("targetTaskStatus", TaskEntityStatus.Rejected.value());
+      reject.put("resolutionType", TaskResolutionType.Rejected.value());
+      reject.put("requiresComment", false);
+
+      return List.of(approve, reject);
+    }
+
+    private static final String TRANSITION_METADATA_FIELD = "transitionMetadata";
+
+    private void addEntityStatusToTriggerExclude(WorkflowDefinition workflowDefinition) {
+      if (workflowDefinition.getTrigger()
+          instanceof EventBasedEntityTriggerDefinition eventTrigger) {
+        Config config = eventTrigger.getConfig();
+        if (config != null) {
+          List<String> exclude = new ArrayList<>(listOrEmpty(config.getExclude()));
+          if (!exclude.contains(ENTITY_STATUS_FIELD)) {
+            exclude.add(ENTITY_STATUS_FIELD);
+            config.setExclude(exclude);
+            LOG.info(
+                "Added '{}' to trigger exclude list for workflow '{}'",
+                ENTITY_STATUS_FIELD,
+                workflowDefinition.getName());
+          }
+        }
+      }
     }
 
     private boolean containsApprovalTaskNodeForCutover(
@@ -1792,13 +2301,30 @@ public class MigrationUtil {
           break;
         }
 
+        List<Thread> parsedThreads = new ArrayList<>(threadBatch.size());
         for (String threadJson : threadBatch) {
           try {
-            Thread legacyThread = JsonUtils.readValue(threadJson, Thread.class);
-            migrateLegacyThreadTask(legacyThread, stats);
+            parsedThreads.add(JsonUtils.readValue(threadJson, Thread.class));
           } catch (Exception e) {
             stats.failed++;
-            LOG.warn("Failed to parse/migrate legacy thread task JSON: {}", e.getMessage());
+            LOG.warn("Failed to parse legacy thread task JSON: {}", e.getMessage());
+          }
+        }
+
+        Map<String, String> umbrellaWorkflowInstanceIds =
+            lookupLegacyUmbrellaWorkflowInstanceIds(
+                handle,
+                parsedThreads.stream()
+                    .filter(t -> t != null && t.getId() != null)
+                    .map(t -> t.getId().toString())
+                    .toList());
+
+        for (Thread legacyThread : parsedThreads) {
+          try {
+            migrateLegacyThreadTask(legacyThread, stats, umbrellaWorkflowInstanceIds);
+          } catch (Exception e) {
+            stats.failed++;
+            LOG.warn("Failed to migrate legacy thread task: {}", e.getMessage());
           }
         }
 
@@ -1811,58 +2337,410 @@ public class MigrationUtil {
       return stats;
     }
 
+    /**
+     * Create a Task for every ongoing incident chain that never had a legacy thread to migrate.
+     * The task reuses the chain's stateId as its id, so the stateId-to-task identity the
+     * task-first model assumes holds for these chains too. Workflow start and status replay are
+     * left to {@link #backfillOpenTasksToWorkflowInstances()}, which runs after this.
+     */
+    private int adoptOrphanIncidentChains() {
+      int adopted = 0;
+      if (tableExists(INCIDENT_TIME_SERIES_TABLE) && tableExists(TEST_CASE_TABLE)) {
+        try {
+          for (OrphanIncidentCandidate candidate : listLatestIncidentPerTestCase()) {
+            if (isAdoptableChain(candidate.latest())) {
+              adopted += adoptIncidentChain(candidate);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[v200] Failed to adopt orphan incident chains", e);
+        }
+      }
+      return adopted;
+    }
+
+    private boolean isAdoptableChain(TestCaseResolutionStatus latest) {
+      return latest.getStateId() != null
+          && latest.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved
+          && !incidentChainHasTask(latest.getStateId());
+    }
+
+    private int adoptIncidentChain(OrphanIncidentCandidate candidate) {
+      int adopted = 0;
+      UUID stateId = candidate.latest().getStateId();
+      Task task = buildTaskFromIncidentChain(candidate.latest(), candidate.testCaseId());
+      if (task != null) {
+        try {
+          taskRepository.create(null, task);
+          adopted = 1;
+          LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
+        } catch (Exception e) {
+          LOG.warn("[v200] Could not adopt incident chain {}: {}", stateId, e.getMessage());
+        }
+      }
+      return adopted;
+    }
+
+    /**
+     * Latest record of each test case's most recent incident chain, paired with the owning test
+     * case id. Stored records drop {@code testCaseReference}, so the test case is recovered by
+     * joining the indexed entityFQNHash.
+     */
+    private List<OrphanIncidentCandidate> listLatestIncidentPerTestCase() {
+      List<OrphanIncidentCandidate> candidates =
+          handle
+              .createQuery(
+                  "SELECT ts.json AS record, tc.id AS testCaseId "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " ts INNER JOIN (SELECT entityFQNHash AS fqnHash, MAX(timestamp) AS maxTs "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " WHERE entityFQNHash IS NOT NULL GROUP BY entityFQNHash) latest "
+                      + "ON ts.entityFQNHash = latest.fqnHash AND ts.timestamp = latest.maxTs "
+                      + "INNER JOIN "
+                      + TEST_CASE_TABLE
+                      + " tc ON tc.fqnHash = ts.entityFQNHash")
+              .map((rs, ctx) -> readCandidate(rs.getString("record"), rs.getString("testCaseId")))
+              .list()
+              .stream()
+              .filter(Objects::nonNull)
+              .toList();
+
+      Map<UUID, OrphanIncidentCandidate> latestPerTestCase = new LinkedHashMap<>();
+      for (OrphanIncidentCandidate candidate : candidates) {
+        latestPerTestCase.merge(candidate.testCaseId(), candidate, TaskWorkflow::preferStableChain);
+      }
+      return List.copyOf(latestPerTestCase.values());
+    }
+
+    private OrphanIncidentCandidate readCandidate(String record, String testCaseId) {
+      OrphanIncidentCandidate candidate = null;
+      try {
+        TestCaseResolutionStatus latest =
+            JsonUtils.readValue(record, TestCaseResolutionStatus.class);
+        if (latest.getStateId() != null) {
+          candidate = new OrphanIncidentCandidate(latest, UUID.fromString(testCaseId));
+        }
+      } catch (Exception e) {
+        LOG.warn("[v200] Skipping unreadable incident record: {}", e.getMessage());
+      }
+      return candidate;
+    }
+
+    /**
+     * Records written in the same millisecond leave more than one chain tied for latest; pick by
+     * stateId so a re-run adopts the same one instead of a second task for the test case.
+     */
+    private static OrphanIncidentCandidate preferStableChain(
+        OrphanIncidentCandidate current, OrphanIncidentCandidate candidate) {
+      String currentId = current.latest().getStateId().toString();
+      String candidateId = candidate.latest().getStateId().toString();
+      return candidateId.compareTo(currentId) > 0 ? candidate : current;
+    }
+
+    private record OrphanIncidentCandidate(TestCaseResolutionStatus latest, UUID testCaseId) {}
+
+    /** True when the chain already drives a task, either as its id or through a migrated thread. */
+    private boolean incidentChainHasTask(UUID stateId) {
+      try {
+        if (taskRepository.find(stateId, Include.ALL) != null) {
+          return true;
+        }
+      } catch (Exception e) {
+        // find() throws when absent; fall through to the legacy payload lookup
+      }
+      return collectionDAO.taskDAO().fetchTaskByTestCaseResolutionStatusId(stateId.toString())
+          != null;
+    }
+
+    private Task buildTaskFromIncidentChain(TestCaseResolutionStatus latest, UUID testCaseId) {
+      EntityReference aboutRef;
+      try {
+        aboutRef = Entity.getEntityReferenceById(Entity.TEST_CASE, testCaseId, Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.warn(
+            "[v200] Incident chain {} has no resolvable test case; skipping", latest.getStateId());
+        return null;
+      }
+
+      long updatedAt =
+          latest.getTimestamp() != null ? latest.getTimestamp() : System.currentTimeMillis();
+      // Flows into the workflow's updatedBy variable, so it must never be null.
+      String actorName =
+          latest.getUpdatedBy() != null && !nullOrEmpty(latest.getUpdatedBy().getName())
+              ? latest.getUpdatedBy().getName()
+              : ADMIN_USER_NAME;
+      EntityReference actorRef = resolveUserReference(actorName);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("testCaseResolutionStatusId", latest.getStateId().toString());
+
+      return new Task()
+          .withId(latest.getStateId())
+          .withCategory(TaskCategory.Incident)
+          .withType(TaskEntityType.TestCaseResolution)
+          .withStatus(TaskEntityStatus.Open)
+          .withPriority(TaskPriority.Medium)
+          .withDescription("Incident on " + aboutRef.getFullyQualifiedName())
+          .withAbout(aboutRef)
+          .withCreatedBy(actorRef)
+          .withCreatedAt(updatedAt)
+          .withUpdatedAt(updatedAt)
+          .withUpdatedBy(actorName)
+          .withPayload(payload);
+    }
+
     private int backfillOpenTasksToWorkflowInstances() {
       int backfilled = 0;
+      int failedIncidentReplays = 0;
       try {
         ListFilter filter = new ListFilter(Include.NON_DELETED);
         filter.addQueryParam("taskStatusGroup", "open");
         List<Task> openTasks =
             listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
         for (Task task : openTasks) {
-          if (task.getWorkflowInstanceId() != null || task.getAbout() == null) {
+          // Glossary approvals are governed by GlossaryTermApprovalWorkflow, not a standalone task
+          // workflow. A GlossaryApproval task with no workflowInstanceId is a legacy row stranded
+          // by
+          // a move/rename whose original process was already cleaned; remediate it by term status
+          // instead of letting the generic backfill start a stray workflow for it.
+          if (task.getType() == TaskEntityType.GlossaryApproval
+              && task.getWorkflowInstanceId() == null) {
+            try {
+              remediateStrandedGlossaryApproval(task);
+            } catch (Exception e) {
+              LOG.warn(
+                  "[v200] Failed to remediate stranded glossary approval task {}; continuing",
+                  task.getId(),
+                  e);
+            }
             continue;
           }
-
-          var workflowBinding =
-              TaskWorkflowLifecycleResolver.resolveBinding(
-                  task.getType(), task.getCategory(), task.getPayload());
-          if (workflowBinding.isEmpty()) {
+          if (task.getAbout() == null) {
             continue;
           }
-
-          WorkflowDefinition workflowDefinition =
-              workflowDefinitionRepository.findByNameOrNull(
-                  workflowBinding.get().workflowDefinitionRef(), Include.NON_DELETED);
-          if (workflowDefinition == null) {
-            continue;
+          if (task.getWorkflowInstanceId() == null && startWorkflowInstanceForTask(task)) {
+            backfilled++;
           }
-
-          Map<String, Object> variables = new LinkedHashMap<>();
-          variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-              EntityUtil.buildEntityLink(
-                  task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
-              task.getUpdatedBy());
-          variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
-          if (workflowBinding.get().schema() != null
-              && workflowBinding.get().schema().getId() != null) {
-            variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
-            variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
+          // Replay is idempotent (no-ops once the task is at its recorded stage), so re-attempt it
+          // on every migration run until it succeeds. The workflowInstanceId guard above only skips
+          // the one-shot instance creation, not the state replay, so a transient replay failure is
+          // recoverable by re-running the migration.
+          if (task.getCategory() == TaskCategory.Incident && !replayMigratedIncidentState(task)) {
+            failedIncidentReplays++;
           }
-
-          workflowHandler.triggerByKey(
-              getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
-              task.getId().toString(),
-              variables);
-          backfilled++;
         }
       } catch (Exception e) {
         LOG.error("Failed to backfill open tasks to workflow instances", e);
       }
+      if (failedIncidentReplays > 0) {
+        LOG.warn(
+            "{} migrated incident task(s) could not replay their pre-upgrade state; re-run the migration or remediate manually",
+            failedIncidentReplays);
+      }
       return backfilled;
+    }
+
+    private boolean startWorkflowInstanceForTask(Task task) {
+      boolean started = false;
+      var binding =
+          TaskWorkflowLifecycleResolver.resolveBinding(
+              task.getType(), task.getCategory(), task.getPayload());
+      WorkflowDefinition definition =
+          binding.isEmpty()
+              ? null
+              : workflowDefinitionRepository.findByNameOrNull(
+                  binding.get().workflowDefinitionRef(), Include.NON_DELETED);
+      if (definition != null) {
+        workflowHandler.triggerByKey(
+            getTriggerWorkflowId(definition.getFullyQualifiedName()),
+            task.getId().toString(),
+            buildBackfillWorkflowVariables(task, binding.get(), definition));
+        started = true;
+      }
+      return started;
+    }
+
+    private Map<String, Object> buildBackfillWorkflowVariables(
+        Task task,
+        TaskWorkflowLifecycleResolver.TaskWorkflowBinding binding,
+        WorkflowDefinition definition) {
+      Map<String, Object> variables = new LinkedHashMap<>();
+      variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+          EntityUtil.buildEntityLink(
+              task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
+      variables.put(WorkflowStartVariables.WORKFLOW_DEFINITION_ID, definition.getId().toString());
+      var schema = binding.schema();
+      if (schema != null && schema.getId() != null) {
+        variables.put(WorkflowStartVariables.TASK_FORM_SCHEMA_ID, schema.getId().toString());
+        variables.put(WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, schema.getVersion());
+      }
+      return variables;
+    }
+
+    /**
+     * Remediate a legacy glossary approval task that lost its GlossaryTermApprovalWorkflow process
+     * (moved/renamed term whose original process was cleaned). Only In-Review terms still need an
+     * approval; Draft/Approved/Rejected (or unresolvable) terms get the dead task closed. For an
+     * In-Review term we restart GlossaryTermApprovalWorkflow only when it has no other active
+     * approval task, then close this stranded row so the workflow's fresh task is the only one.
+     */
+    private void remediateStrandedGlossaryApproval(Task task) {
+      GlossaryTerm term = resolveGlossaryTermForTask(task.getAbout());
+      if (term != null && term.getEntityStatus() == EntityStatus.IN_REVIEW) {
+        remediateInReviewGlossaryApproval(task, term);
+      } else {
+        String status =
+            (term == null || term.getEntityStatus() == null)
+                ? "unresolved"
+                : term.getEntityStatus().value();
+        closeStrandedGlossaryApproval(task, "glossary term is not In Review (status=%s)", status);
+      }
+    }
+
+    private void remediateInReviewGlossaryApproval(Task task, GlossaryTerm term) {
+      String termFqn = term.getFullyQualifiedName();
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // A valid approval task already governs the term (a later cycle's task, or the fresh task a
+        // prior stranded row's restart just created) -> this row is a duplicate, close it.
+        closeStrandedGlossaryApproval(
+            task, "glossary term already has an active approval task", null);
+      } else if (startGlossaryTermApprovalWorkflow(term, task.getUpdatedBy())) {
+        closeStrandedGlossaryApprovalAfterRestart(task, term, termFqn);
+      } else {
+        LOG.warn(
+            "[v200] {} not found; leaving stranded glossary approval task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private void closeStrandedGlossaryApprovalAfterRestart(
+        Task task, GlossaryTerm term, String termFqn) {
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // Only close once the restart actually produced a bound approval task, so a workflow that
+        // completed without a wait-state never leaves the term with zero approval tasks.
+        closeStrandedGlossaryApproval(
+            task, "restarted GlossaryTermApprovalWorkflow; closing superseded stranded task", null);
+      } else {
+        LOG.warn(
+            "[v200] restarted {} but no bound approval task appeared; leaving stranded task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private GlossaryTerm resolveGlossaryTermForTask(EntityReference about) {
+      GlossaryTerm term = null;
+      if (about != null) {
+        try {
+          if (about.getId() != null) {
+            term =
+                (GlossaryTerm)
+                    Entity.getEntity(
+                        Entity.GLOSSARY_TERM,
+                        about.getId(),
+                        ENTITY_STATUS_FIELD,
+                        Include.NON_DELETED);
+          } else if (!nullOrEmpty(about.getFullyQualifiedName())) {
+            term =
+                (GlossaryTerm)
+                    Entity.getEntityByName(
+                        Entity.GLOSSARY_TERM,
+                        about.getFullyQualifiedName(),
+                        ENTITY_STATUS_FIELD,
+                        Include.NON_DELETED);
+          }
+        } catch (EntityNotFoundException e) {
+          // Term genuinely deleted -> leave term null so the caller closes the dead task. Any other
+          // (transient) failure propagates and is caught per-task by the backfill loop, leaving the
+          // task open rather than closing a still-valid In-Review approval on a migration-time
+          // blip.
+          LOG.warn("[v200] Glossary term for approval task about {} no longer exists", about, e);
+        }
+      }
+      return term;
+    }
+
+    private boolean hasActiveApprovalSibling(String termFqn, UUID strandedTaskId) {
+      return taskRepository
+          .listNonTerminalTasksByEntityAndCategory(termFqn, TaskCategory.Approval)
+          .stream()
+          .anyMatch(t -> !t.getId().equals(strandedTaskId) && t.getWorkflowInstanceId() != null);
+    }
+
+    private boolean startGlossaryTermApprovalWorkflow(GlossaryTerm term, String updatedBy) {
+      WorkflowDefinition definition =
+          workflowDefinitionRepository.findByNameOrNull(
+              GLOSSARY_TERM_APPROVAL_WORKFLOW, Include.NON_DELETED);
+      boolean started = false;
+      if (definition != null) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+            EntityUtil.buildEntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()));
+        variables.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), updatedBy);
+        workflowHandler.triggerByKey(
+            getTriggerWorkflowId(definition.getFullyQualifiedName()),
+            term.getId().toString(),
+            variables);
+        started = true;
+      }
+      return started;
+    }
+
+    private void closeStrandedGlossaryApproval(Task task, String reasonFormat, String reasonArg) {
+      String reason = reasonArg == null ? reasonFormat : reasonFormat.formatted(reasonArg);
+      try {
+        taskRepository.closeTask(task, ADMIN_USER_NAME, "v200 migration: %s".formatted(reason));
+      } catch (Exception e) {
+        LOG.warn("[v200] Could not close stranded glossary approval task {}", task.getId(), e);
+      }
+    }
+
+    private boolean replayMigratedIncidentState(Task task) {
+      boolean succeeded = true;
+      try {
+        String recordFQN = task.getAbout() == null ? null : task.getAbout().getFullyQualifiedName();
+        UUID stateId = incidentStateIdFromPayload(task);
+        if (recordFQN != null && stateId != null) {
+          TestCaseResolutionStatusRepository incidentRepository =
+              (TestCaseResolutionStatusRepository)
+                  Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+          // Key off the incident's own stateId, not the test case's global latest: the migration
+          // starts a fresh workflow that writes a newer "New" record for the same test case, which
+          // would otherwise mask the pre-upgrade Ack/Assigned state we need to replay.
+          TestCaseResolutionStatus latest = incidentRepository.getLatestRecordForStateId(stateId);
+          if (latest != null
+              && incidentRepository.applyLegacyStatusToIncidentTask(latest, recordFQN)) {
+            LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to replay pre-migration incident state for task {}: {}",
+            task.getId(),
+            e.getMessage());
+        succeeded = false;
+      }
+      return succeeded;
+    }
+
+    private UUID incidentStateIdFromPayload(Task task) {
+      UUID stateId = null;
+      if (task.getPayload() instanceof Map<?, ?> payload) {
+        Object rawId = payload.get("testCaseResolutionStatusId");
+        if (rawId != null) {
+          stateId = UUID.fromString(rawId.toString());
+        }
+      }
+      return stateId;
     }
 
     private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
@@ -1935,7 +2813,10 @@ public class MigrationUtil {
           .list();
     }
 
-    private void migrateLegacyThreadTask(Thread legacyThread, MigrationStats stats) {
+    private void migrateLegacyThreadTask(
+        Thread legacyThread,
+        MigrationStats stats,
+        Map<String, String> umbrellaWorkflowInstanceIds) {
       if (legacyThread == null || legacyThread.getId() == null || legacyThread.getTask() == null) {
         stats.skipped++;
         return;
@@ -1950,7 +2831,7 @@ public class MigrationUtil {
       }
 
       try {
-        Task migratedTask = buildTaskFromLegacyThread(legacyThread);
+        Task migratedTask = buildTaskFromLegacyThread(legacyThread, umbrellaWorkflowInstanceIds);
         Task createdTask = taskRepository.create(null, migratedTask);
         upsertTaskMigrationMapping(legacyThreadId, createdTask.getId());
         stats.migrated++;
@@ -1968,7 +2849,8 @@ public class MigrationUtil {
       }
     }
 
-    private Task buildTaskFromLegacyThread(Thread legacyThread) {
+    private Task buildTaskFromLegacyThread(
+        Thread legacyThread, Map<String, String> umbrellaWorkflowInstanceIds) {
       TaskDetails legacyTaskDetails = legacyThread.getTask();
       TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.getType());
 
@@ -2004,10 +2886,9 @@ public class MigrationUtil {
           convertPostsToComments(legacyThread.getPosts(), createdByRef, updatedAt);
       task.withComments(comments).withCommentCount(comments.size());
 
-      UUID runtimeWorkflowInstanceId =
-          workflowHandler.getRuntimeWorkflowInstanceId(legacyThread.getId());
-      if (runtimeWorkflowInstanceId != null) {
-        task.setWorkflowInstanceId(runtimeWorkflowInstanceId);
+      String batchedUmbrellaId = umbrellaWorkflowInstanceIds.get(legacyThread.getId().toString());
+      if (batchedUmbrellaId != null) {
+        task.setWorkflowInstanceId(UUID.fromString(batchedUmbrellaId));
       }
 
       if (status != TaskEntityStatus.Open) {
@@ -2184,20 +3065,7 @@ public class MigrationUtil {
     }
 
     private EntityReference resolveUserReference(String userName) {
-      if (nullOrEmpty(userName)) {
-        return getAdminReference();
-      }
-
-      try {
-        return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
-      } catch (Exception e) {
-        LOG.debug("Unable to resolve user '{}': {}", userName, e.getMessage());
-        return getAdminReference();
-      }
-    }
-
-    private EntityReference getAdminReference() {
-      return Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+      return MigrationUtil.resolveUserReference(userName);
     }
 
     private void upsertTaskMigrationMapping(UUID oldThreadId, UUID newTaskId) {

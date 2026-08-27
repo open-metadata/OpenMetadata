@@ -12,6 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
+import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
   getEntityDetail,
@@ -99,11 +100,40 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-export const formatClientContent = (htmlString: string) => {
+const _convertMarkdownStringToHtmlString = new Showdown.Converter({
+  ghCodeBlocks: true,
+  encodeEmails: false,
+  ellipsis: false,
+  tables: true,
+  strikethrough: true,
+  simpleLineBreaks: true,
+  openLinksInNewWindow: true,
+  emoji: true,
+  underline: true,
+});
+
+/**
+ * Converts a markdown string to an HTML string. Content that is already HTML
+ * is returned untouched.
+ */
+export const getHtmlStringFromMarkdownString = (content: string) => {
+  return isHTMLString(content)
+    ? content
+    : _convertMarkdownStringToHtmlString.makeHtml(content);
+};
+
+export const formatClientContent = (content: string) => {
   const parser = new DOMParser();
-  const processedContent = isHTMLString(htmlString)
-    ? htmlString
-    : convertMarkdownFormatToHtmlString(htmlString);
+
+  // Markdown must be rendered to HTML *before* it is parsed and sanitised.
+  // Parsing markdown as HTML serialises bare `<` and `>` into entities, which
+  // the downstream markdown renderer then escapes a second time, surfacing
+  // `&gt;` to the user as literal text.
+  const processedContent = isHTMLString(content)
+    ? content
+    : getHtmlStringFromMarkdownString(
+        convertMarkdownFormatToHtmlString(content)
+      );
 
   const doc = parser.parseFromString(processedContent, 'text/html');
 
@@ -153,4 +183,31 @@ export const getTextFromHtmlString = (description?: string): string => {
   }
 
   return description.replace(/<[^>]{1,1000}>/g, '').trim();
+};
+
+export const stripPendingUploadNodes = (html: string): string => {
+  if (!html.includes('data-uploading="true"')) {
+    return html;
+  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  doc
+    .querySelectorAll('div[data-type="file-attachment"][data-uploading="true"]')
+    .forEach((node) => {
+      if (!node.dataset.url) {
+        node.remove();
+      }
+    });
+
+  return doc.body.innerHTML;
+};
+
+export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
+  const eleTop = ele.offsetTop;
+  const eleBottom = eleTop + ele.clientHeight;
+
+  const containerTop = container.scrollTop;
+  const containerBottom = containerTop + container.clientHeight;
+
+  return eleTop >= containerTop && eleBottom <= containerBottom;
 };

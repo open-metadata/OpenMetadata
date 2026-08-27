@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
+import { getNameFromFQN } from '../../utils/FqnUtils';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import IncidentManagerTable, {
@@ -77,10 +78,30 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    )),
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    // TooltipTrigger renders a real <button> wrapping its child (matching the
+    // real component), so DOM-nesting assertions below reflect the actual
+    // <button><a>...</a></button> structure the app produces.
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
@@ -224,7 +245,8 @@ describe('IncidentManagerTable', () => {
       testCaseListData: { data: [], isLoading: false },
     });
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-active-incidents')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-case-test_case_1')
     ).not.toBeInTheDocument();
@@ -239,9 +261,7 @@ describe('IncidentManagerTable', () => {
     });
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
-    expect(
-      screen.queryByTestId('filter-table-placeholder')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
   });
 
   it('should render NextPrevious when showPagination is true', () => {
@@ -286,12 +306,48 @@ describe('IncidentManagerTable', () => {
     expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData });
   });
 
-  it('should truncate the table link and expose the full name via title', () => {
+  it('should wrap the truncated table link in a Tooltip showing the table FQN', () => {
+    renderTable();
+
+    const tooltip = screen.getAllByTestId('tooltip')[0];
+    const tableLink = screen.getAllByTestId('table-link')[0];
+
+    // The trigger is a real anchor (a Link), wrapped in TooltipTrigger's
+    // <button> so hover/focus opens the tooltip - this deliberately nests
+    // <a> inside <button> (known, tracked separately on the shared
+    // component library side, not fixed here).
+    expect(tableLink.tagName).toBe('A');
+    expect(tableLink.parentElement?.tagName).toBe('BUTTON');
+    expect(tableLink).not.toHaveAttribute('title');
+    expect(tableLink).toHaveClass('tw:truncate');
+
+    // Tooltip shows the table's own FQN (Service.Database.Schema.Table, as
+    // returned by getPartialNameFromTableFQN), not the test case's FQN -
+    // the test case reference's fullyQualifiedName has the test case name
+    // appended and must not leak into the tooltip.
+    expect(tooltip).toHaveAttribute('title', 'PartialName');
+  });
+
+  it('should fall back to fullyQualifiedName when getNameFromFQN returns an empty string', () => {
+    (getNameFromFQN as jest.Mock).mockReturnValueOnce('');
+
     renderTable();
 
     const tableLink = screen.getAllByTestId('table-link')[0];
 
-    expect(tableLink).toHaveAttribute('title', 'NameFromFQN');
-    expect(tableLink).toHaveClass('tw:truncate');
+    // Should not render blank - falls back to ref.fullyQualifiedName via `||`
+    expect(tableLink).toHaveTextContent(
+      mockRecords[0].testCaseReference?.fullyQualifiedName ?? ''
+    );
+  });
+
+  it('should link the table trigger to the table profiler page', () => {
+    renderTable();
+
+    const tableLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) => props['data-testid'] === 'table-link'
+    );
+
+    expect(tableLinkCall?.[0].to).toEqual('entity-details-path');
   });
 });

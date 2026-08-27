@@ -35,6 +35,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
@@ -51,11 +52,14 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Domain entity operations.
@@ -698,7 +702,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newParentName, renamedParent.getName());
     assertEquals(newParentName, renamedParent.getFullyQualifiedName());
 
-    // Verify child domains' FQNs are updated
+    // Verify child domains' FQNs are updated. Descendant FQN rewrite runs after the parent
+    // PATCH commits, so poll until both children reflect the new parent prefix.
+    Awaitility.await("Child domain FQNs must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe1 = getEntity(child1.getId().toString());
+              Domain probe2 = getEntity(child2.getId().toString());
+              assertTrue(probe1.getFullyQualifiedName().startsWith(newParentName + "."));
+              assertTrue(probe2.getFullyQualifiedName().startsWith(newParentName + "."));
+            });
     Domain updatedChild1 = getEntity(child1.getId().toString());
     Domain updatedChild2 = getEntity(child2.getId().toString());
 
@@ -762,7 +779,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     assertEquals(newGpName, renamedGp.getFullyQualifiedName());
 
-    // Verify all levels' FQNs are updated
+    // Verify all levels' FQNs are updated. Descendant FQN rewrite runs after the
+    // grandparent PATCH commits, so poll until both descendants reflect the new prefix.
+    Awaitility.await("Descendant domain FQNs must propagate after grandparent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probeParent = getEntity(parent.getId().toString());
+              Domain probeChild = getEntity(child.getId().toString());
+              assertTrue(probeParent.getFullyQualifiedName().startsWith(newGpName + "."));
+              assertTrue(probeChild.getFullyQualifiedName().startsWith(newGpName + "."));
+            });
     Domain updatedParent = getEntity(parent.getId().toString());
     Domain updatedChild = getEntity(child.getId().toString());
 
@@ -904,8 +934,19 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newDomainName, renamedDomain.getName());
     assertEquals(newDomainName, renamedDomain.getFullyQualifiedName());
 
-    Domain fetchedSubdomain = getEntity(subdomain.getId().toString());
+    // Subdomain FQN rewrite runs after the parent PATCH commits, so poll for it.
     String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    Awaitility.await("Subdomain FQN must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe = getEntity(subdomain.getId().toString());
+              assertEquals(expectedSubdomainFqn, probe.getFullyQualifiedName());
+            });
+    Domain fetchedSubdomain = getEntity(subdomain.getId().toString());
     assertEquals(expectedSubdomainFqn, fetchedSubdomain.getFullyQualifiedName());
 
     org.openmetadata.schema.entity.domains.DataProduct fetchedDataProduct =
@@ -972,9 +1013,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newAnalyticsName, renamedAnalytics.getName());
     assertEquals(newAnalyticsName, renamedAnalytics.getFullyQualifiedName());
 
-    // Verify database entities are correct
-    Domain updatedChild = getEntity(child.getId().toString());
+    // Verify database entities are correct. Descendant FQN rewrite runs after the
+    // parent PATCH commits, so poll until the child reflects the new prefix.
     String expectedChildFqn = newAnalyticsName + "." + childName;
+    Awaitility.await("Child domain FQN must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe = getEntity(child.getId().toString());
+              assertEquals(expectedChildFqn, probe.getFullyQualifiedName());
+            });
+    Domain updatedChild = getEntity(child.getId().toString());
     assertEquals(
         expectedChildFqn,
         updatedChild.getFullyQualifiedName(),
@@ -1063,8 +1115,21 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .anyMatch(tag -> tag.getTagFQN().equals(personalDataTagLabel().getTagFQN())),
         "Domain should still have PersonalData.Personal tag after rename");
 
-    Domain fetchedSubdomainAfterRename = getEntityWithFields(subdomain.getId().toString(), "tags");
+    // Subdomain FQN rewrite runs after the parent PATCH commits; poll for it, then
+    // re-fetch with tags for the downstream tag assertions.
     String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    String subdomainId = subdomain.getId().toString();
+    Awaitility.await("Subdomain FQN must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe = getEntity(subdomainId);
+              assertEquals(expectedSubdomainFqn, probe.getFullyQualifiedName());
+            });
+    Domain fetchedSubdomainAfterRename = getEntityWithFields(subdomainId, "tags");
     assertEquals(expectedSubdomainFqn, fetchedSubdomainAfterRename.getFullyQualifiedName());
     assertNotNull(
         fetchedSubdomainAfterRename.getTags(), "Subdomain tags should not be null after rename");
@@ -1547,6 +1612,247 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
                       + expectedDomainFqn
                       + "' on table search doc but found "
                       + domainFqns);
+            });
+  }
+
+  @Test
+  void test_domainAssetAdd_propagatesInheritedDomainToChildTablesInSearch(TestNamespace ns)
+      throws Exception {
+    Domain hr = createDomainForTest(ns, "dom_add_hr");
+    Domain marketing = createDomainForTest(ns, "dom_add_marketing");
+
+    // Schema not yet in any domain, with an inheriting child and an explicit-domain child.
+    DatabaseSchema schema = createDomainTestSchema(ns, "add", null, null);
+    Table inheritedChild = createDomainChildTable(ns, "add_t1", schema, null);
+    Table explicitChild =
+        createDomainChildTable(ns, "add_t2", schema, marketing.getFullyQualifiedName());
+
+    addAssetsToDomain(hr.getFullyQualifiedName(), List.of(schema.getEntityReference()));
+
+    Awaitility.await("Wait for domain-page asset add to propagate inherited domain in search")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  schema.getId(),
+                  hr,
+                  "database_schema_search_index",
+                  "Schema added to HR should show HR in search");
+              assertSingleSearchDomain(
+                  inheritedChild.getId(),
+                  hr,
+                  "table_search_index",
+                  "Child inheriting from the schema should follow to HR in search");
+              assertSingleSearchDomain(
+                  explicitChild.getId(),
+                  marketing,
+                  "table_search_index",
+                  "Child with an explicit domain should keep it in search");
+            });
+  }
+
+  @Test
+  void test_domainAssetRemove_descendantReinheritsFromAncestryInSearch(TestNamespace ns)
+      throws Exception {
+    Domain finance = createDomainForTest(ns, "dom_rm_finance");
+    Domain removeDomain = createDomainForTest(ns, "dom_rm_target");
+
+    // Database in Finance; schema explicitly in removeDomain; child inherits removeDomain.
+    DatabaseSchema schema =
+        createDomainTestSchema(
+            ns, "rm", finance.getFullyQualifiedName(), removeDomain.getFullyQualifiedName());
+    Table inheritedChild = createDomainChildTable(ns, "rm_t1", schema, null);
+
+    Awaitility.await("Wait for child to inherit removeDomain in search")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertSingleSearchDomain(
+                    inheritedChild.getId(),
+                    removeDomain,
+                    "table_search_index",
+                    "Child should inherit removeDomain before removal"));
+
+    removeAssetsFromDomain(
+        removeDomain.getFullyQualifiedName(), List.of(schema.getEntityReference()));
+
+    // After detaching removeDomain, the schema re-derives its domain from its database (Finance),
+    // and its inheriting descendants must follow to Finance in search — not stay stale on
+    // removeDomain and not be blanked out. Polled so the assertion holds across the full async
+    // propagation window (guards against a regression that clears/mis-sets the child late).
+    Awaitility.await("Wait for schema and inheriting child to re-inherit Finance after removal")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  schema.getId(),
+                  finance,
+                  "database_schema_search_index",
+                  "Schema should re-inherit Finance from its database after removal");
+              assertSingleSearchDomain(
+                  inheritedChild.getId(),
+                  finance,
+                  "table_search_index",
+                  "Inheriting child should re-inherit Finance from the schema's ancestry after removal, not stay on removeDomain or be cleared");
+            });
+  }
+
+  private Domain createDomainForTest(TestNamespace ns, String suffix) {
+    return createEntity(
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDescription("Test domain " + suffix)
+            .withDomainType(DomainType.AGGREGATE));
+  }
+
+  private DatabaseSchema createDomainTestSchema(
+      TestNamespace ns, String suffix, String databaseDomainFqn, String schemaDomainFqn) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    org.openmetadata.schema.api.data.CreateDatabase createDb =
+        new org.openmetadata.schema.api.data.CreateDatabase()
+            .withName(ns.shortPrefix("dom_db_" + suffix))
+            .withService(service.getFullyQualifiedName());
+    if (databaseDomainFqn != null) {
+      createDb.withDomains(List.of(databaseDomainFqn));
+    }
+    Database database = client.databases().create(createDb);
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(ns.shortPrefix("dom_sc_" + suffix))
+            .withDatabase(database.getFullyQualifiedName());
+    if (schemaDomainFqn != null) {
+      createSchema.withDomains(List.of(schemaDomainFqn));
+    }
+    return client.databaseSchemas().create(createSchema);
+  }
+
+  private Table createDomainChildTable(
+      TestNamespace ns, String suffix, DatabaseSchema schema, String domainFqn) {
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.shortPrefix("dom_t_" + suffix))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    if (domainFqn != null) {
+      createTable.withDomains(List.of(domainFqn));
+    }
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private void addAssetsToDomain(String domainFqn, List<EntityReference> assets) throws Exception {
+    BulkAssets request = new BulkAssets().withAssets(assets).withDryRun(false);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/domains/" + domainFqn + "/assets/add", request, Void.class);
+  }
+
+  private void removeAssetsFromDomain(String domainFqn, List<EntityReference> assets)
+      throws Exception {
+    BulkAssets request = new BulkAssets().withAssets(assets).withDryRun(false);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/domains/" + domainFqn + "/assets/remove", request, Void.class);
+  }
+
+  private List<EntityReference> searchDomains(UUID entityId, String indexName) throws Exception {
+    String searchResponse =
+        SdkClients.adminClient().search().query("id:" + entityId).index(indexName).execute();
+    JsonNode fieldNode =
+        JsonUtils.readTree(searchResponse)
+            .path("hits")
+            .path("hits")
+            .path(0)
+            .path("_source")
+            .path("domains");
+    if (fieldNode.isMissingNode() || !fieldNode.isArray()) {
+      return null;
+    }
+    return JsonUtils.readObjects(fieldNode.toString(), EntityReference.class);
+  }
+
+  private void assertSingleSearchDomain(
+      UUID entityId, Domain expected, String indexName, String message) throws Exception {
+    List<EntityReference> domains = searchDomains(entityId, indexName);
+    assertNotNull(domains, message);
+    assertEquals(1, domains.size(), message);
+    assertEquals(expected.getId(), domains.get(0).getId(), message);
+  }
+
+  @Test
+  void test_entityDomainChange_doesNotOverAppendToExplicitDescendantInSearch(TestNamespace ns)
+      throws Exception {
+    Domain a = createDomainForTest(ns, "ovr_a");
+    Domain bDom = createDomainForTest(ns, "ovr_b");
+    Domain cDom = createDomainForTest(ns, "ovr_c");
+
+    // Schema explicitly in A, with an inheriting child and an explicit-domain (C) child.
+    DatabaseSchema schema = createDomainTestSchema(ns, "ovr", null, a.getFullyQualifiedName());
+    Table inheritedChild = createDomainChildTable(ns, "ovr_inh", schema, null);
+    Table explicitChild =
+        createDomainChildTable(ns, "ovr_expl", schema, cDom.getFullyQualifiedName());
+
+    Awaitility.await("baseline domains in search")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  inheritedChild.getId(), a, "table_search_index", "inherited child starts in A");
+              assertSingleSearchDomain(
+                  explicitChild.getId(), cDom, "table_search_index", "explicit child starts in C");
+            });
+
+    // Change the schema's own domain A -> B (the entity-update path, recorded as delete+add).
+    String patch =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\",\"fullyQualifiedName\":\"%s\"}]}]",
+            bDom.getId(), bDom.getFullyQualifiedName());
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/databaseSchemas/" + schema.getId(),
+            patch,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    Awaitility.await("after schema domain change A -> B")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              // inherited child follows the parent to B
+              assertSingleSearchDomain(
+                  inheritedChild.getId(),
+                  bDom,
+                  "table_search_index",
+                  "inheriting child should follow the schema to B in search");
+              // explicit child keeps ONLY C — the parent's new domain must NOT be appended
+              List<EntityReference> explDomains =
+                  searchDomains(explicitChild.getId(), "table_search_index");
+              assertNotNull(explDomains, "explicit child should be indexed");
+              assertEquals(
+                  1,
+                  explDomains.size(),
+                  "explicit-domain child must not get the parent's changed domain appended in search");
+              assertEquals(
+                  cDom.getId(),
+                  explDomains.get(0).getId(),
+                  "explicit-domain child keeps its own domain C");
             });
   }
 }

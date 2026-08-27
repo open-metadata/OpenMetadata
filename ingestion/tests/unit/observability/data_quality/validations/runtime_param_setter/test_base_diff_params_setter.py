@@ -14,11 +14,32 @@
 import uuid
 from unittest.mock import patch
 
+import data_diff
+import dsnparse
+from data_diff.databases._connect import CustomParseResult
+from sqlalchemy.engine import make_url
+
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
     BaseTableParameter,
 )
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
+    Table,
+)
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    Authentication,
+    AuthenticationMode,
+)
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection as AzureSQLConnectionConfig,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
@@ -27,6 +48,12 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.ingestion.source.database.azuresql.data_diff.data_diff import (
+    AzureSQLTableParameter,
+)
+from metadata.ingestion.source.database.snowflake.data_diff.data_diff import (
+    SnowflakeTableParameter,
 )
 
 
@@ -173,3 +200,132 @@ def test_trino_get_data_diff_url_sets_catalog_and_schema_from_fqn():
     # And the original service-level dict must remain unchanged
     assert service_level_dict["catalog"] == "default_catalog"
     assert service_level_dict["schema"] is None
+
+
+def azuresql_service(authentication_mode: AuthenticationMode | None = None) -> DatabaseService:
+    return DatabaseService(
+        id=uuid.uuid4(),
+        name="azuresql_service",
+        serviceType=DatabaseServiceType.AzureSQL,
+        connection=DatabaseConnection(
+            config=AzureSQLConnectionConfig(
+                hostPort="my-server.database.windows.net:1433",
+                username="user@example.com",
+                password="my_password",
+                database="my_default_db",
+                authenticationMode=authentication_mode,
+            )
+        ),
+    )
+
+
+def test_azuresql_get_data_diff_url_carries_credentials_and_fqn_database():
+    """AzureSQL must hand data_diff a connection dict, not a URL.
+
+    With Active Directory authentication the connection URL keeps the credentials inside an
+    opaque `odbc_connect` query parameter, which data_diff cannot read.
+    """
+    db_service = azuresql_service(
+        AuthenticationMode(
+            authentication=Authentication.ActiveDirectoryPassword,
+            encrypt=True,
+            trustServerCertificate=False,
+        )
+    )
+
+    result = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+
+    assert result == {
+        "driver": "mssql",
+        "host": "my-server.database.windows.net",
+        "port": 1433,
+        "user": "user@example.com",
+        "password": "my_password",
+        "database": "my_db",
+        "schema": "my_schema",
+        "Authentication": "ActiveDirectoryPassword",
+        "Encrypt": "yes",
+    }
+
+
+def test_azuresql_data_diff_url_defaults_the_port_and_skips_unset_authentication():
+    db_service = azuresql_service()
+    db_service.connection.config.hostPort = "my-server.database.windows.net"
+
+    result = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+
+    assert result["port"] == 1433
+    assert "Authentication" not in result
+    assert "Encrypt" not in result
+
+
+def test_azuresql_data_diff_url_connects_to_the_mssql_client():
+    """The connection dict must be enough for data_diff to build its MsSQL client.
+
+    Guards the TypeError raised when data_diff has to fall back to parsing credentials
+    out of the URL authority, which the Active Directory URL does not have.
+    """
+    db_service = azuresql_service(
+        AuthenticationMode(
+            authentication=Authentication.ActiveDirectoryPassword,
+            encrypt=True,
+            trustServerCertificate=False,
+        )
+    )
+
+    source_url = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+    client = data_diff.connect(source_url, 1)
+
+    assert client.default_database == "my_db"
+    assert client.default_schema == "my_schema"
+    assert client._args["server"] == "my-server.database.windows.net"
+    assert client._args["user"] == "user@example.com"
+    assert client._args["Authentication"] == "ActiveDirectoryPassword"
+
+
+def test_snowflake_private_key_drops_the_password_from_the_service_url():
+    """data_diff rejects a password and a private key at once, so the key must win."""
+    db_service = DatabaseService(
+        id=uuid.uuid4(),
+        name="snowflake_service",
+        serviceType=DatabaseServiceType.Snowflake,
+        connection=DatabaseConnection(
+            config=SnowflakeConnection(
+                username="my_user",
+                password="my_password",
+                account="my_account",
+                warehouse="my_warehouse",
+                privateKey="-----BEGIN PRIVATE KEY-----\nmy_key\n-----END PRIVATE KEY-----",
+                snowflakePrivatekeyPassphrase="my_passphrase",
+            )
+        ),
+    )
+    entity = Table(
+        id=uuid.uuid4(),
+        name="my_table",
+        fullyQualifiedName="snowflake_service.my_db.my_schema.my_table",
+        columns=[Column(name=ColumnName("id"), dataType=DataType.INT)],
+    )
+
+    table_param = SnowflakeTableParameter().get(
+        db_service,
+        entity,
+        {"id"},
+        set(),
+        False,
+        "snowflake://my_user:my_password@my_account/my_default_db",
+    )
+
+    url = make_url(table_param.serviceUrl)
+    assert url.password is None
+    assert url.username == "my_user"
+    assert url.host == "my_account"
+    assert url.database == "my_db/my_schema"
+    assert table_param.privateKey is not None
+    assert table_param.passPhrase is not None
+
+    # data_diff reads the password off its own parse of the url, and passes on anything not None
+    dsn = dsnparse.parse(table_param.serviceUrl, parse_class=CustomParseResult)
+    assert dsn.password is None
+    assert dsn.user == "my_user"
+    assert dsn.host == "my_account"

@@ -17,6 +17,7 @@ import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -30,6 +31,7 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
   getAgentCard,
@@ -91,7 +93,7 @@ const test = base.extend<{
   },
 });
 
-const openPipelineActions = async (page: Page) => {
+const visitAgentCard = async (page: Page) => {
   await redirectToHomePage(page);
   await adminOwnedService.visitEntityPage(page);
 
@@ -102,14 +104,44 @@ const openPipelineActions = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const actionButton = getAgentCard(page, ingestionPipelineName).getByTestId(
-    'more-actions'
-  );
+  const agentCard = getAgentCard(page, ingestionPipelineName);
 
+  await agentCard.waitFor();
+
+  return agentCard;
+};
+
+const openPipelineActions = async (page: Page) => {
+  const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
   await actionButton.waitFor();
-  await actionButton.click();
 
-  await page.getByTestId('actions-dropdown').waitFor();
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
+  // every render, but the async per-FQN permission fetch can still be in
+  // flight when the menu is first opened — some items (edit-gated: redeploy,
+  // edit, pause/resume) are briefly absent. Close and reopen until the
+  // permission-gated items are present instead of polling a single stale
+  // open instance.
+  await expect
+    .poll(
+      async () => {
+        await actionButton.click();
+        await actionsDropdown.waitFor();
+        const hasReDeploy = await actionsDropdown
+          .getByTestId('re-deploy-button')
+          .isVisible()
+          .catch(() => false);
+        if (!hasReDeploy) {
+          await page.keyboard.press('Escape');
+          await actionsDropdown.waitFor({ state: 'hidden' });
+        }
+
+        return hasReDeploy;
+      },
+      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
+    )
+    .toBe(true);
 };
 
 test.describe(
@@ -323,6 +355,7 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
@@ -583,11 +616,28 @@ test.describe(
     test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
       pipelineTriggerPage: page,
     }) => {
-      await openPipelineActions(page);
+      let agentCard = await visitAgentCard(page);
 
-      await expect(page.getByTestId('run-button')).toBeVisible();
-      await expect(page.getByTestId('edit-button')).toBeHidden();
-      await expect(page.getByTestId('kill-button')).toBeHidden();
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
+
+      // Both users own the service, so isOwner() still grants Delete on the
+      // pipeline and the menu renders with that single item — only the
+      // EditAll-gated actions must be absent for a trigger-only user.
+      await agentCard.getByTestId('more-actions').click();
+
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('delete-button')).toBeVisible();
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeHidden();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeHidden();
+      await expect(actionsDropdown.getByTestId('pause-button')).toBeHidden();
+      await expect(actionsDropdown.getByTestId('resume-button')).toBeHidden();
+
+      await page.keyboard.press('Escape');
+
+      await expect(actionsDropdown).toBeHidden();
 
       // The pipeline deployed in beforeAll may still be registering in
       // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
@@ -602,12 +652,12 @@ test.describe(
                 response.request().method() === 'POST'
             );
 
-            await page.getByTestId('run-button').click();
+            await agentCard.getByTestId('run-agent-button').click();
 
             const response = await triggerResponse;
 
             if (response.status() !== 200) {
-              await openPipelineActions(page);
+              agentCard = await visitAgentCard(page);
             }
 
             return response.status();
@@ -622,9 +672,17 @@ test.describe(
     }) => {
       await openPipelineActions(page);
 
-      await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
-      await expect(page.getByTestId('run-button')).toBeHidden();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
+      await expect(
+        getAgentCard(page, ingestionPipelineName).getByTestId(
+          'run-agent-button'
+        )
+      ).toBeHidden();
     });
   }
 );

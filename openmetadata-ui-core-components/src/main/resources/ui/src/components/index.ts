@@ -90,6 +90,7 @@ export * from './base/video-player/play-button-icon';
 export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
 export * from './application/form-field/fields/icon-picker-field';
+export * from './application/form-field/field-doc-panel';
 export * from './application/form-field/field-doc-popover';
 export {
   FieldDocProvider,
@@ -106,6 +107,8 @@ export {
 export * from './application/accordion/accordion';
 export * from './application/breadcrumbs/breadcrumbs';
 export * from './application/tree/tree';
+export * from './application/tree-select/tree-select.types';
+export * from './application/tree-select/tree-select';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {
   NavAccountCard,
@@ -129,6 +132,7 @@ export * from './application/date-picker/range-calendar';
 export * from './application/date-picker/range-preset';
 export * from './application/empty-placeholder/empty-placeholder';
 export * from './application/modals/modal';
+export * from './application/page-layout/page-layout';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
@@ -145,6 +149,12 @@ export type {
   ToastContent,
   ShowToastOptions,
 } from './application/toast/toast-store';
+
+// Common
+export * from './common/document-title/document-title';
+
+// Page header
+export * from './application/page-header/page-header';
 
 // Foundations
 export * from './foundations/dot-icon';

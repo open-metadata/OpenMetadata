@@ -21,13 +21,18 @@ import {
   expectBulkIdsRequest,
   expectCapturedDownload,
   expectSelectedCount,
-  getDocumentRowByName,
+  insertAudioViaUpload,
+  insertFileViaUpload,
+  insertFileWithUrl,
   insertImageViaUpload,
   insertImageViaUrl,
+  insertVideoViaUpload,
   installDownloadCapture,
   navigateToArticle,
+  navigateToArticles,
   navigateToDocuments,
   responseMatchesRequestPath,
+  searchAndGetDocumentRow,
   selectDocumentByName,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
@@ -77,20 +82,20 @@ test.describe('Context Center - Download', () => {
   });
 
   test('download button triggers file download', async ({ browser, page }) => {
+    const fileContent = 'document for download test';
     const fileName = `download-doc-${uuid()}.txt`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadAndTrack(
       apiContext,
       fileName,
-      Buffer.from('document for download test')
+      Buffer.from(fileContent)
     );
     await afterAction();
 
     await navigateToDocuments(page);
 
-    const targetRow = getDocumentRowByName(page, fileName);
+    const targetRow = await searchAndGetDocumentRow(page, fileName);
     await expect(targetRow).toBeVisible();
-    await installDownloadCapture(page);
 
     const downloadPath = `/api/v1/contextCenter/drive/files/${document.id}/download`;
     const downloadResPromise = page.waitForResponse(
@@ -103,7 +108,6 @@ test.describe('Context Center - Download', () => {
     const downloadRes = await downloadResPromise;
 
     expect([200, 302, 303, 307]).toContain(downloadRes.status());
-    await expectCapturedDownload(page, fileName);
   });
 
   test('bulk download downloads selected documents as a zip with a single API call', async ({
@@ -257,6 +261,206 @@ test.describe('Context Center - Article Attachments', () => {
 
       expect([200, 302, 303]).toContain(downloadResponse.status());
       await expectCapturedDownload(page, uploadedFileName);
+    });
+  });
+
+  test('file insert via upload renders in editor, persists on reload, and is downloadable inline', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `attachment-${uuid()}.pdf`;
+
+    await test.step('navigate to the article', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+    });
+
+    await test.step('insert file via upload', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertFileViaUpload(page, uploadedFileName);
+
+      await expect(page.getByText(uploadedFileName).first()).toBeVisible();
+    });
+
+    await test.step('verify autosave', async () => {
+      await waitForAutoSave(page);
+    });
+
+    await test.step('reload and verify persistence', async () => {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await getEditor(page, true);
+
+      await expect(page.getByText(uploadedFileName).first()).toBeVisible();
+    });
+
+    await test.step('download the file from the inline attachment', async () => {
+      await installDownloadCapture(page);
+
+      const downloadButton = page.getByTestId('download-file-attachment');
+      await expect(downloadButton).toBeVisible();
+
+      const downloadResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/attachments/') &&
+          response.url().includes('/download') &&
+          response.request().method() === 'GET'
+      );
+
+      await downloadButton.click();
+      const downloadResponse = await downloadResponsePromise;
+
+      expect([200, 302, 303]).toContain(downloadResponse.status());
+      await expectCapturedDownload(page, uploadedFileName);
+    });
+  });
+
+  test('video insert via upload renders in editor and persists on reload', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `attachment-${uuid()}.mp4`;
+
+    await test.step('navigate to the article', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+    });
+
+    await test.step('insert video via upload', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertVideoViaUpload(page, uploadedFileName);
+
+      await expect(page.locator('video.video-player').first()).toBeVisible();
+    });
+
+    await test.step('verify autosave', async () => {
+      await waitForAutoSave(page);
+    });
+
+    await test.step('reload and verify persistence', async () => {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await getEditor(page, true);
+
+      await expect(page.locator('video.video-player').first()).toBeVisible();
+    });
+  });
+
+  test('audio insert via upload renders in editor and persists on reload', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `attachment-${uuid()}.mp3`;
+
+    await test.step('navigate to the article', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+    });
+
+    await test.step('insert audio via upload', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertAudioViaUpload(page, uploadedFileName);
+
+      await expect(page.locator('audio.audio-player').first()).toBeVisible();
+    });
+
+    await test.step('verify autosave', async () => {
+      await waitForAutoSave(page);
+    });
+
+    await test.step('reload and verify persistence', async () => {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await getEditor(page, true);
+
+      await expect(page.locator('audio.audio-player').first()).toBeVisible();
+    });
+  });
+
+  test('file insert via URL renders in editor and does not show a download button', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const fileUrl = 'https://example.com/sample.svg';
+
+    await test.step('navigate to the article', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+    });
+
+    await test.step('insert file via URL embed', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertFileWithUrl(page, fileUrl);
+
+      await expect(page.getByText(fileUrl)).toBeVisible();
+    });
+
+    await test.step('verify no download button for a URL-only attachment', async () => {
+      await expect(
+        page.getByTestId('download-file-attachment')
+      ).not.toBeVisible();
+    });
+  });
+
+  test('uploaded media persists after navigating away before autosave', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `persist-media-${uuid()}.png`;
+
+    await test.step('navigate to article and upload image', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertImageViaUpload(page, uploadedFileName);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step('navigate away immediately without waiting for autosave', async () => {
+      await navigateToArticles(page);
+    });
+
+    await test.step('return to article and verify image is still present', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+      await getEditor(page, true);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
     });
   });
 });

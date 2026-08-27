@@ -15,9 +15,8 @@ install:  ## Install the ingestion module to the current environment
 
 .PHONY: install_dev_env
 install_dev_env:  ## Install all dependencies for development (in edit mode)
-	pip install --upgrade pip "setuptools<81"
+	pip install --upgrade pip
 	pip install nox
-	pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
 
 .PHONY: install_dev
@@ -26,14 +25,12 @@ install_dev:  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	python -m pip install --upgrade pip
 	python -m pip install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	python -m pip install --upgrade pip
 	python -m pip install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
@@ -60,6 +57,14 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
+.PHONY: generate_settings_docs
+generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
+	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
+
+.PHONY: check_import_layers
+check_import_layers:  ## Fail if a module imports a higher layer (import-cost guard, see ingestion/.importlinter)
+	cd $(INGESTION_DIR) && lint-imports
+
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
 	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml -n auto $(INGESTION_DIR)/tests/unit
@@ -69,10 +74,8 @@ unit_ingestion:  ## Run Python unit tests
 .PHONY: unit_ingestion_dev_env
 unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Only for local development!
 	# Ignores tests:
-	# test_ometa_validation_action.py: require great_expectations 0.18.x, the test installs the required package version thus corrupting the environment
 	# test_azuresql_sampling.py: requires pymssql, which is not straightforward to install in some platforms
 	pytest -c $(INGESTION_DIR)/pyproject.toml $(INGESTION_DIR)/tests/unit \
-	 	--ignore=$(INGESTION_DIR)/tests/unit/great_expectations/test_ometa_validation_action.py \
 	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py \
 	 	--ignore-glob="*airflow*"
 

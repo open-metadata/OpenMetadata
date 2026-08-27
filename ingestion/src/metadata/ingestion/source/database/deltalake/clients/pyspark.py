@@ -66,8 +66,8 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
     @classmethod
     def from_config(cls, config: DeltaLakeConnection) -> "DeltalakeBaseClient":
         """Returns a Deltalake Client based on the DeltalakeConfig passed."""
-        import pyspark  # noqa: PLC0415
-        from delta import configure_spark_with_delta_pip  # noqa: PLC0415
+        import pyspark
+        from delta import configure_spark_with_delta_pip
 
         builder = (
             pyspark.sql.SparkSession.builder.appName(config.configSource.appName or "OpenMetadata")

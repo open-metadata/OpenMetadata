@@ -11,25 +11,50 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Skeleton,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
+import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import AgentCard from './AgentCard.component';
+import AgentCardSkeleton from './AgentCardSkeleton.component';
+
+const DEFAULT_SKELETON_COUNT = 3;
 
 interface AgentGroupProps {
   addAgentSlot?: ReactNode;
   agentPermissions?: Record<string, AgentActionPermissions>;
   agents: Agent[];
+  allowedActions?: string[];
   canCreateAgent: boolean;
   dataTestId?: string;
   descKey: string;
   emptyPlaceholder?: ReactNode;
   icon: ReactNode;
+  /**
+   * First load only. The list is empty until the caller knows whether there are
+   * any agents, and rendering `emptyPlaceholder` in that window claims "none
+   * exist" before that is known — show placeholder cards instead.
+   */
+  isLoading?: boolean;
+  /** Disables the refresh button and swaps its icon for a spinner while a refetch is in flight. */
+  isRefreshing?: boolean;
+  skeletonCount?: number;
   titleKey: string;
-  onAction: (action: string, agent: Agent) => void;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
+  /** Refetches this list only. Omit to leave the group without a refresh control. */
+  onRefresh?: () => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
 }
@@ -38,19 +63,70 @@ const AgentGroup: FC<AgentGroupProps> = ({
   addAgentSlot,
   agentPermissions,
   agents,
+  allowedActions,
   canCreateAgent,
   dataTestId = 'agent-group',
   descKey,
   emptyPlaceholder,
   icon,
+  isLoading = false,
+  isRefreshing,
+  skeletonCount = DEFAULT_SKELETON_COUNT,
   onAction,
   onLogs,
+  onRefresh,
   onRun,
   onRunDetails,
   titleKey,
 }) => {
   const { t } = useTranslation();
+  const { isPending: isActionPending } = useAgentActionAvailability();
   const runningCount = agents.filter((a) => a.status === 'running').length;
+
+  const renderAgents = () => {
+    if (isLoading) {
+      return (
+        <div
+          aria-busy
+          aria-label={t('label.loading')}
+          aria-live="polite"
+          className="tw:grid tw:gap-2.5"
+          data-testid="agent-group-skeleton"
+          role="status">
+          {Array.from({ length: skeletonCount }, (_, index) => (
+            <AgentCardSkeleton key={`agent-card-skeleton-${index}`} />
+          ))}
+        </div>
+      );
+    }
+
+    if (agents.length === 0 && emptyPlaceholder) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-80 tw:w-full"
+          data-testid="agent-group-empty-placeholder">
+          {emptyPlaceholder}
+        </Box>
+      );
+    }
+
+    return (
+      <div className="tw:grid tw:gap-2.5">
+        {agents.map((agent) => (
+          <AgentCard
+            agent={agent}
+            allowedActions={allowedActions}
+            key={agent.id}
+            permissions={agentPermissions?.[agent.fqn]}
+            onAction={onAction}
+            onLogs={onLogs}
+            onRun={onRun}
+            onRunDetails={onRunDetails}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card
@@ -80,7 +156,44 @@ const AgentGroup: FC<AgentGroupProps> = ({
             {t('label.count-running', { count: runningCount })}
           </Badge>
         )}
-        {addAgentSlot ??
+        {/* Immediately before the add-agent slot, so it reads as the secondary action left of Add
+            Agent on the metadata list and takes that same top-right spot on the Collate AI list,
+            whose header carries no add button. */}
+        {onRefresh && (
+          <Tooltip
+            title={t('label.refresh-entity', {
+              entity: t('label.agent-plural'),
+            })}>
+            <Button
+              color="secondary"
+              data-testid="agent-group-refresh"
+              iconLeading={
+                isRefreshing ? (
+                  <Loader size="x-small" />
+                ) : (
+                  <ReloadIcon width={14} />
+                )
+              }
+              isDisabled={isRefreshing}
+              size="md"
+              onClick={onRefresh}
+            />
+          </Tooltip>
+        )}
+        {/* Creating an agent deploys it, so the control waits on the pipeline service status the
+            same way the per-card actions do — a placeholder while it is in flight, and the slot's
+            own disabled state once it answers. */}
+        {isActionPending ? (
+          <span
+            aria-busy
+            aria-label={t('label.loading')}
+            aria-live="polite"
+            data-testid="add-agent-skeleton"
+            role="status">
+            <Skeleton height={36} variant="rounded" width={120} />
+          </span>
+        ) : (
+          addAgentSlot ??
           (canCreateAgent && (
             <Button
               color="secondary"
@@ -89,29 +202,10 @@ const AgentGroup: FC<AgentGroupProps> = ({
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>
-          ))}
+          ))
+        )}
       </Box>
-      {agents.length === 0 && emptyPlaceholder ? (
-        <div
-          className="tw:border tw:rounded-xl tw:border-secondary tw:bg-white tw:dark:bg-gray-900"
-          data-testid="agent-group-empty-placeholder">
-          {emptyPlaceholder}
-        </div>
-      ) : (
-        <div className="tw:grid tw:gap-2.5">
-          {agents.map((agent) => (
-            <AgentCard
-              agent={agent}
-              key={agent.id}
-              permissions={agentPermissions?.[agent.fqn]}
-              onAction={onAction}
-              onLogs={onLogs}
-              onRun={onRun}
-              onRunDetails={onRunDetails}
-            />
-          ))}
-        </div>
-      )}
+      {renderAgents()}
     </Card>
   );
 };

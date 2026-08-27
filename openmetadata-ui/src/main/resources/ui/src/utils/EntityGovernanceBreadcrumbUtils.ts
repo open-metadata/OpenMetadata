@@ -303,25 +303,35 @@ export const getBreadcrumbForClassification = (entityName: string) => [
   },
 ];
 
-export const getBreadcrumbForMetric = (entityName: string) => [
-  {
-    name: i18n.t('label.metric-plural'),
-    url: ROUTES.METRICS,
-  },
-  {
-    name: entityName,
-    url: '',
-    iconType: EntityType.METRIC,
-  },
-];
+export const getBreadcrumbForMetric = (
+  entityName: string,
+  includeCurrent = false
+) => {
+  const items = [
+    {
+      name: i18n.t('label.metric-plural'),
+      url: ROUTES.METRICS,
+    },
+  ];
+
+  if (includeCurrent) {
+    items.push({
+      name: entityName,
+      url: '',
+      iconType: EntityType.METRIC,
+    });
+  }
+
+  return items;
+};
 
 export const getBreadcrumbForKnowledgePage = (
   entityName: string,
   includeCurrent: boolean
 ) => [
   {
-    name: i18n.t('label.knowledge-center'),
-    url: ROUTES.KNOWLEDGE_CENTER,
+    name: i18n.t('label.context-center'),
+    url: ROUTES.CONTEXT_CENTER_ARTICLES,
   },
   {
     name: entityName,

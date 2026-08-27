@@ -13,7 +13,7 @@ The repo has **two** parallel form APIs. This document is about the **modern** o
 | Import from | `@openmetadata/ui-core-components` | `@utils/formUtils` |
 | Foundation | `react-hook-form` + `react-aria-components`, Tailwind `tw:` | Ant Design `Form`/`Form.Item` |
 | Bulk renderer | `FormFields` | `generateFormFields` |
-| `FieldTypes` | `TEXT`, `SELECT`, `AUTOCOMPLETE`, … | also MUI-suffixed (`TEXT_MUI`, `SELECT_MUI`, …) |
+| `FieldTypes` | `TEXT`, `SELECT`, `AUTOCOMPLETE`, … | Ant Design-backed field types |
 | Source | `openmetadata-ui-core-components/.../components/application/form-field/` | `openmetadata-ui/.../src/utils/formUtils.tsx` |
 
 Both export a `getField` and a `FieldProp` — they are **not** interchangeable. **Build all new forms on the modern stack.** If you land in `formUtils.tsx` (Ant Design), you're in the legacy API.
@@ -22,7 +22,7 @@ Both export a `getField` and a `FieldProp` — they are **not** interchangeable.
 
 The best living reference is the Domain/Data Product form. Read it alongside this doc:
 
-- **Form + transform:** [`AddDomainForm.component.tsx`](../src/components/Domain/AddDomainForm/AddDomainForm.component.tsx) — every `FieldProp`, the pure `transformDomainFormData`, and two escape hatches (`description` via `RichTextEditor`, `glossaryTerms` via `MUIGlossaryTagSuggestion`).
+- **Form + transform:** [`AddDomainForm.component.tsx`](../src/components/Domain/AddDomainForm/AddDomainForm.component.tsx) — every `FieldProp`, the pure `transformDomainFormData`, and two escape hatches (`description` via `RichTextEditor`, `glossaryTerms` via `GlossaryTermTreeSelect`).
 - **Caller wiring:** [`DomainListPage.tsx`](../src/components/DomainListing/DomainListPage.tsx) — `useForm` → `transformDomainFormData` → `useFormDrawerWithHook` + `submitAndClose`.
 
 ### Where each symbol lives
@@ -517,7 +517,7 @@ Use `hasSeparator: true` on a `FieldProp` to emit a `<Divider />` after that fie
 
 ## 7. The escape hatch
 
-For inputs that don't fit any `FieldTypes` (e.g. `RichTextEditor`, `MUIGlossaryTagSuggestion`), drop to a direct `<FormField>` with a render-prop child:
+For inputs that don't fit any `FieldTypes` (e.g. `RichTextEditor`, `GlossaryTermTreeSelect`), drop to a direct `<FormField>` with a render-prop child:
 
 ```tsx
 <FormField control={form.control} name="description" rules={{ required: t('...') }}>
@@ -552,7 +552,7 @@ Replicate these four and your escape-hatch field is visually and behaviorally in
 ### Two escape hatches, when to use which
 
 - **`FieldTypes.COMPONENT`** — stays inside the typed-field flow; the `<Field>` wrapper still renders label + error around your `props.children`. For simple inline customs that handle their own state.
-- **Direct `<FormField>`** — full control; you hand-roll the scaffold. For widgets with their own value/change handlers that must be wired to RHF (RichTextEditor, MUI components, etc.).
+- **Direct `<FormField>`** — full control; you hand-roll the scaffold. For widgets with their own value/change handlers that must be wired to RHF (RichTextEditor, tree selects, etc.).
 
 ---
 

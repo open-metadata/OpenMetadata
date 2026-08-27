@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "بستن",
+    "close-navigation-menu": "بستن منوی ناوبری",
+    "copy-link": "کپی پیوند",
+    "current-page": "صفحه فعلی",
+    "date-range-picker": "انتخابگر بازه تاریخ",
+    "delete": "حذف",
+    "edit": "ویرایش",
+    "expand-navigation-menu": "گسترش منوی ناوبری",
+    "field-documentation": "مستندات فیلد",
+    "hidden-breadcrumbs": "مسیرهای پنهان",
+    "loading": "در حال بارگذاری…",
+    "next-page": "رفتن به صفحه بعد",
+    "open-menu": "باز کردن منو",
+    "page": "صفحه",
+    "pagination": "صفحه‌بندی",
+    "pagination-navigation": "ناوبری صفحه‌بندی",
+    "previous-page": "رفتن به صفحه قبل",
+    "records": "رکوردها",
+    "remove-filter": "حذف فیلتر",
+    "select-dates": "انتخاب تاریخ‌ها",
+    "show-hidden-breadcrumbs": "نمایش مسیرهای پنهان",
+    "today": "امروز"
+  }
+}

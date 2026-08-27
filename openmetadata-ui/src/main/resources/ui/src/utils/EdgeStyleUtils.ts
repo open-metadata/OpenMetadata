@@ -24,6 +24,7 @@ export interface LineageEdgeColors {
   dqHighlight: string;
 }
 
+const EDGE_STYLE_CACHE_MAX = 1_000;
 const edgeStyleCache = new Map<string, EdgeStyle>();
 let cachedColorSignature = '';
 
@@ -129,8 +130,12 @@ export function computeEdgeStyle(
     isEdgeHovered
   );
 
-  if (edgeStyleCache.has(cacheKey)) {
-    return edgeStyleCache.get(cacheKey)!;
+  const cachedStyle = edgeStyleCache.get(cacheKey);
+  if (cachedStyle) {
+    edgeStyleCache.delete(cacheKey);
+    edgeStyleCache.set(cacheKey, cachedStyle);
+
+    return cachedStyle;
   }
 
   const style = calculateEdgeStyle(
@@ -145,6 +150,12 @@ export function computeEdgeStyle(
     isEdgeHovered
   );
 
+  if (edgeStyleCache.size >= EDGE_STYLE_CACHE_MAX) {
+    const oldestKey = edgeStyleCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      edgeStyleCache.delete(oldestKey);
+    }
+  }
   edgeStyleCache.set(cacheKey, style);
 
   return style;
@@ -152,6 +163,54 @@ export function computeEdgeStyle(
 
 export function clearEdgeStyleCache(): void {
   edgeStyleCache.clear();
+}
+
+export type EdgeVisualState = 'traced' | 'dimmed' | 'hidden' | 'default';
+
+// Node-click and column-click are mutually exclusive tracing modes
+// (LineageProvider clears the other set when either fires), so we can key
+// off which set is non-empty to decide the current mode.
+export function computeEdgeVisualState(
+  edge: Edge,
+  tracedNodes: Set<string>,
+  tracedColumns: Set<string>
+): EdgeVisualState {
+  const isColumnLineage = Boolean(edge.data?.isColumnLineage);
+  const inColumnMode = tracedColumns.size > 0;
+  const inNodeMode = tracedNodes.size > 0;
+
+  if (isColumnLineage) {
+    if (inColumnMode) {
+      const isColumnHighlighted =
+        tracedColumns.has(edge.sourceHandle ?? '') &&
+        tracedColumns.has(edge.targetHandle ?? '');
+
+      return isColumnHighlighted ? 'traced' : 'hidden';
+    }
+    if (inNodeMode) {
+      return 'hidden';
+    }
+
+    return 'default';
+  }
+
+  if (inColumnMode) {
+    return 'dimmed';
+  }
+  if (inNodeMode) {
+    const fromEntityId = edge.data?.edge?.fromEntity?.id;
+    const toEntityId = edge.data?.edge?.toEntity?.id;
+    const isNodeTraced = Boolean(
+      fromEntityId &&
+        toEntityId &&
+        tracedNodes.has(fromEntityId) &&
+        tracedNodes.has(toEntityId)
+    );
+
+    return isNodeTraced ? 'traced' : 'dimmed';
+  }
+
+  return 'default';
 }
 
 export function invalidateEdgeStyles(affectedEdgeIds: string[]): void {

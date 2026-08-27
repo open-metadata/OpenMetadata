@@ -139,11 +139,15 @@
         },
         "expiryTimer": {
           "title": "Expiry Timer",
-          "description": "Auto-fires after the ISO 8601 duration in the named process variable elapses. The boundary timer interrupts the user task and exits the subprocess with the configured transitionId as the node's result, so an outgoing edge with that condition routes the workflow downstream (e.g. to auto-revoke or auto-close).",
+          "description": "Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date variable. The boundary timer interrupts the user task and exits the subprocess with the configured transitionId as the node's result, so an outgoing edge with that condition routes the workflow downstream (e.g. to auto-revoke or auto-close).",
           "type": "object",
           "properties": {
             "durationVariable": {
               "description": "Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' → 'P14D').",
+              "type": "string"
+            },
+            "dateVariable": {
+              "description": "Name of the process variable holding the absolute ISO 8601 date/time when the timer should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').",
               "type": "string"
             },
             "transitionId": {
@@ -156,7 +160,11 @@
               "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
             }
           },
-          "required": ["durationVariable", "transitionId"],
+          "required": ["transitionId"],
+          "oneOf": [
+            {"required": ["durationVariable"]},
+            {"required": ["dateVariable"]}
+          ],
           "additionalProperties": false
         }
       },

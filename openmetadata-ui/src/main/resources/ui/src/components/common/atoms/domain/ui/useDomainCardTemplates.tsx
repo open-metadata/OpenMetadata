@@ -23,8 +23,11 @@ import { DataProduct } from '../../../../../generated/entity/domains/dataProduct
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
+import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import {
+  CARD_NAME_CLIP_CLASS,
+  CLIPPED_NAME_CLASS,
   renderDomainClassificationTagsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
@@ -37,9 +40,19 @@ export const useDomainCardTemplates = () => {
   const renderDomainCard = useCallback(
     (entity: Domain): ReactNode => (
       <Box direction="col" gap={4}>
-        <Box align="center" direction="row" gap={3}>
+        <Box
+          align="center"
+          className={CARD_NAME_CLIP_CLASS}
+          direction="row"
+          gap={3}>
           <Avatar size="md" {...getEntityAvatarProps(entity)} />
-          <Typography size="text-sm" weight="medium">
+          <Typography
+            className={CLIPPED_NAME_CLASS}
+            ellipsis={{
+              tooltip: renderBreakableTooltip(getEntityName(entity)),
+            }}
+            size="text-sm"
+            weight="medium">
             {getEntityName(entity)}
           </Typography>
         </Box>
@@ -88,14 +101,27 @@ export const useDomainCardTemplates = () => {
 
       return (
         <Box direction="col" gap={4}>
-          <Box align="center" direction="row" gap={3}>
+          <Box
+            align="center"
+            className={CARD_NAME_CLIP_CLASS}
+            direction="row"
+            gap={3}>
             <Avatar size="md" {...getEntityAvatarProps(entity)} />
-            <Box direction="col">
-              <Typography size="text-sm" weight="medium">
+            <Box className="tw:min-w-0" direction="col">
+              <Typography
+                className={CLIPPED_NAME_CLASS}
+                ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+                size="text-sm"
+                weight="medium">
                 {entityName}
               </Typography>
               {showName && (
-                <Typography size="text-xs">{entity.name}</Typography>
+                <Typography
+                  className={CLIPPED_NAME_CLASS}
+                  ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+                  size="text-xs">
+                  {entity.name}
+                </Typography>
               )}
             </Box>
           </Box>

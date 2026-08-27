@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import EntityHealthStatusPieChartWidget from './EntityHealthStatusPieChartWidget.component';
 
@@ -36,12 +37,16 @@ jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
   getPieChartLabel: jest.fn().mockReturnValue(<div>Test Label</div>),
 }));
 
-jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
-  getTestCaseTabPath: jest.fn((status: TestCaseStatus) => ({
-    pathname: '/data-quality/test-cases',
-    search: `testCaseStatus=${status}`,
-  })),
-}));
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => {
+  const actual = jest.requireActual(
+    '../../../../utils/DataQuality/DataQualityPureUtils'
+  ) as typeof import('../../../../utils/DataQuality/DataQualityPureUtils');
+
+  return {
+    ...actual,
+    getTestCaseTabPath: jest.fn(actual.getTestCaseTabPath),
+  };
+});
 
 jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
   jest
@@ -51,12 +56,14 @@ jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
         <div>
           CustomPieChart.component
           <button
+            aria-label="segment-0"
             data-testid="segment-0"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Healthy', value: 1 }, 0)
             }
           />
           <button
+            aria-label="segment-1"
             data-testid="segment-1"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Unhealthy', value: 0 }, 1)
@@ -137,10 +144,15 @@ describe('EntityHealthStatusPieChartWidget', () => {
       segment0.click();
     });
 
-    expect(getTestCaseTabPath).toHaveBeenCalledWith(TestCaseStatus.Success);
+    expect(getTestCaseTabPath).toHaveBeenCalledWith(
+      [TestCaseStatus.Success, TestCaseStatus.Queued],
+      undefined
+    );
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: '/data-quality/test-cases',
-      search: `testCaseStatus=${TestCaseStatus.Success}`,
+      search:
+        `testCaseStatus%5B%5D=${TestCaseStatus.Success}` +
+        `&testCaseStatus%5B%5D=${TestCaseStatus.Queued}`,
     });
 
     mockNavigate.mockClear();
@@ -151,10 +163,63 @@ describe('EntityHealthStatusPieChartWidget', () => {
       segment1.click();
     });
 
-    expect(getTestCaseTabPath).toHaveBeenCalledWith(TestCaseStatus.Failed);
+    expect(getTestCaseTabPath).toHaveBeenCalledWith(
+      [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      undefined
+    );
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: '/data-quality/test-cases',
-      search: `testCaseStatus=${TestCaseStatus.Failed}`,
+      search:
+        `testCaseStatus%5B%5D=${TestCaseStatus.Failed}` +
+        `&testCaseStatus%5B%5D=${TestCaseStatus.Aborted}`,
     });
+  });
+
+  it('should use the supplied navigate function and test cases path', async () => {
+    const navigate = jest.fn();
+
+    render(
+      <EntityHealthStatusPieChartWidget
+        chartFilter={{ startTs: 100, endTs: 200 }}
+        navigate={navigate}
+        redirectPath="/observability/data-quality/test-cases"
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const unhealthySegment = await screen.findByTestId('segment-1');
+    await act(async () => {
+      unhealthySegment.click();
+    });
+
+    const expectedTitle = encodeURIComponent(
+      `${formatDate(100, true)} -> ${formatDate(200, true)}`
+    );
+
+    expect(navigate).toHaveBeenCalledWith({
+      pathname: '/observability/data-quality/test-cases',
+      search:
+        `testCaseStatus%5B%5D=${TestCaseStatus.Failed}` +
+        `&testCaseStatus%5B%5D=${TestCaseStatus.Aborted}` +
+        '&lastRunRange%5BstartTs%5D=100' +
+        '&lastRunRange%5BendTs%5D=200' +
+        '&lastRunRange%5Bkey%5D=customRange' +
+        `&lastRunRange%5Btitle%5D=${expectedTitle}`,
+    });
+
+    const { getTestCaseTabPath } = jest.requireMock(
+      '../../../../utils/DataQuality/DataQualityPureUtils'
+    ) as { getTestCaseTabPath: jest.Mock };
+
+    expect(getTestCaseTabPath).toHaveBeenCalledWith(
+      [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      {
+        startTs: 100,
+        endTs: 200,
+      }
+    );
   });
 });

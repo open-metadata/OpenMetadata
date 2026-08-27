@@ -136,6 +136,7 @@ register(
   CardinalityAwareLine
 );
 
+const CSS_COLOR_CACHE_MAX = 200;
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
 const COMBO_LABEL_MEASURE_FONT = `${COMBO_LABEL_FONT_WEIGHT} ${COMBO_LABEL_FONT_SIZE}px sans-serif`;
@@ -145,6 +146,16 @@ function parseVarName(cssVar: string): string {
   const firstComma = inner.indexOf(',');
 
   return (firstComma > 0 ? inner.slice(0, firstComma) : inner).trim();
+}
+
+function cacheCssColor(cssVar: string, color: string): void {
+  if (cssColorCache.size >= CSS_COLOR_CACHE_MAX) {
+    const oldest = cssColorCache.keys().next().value;
+    if (oldest !== undefined) {
+      cssColorCache.delete(oldest);
+    }
+  }
+  cssColorCache.set(cssVar, color);
 }
 
 function isColorLike(val: string): boolean {
@@ -172,6 +183,9 @@ export function getCanvasColor(cssVar: string, fallbackHex: string): string {
 
   const cached = cssColorCache.get(cssVar);
   if (cached) {
+    cssColorCache.delete(cssVar);
+    cssColorCache.set(cssVar, cached);
+
     return cached;
   }
 
@@ -188,7 +202,7 @@ export function getCanvasColor(cssVar: string, fallbackHex: string): string {
       fromCascade !== 'rgba(0, 0, 0, 0)' &&
       isColorLike(fromCascade)
     ) {
-      cssColorCache.set(cssVar, fromCascade);
+      cacheCssColor(cssVar, fromCascade);
 
       return fromCascade;
     }
@@ -198,7 +212,7 @@ export function getCanvasColor(cssVar: string, fallbackHex: string): string {
       .getPropertyValue(varName)
       .trim();
     if (rootVal && isColorLike(rootVal)) {
-      cssColorCache.set(cssVar, rootVal);
+      cacheCssColor(cssVar, rootVal);
 
       return rootVal;
     }

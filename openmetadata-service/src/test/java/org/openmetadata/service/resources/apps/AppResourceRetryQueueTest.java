@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -70,8 +71,17 @@ class AppResourceRetryQueueTest {
     when(repository.getByName(any(), eq("SearchIndexingApplication"), any())).thenReturn(searchApp);
     when(repository.getFields(eq("id"))).thenReturn(null);
     when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
-    when(retryQueueDAO.listAll(10, 0)).thenReturn(List.of());
-    when(retryQueueDAO.countAll()).thenReturn(0);
+    CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord storedRecord =
+        new CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord(
+            UUID.randomUUID().toString(),
+            "service.database",
+            "bulk flush timed out\n__OPENMETADATA_SEARCH_PROPAGATION_V1__:encoded-context",
+            "PENDING",
+            "database",
+            0,
+            null);
+    when(retryQueueDAO.listAll(10, 0)).thenReturn(List.of(storedRecord));
+    when(retryQueueDAO.countAll()).thenReturn(1);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -81,6 +91,11 @@ class AppResourceRetryQueueTest {
 
       assertEquals(200, response.getStatus());
       assertNotNull(response.getEntity());
+      ResultList<?> result = (ResultList<?>) response.getEntity();
+      CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord visibleRecord =
+          (CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord)
+              result.getData().getFirst();
+      assertEquals("bulk flush timed out", visibleRecord.getFailureReason());
       verify(retryQueueDAO).listAll(10, 0);
       verify(retryQueueDAO).countAll();
     }

@@ -1,10 +1,13 @@
 package org.openmetadata.service.search.opensearch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.Script;
 import os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier;
 import os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode;
 import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore;
@@ -12,6 +15,7 @@ import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.SimpleQueryStringFlag;
 import os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType;
 
 public class OpenSearchQueryBuilder {
@@ -291,6 +295,39 @@ public class OpenSearchQueryBuilder {
                 }));
   }
 
+  /**
+   * Build a {@code simple_query_string} over {@code fields} that treats the whole input as literal
+   * text. Unlike {@code query_string}, this parser never throws on malformed input, so a caller can
+   * paste a URL or a name containing Lucene syntax without producing a {@code
+   * query_shard_exception}. {@code flags(None)} disables every operator, which is what makes the
+   * input literal — with operators live, a {@code -} or {@code |} in a name would still change the
+   * meaning of the query even though it could no longer throw.
+   */
+  public static Query simpleQueryStringQuery(
+      String query, Map<String, Float> fields, Operator operator) {
+    List<String> fieldList = new ArrayList<>();
+    fields.forEach(
+        (field, boost) -> {
+          if (boost != null && boost != 1.0f) {
+            fieldList.add(field + "^" + boost);
+          } else {
+            fieldList.add(field);
+          }
+        });
+    return Query.of(
+        q ->
+            q.simpleQueryString(
+                sqs -> {
+                  sqs.query(query);
+                  sqs.fields(fieldList);
+                  sqs.flags(f -> f.single(SimpleQueryStringFlag.None));
+                  if (operator != null) {
+                    sqs.defaultOperator(operator);
+                  }
+                  return sqs;
+                }));
+  }
+
   public static BoolQueryBuilder boolQuery() {
     return new BoolQueryBuilder();
   }
@@ -399,6 +436,55 @@ public class OpenSearchQueryBuilder {
 
   public static Query nestedQuery(String path, Query query) {
     return Query.of(q -> q.nested(n -> n.path(path).query(query).ignoreUnmapped(true)));
+  }
+
+  public static Query constantScoreQuery(Query filter, Float boost) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                cs -> {
+                  cs.filter(filter);
+                  if (boost != null) {
+                    cs.boost(boost);
+                  }
+                  return cs;
+                }));
+  }
+
+  public static Query matchBoolPrefixQuery(
+      String field, String query, String minimumShouldMatch, String queryName) {
+    return Query.of(
+        q ->
+            q.matchBoolPrefix(
+                m -> {
+                  m.field(field).query(query);
+                  if (minimumShouldMatch != null) {
+                    m.minimumShouldMatch(minimumShouldMatch);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
+                  }
+                  return m;
+                }));
+  }
+
+  public static Query scriptScoreQuery(Query query, String source, Map<String, Double> params) {
+    Map<String, JsonData> scriptParams = new HashMap<>();
+    params.forEach((name, value) -> scriptParams.put(name, JsonData.of(value)));
+    return Query.of(
+        q ->
+            q.scriptScore(
+                ss ->
+                    ss.query(query)
+                        .script(
+                            Script.of(
+                                s ->
+                                    s.inline(
+                                        i ->
+                                            i.source(source)
+                                                .lang(
+                                                    l -> l.builtin(BuiltinScriptLanguage.Painless))
+                                                .params(scriptParams))))));
   }
 
   public static Query functionScoreQuery(

@@ -19,7 +19,10 @@ import { AgentActionPermissions } from '../AgentsPage.interface';
 
 const FQN_KEY_SEPARATOR = '|';
 
-export const useAgentPermissions = (agentFqns: string[]) => {
+export const useAgentPermissions = (
+  agentFqns: string[],
+  resourceEntity: ResourceEntity = ResourceEntity.INGESTION_PIPELINE
+) => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [agentPermissions, setAgentPermissions] = useState<
     Record<string, AgentActionPermissions>
@@ -43,9 +46,7 @@ export const useAgentPermissions = (agentFqns: string[]) => {
     let isMounted = true;
 
     Promise.allSettled(
-      fqns.map((fqn) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, fqn)
-      )
+      fqns.map((fqn) => getEntityPermissionByFqn(resourceEntity, fqn))
     ).then((results) => {
       if (!isMounted) {
         return;
@@ -73,7 +74,7 @@ export const useAgentPermissions = (agentFqns: string[]) => {
     return () => {
       isMounted = false;
     };
-  }, [fqns]);
+  }, [fqns, resourceEntity]);
 
   return { agentPermissions };
 };

@@ -41,7 +41,7 @@ class BaseValidationChecker(ABC):
         Default builder: map CTE columns to metric keys, use violation predicate, and
         return a CASE that yields total_count on violation, else 0.
         """
-        from sqlalchemy import case, literal  # noqa: PLC0415
+        from sqlalchemy import case, literal
 
         return case(
             (self.build_violation_sqa(metric_expressions), row_count_expr),

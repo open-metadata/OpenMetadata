@@ -124,7 +124,7 @@ class AssetKey(BaseModel):
             return self
 
         if strip_prefix >= len(self.path):
-            from metadata.utils.logger import ingestion_logger  # noqa: PLC0415
+            from metadata.utils.logger import ingestion_logger
 
             logger = ingestion_logger()
             logger.warning(

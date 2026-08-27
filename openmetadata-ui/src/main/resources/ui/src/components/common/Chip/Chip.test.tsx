@@ -23,7 +23,7 @@ const mockLinkButton = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <a {...rest} onClick={mockLinkButton}>
+    <a {...rest} href={rest.to} onClick={mockLinkButton}>
       {children}
     </a>
   )),

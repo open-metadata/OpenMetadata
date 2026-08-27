@@ -14,6 +14,7 @@ import { Col, Grid, Layout, Row } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
 import { lazy, ReactNode } from 'react';
+import loginClassBase from '../../../constants/LoginClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import './carousel-layout.less';
@@ -32,25 +33,37 @@ export const CarouselLayout = ({
   carouselClassName?: string;
 }) => {
   const { xl } = Grid.useBreakpoint();
+  const hasLoginVideo = Boolean(loginClassBase.getLoginVideo());
+
+  const formColumn = (
+    <Col className="carousel-left-side-container" span={xl ? 10 : 24}>
+      {children}
+    </Col>
+  );
+
+  const mediaColumn = xl && (
+    <Col span={14}>
+      <div className={classNames('form-carousel-container', carouselClassName)}>
+        <LoginCarousel />
+      </div>
+    </Col>
+  );
 
   return (
-    <Layout>
+    <Layout className="tw:bg-primary">
       <DocumentTitle title={pageTitle} />
       <Content className="p-md">
         <Row data-testid="signin-page" gutter={[48, 0]} wrap={false}>
-          <Col className="carousel-left-side-container" span={xl ? 10 : 24}>
-            {children}
-          </Col>
-          {xl && (
-            <Col span={14}>
-              <div
-                className={classNames(
-                  'form-carousel-container',
-                  carouselClassName
-                )}>
-                <LoginCarousel />
-              </div>
-            </Col>
+          {hasLoginVideo ? (
+            <>
+              {mediaColumn}
+              {formColumn}
+            </>
+          ) : (
+            <>
+              {formColumn}
+              {mediaColumn}
+            </>
           )}
         </Row>
       </Content>

@@ -30,6 +30,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.RdfWriteMode;
 
 /**
  * Unit tests for the package-private helpers on {@link JenaFusekiStorage}.
@@ -68,6 +69,10 @@ class JenaFusekiStorageTest {
       assertEquals(
           JenaFusekiStorage.DEFAULT_WRITE_RETRY_MAX_BACKOFF_MS,
           JenaFusekiStorage.resolveWriteRetryMaxBackoffMs(config));
+      assertFalse(config.getInferenceEnabled());
+      assertEquals(100, config.getBulkEntityBatchSize());
+      assertEquals(100, config.getBulkRelationshipSourceBatchSize());
+      assertEquals(50, config.getBulkLineageEdgeBatchSize());
     }
 
     @Test
@@ -199,6 +204,25 @@ class JenaFusekiStorageTest {
       assertTrue(
           update.contains("INSERT DATA { GRAPH <https://open-metadata.org/graph/knowledge>"));
       assertTrue(update.indexOf("DELETE") < update.indexOf("INSERT DATA"));
+      assertTrue(update.contains("orders"));
+    }
+
+    @Test
+    @DisplayName("insert-only entity helper emits no delete reconciliation")
+    void insertOnlyEntityUpsertSkipsDelete() {
+      UUID entityId = UUID.randomUUID();
+      String entityUri = "https://open-metadata.org/entity/table/" + entityId;
+      Model model = ModelFactory.createDefaultModel();
+      model
+          .createResource(entityUri)
+          .addProperty(
+              model.createProperty("http://www.w3.org/2000/01/rdf-schema#label"), "orders");
+
+      String update =
+          JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model, RdfWriteMode.INSERT_ONLY);
+
+      assertFalse(update.contains("DELETE"));
+      assertTrue(update.startsWith("INSERT DATA"));
       assertTrue(update.contains("orders"));
     }
   }

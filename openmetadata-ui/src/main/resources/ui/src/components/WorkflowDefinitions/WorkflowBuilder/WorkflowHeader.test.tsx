@@ -87,6 +87,36 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <span {...rest}>{children}</span>,
 }));
 
+jest.mock('../../common/HeaderShell/HeaderShell.component', () => ({
+  __esModule: true,
+  default: ({
+    breadcrumb,
+    leading,
+    title,
+    subtitle,
+    badge,
+    actions,
+    'data-testid': dataTestId,
+  }: {
+    breadcrumb?: React.ReactNode;
+    leading?: React.ReactNode;
+    title?: React.ReactNode;
+    subtitle?: React.ReactNode;
+    badge?: React.ReactNode;
+    actions?: React.ReactNode;
+    'data-testid'?: string;
+  }) => (
+    <div data-testid={dataTestId}>
+      {breadcrumb}
+      {leading}
+      {title}
+      {badge}
+      {subtitle}
+      {actions}
+    </div>
+  ),
+}));
+
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => null,
 }));
@@ -244,5 +274,22 @@ describe('WorkflowHeader — System badge', () => {
     expect(
       screen.queryByTestId('edit-workflow-title-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('renders the AI-mode header with the breadcrumb when isAiMode is true', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        isAiMode
+        breadcrumb={<div data-testid="ai-breadcrumb">crumb</div>}
+      />
+    );
+
+    expect(screen.getByTestId('ai-breadcrumb')).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-title')).toHaveTextContent(
+      'Glossary Approval Workflow'
+    );
   });
 });

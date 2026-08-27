@@ -416,8 +416,7 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/modelConfiguration"
-      },
-      "minItems": 1
+      }
     },
     "primaryModel": {
       "description": "Primary/default LLM model used by this application",

@@ -37,9 +37,11 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getServiceIcon: jest.fn(() => <div>ServiceIcon</div>),
+jest.mock('../../../utils/EntityIconUtils', () => ({
   getEntityIcon: jest.fn(() => <div>EntityIcon</div>),
+}));
+jest.mock('../../../utils/EntityServiceIconUtils', () => ({
+  getServiceIcon: jest.fn(() => <div>ServiceIcon</div>),
 }));
 
 jest.mock('../../../utils/EntityLineageNodeUtils', () => ({

@@ -21,7 +21,6 @@ import {
 } from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
-import '../../../../test/unit/mocks/mui.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
@@ -72,10 +71,11 @@ jest.mock(
     )),
   })
 );
-jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div>
       Description.component
+      {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
       <button
         data-testid="update-description-button"
         onClick={() => onDescriptionUpdate('new description')}

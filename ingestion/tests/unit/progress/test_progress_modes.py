@@ -43,6 +43,24 @@ def test_manual_wraps_the_tracking_registry():
     assert ("Workspaces", 0, 3) in tracking.registry.global_counters()
 
 
+def test_track_asset_counts_toward_both_progress_and_assets_ingested():
+    tracking = ProgressTracking(ProgressMode.MANUAL, "ManualSource")
+    tracking.manual.set_total("Table", 3)
+    tracking.manual.track_asset("Table")
+    tracking.manual.track_asset("Table")
+    assert ("Table", 2, 3) in tracking.registry.global_counters()
+    assert tracking.registry.assets_ingested() == 2
+
+
+def test_plain_track_does_not_count_as_an_asset():
+    tracking = ProgressTracking(ProgressMode.MANUAL, "ManualSource")
+    tracking.manual.set_total("Queries", 5)
+    tracking.manual.track("Queries")
+    tracking.manual.track("Queries")
+    assert ("Queries", 2, 5) in tracking.registry.global_counters()
+    assert tracking.registry.assets_ingested() == 0
+
+
 def test_totals_declarer_exposes_no_counting_methods():
     declarer = TotalsDeclarer(ProgressRegistry())
     for name in ("track", "advance", "open", "close", "reconcile_scope_total"):

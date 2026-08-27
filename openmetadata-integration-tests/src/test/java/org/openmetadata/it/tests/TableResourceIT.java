@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -42,6 +45,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -78,6 +82,7 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -87,6 +92,7 @@ import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -108,6 +114,8 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for Table entity operations.
@@ -115,7 +123,9 @@ import org.openmetadata.sdk.network.HttpMethod;
  * <p>Extends BaseEntityIT to inherit all 8 common entity tests. Adds table-specific tests for
  * columns, constraints, partitions, and complex column types.
  *
- * <p>Total coverage: 8 (common) + 81 (table-specific) = 89 tests
+ * <p>Total coverage: 130 declared test methods (8 inherited from BaseEntityIT plus table-specific
+ * tests for columns, constraints, partitions, profiles and CSV import/export); the executed count is
+ * higher because several are parameterized.
  *
  * <p>Migrated from: org.openmetadata.service.resources.databases.TableResourceTest Migration date:
  * 2025-10-11
@@ -125,6 +135,14 @@ import org.openmetadata.sdk.network.HttpMethod;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
+
+  // Physical extension values persisted in profiler_data_time_series. Kept as literals rather than
+  // referencing the production constants so the tests pin the on-disk contract.
+  private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+  private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+  // Enough column-profile history that the purge is not trivially a single-row delete.
+  private static final int LARGE_PROFILE_HISTORY_ROWS = 1001;
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
@@ -227,6 +245,38 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table createEntity(CreateTable createRequest) {
     return SdkClients.adminClient().tables().create(createRequest);
+  }
+
+  @Test
+  void post_tableWithInvalidConstraintOrPartitionColumnName_4xx(TestNamespace ns) {
+    CreateTable invalidConstraintRequest = createMinimalRequest(ns);
+    invalidConstraintRequest.setName(ns.prefix("table_invalid_constraint_column"));
+    invalidConstraintRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("name>invalid"))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(invalidConstraintRequest),
+        "Creating table with invalid constraint column name should fail");
+
+    CreateTable invalidPartitionRequest = createMinimalRequest(ns);
+    invalidPartitionRequest.setName(ns.prefix("table_invalid_partition_column"));
+    invalidPartitionRequest.setTablePartition(
+        new TablePartition()
+            .withColumns(
+                List.of(
+                    new PartitionColumnDetails()
+                        .withColumnName("name>invalid")
+                        .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
+                        .withInterval("daily"))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(invalidPartitionRequest),
+        "Creating table with invalid partition column name should fail");
   }
 
   @Override
@@ -1935,6 +1985,205 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNotNull(updated.getProfile().getRowCount());
   }
 
+  // ===================================================================
+  // PROFILER DATA LIFECYCLE ON DELETE (issue #27041)
+  // ===================================================================
+
+  @Test
+  void delete_hardDeletePurgesProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_purge_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    assertTrue(
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Table profile row must exist before the delete");
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the delete");
+    assertTrue(
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "System profile row must exist before the delete");
+
+    hardDeleteEntity(table.getId().toString());
+
+    awaitProfilerRowsDeleted(tableFqn, columnFqn);
+
+    Table recreated = createEntity(createRequest);
+    assertEquals(
+        tableFqn, recreated.getFullyQualifiedName(), "Re-created table must reuse the same FQN");
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNull(
+        latestProfile.getProfile(),
+        "Re-created table must not resurface the deleted table's profile");
+    assertTrue(
+        latestProfile.getColumns().stream().allMatch(column -> column.getProfile() == null),
+        "Re-created table must not resurface the deleted table's column profiles");
+    assertTrue(
+        listSystemProfiles(client, tableFqn).isEmpty(),
+        "Re-created table must not resurface the deleted table's system profiles");
+  }
+
+  @Test
+  void delete_softDeletePreservesProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_soft_delete_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    deleteEntity(table.getId().toString());
+
+    assertTrue(
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve table profile rows");
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve column profile rows");
+    assertTrue(
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve system profile rows");
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNotNull(
+        latestProfile.getProfile(), "Soft-deleted table must still serve its latest profile");
+    assertTrue(
+        latestProfile.getColumns().stream().anyMatch(column -> column.getProfile() != null),
+        "Soft-deleted table must still serve its column profiles");
+    assertFalse(
+        listSystemProfiles(client, tableFqn).isEmpty(),
+        "Soft-deleted table must still serve its system profiles");
+  }
+
+  @Test
+  void delete_hardDeleteOfSchemaPurgesTableProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("profile_cascade_table"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the cascade delete");
+
+    Map<String, String> params = Map.of("hardDelete", "true", "recursive", "true");
+    client.databaseSchemas().delete(schema.getId().toString(), params);
+
+    awaitProfilerRowsDeleted(tableFqn, columnFqn);
+  }
+
+  /** A table with a long profiling history must be drained in full, not partially. */
+  @Test
+  void delete_hardDeletePurgesLargeColumnProfileHistory(TestNamespace ns) {
+    CreateTable createRequest = createRequest(ns.prefix("profile_history_table"), ns);
+    Table table = createEntity(createRequest);
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    long baseTimestamp = System.currentTimeMillis() - LARGE_PROFILE_HISTORY_ROWS;
+    for (int offset = 0; offset < LARGE_PROFILE_HISTORY_ROWS; offset++) {
+      seedColumnProfileRow(columnFqn, baseTimestamp + (long) offset);
+    }
+    assertEquals(
+        LARGE_PROFILE_HISTORY_ROWS,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Seeding must produce the full column profile history");
+
+    hardDeleteEntity(table.getId().toString());
+
+    awaitColumnProfileRowsDeleted(
+        columnFqn, "Purge must drain the whole column profile history in one statement");
+  }
+
+  /**
+   * The purge is bounded to profiles recorded at or before the delete, which is what makes it safe
+   * to run after the FQN has been reused. A row timestamped after the delete stands in for one a
+   * successor table records: it must survive however late the purge lands. Seeding the future row
+   * up front pins the boundary without having to win a race against the async purge.
+   */
+  @Test
+  void delete_hardDeletePurgeSpareProfilesRecordedAfterTheDelete(TestNamespace ns) {
+    CreateTable createRequest = createRequest(ns.prefix("profile_watermark_table"), ns);
+    Table table = createEntity(createRequest);
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    long successorTimestamp = System.currentTimeMillis() + Duration.ofHours(1).toMillis();
+    seedColumnProfileRow(columnFqn, System.currentTimeMillis() - Duration.ofHours(1).toMillis());
+    seedColumnProfileRow(columnFqn, successorTimestamp);
+    assertEquals(
+        2,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Seeding must produce one row on each side of the delete watermark");
+
+    hardDeleteEntity(table.getId().toString());
+
+    Awaitility.await("profiles predating the delete are purged")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    1,
+                    countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+                    "Purge must remove the row recorded before the delete"));
+    assertEquals(
+        successorTimestamp,
+        onlyColumnProfileTimestamp(columnFqn),
+        "The surviving row must be the one recorded after the delete");
+  }
+
+  /**
+   * Dropping a column does not remove its profiler rows — {@code detectRemovedColumns} only reworks
+   * constraints and lineage — so those rows are reachable only through the table-FQN prefix, never
+   * through the table's current column list. A table re-created at this FQN with the column present
+   * again would otherwise adopt the dead table's profile for it.
+   */
+  @Test
+  void delete_hardDeletePurgesProfilesOfDroppedColumns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_dropped_col_table"), ns);
+    Table table = createEntity(createRequest);
+    Column droppedColumn = table.getColumns().get(1);
+    String droppedColumnFqn = droppedColumn.getFullyQualifiedName();
+
+    writeColumnOnlyProfile(client, table.getFullyQualifiedName(), droppedColumn.getName());
+    assertTrue(
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the column is dropped");
+    assertEquals(
+        0,
+        countProfilerRows(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+        "Only a column profile is written, so no table-level row can stand in for it");
+
+    createRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    Table shrunkTable = client.tables().createOrUpdate(createRequest);
+    assertTrue(
+        shrunkTable.getColumns().stream()
+            .noneMatch(column -> droppedColumn.getName().equals(column.getName())),
+        "Column must be gone from the table before the delete");
+    assertTrue(
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Dropping a column leaves its profiler rows behind — the precondition for this test");
+
+    hardDeleteEntity(shrunkTable.getId().toString());
+
+    awaitColumnProfileRowsDeleted(
+        droppedColumnFqn,
+        "Hard delete must purge column profiles of columns dropped before the delete");
+  }
+
   @Test
   void put_profileConfig_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1964,6 +2213,154 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             updated.getTableProfilerConfig().getProfileSampleConfig().getConfig(),
             StaticSamplingConfig.class);
     assertEquals(50.0, staticConfig.getProfileSample());
+  }
+
+  private void writeColumnOnlyProfile(
+      OpenMetadataClient client, String tableFqn, String columnName) {
+    long timestamp = System.currentTimeMillis();
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withEntityType(Entity.TABLE)
+            .withTimestamp(timestamp)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN)
+            .withProfileData(
+                new ColumnProfile()
+                    .withName(columnName)
+                    .withUniqueCount(7.0)
+                    .withTimestamp(timestamp));
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/entity/profiles/name/" + Entity.TABLE + "/" + encodedFqn,
+            createProfile);
+  }
+
+  private void writeFullProfile(OpenMetadataClient client, Table table) {
+    long timestamp = System.currentTimeMillis();
+    TableProfile tableProfile =
+        new TableProfile().withRowCount(42.0).withColumnCount(2.0).withTimestamp(timestamp);
+    ColumnProfile columnProfile =
+        new ColumnProfile()
+            .withName(table.getColumns().get(0).getName())
+            .withUniqueCount(42.0)
+            .withUniqueProportion(1.0)
+            .withTimestamp(timestamp);
+    SystemProfile systemProfile =
+        new SystemProfile()
+            .withTimestamp(timestamp)
+            .withOperation(DmlOperationType.INSERT)
+            .withRowsAffected(42);
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(tableProfile)
+                .withColumnProfile(List.of(columnProfile))
+                .withSystemProfile(List.of(systemProfile)));
+  }
+
+  private Table getLatestTableProfile(OpenMetadataClient client, String tableFqn) {
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/" + encodedFqn + "/tableProfile/latest?includeColumnProfile=true",
+                null);
+    return JsonUtils.readValue(response, Table.class);
+  }
+
+  private List<SystemProfile> listSystemProfiles(OpenMetadataClient client, String tableFqn) {
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/"
+                    + encodedFqn
+                    + "/systemProfile?startTs=0&endTs="
+                    + System.currentTimeMillis(),
+                null);
+    JsonNode data = JsonUtils.readTree(response).get("data");
+    List<SystemProfile> systemProfiles = new ArrayList<>();
+    if (data != null) {
+      data.forEach(
+          node -> systemProfiles.add(JsonUtils.readValue(node.toString(), SystemProfile.class)));
+    }
+    return systemProfiles;
+  }
+
+  private void seedColumnProfileRow(String columnFqn, long timestamp) {
+    Entity.getCollectionDAO()
+        .profilerDataTimeSeriesDao()
+        .insert(
+            columnFqn,
+            COLUMN_PROFILE_EXTENSION,
+            "columnProfile",
+            String.format("{\"timestamp\":%d,\"uniqueCount\":1}", timestamp));
+  }
+
+  private long onlyColumnProfileTimestamp(String columnFqn) {
+    String fqnHash = FullyQualifiedName.buildHash(columnFqn);
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT timestamp FROM profiler_data_time_series "
+                            + "WHERE entityFQNHash = :fqnHash AND extension = :extension")
+                    .bind("fqnHash", fqnHash)
+                    .bind("extension", COLUMN_PROFILE_EXTENSION)
+                    .mapTo(Long.class)
+                    .one());
+  }
+
+  private int countProfilerRows(String entityFqn, String extension) {
+    String fqnHash = FullyQualifiedName.buildHash(entityFqn);
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM profiler_data_time_series "
+                            + "WHERE entityFQNHash = :fqnHash AND extension = :extension")
+                    .bind("fqnHash", fqnHash)
+                    .bind("extension", extension)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  /** The purge runs off the request thread, so the rows drain shortly after the delete returns. */
+  private void awaitProfilerRowsDeleted(String tableFqn, String columnFqn) {
+    Awaitility.await("profiler data is purged for " + tableFqn)
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+                  "Hard delete must purge table profile rows");
+              assertEquals(
+                  0,
+                  countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+                  "Hard delete must purge column profile rows");
+              assertEquals(
+                  0,
+                  countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
+                  "Hard delete must purge system profile rows");
+            });
+  }
+
+  private void awaitColumnProfileRowsDeleted(String columnFqn, String reason) {
+    Awaitility.await(reason)
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> assertEquals(0, countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION), reason));
   }
 
   // ===================================================================
@@ -3749,11 +4146,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table baseState = client.tables().get(table.getId().toString(), "columns,tags");
 
     // Simulate concurrent updates
-    java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.CountDownLatch completionLatch =
-        new java.util.concurrent.CountDownLatch(2);
-    java.util.concurrent.atomic.AtomicReference<Exception> errorRef =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch firstUpdateCompleted = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Exception> errorRef = new AtomicReference<>();
 
     // Thread A: Update column description
     Thread threadA =
@@ -3769,6 +4165,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               } catch (Exception e) {
                 errorRef.set(e);
               } finally {
+                firstUpdateCompleted.countDown();
                 completionLatch.countDown();
               }
             });
@@ -3779,7 +4176,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             () -> {
               try {
                 startLatch.await();
-                Thread.sleep(50); // Small delay
+                if (!firstUpdateCompleted.await(30, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("First column update did not complete");
+                }
                 Table tableB = client.tables().get(baseState.getId().toString(), "columns");
                 Column col = tableB.getColumns().get(0);
                 col.setDisplayName("Display Name B");
@@ -3795,11 +4194,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     threadA.start();
     threadB.start();
     startLatch.countDown();
-    completionLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+    assertTrue(completionLatch.await(45, TimeUnit.SECONDS), "Concurrent updates did not complete");
+    assertNull(errorRef.get(), "Concurrent column update failed");
 
-    // Verify - at least one update should succeed
     Table finalTable = client.tables().get(table.getId().toString(), "columns");
-    assertNotNull(finalTable);
+    Column finalColumn = finalTable.getColumns().get(0);
+    assertEquals("Description A", finalColumn.getDescription());
+    assertEquals("Display Name B", finalColumn.getDisplayName());
   }
 
   // ===================================================================
@@ -6412,5 +6813,27 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertFalse(
         idTagsProfile.getTags().isEmpty(), "Tags must be present even when profile requested");
     assertNotNull(idTagsProfile.getProfile(), "Profile must be present when profile requested");
+  }
+
+  @Test
+  void test_listTablesFilteredByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    for (int i = 0; i < 3; i++) {
+      CreateTable request = new CreateTable();
+      request.setName(ns.prefix("service_filter_table_" + i));
+      request.setDatabaseSchema(schema.getFullyQualifiedName());
+      request.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+      client.tables().create(request);
+    }
+
+    ListResponse<Table> response =
+        client.tables().list(new ListParams().setService(service.getName()).setLimit(50));
+
+    assertEquals(3, response.getData().size());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(table -> table.getFullyQualifiedName().startsWith(service.getName() + ".")));
   }
 }

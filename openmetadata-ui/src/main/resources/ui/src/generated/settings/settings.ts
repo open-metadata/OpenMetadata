@@ -28,8 +28,8 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
-    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
+    AppConfiguration = "appConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
     AuthorizerConfiguration = "authorizerConfiguration",
@@ -49,7 +49,6 @@ export enum SettingType {
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
-    SearchIndexMappings = "searchIndexMappings",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SecurityConfiguration = "securityConfiguration",
@@ -59,6 +58,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -111,13 +111,10 @@ export enum SettingType {
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
  *
- * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
- * system prompts.
+ * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
+ * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
  *
- * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
- * by language and entity type. The stored mapping is the effective mapping used when an
- * index is (re)created; it already carries the field-safety guards (ignore_above,
- * ignore_malformed, mapping limits) baked in at seed time.
+ * Fingerprints of bundled resources successfully applied during server startup.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -175,8 +172,14 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Additional parameters to initialize the PipelineServiceClient.
      */
-    parameters?:           { [key: string]: any };
-    secretsManagerLoader?: SecretsManagerClientLoader;
+    parameters?: { [key: string]: any };
+    /**
+     * How long a `queued` pipeline status recorded when triggering a run stays visible before
+     * it is treated as stale and hidden. Covers runs that the orchestrator accepted but never
+     * started.
+     */
+    queuedStatusTimeoutSeconds?: number;
+    secretsManagerLoader?:       SecretsManagerClientLoader;
     /**
      * OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata
      * server. It will be picked up from the pipelineServiceClient to use/ignore SSL when
@@ -188,6 +191,13 @@ export interface PipelineServiceClientConfiguration {
      * ignore, validate.
      */
     verifySSL?: VerifySSL;
+    /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
     /**
      * Authentication Authority
      */
@@ -336,6 +346,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs?: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -349,7 +363,9 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
@@ -560,6 +576,11 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+     * grants into a single ingestion run per pipeline.
+     */
+    policyAgentConfiguration?: PolicyAgentConfiguration;
+    /**
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
@@ -646,16 +667,29 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?:    GlossaryTermRelationType[];
-    mcpChat?:          MCPChat;
-    memoryAgent?:      MemoryAgent;
-    memoryExtraction?: MemoryExtraction;
-    prompts?:          Prompts;
+    relationTypes?: GlossaryTermRelationType[];
     /**
-     * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
-     * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
+     * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
+     * not chosen one; user preference and persona-level app mode still win over this default.
+     * Null means no tenant default is configured.
      */
-    languages?: { [key: string]: any };
+    defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Timestamp when the fingerprints were last persisted.
+     */
+    appliedAt?: number;
+    /**
+     * Fingerprint of the search index templates.
+     */
+    searchTemplateFingerprint?: string;
+    /**
+     * Fingerprint of the bundled seed data and type schemas.
+     */
+    seedDataFingerprint?: string;
+    /**
+     * Server version that produced these fingerprints.
+     */
+    serverVersion?: string;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -988,6 +1022,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }
@@ -1215,6 +1250,13 @@ export enum AuthProvider {
  */
 export interface AuthenticationConfiguration {
     /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
+    /**
      * Authentication Authority
      */
     authority?: string;
@@ -1372,6 +1414,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */
@@ -1812,6 +1859,11 @@ export interface Aws {
     [property: string]: any;
 }
 
+export enum DefaultAppMode {
+    AI = "ai",
+    Classic = "classic",
+}
+
 /**
  * Semantics rule defined in the data contract.
  */
@@ -2197,33 +2249,6 @@ export enum LogStorageConfigurationType {
 }
 
 /**
- * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
- * via llmConfiguration; this only governs chat enablement and behavior.
- */
-export interface MCPChat {
-    enabled?:      boolean;
-    systemPrompt?: string;
-}
-
-export interface MemoryAgent {
-    deletionPolicy?:      DeletionPolicy;
-    deriveGlossaryTerms?: boolean;
-    deriveMetrics?:       boolean;
-    enabled?:             boolean;
-}
-
-export enum DeletionPolicy {
-    Cascade = "cascade",
-    Deprecate = "deprecate",
-    Orphan = "orphan",
-}
-
-export interface MemoryExtraction {
-    fromFiles?: boolean;
-    fromPages?: boolean;
-}
-
-/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2389,6 +2414,12 @@ export interface NaturalLanguageSearch {
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
+    /**
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
+     */
+    knnNumCandidatesMultiplier?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */
@@ -2618,13 +2649,37 @@ export enum PipelineViewMode {
     Node = "Node",
 }
 
-export interface Prompts {
-    memoryAgent?:      PromptConfig;
-    memoryExtraction?: PromptConfig;
-}
-
-export interface PromptConfig {
-    systemPrompt?: string;
+/**
+ * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+ * grants into a single ingestion run per pipeline.
+ */
+export interface PolicyAgentConfiguration {
+    /**
+     * Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending
+     * requests beyond this are picked up by the next window.
+     */
+    batchMaxSize?: number;
+    /**
+     * The batch window: how often (in seconds) the scheduler triggers the Policy Agent
+     * coordinator to drain accumulated grant requests and fire one clubbed ingestion run per
+     * pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a
+     * window are clubbed into the next run. Lower = lower latency but more Argo runs; higher =
+     * fewer runs, more clubbing.
+     */
+    batchWindowSeconds?: number;
+    /**
+     * Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one
+     * per distinct pipeline) holds one worker while it polls its run to completion, so this
+     * bounds how many distinct services can provision concurrently. Raise it for deployments
+     * with many services receiving Data Access Requests at once.
+     */
+    batchWorkerThreads?: number;
+    /**
+     * Interval (seconds) at which the batch coordinator polls a Policy Agent ingestion run for
+     * completion. The Data Access Request workflow node itself does not poll — it is signalled
+     * (pushed) when the run finishes, with a safety timer as the fallback.
+     */
+    pollingIntervalSeconds?: number;
 }
 
 /**

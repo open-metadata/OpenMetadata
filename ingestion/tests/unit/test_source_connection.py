@@ -129,6 +129,9 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_databricks_pipeline_url(self):
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
         from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
             DatabricksPipelineConnection,
         )
@@ -138,11 +141,35 @@ class SourceConnectionTest(TestCase):
 
         conn_obj = DatabricksPipelineConnection(
             hostPort="my-workspace.cloud.databricks.com:443",
-            token="dapi1234567890",
+            authType=PersonalAccessToken(token="dapi1234567890"),
         )
         url = get_connection_url(conn_obj)
-        assert url == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
         assert "databricks+connector" not in url
+
+    def test_databricks_pipeline_auth_config(self):
+        from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+            DatabricksOauth,
+        )
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.database.databricks.auth import get_auth_config
+
+        pat_conn = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+        )
+        assert get_auth_config(pat_conn) == {"access_token": "dapi1234567890"}
+
+        oauth_conn = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=DatabricksOauth(clientId="client-id", clientSecret="client-secret"),
+        )
+        assert "credentials_provider" in get_auth_config(oauth_conn)
 
     def test_databricks_url_with_special_chars_in_catalog(self):
         from metadata.ingestion.source.database.databricks.connection import (
@@ -807,41 +834,41 @@ class SourceConnectionTest(TestCase):
 
     def test_oracle_url(self):
         # oracle with db
-        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
+        expected_url = "oracle+oracledb://admin:password@localhost:1541/testdb"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
         )
 
         assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with service name
-        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
+        expected_url = "oracle+oracledb://admin:password@localhost:1541/?service_name=testdb"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
         )
         assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with db & connection options
         expected_url = [
-            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_2=test_value_2&test_key_1=test_value_1",
-            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
+            "oracle+oracledb://admin:password@localhost:1541/testdb?test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+oracledb://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
         ]
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
             connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
@@ -849,15 +876,15 @@ class SourceConnectionTest(TestCase):
 
         # oracle with service name & connection options
         expected_url = [
-            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_2=test_value_2&test_key_1=test_value_1",
-            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
+            "oracle+oracledb://admin:password@localhost:1541/?service_name=testdb&test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+oracledb://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
         ]
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
-            scheme=OracleScheme.oracle_cx_oracle,
+            scheme=OracleScheme.oracle_oracledb,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
             connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
@@ -867,7 +894,7 @@ class SourceConnectionTest(TestCase):
             "(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)"
             "(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))"
         )
-        expected_url = f"oracle+cx_oracle://admin:password@{tns_connection}"
+        expected_url = f"oracle+oracledb://admin:password@{tns_connection}"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",

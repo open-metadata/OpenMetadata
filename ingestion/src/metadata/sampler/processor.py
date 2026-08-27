@@ -32,7 +32,10 @@ from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata  # noqa: TC001
 from metadata.pii.types import ClassifiableEntityType  # noqa: TC001
-from metadata.profiler.api.models import ProfilerProcessorConfig  # noqa: TC001
+from metadata.profiler.api.models import (
+    ProfilerProcessorConfig,
+    processor_config_payload,
+)
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity  # noqa: TC001
 from metadata.sampler.entity_adapters import (
     EntityAdapter,
@@ -76,7 +79,7 @@ class SamplerProcessor(Processor):
 
         self.source_config = self.config.source.sourceConfig.config
 
-        self.profiler_config = profiler_config_class.model_validate(self.config.processor.model_dump().get("config"))
+        self.profiler_config = profiler_config_class.model_validate(processor_config_payload(self.config.processor))
 
         self._interface_type: str = config.source.type.lower()
 

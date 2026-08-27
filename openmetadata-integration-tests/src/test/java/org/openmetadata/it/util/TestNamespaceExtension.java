@@ -38,7 +38,7 @@ public class TestNamespaceExtension
   public void afterEach(ExtensionContext context) {
     TestNamespace ns = context.getStore(NAMESPACE).get(NS_KEY, TestNamespace.class);
     if (ns != null) {
-      NamespaceCleanup.deleteRoots(ns.trackedRoots());
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     }
   }
 

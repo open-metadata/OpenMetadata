@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -18,6 +19,7 @@ import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
@@ -31,10 +33,11 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
+import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import {
+  AppMode,
   PersonaPreferences,
-  UICustomization,
-} from '../../generated/system/ui/uiCustomization';
+} from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -43,6 +46,11 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
+import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
+import {
+  normalizePersonaDocument,
+  updatePersonaDocumentPage,
+} from '../../utils/CustomizePage/PersonaPage.utils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -63,14 +71,23 @@ const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
   )
 );
 
-export const CustomizablePage = () => {
+const SettingsAppModePage = withSuspenseFallback(
+  lazy(() =>
+    import('../SettingsAppModePage/SettingsAppModePage').then((m) => ({
+      default: m.SettingsAppModePage,
+    }))
+  )
+);
+
+const CustomizablePageContent = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
-  const { document, setDocument, currentPage, getPage, setCurrentPageType } =
+  const { document, setDocument, currentPage, setCurrentPageType } =
     useCustomizeStore();
 
   const backgroundColor = useMemo(
@@ -82,27 +99,28 @@ export const CustomizablePage = () => {
     [document, personaDetails]
   );
 
+  const syncSavedDocument = (response: Document) => {
+    const normalizedResponse = normalizePersonaDocument(response);
+
+    setDocument(normalizedResponse);
+    queryClient.setQueryData(
+      docStoreQueryKey(document?.fullyQualifiedName ?? ''),
+      normalizedResponse
+    );
+  };
+
   const handlePageCustomizeSave = async (newPage?: Page) => {
     if (!document) {
       return;
     }
+    const newDoc = updatePersonaDocumentPage(document, pageFqn, newPage);
+
+    if (newDoc === document) {
+      return;
+    }
+
     try {
       let response: Document;
-      const newDoc = cloneDeep(document);
-      const pageData = getPage(pageFqn);
-
-      if (pageData) {
-        newDoc.data.pages = newPage
-          ? newDoc.data?.pages?.map((p: Page) =>
-              p.pageType === pageFqn ? newPage : p
-            )
-          : newDoc.data?.pages.filter((p: Page) => p.pageType !== pageFqn);
-      } else {
-        newDoc.data = {
-          ...newDoc.data,
-          pages: [...(newDoc.data.pages ?? []), newPage],
-        };
-      }
 
       if (document.id) {
         const jsonPatch = compare(document, newDoc);
@@ -116,7 +134,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -160,7 +178,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -228,7 +246,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -239,6 +257,65 @@ export const CustomizablePage = () => {
       );
     } catch {
       // Error
+      showErrorToast(
+        t('server.page-layout-operation-error', {
+          operation: document.id
+            ? t('label.updating-lowercase')
+            : t('label.creating-lowercase'),
+        })
+      );
+    }
+  };
+
+  const handleAppModeSave = async (appMode: AppMode) => {
+    if (!document) {
+      return;
+    }
+    try {
+      let response: Document;
+      const newDoc = cloneDeep(document);
+      const existing = (newDoc.data.personaPreferences ??
+        []) as PersonaPreferences[];
+      const match = existing.find(
+        (persona) => persona.personaId === personaDetails?.id
+      );
+
+      newDoc.data.personaPreferences = match
+        ? existing.map((persona) =>
+            persona.personaId === personaDetails?.id
+              ? { ...persona, appMode }
+              : persona
+          )
+        : [
+            ...existing,
+            {
+              personaId: personaDetails?.id ?? '',
+              personaName: personaDetails?.name ?? '',
+              appMode,
+            },
+          ];
+
+      if (document.id) {
+        const jsonPatch = compare(document, newDoc);
+        response = await updateDocument(document.id ?? '', jsonPatch);
+      } else {
+        response = await createDocument({
+          ...newDoc,
+          domains: newDoc.domains
+            ?.map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[],
+        });
+      }
+      syncSavedDocument(response);
+
+      showSuccessToast(
+        t('server.page-layout-operation-success', {
+          operation: document.id
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        })
+      );
+    } catch {
       showErrorToast(
         t('server.page-layout-operation-error', {
           operation: document.id
@@ -328,7 +405,20 @@ export const CustomizablePage = () => {
 
   switch (pageFqn) {
     case 'navigation':
-      return <SettingsNavigationPage onSave={handleNavigationSave} />;
+      return (
+        <SettingsNavigationPage
+          persona={personaDetails}
+          onSave={handleNavigationSave}
+        />
+      );
+
+    case 'app-mode':
+      return (
+        <SettingsAppModePage
+          personaDetails={personaDetails}
+          onSave={handleAppModeSave}
+        />
+      );
 
     case PageType.LandingPage:
     case 'homepage':
@@ -408,4 +498,24 @@ export const CustomizablePage = () => {
     default:
       return <ErrorPlaceHolder />;
   }
+};
+
+/**
+ * The content has many exits — a loader, a no-persona placeholder, a
+ * per-page-type customizer, and an unknown-page fallback — and only the
+ * customizers carry a title of their own. Setting one here, before the
+ * content, gives every branch a floor while letting a customizer that
+ * registers its own Helmet later still win.
+ */
+export const CustomizablePage = () => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <DocumentTitle
+        title={t('label.customize-entity', { entity: t('label.page') })}
+      />
+      <CustomizablePageContent />
+    </>
+  );
 };

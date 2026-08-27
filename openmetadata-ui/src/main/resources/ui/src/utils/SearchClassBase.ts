@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import type { ComponentType } from 'react';
+import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -57,15 +59,22 @@ import {
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
+import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import {
+  EntityIconBgSize,
+  EntityIconSize,
+  ENTITY_ICON_BG_SIZE_MAP,
+  getEntityIcon,
+} from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
+import { getServiceIcon } from './EntityServiceIconUtils';
 import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
-import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
@@ -173,6 +182,7 @@ class SearchClassBase {
       { value: SearchIndex.COLUMN, label: t('label.column') },
       { value: SearchIndex.TOPIC, label: t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+      { value: SearchIndex.CHART, label: t('label.chart') },
       { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
       { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
       { value: SearchIndex.CONTAINER, label: t('label.container') },
@@ -217,7 +227,7 @@ class SearchClassBase {
         label: t('label.worksheet'),
       },
       {
-        label: t('label.knowledge-center'),
+        label: t('label.context-center'),
         value: SearchIndex.KNOWLEDGE_PAGE_INDEX,
       },
     ];
@@ -418,7 +428,7 @@ class SearchClassBase {
         ],
       },
       {
-        title: t('label.knowledge-center'),
+        title: t('label.context-center'),
         key: 'KnowledgeCenter',
         data: {
           isRoot: true,
@@ -430,7 +440,7 @@ class SearchClassBase {
         ),
         children: [
           {
-            title: t('label.knowledge-page'),
+            title: t('label.article-plural'),
             key: EntityType.KNOWLEDGE_PAGE,
             isLeaf: true,
             icon: getEntityIcon(
@@ -655,7 +665,7 @@ class SearchClassBase {
         iconClassName: 'tw:text-quaternary',
       },
       [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
-        label: t('label.knowledge-center'),
+        label: t('label.context-center'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'knowledgePages',
@@ -727,8 +737,13 @@ class SearchClassBase {
     return getServiceIcon(source);
   }
 
-  public getEntityIcon(indexType: string, iconClass = '', iconStyle = {}) {
-    return getEntityIcon(indexType, iconClass, iconStyle);
+  public getEntityIcon(
+    indexType: string,
+    iconClass = '',
+    iconStyle = {},
+    size?: EntityIconSize
+  ) {
+    return getEntityIcon(indexType, iconClass, iconStyle, size);
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
@@ -831,10 +846,37 @@ class SearchClassBase {
     return null;
   }
 
+  public getEntitySummaryPanelType(entityType: string): EntityType {
+    return entityType as EntityType;
+  }
+
+  /** Lets product extensions register custom overviews without adding entity-specific code here. */
+  public getEntitySummaryPanelComponents(): Partial<
+    Record<string, ComponentType<DataAssetSummaryPanelProps>>
+  > {
+    return {};
+  }
+
   public getEntitiesSuggestions(
     _options: Array<Option>
   ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {
     return [];
+  }
+
+  public getEntityIconMapper(): typeof ENTITY_ICON_MAPPER {
+    return ENTITY_ICON_MAPPER;
+  }
+
+  public getEntityIconWithBg(entityType?: string, iconSize?: EntityIconBgSize) {
+    const config =
+      iconSize !== undefined ? ENTITY_ICON_BG_SIZE_MAP[iconSize] : undefined;
+
+    return getEntityIconWithBg(
+      entityType,
+      config?.containerProps,
+      config?.iconProps,
+      this.getEntityIconMapper()
+    );
   }
 
   public getIndexGroupLabel(index: string) {

@@ -37,6 +37,7 @@ import {
   lazy,
   MouseEvent,
   ReactNode,
+  RefObject,
   useEffect,
   useMemo,
   useRef,
@@ -87,6 +88,10 @@ import { getMetrics } from '../../rest/metricsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getAllClassifications, getTags } from '../../rest/tagAPI';
 import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
+import {
+  getCustomPropertyReferenceSearchIndex,
+  getCustomPropertyTypeDisplayName,
+} from '../CustomProperty.utils';
 import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
@@ -102,7 +107,47 @@ import entityBulkEditConfigClassBase from './EntityBulkEditConfigClassBase';
 
 export interface CSVEditorOptions {
   usePlainTextEditor?: boolean;
+  /**
+   * Reports the live rendered height of a multi-select editor (tags / glossary)
+   * so the grid row can grow while the cell is being edited. Called with `null`
+   * when the editor unmounts to reset the row back to its content-based height.
+   */
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void;
 }
+
+const EDIT_CELL_HEIGHT_BUFFER = 8;
+
+/**
+ * Observes an inline editor's container and reports its rendered height so the
+ * enclosing grid row can grow to fit a growing multi-select input while editing.
+ */
+const useEditCellHeightReporter = (
+  containerRef: RefObject<HTMLDivElement | null>,
+  rowIdx: number,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
+) => {
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || !onEditCellHeightChange) {
+      return;
+    }
+
+    const report = () =>
+      onEditCellHeightChange(
+        rowIdx,
+        node.offsetHeight + EDIT_CELL_HEIGHT_BUFFER
+      );
+
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      onEditCellHeightChange(rowIdx, null);
+    };
+  }, [containerRef, rowIdx, onEditCellHeightChange]);
+};
 
 type CustomPropertyDefinition = NonNullable<Type['customProperties']>[number];
 
@@ -191,6 +236,7 @@ const InlineTextCellEditor = ({
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
       <input
+        aria-label={t('label.edit')}
         className="bulk-edit-text-cell-editor"
         data-testid="bulk-edit-text-cell-editor"
         ref={inputRef}
@@ -396,22 +442,6 @@ const getEntityReferenceSelectValue = (
   }
 
   return undefined;
-};
-
-const getCustomPropertyReferenceSearchIndex = (
-  customProperty: CustomPropertyDefinition
-) => {
-  const config = customProperty.customPropertyConfig?.config;
-
-  if (Array.isArray(config) && config.length) {
-    return config.join(',') as SearchIndex;
-  }
-
-  if (typeof config === 'string' && config.trim()) {
-    return config as SearchIndex;
-  }
-
-  return SearchIndex.ALL;
 };
 
 const BULK_EDIT_PICKER_WIDTH = 340;
@@ -1059,7 +1089,10 @@ const InlineBulkEditReferencePickerEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1107,19 +1140,22 @@ const InlineBulkEditReferencePickerEditor = ({
         className="bulk-edit-picker-editor"
         data-testid={`bulk-edit-${columnKey}-picker-editor`}
         ref={editorRef}
+        role="presentation"
         style={editorPosition}
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
         <div className="bulk-edit-picker-body-card">
-          <label className="bulk-edit-picker-search">
+          <div className="bulk-edit-picker-search">
             <SearchLg size={14} />
             <input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
+              aria-label={config.searchPlaceholder}
               placeholder={config.searchPlaceholder}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
             />
-          </label>
+          </div>
           <div className="bulk-edit-picker-content">
             {isLoading ? (
               <span className="bulk-edit-picker-loading">
@@ -1232,6 +1268,7 @@ const InlineBulkEditReferencePickerEditor = ({
         className="bulk-edit-custom-property-cell-trigger"
         data-testid={`bulk-edit-${columnKey}-cell-trigger`}
         ref={triggerRef}
+        role="presentation"
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
         {value ? (
@@ -1264,6 +1301,7 @@ const getInlineBulkEditReferencePickerEditor =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
     const handleComplete = (nextValue: string) => {
       if (nextValue === value) {
         onClose(false);
@@ -1331,6 +1369,7 @@ const InlineCustomPropertiesEditor = ({
   }, [entityType, value]);
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct effect closure; extraction would cross scopes
     const updatePosition = () => {
       if (!triggerRef.current) {
         return;
@@ -1341,7 +1380,10 @@ const InlineCustomPropertiesEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1350,6 +1392,7 @@ const InlineCustomPropertiesEditor = ({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct effect closure; extraction would cross scopes
     const handleMouseDown = (event: globalThis.MouseEvent) => {
       const target = event.target as Node;
 
@@ -1495,6 +1538,7 @@ const InlineCustomPropertiesEditor = ({
     if (propertyType === 'markdown' || propertyType === 'sqlQuery') {
       return (
         <textarea
+          aria-label={customProperty.name}
           className="bulk-edit-custom-property-input"
           rows={2}
           value={getCustomPropertyValueAsString(propertyValue)}
@@ -1513,6 +1557,7 @@ const InlineCustomPropertiesEditor = ({
       return (
         <div className="bulk-edit-custom-property-time-interval">
           <input
+            aria-label={t('label.start')}
             className="bulk-edit-custom-property-input"
             placeholder={t('label.start')}
             type="number"
@@ -1525,6 +1570,7 @@ const InlineCustomPropertiesEditor = ({
             }
           />
           <input
+            aria-label={t('label.end')}
             className="bulk-edit-custom-property-input"
             placeholder={t('label.end')}
             type="number"
@@ -1542,6 +1588,7 @@ const InlineCustomPropertiesEditor = ({
 
     return (
       <input
+        aria-label={customProperty.name}
         className="bulk-edit-custom-property-input"
         type={['integer', 'number'].includes(propertyType) ? 'number' : 'text'}
         value={getCustomPropertyValueAsString(propertyValue)}
@@ -1569,6 +1616,7 @@ const InlineCustomPropertiesEditor = ({
         }`}
         data-testid="bulk-edit-custom-property-editor"
         ref={editorRef}
+        role="presentation"
         style={editorPosition}
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
@@ -1625,12 +1673,14 @@ const InlineCustomPropertiesEditor = ({
                     <div
                       className="bulk-edit-custom-property-field"
                       key={customProperty.name}>
-                      <label className="bulk-edit-custom-property-label">
+                      <div className="bulk-edit-custom-property-label">
                         <span>{propertyLabel}</span>
                         <span className="bulk-edit-custom-property-type">
-                          {customProperty.propertyType.name?.toUpperCase()}
+                          {getCustomPropertyTypeDisplayName(
+                            customProperty.propertyType.name
+                          )}
                         </span>
-                      </label>
+                      </div>
                       {renderField(customProperty)}
                     </div>
                   );
@@ -1674,6 +1724,7 @@ const InlineCustomPropertiesEditor = ({
         className="bulk-edit-custom-property-cell-trigger"
         data-testid="bulk-edit-custom-property-cell-trigger"
         ref={triggerRef}
+        role="presentation"
         onClick={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}>
         {value ? (
@@ -1702,6 +1753,7 @@ const getInlineCustomPropertiesEditor =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
     const handleComplete = (nextValue: string) => {
       if (nextValue === value) {
         onClose(false);
@@ -1842,6 +1894,7 @@ const InlineDescriptionEditor = ({
       <div
         className="bulk-edit-description-editor"
         data-testid="bulk-edit-description-editor"
+        role="presentation"
         onBlur={handleBlur}>
         <div className="bulk-edit-description-editor-toolbar">
           <button
@@ -1897,6 +1950,7 @@ const InlineDescriptionEditor = ({
           </button>
         </div>
         <textarea
+          aria-label={t('label.description')}
           className="bulk-edit-description-editor-textarea"
           ref={textareaRef}
           value={draft}
@@ -2069,6 +2123,7 @@ class CSVUtilsClassBase {
 
         return ({
           row,
+          rowIdx,
           onRowChange,
           onClose,
           column,
@@ -2079,6 +2134,11 @@ class CSVUtilsClassBase {
             containers: [containerRef.current, dropdownContainerRef.current],
             active: true,
           });
+          useEditCellHeightReporter(
+            containerRef,
+            rowIdx,
+            options.onEditCellHeightChange
+          );
 
           const tags = row[column.key]
             ? row[column.key]?.split(';').map(
@@ -2105,6 +2165,7 @@ class CSVUtilsClassBase {
                   onCancel={() => onClose(false)}
                   onSave={() => onClose(true)}>
                   <TagSuggestion
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
                     autoFocus
                     dropdownContainerRef={dropdownContainerRef}
                     selectProps={{
@@ -2132,6 +2193,7 @@ class CSVUtilsClassBase {
 
         return ({
           row,
+          rowIdx,
           onRowChange,
           onClose,
           column,
@@ -2142,6 +2204,11 @@ class CSVUtilsClassBase {
             containers: [containerRef.current, dropdownContainerRef.current],
             active: true,
           });
+          useEditCellHeightReporter(
+            containerRef,
+            rowIdx,
+            options.onEditCellHeightChange
+          );
 
           const value = row[column.key];
           const tags = value ? value?.split(';') : [];
@@ -2198,6 +2265,7 @@ class CSVUtilsClassBase {
             return (
               <KeyDownStopPropagationWrapper>
                 <Select
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
                   autoFocus
                   open
                   className="react-grid-select-dropdown bulk-edit-enum-select"
@@ -2259,6 +2327,7 @@ class CSVUtilsClassBase {
           column,
         }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
+          // eslint-disable-next-line sonarjs/no-identical-functions -- distinct editor closure
           const handleChange = async (tag?: Tag) => {
             onRowChange(
               {
@@ -2465,6 +2534,7 @@ class CSVUtilsClassBase {
                 onCancel={() => onClose(false)}
                 onSave={() => onClose(true)}>
                 <Select
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
                   autoFocus
                   open
                   data-testid="entity-type-select"
@@ -2509,6 +2579,7 @@ class CSVUtilsClassBase {
                 onCancel={() => onClose(false)}
                 onSave={() => onClose(true)}>
                 <Select
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
                   autoFocus
                   open
                   className="react-grid-select-dropdown"
@@ -2580,6 +2651,7 @@ class CSVUtilsClassBase {
           return (
             <KeyDownStopPropagationWrapper>
               <Select
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
                 autoFocus
                 open
                 className="react-grid-select-dropdown bulk-edit-enum-select"

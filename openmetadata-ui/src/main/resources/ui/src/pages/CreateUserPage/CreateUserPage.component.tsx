@@ -13,7 +13,7 @@
 
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
-import _ from 'lodash';
+import { toString } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -97,7 +97,7 @@ const CreateUserPage = () => {
 
           // Create a bot entity with botUser data
           await createBot({
-            botUser: _.toString(userResponse.fullyQualifiedName),
+            botUser: toString(userResponse.fullyQualifiedName),
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,

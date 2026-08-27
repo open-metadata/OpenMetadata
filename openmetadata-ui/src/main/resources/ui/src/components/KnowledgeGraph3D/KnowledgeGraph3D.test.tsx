@@ -72,9 +72,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     label?: string;
     onChange?: (checked: boolean) => void;
   }) => (
-    <label>
+    <label htmlFor={label}>
       <input
+        aria-label={label}
         checked={Boolean(isSelected)}
+        id={label}
         type="checkbox"
         onChange={(event) => onChange?.(event.target.checked)}
       />
@@ -136,6 +138,9 @@ jest.mock('./KnowledgeGraph3DScene', () => ({
         </span>
         <span data-testid="kg3d-scene-link-count">
           {props.data.links.length}
+        </span>
+        <span data-testid="kg3d-scene-selected-node">
+          {props.selectedNodeId}
         </span>
         <button
           data-testid="kg3d-select-node"
@@ -327,6 +332,20 @@ describe('KnowledgeGraph3D', () => {
     expect(
       screen.queryByText('message.mapped-to-business-ontology')
     ).not.toBeInTheDocument();
+  });
+
+  it('should focus a related node selected from the detail panel', async () => {
+    mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
+
+    renderGraph();
+
+    await screen.findByTestId('kg3d-scene');
+    fireEvent.click(screen.getByTestId('kg3d-select-node'));
+    fireEvent.click(await screen.findByTestId('kg3d-related-node-con-1'));
+
+    expect(screen.getByTestId('kg3d-scene-selected-node')).toHaveTextContent(
+      'con-1'
+    );
   });
 
   it('should not apply the fullscreen layout class by default', async () => {

@@ -64,6 +64,7 @@ from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPIS
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
+    ChartResult,
     DatabaseResult,
     DataSourceResult,
     FetchChart,
@@ -217,6 +218,20 @@ MOCK_DATASOURCE_RESPONSE = SupersetDatasource(
     )
 )
 MOCK_DATABASE_RESPONSE = ListDatabaseResult(result=DatabaseResult(database_name="examples", id=1, parameters=None))
+
+MOCK_DATASOURCE_RESPONSE_WITH_SQL = SupersetDatasource(
+    id=99,
+    result=DataSourceResult.model_validate(
+        {
+            "table_name": "sample_table",
+            "sql": "SELECT id FROM sample_table",
+            "description": "rollup dataset",
+            "url": "/tablemodelview/edit/99",
+            "schema": "main",
+            "columns": [{"id": 11, "column_name": "Population", "type": "INT"}],
+        }
+    ),
+)
 
 
 def setup_sample_data(postgres_container):
@@ -631,6 +646,91 @@ class SupersetUnitTest(TestCase):
         self.superset_db.prepare()
         parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
         assert parsed_datasource[0].dataType.value == "INT"
+        # column name is the real column_name, not the numeric superset column id
+        assert parsed_datasource[0].name.root == "Population"
+
+    def test_datamodel_fields_api(self):
+        """
+        API datamodel carries sql, description and sourceUrl from the dataset payload
+        """
+        self.superset_api.all_charts = {69: MOCK_CHART}
+        with patch.object(
+            self.superset_api.client,
+            "fetch_datasource",
+            return_value=MOCK_DATASOURCE_RESPONSE_WITH_SQL,
+        ):
+            data_model = next(self.superset_api.yield_datamodel(MOCK_DASHBOARD)).right
+        assert data_model.sql.root == "SELECT id FROM sample_table"
+        assert data_model.description.root == "rollup dataset"
+        assert str(data_model.sourceUrl.root).endswith("/tablemodelview/edit/99")
+        assert data_model.columns[0].name.root == "Population"
+
+    def test_api_get_input_tables_parses_dataset_sql(self):
+        """
+        API _get_input_tables parses the virtual dataset SQL to reach the real source tables
+        """
+        with patch.object(
+            self.superset_api.client,
+            "fetch_datasource",
+            return_value=MOCK_DATASOURCE_RESPONSE_WITH_SQL,
+        ):
+            result = self.superset_api._get_input_tables(ChartResult(datasource_id=99))
+        source_tables = [fetch_chart.table_name for fetch_chart, _ in result]
+        self.assertIn("sample_table", source_tables)
+
+    def test_api_get_source_table_fqn_uses_parsed_table(self):
+        """
+        SQL-parsed source table fqn uses the parsed table name, not the datasource's own table
+        """
+        with (
+            patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE),
+            patch.object(self.superset_api.client, "fetch_datasource", return_value=MOCK_DATASOURCE_RESPONSE),
+            patch.object(self.superset_api.client, "fetch_database", return_value=MOCK_DATABASE_RESPONSE),
+        ):
+            fqn = self.superset_api._get_source_table_fqn(  # pylint: disable=protected-access
+                FetchChart(table_name="orders", schema="main", datasource_id=1),
+                MOCK_DB_POSTGRES_SERVICE.name.root,
+            )
+        self.assertEqual(fqn, "test_postgres.*.main.orders")
+
+    def test_api_fetch_datasource_is_cached(self):
+        """
+        Repeated fetch_datasource for the same id resolves from cache, hitting the network once
+        """
+        with patch.object(self.superset_api.client.client, "get", return_value={"id": 1}) as mock_get:
+            self.superset_api.client.fetch_datasource(7)
+            self.superset_api.client.fetch_datasource(7)
+            self.superset_api.client.fetch_datasource(8)
+        self.assertEqual(mock_get.call_count, 2)
+
+    def test_api_fetch_datasource_failure_is_retryable(self):
+        """
+        A failed/empty fetch is not cached, so a later call for the same id retries instead of
+        being served the poisoned empty result
+        """
+        with patch.object(self.superset_api.client.client, "get", side_effect=[None, {"id": 5}]) as mock_get:
+            first = self.superset_api.client.fetch_datasource(5)
+            second = self.superset_api.client.fetch_datasource(5)
+        self.assertIsNone(first.id)
+        self.assertEqual(second.id, 5)
+        self.assertEqual(mock_get.call_count, 2)
+
+    def test_api_source_table_fqn_missing_db_service_does_not_crash(self):
+        """
+        When the db service prefix is not registered in OM, fqn resolution degrades gracefully
+        instead of raising on a None DatabaseService
+        """
+        with (
+            patch.object(OpenMetadata, "get_by_name", return_value=None),
+            patch.object(self.superset_api.client, "fetch_datasource", return_value=MOCK_DATASOURCE_RESPONSE),
+            patch.object(self.superset_api.client, "fetch_database", return_value=MOCK_DATABASE_RESPONSE),
+        ):
+            fqn = self.superset_api._get_source_table_fqn(  # pylint: disable=protected-access
+                FetchChart(table_name="orders", schema="main", datasource_id=1),
+                "missing_service",
+            )
+        self.assertIn("orders", fqn)
+        self.assertIn("missing_service", fqn)
 
     def test_is_table_to_table_lineage(self):
         table = Table(name="table_name", schema=Schema(name="schema_name"))

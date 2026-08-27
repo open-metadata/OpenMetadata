@@ -42,6 +42,7 @@ import {
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import TestCaseFormDrawer from './TestCaseFormDrawer';
 import {
+  TestCaseFormBodyProps,
   TestCaseFormContext,
   TestCaseFormDrawerProps,
   TestLevel,
@@ -141,86 +142,90 @@ const mockContextWithPipeline: TestCaseFormContext = {
 let emitContextFn: ((ctx: TestCaseFormContext) => void) | undefined;
 let emitActiveFieldFn: ((fieldId: string) => void) | undefined;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let lastFormBodyProps: Record<string, any> | undefined;
+let lastFormBodyProps:
+  | { isEditMode?: boolean; showOnlyParameter?: boolean }
+  | undefined;
 
 jest.mock('./TestCaseFormBody', () =>
-  jest.fn().mockImplementation(
-    ({
-      form,
-      onContextChange,
-      onActiveFieldChange,
-      errorMessage,
-      isEditMode,
-      showOnlyParameter,
-    }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any) => {
-      emitContextFn = onContextChange;
-      emitActiveFieldFn = onActiveFieldChange;
-      lastFormBodyProps = { isEditMode, showOnlyParameter };
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        form,
+        onContextChange,
+        onActiveFieldChange,
+        errorMessage,
+        isEditMode,
+        showOnlyParameter,
+      }: TestCaseFormBodyProps) => {
+        emitContextFn = onContextChange;
+        emitActiveFieldFn = onActiveFieldChange;
+        lastFormBodyProps = { isEditMode, showOnlyParameter };
 
-      const testTypeField: FieldProp = {
-        name: 'testTypeId',
-        label: 'Test Type',
-        type: FieldTypes.TEXT,
-        required: false,
-        id: 'root/testType',
-        doc: TEST_TYPE_DOC,
-        props: { 'data-testid': 'test-type' },
-      };
+        const testTypeField: FieldProp = {
+          name: 'testTypeId',
+          label: 'Test Type',
+          type: FieldTypes.TEXT,
+          required: false,
+          id: 'root/testType',
+          doc: TEST_TYPE_DOC,
+          props: { 'data-testid': 'test-type' },
+        };
 
-      const testNameValue = form?.watch ? form.watch('testName') : undefined;
-      const displayNameValue = form?.watch
-        ? form.watch('displayName')
-        : undefined;
-      const paramsValue = form?.watch ? form.watch('params') : undefined;
+        const testNameValue = form?.watch ? form.watch('testName') : undefined;
+        const displayNameValue = form?.watch
+          ? form.watch('displayName')
+          : undefined;
+        const paramsValue = form?.watch ? form.watch('params') : undefined;
 
-      return (
-        <div data-testid="test-case-form-body">
-          {!showOnlyParameter && (
-            <input
-              data-testid="test-case-name"
-              disabled={Boolean(isEditMode)}
-              value={testNameValue ?? ''}
-              onChange={() => undefined}
-            />
-          )}
-          {!showOnlyParameter && isEditMode && (
-            <input
-              data-testid="display-name"
-              value={displayNameValue ?? ''}
-              onChange={() => undefined}
-            />
-          )}
-          {!showOnlyParameter && (
-            <div data-testid="select-table-card">select-table-card</div>
-          )}
-          <div data-testid="test-type-card">
-            {getField(testTypeField)}
-            <div data-testid="params-value">
-              {paramsValue ? JSON.stringify(paramsValue) : ''}
+        return (
+          <div data-testid="test-case-form-body">
+            {!showOnlyParameter && (
+              <input
+                aria-label="Test case name"
+                data-testid="test-case-name"
+                disabled={Boolean(isEditMode)}
+                value={testNameValue ?? ''}
+                onChange={() => undefined}
+              />
+            )}
+            {!showOnlyParameter && isEditMode && (
+              <input
+                aria-label="Display name"
+                data-testid="display-name"
+                value={displayNameValue ?? ''}
+                onChange={() => undefined}
+              />
+            )}
+            {!showOnlyParameter && (
+              <div data-testid="select-table-card">select-table-card</div>
+            )}
+            <div data-testid="test-type-card">
+              {getField(testTypeField)}
+              <div data-testid="params-value">
+                {paramsValue ? JSON.stringify(paramsValue) : ''}
+              </div>
             </div>
+            {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
+            <button
+              data-testid="emit-context"
+              onClick={() => onContextChange?.(mockContext)}>
+              emit
+            </button>
+            <button
+              data-testid="emit-context-pipeline"
+              onClick={() => onContextChange?.(mockContextWithPipeline)}>
+              emit-pipeline
+            </button>
+            <button
+              data-testid="emit-active-field"
+              onClick={() => onActiveFieldChange?.('testName')}>
+              emit-field
+            </button>
           </div>
-          {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
-          <button
-            data-testid="emit-context"
-            onClick={() => onContextChange?.(mockContext)}>
-            emit
-          </button>
-          <button
-            data-testid="emit-context-pipeline"
-            onClick={() => onContextChange?.(mockContextWithPipeline)}>
-            emit-pipeline
-          </button>
-          <button
-            data-testid="emit-active-field"
-            onClick={() => onActiveFieldChange?.('testName')}>
-            emit-field
-          </button>
-        </div>
-      );
-    }
-  )
+        );
+      }
+    )
 );
 
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
@@ -233,7 +238,7 @@ jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
 
 // RichTextEditorPreviewerV1 wraps a lazy BlockEditor (TipTap) that does not
 // render its content synchronously in jsdom. Mock it to render the markdown as
-// plain text so the field-doc popover assertion inspects the real doc string
+// plain text so the field-doc assertion inspects the real doc string
 // that renderFieldDoc receives.
 jest.mock(
   '../../../common/RichTextEditor/RichTextEditorPreviewerV1',
@@ -400,7 +405,7 @@ describe('TestCaseFormDrawer', () => {
       await screen.findByTestId('test-case-form-body')
     ).toBeInTheDocument();
     // The AI variant replaces the ServiceDocPanel hint with the per-field
-    // documentation popover (gated by the Show Hint toggle).
+    // documentation panel (gated by the Show Hint toggle).
     expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
   });
 
@@ -580,12 +585,12 @@ describe('TestCaseFormDrawer', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('gates the field doc popover behind the Show Hint toggle', async () => {
+    it('gates the field doc panel behind the Show Hint toggle', async () => {
       renderDrawer({ variant: 'modal' });
 
       const testType = await screen.findByLabelText(/test type/i);
 
-      // Show Hint is on by default: focusing a field shows its doc popover.
+      // Show Hint is on by default: focusing a field shows its doc in the panel.
       await act(async () => {
         testType.focus();
       });
@@ -594,7 +599,7 @@ describe('TestCaseFormDrawer', () => {
         await screen.findByText(/kind of validation to run/i)
       ).toBeInTheDocument();
 
-      // Toggling Show Hint off removes the popover.
+      // Toggling Show Hint off collapses the panel and hides the doc.
       await act(async () => {
         fireEvent.click(
           screen.getByRole('switch', { name: 'label.show-hint' })
@@ -606,7 +611,69 @@ describe('TestCaseFormDrawer', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('shows the field doc popover in the AI variant on focus', async () => {
+    it('opens on the first field doc rather than an empty panel', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      // Nothing has focus yet on open, so the panel would otherwise advertise
+      // that hints exist while showing none.
+      expect(
+        await screen.findByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    });
+
+    it('keeps the last doc when focus leaves the documented fields', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      const testType = await screen.findByLabelText(/test type/i);
+
+      await act(async () => {
+        testType.focus();
+      });
+
+      expect(
+        await screen.findByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+
+      // Focus moves to something with no doc of its own. The panel is always on
+      // screen, so blanking it back to the empty state here would wipe the hint
+      // out mid-task.
+      await act(async () => {
+        fireEvent.blur(testType, {
+          relatedTarget: screen.getByTestId('test-case-name'),
+        });
+      });
+
+      expect(
+        screen.getByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    });
+
+    it('keeps entered form values when the hint is toggled', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      // Test Type is the one genuinely hook-form-bound field the mocked body
+      // renders; the other inputs are controlled with a no-op onChange.
+      const testType = await screen.findByLabelText(/test type/i);
+      await act(async () => {
+        fireEvent.change(testType, { target: { value: 'my_test_type' } });
+      });
+
+      // The hint column animates to zero width rather than unmounting; if it
+      // ever unmounts, the form remounts and the value is lost.
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('switch', { name: 'label.show-hint' })
+        );
+      });
+
+      expect(await screen.findByLabelText(/test type/i)).toHaveValue(
+        'my_test_type'
+      );
+    });
+
+    it('shows the field doc in the AI variant panel on focus', async () => {
       renderDrawer({ variant: 'modal' });
 
       const testType = await screen.findByLabelText(/test type/i);
@@ -621,7 +688,7 @@ describe('TestCaseFormDrawer', () => {
     });
   });
 
-  it('does not show the field doc popover in the classic variant on focus', async () => {
+  it('does not show the field doc in the classic variant on focus', async () => {
     renderDrawer({ variant: 'drawer' });
 
     const testType = await screen.findByLabelText(/test type/i);

@@ -17,16 +17,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -34,10 +43,14 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -50,6 +63,7 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
+@ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
 public class DomainIsolationIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -214,6 +228,106 @@ public class DomainIsolationIT {
   // also carries a baseline role, which the bare DomainOnlyAccessRole strips). The UI task list is
   // additionally exercised by playwright DomainIsolation/DomainTaskIsolation.spec.ts.
 
+  @Test
+  void test_incidents_restrictedUserSeesOnlyOwnDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain ownDomain = createDomain(admin, p + "_d1", cleanup);
+      Domain foreignDomain = createDomain(admin, p + "_d2", cleanup);
+      DatabaseSchema schema = createShortNamedSchema(admin, p, cleanup);
+      Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
+      Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
+
+      String testDefinitionFqn =
+          admin
+              .testDefinitions()
+              .list(new ListParams().withLimit(1))
+              .getData()
+              .get(0)
+              .getFullyQualifiedName();
+      String ownIncidentFqn = createIncident(admin, ownTable, p + "_own_tc", testDefinitionFqn);
+      String foreignIncidentFqn =
+          createIncident(admin, foreignTable, p + "_foreign_tc", testDefinitionFqn);
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, ownDomain, cleanup);
+
+      // Incident listing isolation is driven through search RBAC, which is gated on the global
+      // enableAccessControl setting.
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      Awaitility.await("Incident manager listing honours domain isolation")
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                for (boolean latest : new boolean[] {false, true}) {
+                  Set<String> visible = incidentTestCaseFqns(restricted, latest);
+                  assertTrue(
+                      visible.contains(ownIncidentFqn),
+                      "Own-domain incident visible (latest=" + latest + "). Saw: " + visible);
+                  assertFalse(
+                      visible.contains(foreignIncidentFqn),
+                      "Foreign-domain incident hidden (latest=" + latest + "). Saw: " + visible);
+                }
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /** Creates a column-level test case on {@code table} plus an open incident for it. */
+  private String createIncident(
+      OpenMetadataClient admin, Table table, String name, String testDefinitionFqn) {
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(name)
+                    .withEntityLink(
+                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                    .withTestDefinition(testDefinitionFqn));
+    admin
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withSeverity(Severity.Severity2));
+    return testCase.getFullyQualifiedName();
+  }
+
+  /**
+   * @param latest {@code true} exercises the aggregation branch of the listing, which picks the
+   *     latest status per test case through a different server path than the plain search listing.
+   *     Both must enforce the caller's policies, otherwise {@code latest=true} is a trivial bypass.
+   */
+  private Set<String> incidentTestCaseFqns(OpenMetadataClient client, boolean latest)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseIncidentStatus/search/list",
+                null,
+                RequestOptions.builder()
+                    .queryParam("limit", "1000")
+                    .queryParam("latest", String.valueOf(latest))
+                    .build());
+    Set<String> fqns = new HashSet<>();
+    for (JsonNode incident : MAPPER.readTree(response).path("data")) {
+      JsonNode reference = incident.path("testCaseReference");
+      if (reference.hasNonNull("fullyQualifiedName")) {
+        fqns.add(reference.get("fullyQualifiedName").asText());
+      }
+    }
+    return fqns;
+  }
+
   private Domain createDomain(OpenMetadataClient admin, String name, Deque<Runnable> cleanup) {
     CreateDomain create =
         new CreateDomain()
@@ -223,6 +337,36 @@ public class DomainIsolationIT {
     Domain domain = admin.domains().create(create);
     cleanup.push(() -> admin.domains().delete(domain.getId().toString()));
     return domain;
+  }
+
+  /**
+   * Creating a test case implicitly creates a test suite whose name is the table's FQN plus a
+   * suffix. {@link #createSchema} derives its service, database and schema names from the
+   * namespace, which embeds the test method name at every level, and the resulting test suite name
+   * overflows its column. Short names keep the FQN well inside the limit.
+   */
+  private DatabaseSchema createShortNamedSchema(
+      OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(prefix + "_db")
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    cleanup.push(
+        () ->
+            admin
+                .databases()
+                .delete(
+                    database.getId().toString(),
+                    Map.of("recursive", "true", "hardDelete", "true")));
+    return admin
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(prefix + "_sch")
+                .withDatabase(database.getFullyQualifiedName()));
   }
 
   private DatabaseSchema createSchema(TestNamespace ns, Deque<Runnable> cleanup) {

@@ -69,6 +69,52 @@ class PersonaContextMarkdownTest {
   }
 
   @Test
+  void anInlineImageInAnArticleDoesNotStarveTheAssetRulesOfBudget() {
+    // Reproduces divisionsinc: one article carried a base64 architecture diagram that was larger
+    // than the whole character budget, so every asset rule fell through to the manifest.
+    String article =
+        "<p>The semantic layer unifies definitions.</p>"
+            + "<p><img src=\"data:image/png;base64,"
+            + "A".repeat(20_000)
+            + "\"></p>";
+    Persona persona = persona();
+    ContextRule assetRule = rule();
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withCharacterBudget(4_000).withRules(List.of(assetRule));
+    PersonaContext context =
+        new PersonaContext()
+            .withPersona(persona.getEntityReference())
+            .withGeneratedAt(1782864000000L)
+            .withSharedKnowledge(
+                new SharedKnowledge()
+                    .withArticles(
+                        List.of(
+                            new KnowledgeItem()
+                                .withType(KnowledgeItem.Type.PAGE)
+                                .withName("Semantic Layer")
+                                .withFullyQualifiedName("kb.semantic-layer")
+                                .withContent(article))));
+
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            definition,
+            List.of(
+                new PersonaContextBuilder.RuleMaterialization(
+                    assetRule, 1, List.of(selectedEntity()))),
+            context,
+            false);
+
+    assertFalse(result.markdown().contains("base64"));
+    assertTrue(result.markdown().contains("The semantic layer unifies definitions."));
+    // The budget the image was consuming now reaches the asset rule, which renders in full.
+    assertTrue(result.markdown().contains("### Schema"));
+    assertEquals(1, result.context().getRules().getFirst().getRenderedFull());
+    assertTrue(result.context().getManifest().isEmpty());
+    assertFalse(Boolean.TRUE.equals(result.context().getTruncated()));
+  }
+
+  @Test
   void knowledgeRulesAreAlwaysFullyRendered() {
     Persona persona = persona();
     ContextRule selectedRule =
@@ -231,10 +277,27 @@ class PersonaContextMarkdownTest {
   }
 
   @Test
-  void manifestPointersUseTheRegisteredCollectionRoutes() {
-    assertEquals("contextCenter/pages", PersonaContextMarkdown.collectionPath("page"));
-    assertEquals(
-        "dashboard/datamodels", PersonaContextMarkdown.collectionPath("dashboardDataModel"));
+  void manifestPointersUseTheAssetContextTool() {
+    Persona persona = persona();
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            new PersonaContextDefinition().withCharacterBudget(300).withRules(List.of(rule())),
+            List.of(materializedRule()),
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(1782864000000L)
+                .withSharedKnowledge(new SharedKnowledge()),
+            false);
+
+    assertTrue(result.markdown().contains("# Overflow Manifest"));
+    assertTrue(
+        result
+            .markdown()
+            .contains(
+                "fetch get_asset_context(entityType=`table`, "
+                    + "fqn=`ecommerce.public.semantic.fact_orders`)"));
+    assertFalse(result.markdown().contains("GET /v1/"));
   }
 
   @Test
@@ -268,7 +331,51 @@ class PersonaContextMarkdownTest {
     assertTrue(markdown.contains("**Row count:** 42"));
     assertTrue(markdown.contains("**Profiled at:** 2026-07-01T"));
     assertTrue(markdown.contains("Column-level profile details are caller-sensitive"));
+    assertTrue(
+        markdown.contains(
+            "fetch get_asset_context(entityType=`table`, "
+                + "fqn=`ecommerce.public.semantic.fact_orders`) "
+                + "for the latest permitted profile"));
+    assertFalse(markdown.contains("GET /v1/"));
     assertEquals(1, markdown.split("### Data Profile", -1).length - 1);
+  }
+
+  @Test
+  void compactTierUsesTheAssetContextTool() {
+    Persona persona = persona();
+    ContextRule selectedRule = rule();
+    PersonaContextBuilder.SelectedEntity selected = selectedEntity();
+    selected.context().withDescription("A".repeat(3000));
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            new PersonaContextDefinition()
+                .withCharacterBudget(2400)
+                .withRules(List.of(selectedRule)),
+            List.of(
+                new PersonaContextBuilder.RuleMaterialization(selectedRule, 1, List.of(selected))),
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(1782864000000L)
+                .withSharedKnowledge(new SharedKnowledge()),
+            false);
+
+    assertEquals(1, result.context().getRules().getFirst().getRenderedCompact());
+    assertTrue(
+        result
+            .markdown()
+            .contains(
+                "_Compact rendering — fetch get_asset_context(entityType=`table`, "
+                    + "fqn=`ecommerce.public.semantic.fact_orders`) "
+                    + "for the complete asset context._"));
+    assertFalse(result.markdown().contains("GET /v1/"));
+  }
+
+  @Test
+  void contextToolCallSanitizesDelimiterSensitiveArguments() {
+    assertEquals(
+        "get_asset_context(entityType=`table variant`, fqn=`svc.db.orders current`)",
+        PersonaContextMarkdown.contextToolCall("ta`ble\nvariant", "svc.db.or`ders\r\ncurrent"));
   }
 
   private static Persona persona() {

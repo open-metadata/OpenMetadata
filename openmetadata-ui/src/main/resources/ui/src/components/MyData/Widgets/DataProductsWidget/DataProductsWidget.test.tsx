@@ -97,7 +97,7 @@ const mockSearchResponse = {
   statusText: 'OK',
   headers: {},
   config: {},
-} as any;
+};
 
 // Mock API functions
 jest.mock('../../../../rest/miscAPI', () => ({
@@ -309,7 +309,9 @@ describe('DataProductsWidget', () => {
     });
   });
 
-  it('navigates to explore page on title click', async () => {
+  it('navigates to the data products page on title click', async () => {
+    // Explore reads `tab` as a path param, so `/explore?tab=…` silently drops
+    // it and lands on a tab that never contains data products.
     renderDataProductsWidget();
 
     await waitFor(() => {
@@ -319,6 +321,50 @@ describe('DataProductsWidget', () => {
     const titleElement = screen.getByText('label.data-product-plural');
     fireEvent.click(titleElement);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/explore?tab=data_product');
+    expect(mockNavigate).toHaveBeenCalledWith('/dataProduct');
+  });
+
+  it('points the view more link at the data products page', async () => {
+    // A tab-less /explore?quickFilter=… lands on a data-asset tab that never
+    // contains data products, so the filter returns nothing.
+    const manyDataProducts = Array.from(
+      { length: PAGE_SIZE_BASE + 2 },
+      (_, i) => ({
+        id: `${i}`,
+        name: `data-product-${i}`,
+        displayName: `Data Product ${i}`,
+        fullyQualifiedName: `data-product-${i}`,
+        assets: [],
+        style: { color: '#4F8CFF' },
+        description: `Data product ${i}`,
+      })
+    );
+
+    (searchData as jest.Mock).mockResolvedValue({
+      ...mockSearchResponse,
+      data: {
+        hits: {
+          hits: manyDataProducts.map((product) => ({
+            _source: product,
+            _index: 'dataProduct',
+            _id: product.id,
+          })),
+          total: { value: manyDataProducts.length },
+        },
+        aggregations: {},
+      },
+    });
+    (applySortToData as jest.Mock).mockImplementation((data) => data);
+
+    renderDataProductsWidget();
+
+    await waitFor(() => {
+      expect(screen.getByText('label.view-more')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('label.view-more').closest('a')).toHaveAttribute(
+      'href',
+      '/dataProduct'
+    );
   });
 });

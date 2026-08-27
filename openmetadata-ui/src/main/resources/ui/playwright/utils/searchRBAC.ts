@@ -16,16 +16,6 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const closeWelcomeScreenIfVisible = async (page: Page) => {
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-};
-
 /**
  * Navigate the given (already-logged-in) user to the Explore page, search for an
  * entity by FQN, and assert whether its result card is shown — used to verify
@@ -37,7 +27,6 @@ export const exploreShouldShowEntity = async (
   displayName: string,
   shouldSee: boolean
 ) => {
-  await closeWelcomeScreenIfVisible(page);
   await redirectToHomePage(page);
 
   const exploreRes = page.waitForResponse('/api/v1/search/query?*');
@@ -85,7 +74,6 @@ export const exploreTreeCategories = async (
   page: Page,
   { visible, hidden }: { visible: string[]; hidden: string[] }
 ) => {
-  await closeWelcomeScreenIfVisible(page);
   await redirectToHomePage(page);
 
   const exploreRes = page.waitForResponse('/api/v1/search/query?*');
@@ -118,6 +106,11 @@ export const enableDisableSearchRBAC = async (
   const settingResponse = await apiContext.get(
     '/api/v1/system/settings/searchSettings'
   );
+  if (!settingResponse.ok()) {
+    throw new Error(
+      `Unable to read search settings: ${settingResponse.status()} ${await settingResponse.text()}`
+    );
+  }
   const initialSetting = await settingResponse.json();
 
   const updatedSetting = {
@@ -131,25 +124,42 @@ export const enableDisableSearchRBAC = async (
     },
   };
 
-  await apiContext.put('/api/v1/system/settings', {
+  const updateResponse = await apiContext.put('/api/v1/system/settings', {
     data: updatedSetting,
   });
+  if (!updateResponse.ok()) {
+    throw new Error(
+      `Unable to update search RBAC: ${updateResponse.status()} ${await updateResponse.text()}`
+    );
+  }
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          '/api/v1/system/settings/searchSettings'
+        );
+        if (!response.ok()) {
+          return undefined;
+        }
+        const settings = await response.json();
+
+        return settings.config_value?.globalSettings?.enableAccessControl;
+      },
+      {
+        message: `Search RBAC setting did not become ${String(enable)}`,
+        timeout: 30_000,
+      }
+    )
+    .toBe(enable);
 };
 
 export const searchForEntityShouldWork = async (
   fqn: string,
   displayName: string,
-  page: Page
+  page: Page,
+  entityName: string
 ) => {
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
 
@@ -161,6 +171,8 @@ export const searchForEntityShouldWork = async (
   await page.getByTestId('searchBox').press('Enter');
   await searchResponse;
 
+  await waitForAllLoadersToDisappear(page);
+  await page.getByRole('menuitem').filter({ hasText: entityName }).click();
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -180,15 +192,6 @@ export const searchForEntityShouldWorkShowNoResult = async (
   displayName: string,
   page: Page
 ) => {
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
 

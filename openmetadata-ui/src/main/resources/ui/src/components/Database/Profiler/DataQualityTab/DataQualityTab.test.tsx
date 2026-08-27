@@ -17,11 +17,16 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from '@testing-library/react';
 import React, { act } from 'react';
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { Link } from 'react-router-dom';
+import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
@@ -85,10 +90,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   const MockButton = ({
     children,
+    className,
+    href,
     onClick,
     'data-testid': testId,
     isDisabled,
   }: React.PropsWithChildren<{
+    className?: string;
+    href?: string;
     onClick?: React.MouseEventHandler;
     'data-testid'?: string;
     isDisabled?: boolean;
@@ -100,8 +109,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?.(e);
     };
 
+    if (href) {
+      return (
+        <a
+          className={className}
+          data-testid={testId}
+          href={href}
+          onClick={handleClick}>
+          {children}
+        </a>
+      );
+    }
+
     return (
-      <button data-testid={testId} disabled={isDisabled} onClick={handleClick}>
+      <button
+        className={className}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={handleClick}>
         {children}
       </button>
     );
@@ -192,8 +217,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTable.Cell = ({
     children,
     className,
-  }: React.PropsWithChildren<{ className?: string }>) => (
-    <td className={className}>{children}</td>
+    ...props
+  }: React.ComponentPropsWithoutRef<'td'>) => (
+    <td className={className} {...props}>
+      {children}
+    </td>
   );
 
   const MockBox = ({
@@ -203,18 +231,61 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div {...props}>{children}</div>
   );
 
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
     Box: MockBox,
     Button: MockButton,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: () => <span data-testid="skeleton">Loading...</span>,
     Table: MockTable,
     Tooltip: ({
       children,
       title,
     }: React.PropsWithChildren<{ title?: string }>) => (
-      <div title={title}>{children}</div>
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
     ),
-    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    TooltipTrigger: ({
+      children,
+      className,
+      onPress,
+      'data-testid': testId,
+    }: React.PropsWithChildren<{
+      className?: string;
+      onPress?: () => void;
+      'data-testid'?: string;
+    }>) => (
+      <button className={className} data-testid={testId} onClick={onPress}>
+        {children}
+      </button>
+    ),
     Typography: ({
       children,
       className,
@@ -233,26 +304,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('../../../../rest/incidentManagerAPI', () => ({
-  getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({ data: [] }),
-}));
-
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
-);
-
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
-  })
 );
 
 jest.mock(
@@ -312,8 +369,8 @@ jest.mock('react-router-dom', () => {
     ...actual,
     Link: jest
       .fn()
-      .mockImplementation(({ children, ...rest }) => (
-        <span {...rest}>{children}</span>
+      .mockImplementation(({ children, to: _to, state: _state, ...rest }) => (
+        <a {...rest}>{children}</a>
       )),
     useNavigate: () => mockNavigateDataQualityTab,
   };
@@ -523,6 +580,104 @@ describe('DataQualityTab test', () => {
     expect(deleteButton).toBeInTheDocument();
   });
 
+  it('Should show a styled Tooltip with the full entity name for the Name cell, not a native title attribute', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameCellWrapper = await screen.findByTestId(firstRowData.name);
+    const trigger = within(nameCellWrapper).getByText(
+      getEntityName(firstRowData)
+    );
+
+    // The trigger is a real Link, wrapped in TooltipTrigger's <button> so
+    // hover/focus opens the tooltip - this deliberately nests <a> inside
+    // <button> (known, tracked separately on the shared component library
+    // side, not fixed here).
+    expect(trigger.tagName).toBe('A');
+    expect(trigger.parentElement?.tagName).toBe('BUTTON');
+    expect(trigger).not.toHaveAttribute('title');
+
+    const tooltip = within(nameCellWrapper).getByTestId('tooltip');
+
+    expect(tooltip).toHaveAttribute('title', getEntityName(firstRowData));
+  });
+
+  it('Should link the Name cell trigger to the test case detail page', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) =>
+        props.to?.pathname ===
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          firstRowData.fullyQualifiedName ?? ''
+        )
+    );
+
+    expect(nameLinkCall).toBeDefined();
+    expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData: undefined });
+  });
+
+  it('Should keep action dropdowns aligned when dimensions are present', async () => {
+    const dimensionalTestCase: TestCase = {
+      ...MOCK_TEST_CASE[0],
+      id: 'dimensional-test-case',
+      name: 'dimensional_test_case',
+      fullyQualifiedName: 'sample_data.dimensional_test_case',
+      dimensionColumns: ['country'],
+    };
+    const standardTestCase: TestCase = {
+      ...MOCK_TEST_CASE[1],
+      id: 'standard-test-case',
+      name: 'standard_test_case',
+      fullyQualifiedName: 'sample_data.standard_test_case',
+      dimensionColumns: undefined,
+    };
+
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          testCases={[dimensionalTestCase, standardTestCase]}
+        />
+      );
+    });
+
+    const dimensionalAction = await screen.findByTestId(
+      `action-dropdown-${dimensionalTestCase.name}`
+    );
+    const standardAction = await screen.findByTestId(
+      `action-dropdown-${standardTestCase.name}`
+    );
+
+    expect(
+      screen.getByTestId(`dimension-count-${dimensionalTestCase.name}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`dimension-count-${standardTestCase.name}`)
+    ).not.toBeInTheDocument();
+    expect(dimensionalAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(standardAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(dimensionalAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
+    expect(standardAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
+  });
+
   it('Should show loading skeletons when isLoading is true', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} isLoading />);
@@ -533,14 +688,79 @@ describe('DataQualityTab test', () => {
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('Should show empty placeholder when testCases is empty', async () => {
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} testCases={[]} />);
-    });
+  it('should render the empty placeholder when there are no test cases', () => {
+    render(<DataQualityTab {...mockProps} isLoading={false} testCases={[]} />);
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-test-cases-yet')).toBeInTheDocument();
+  });
+
+  it('should render the filtered empty copy when filters are active', () => {
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        isLoading={false}
+        testCases={[]}
+      />
+    );
 
     expect(
-      await screen.findByTestId('filter-table-placeholder')
+      screen.getByText('message.no-matching-test-cases')
     ).toBeInTheDocument();
+  });
+
+  it('should render the empty-state CTA when emptyStateAction is provided and no active filters', async () => {
+    const mockOnPress = jest.fn();
+    const emptyStateAction = {
+      key: 'new-test-case',
+      label: 'label.new-entity',
+      onPress: mockOnPress,
+    };
+
+    render(
+      <DataQualityTab
+        {...mockProps}
+        emptyStateAction={emptyStateAction}
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    const actionButton = screen.getByTestId(
+      'empty-placeholder-action-new-test-case'
+    );
+
+    expect(actionButton).toBeInTheDocument();
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    await act(async () => {
+      fireEvent.click(actionButton);
+    });
+
+    expect(mockOnPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
+    const emptyStateAction = {
+      key: 'new-test-case',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        emptyStateAction={emptyStateAction}
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-test-case')
+    ).not.toBeInTheDocument();
   });
 
   it('Should show NextPrevious when pagingData and showPagination are provided', async () => {
@@ -560,7 +780,10 @@ describe('DataQualityTab test', () => {
       );
     });
 
-    expect(await screen.findByTestId('next-previous')).toBeInTheDocument();
+    const pagination = await screen.findByTestId('next-previous');
+
+    expect(pagination).toBeInTheDocument();
+    expect(pagination.parentElement).not.toHaveClass('dq-pagination-sticky');
   });
 
   it('Should not show NextPrevious when showPagination is false', async () => {
@@ -1087,6 +1310,62 @@ describe('DataQualityTab test', () => {
         await screen.findByTestId('bundle-suite-form-drawer')
       ).toBeInTheDocument();
       expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
+  });
+
+  describe('Inline incident status', () => {
+    it('Should render the incident status from the inline incidentStatus field and rebuild the testCaseReference from the test case', async () => {
+      (TestCaseIncidentManagerStatus as jest.Mock).mockClear();
+      // Mirror the API shape: the inline incidentStatus has no testCaseReference.
+      const testCaseWithIncident = {
+        ...MOCK_TEST_CASE[0],
+        name: 'incident_inline_case',
+        incidentStatus: {
+          stateId: 'state-1',
+          testCaseResolutionStatusType: 'New',
+        },
+      } as unknown as TestCase;
+
+      await act(async () => {
+        render(
+          <DataQualityTab {...mockProps} testCases={[testCaseWithIncident]} />
+        );
+      });
+
+      expect(
+        await screen.findByTestId('incident-manager-status')
+      ).toBeInTheDocument();
+      expect(TestCaseIncidentManagerStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            testCaseReference: expect.objectContaining({
+              fullyQualifiedName: MOCK_TEST_CASE[0].fullyQualifiedName,
+            }),
+          }),
+        }),
+        expect.anything()
+      );
+    });
+
+    it('Should not render an incident status when incidentStatus is absent', async () => {
+      const testCaseWithoutIncident = {
+        ...MOCK_TEST_CASE[0],
+        name: 'no_incident_case',
+        incidentStatus: undefined,
+      };
+
+      await act(async () => {
+        render(
+          <DataQualityTab
+            {...mockProps}
+            testCases={[testCaseWithoutIncident]}
+          />
+        );
+      });
+
+      expect(
+        screen.queryByTestId('incident-manager-status')
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -180,6 +180,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "tableType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"

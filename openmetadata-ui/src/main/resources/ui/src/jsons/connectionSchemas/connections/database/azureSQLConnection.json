@@ -1,0 +1,364 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AzureSQLConnection",
+  "description": "Azure SQL Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.AzureSQLConnection",
+  "definitions": {
+    "azureSQLType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "AzureSQL"
+      ],
+      "default": "AzureSQL"
+    },
+    "azureSQLScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "mssql+pyodbc"
+      ],
+      "default": "mssql+pyodbc"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "AzureSQL",
+      "type": "string",
+      "enum": [
+        "AzureSQL"
+      ]
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "default": "mssql+pyodbc",
+      "type": "string",
+      "enum": [
+        "mssql+pyodbc"
+      ]
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to AzureSQL. This user should have privileges to read the metadata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to AzureSQL.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the AzureSQL service.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Initial database to connect to. Metadata reading is restricted to this database unless Ingest All Databases is enabled, in which case this database is used as the entry point to discover and scan all databases.",
+      "type": "string"
+    },
+    "driver": {
+      "title": "Driver",
+      "description": "SQLAlchemy driver for AzureSQL.",
+      "type": "string",
+      "default": "ODBC Driver 18 for SQL Server"
+    },
+    "authenticationMode": {
+      "title": "Authentication Mode",
+      "description": "This parameter determines the mode of authentication for connecting to AzureSQL using ODBC. If 'Active Directory Password' is selected, you need to provide the password. If 'Active Directory Integrated' is selected, password is not required as it uses the logged-in user's credentials. This mode is useful for establishing secure and seamless connections with AzureSQL.",
+      "properties": {
+        "authentication": {
+          "title": "Authentication",
+          "description": "Authentication from Connection String for AzureSQL.",
+          "type": "string",
+          "enum": [
+            "ActiveDirectoryIntegrated",
+            "ActiveDirectoryPassword"
+          ]
+        },
+        "encrypt": {
+          "title": "Encrypt",
+          "description": "Encrypt from Connection String for AzureSQL.",
+          "type": "boolean"
+        },
+        "trustServerCertificate": {
+          "title": "Trust Server Certificate",
+          "description": "Trust Server Certificate from Connection String for AzureSQL.",
+          "type": "boolean"
+        },
+        "connectionTimeout": {
+          "title": "Connection Timeout",
+          "description": "Connection Timeout from Connection String for AzureSQL.",
+          "type": "integer",
+          "default": 30
+        }
+      }
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Azuresql. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "title": "Supports Usage Extraction",
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDBTExtraction": {
+      "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "description": "The source service supports the database concept in its hierarchy",
+      "type": "boolean",
+      "default": true
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "description": "Storage config to store sample data",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "title": "No Sample Data Storage Config",
+              "type": "object",
+              "additionalProperties": false
+            },
+            {
+              "title": "Sample Data Storage Config",
+              "description": "Storage config to store sample data",
+              "type": "object",
+              "properties": {
+                "bucketName": {
+                  "title": "Bucket Name",
+                  "description": "Bucket Name",
+                  "type": "string",
+                  "default": ""
+                },
+                "prefix": {
+                  "title": "Prefix",
+                  "description": "Prefix of the data source.",
+                  "type": "string",
+                  "default": ""
+                },
+                "filePathPattern": {
+                  "title": "File Path Pattern",
+                  "description": "Provide the pattern of the path where the generated sample data file needs to be stored.",
+                  "type": "string",
+                  "default": "{service_name}/{database_name}/{database_schema_name}/{table_name}/sample_data.parquet"
+                },
+                "overwriteData": {
+                  "title": "Overwrite Sample Data",
+                  "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
+                  "type": "boolean",
+                  "default": true
+                },
+                "storageConfig": {
+                  "oneOf": [
+                    {
+                      "title": "AWS S3 Storage Config",
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "AWS credentials configs.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+                      "properties": {
+                        "enabled": {
+                          "title": "Enable IAM Auth",
+                          "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "awsAccessKeyId": {
+                          "title": "AWS Access Key ID",
+                          "description": "AWS Access key ID.",
+                          "type": "string"
+                        },
+                        "awsSecretAccessKey": {
+                          "title": "AWS Secret Access Key",
+                          "description": "AWS Secret Access Key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "awsRegion": {
+                          "title": "AWS Region",
+                          "description": "AWS Region",
+                          "type": "string"
+                        },
+                        "awsSessionToken": {
+                          "title": "AWS Session Token",
+                          "description": "AWS Session Token.",
+                          "type": "string"
+                        },
+                        "endPointURL": {
+                          "title": "Endpoint URL",
+                          "description": "EndPoint URL for the AWS",
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "profileName": {
+                          "title": "Profile Name",
+                          "description": "The name of a profile to use with the boto session.",
+                          "type": "string"
+                        },
+                        "assumeRoleArn": {
+                          "title": "Role Arn for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                          "type": "string"
+                        },
+                        "assumeRoleSessionName": {
+                          "title": "Role Session Name for Assume Role",
+                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                          "type": "string",
+                          "default": "OpenMetadataSession"
+                        },
+                        "assumeRoleSourceIdentity": {
+                          "title": "Source Identity for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "awsRegion"
+                      ]
+                    },
+                    {
+                      "title": "OpenMetadata Storage",
+                      "type": "object",
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "database",
+    "username"
+  ]
+}

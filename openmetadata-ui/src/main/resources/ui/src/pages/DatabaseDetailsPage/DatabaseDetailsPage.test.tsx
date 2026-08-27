@@ -92,32 +92,6 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
-const mockFeedCount = {
-  totalCount: 6,
-  counts: [
-    {
-      count: 3,
-      entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::columns::comments::tags>',
-    },
-    {
-      count: 1,
-      entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::owner>',
-    },
-    {
-      count: 1,
-      entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
-    },
-    {
-      count: 1,
-      entityLink:
-        '<#E::table::sample_data.ecommerce_db.shopify.raw_order::description>',
-    },
-  ],
-};
-
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
@@ -183,13 +157,6 @@ jest.mock('../../rest/databaseAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSchemaData)),
 }));
 
-jest.mock('../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockFeedCount)),
-  postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
-}));
-
 jest.mock('../../utils/TablePureUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
@@ -233,7 +200,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 

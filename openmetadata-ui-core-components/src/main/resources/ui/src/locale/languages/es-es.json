@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Cerrar",
+    "close-navigation-menu": "Cerrar menú de navegación",
+    "copy-link": "Copiar enlace",
+    "current-page": "Página actual",
+    "date-range-picker": "Selector de rango de fechas",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "expand-navigation-menu": "Expandir menú de navegación",
+    "field-documentation": "Documentación del campo",
+    "hidden-breadcrumbs": "Migas de pan ocultas",
+    "loading": "Cargando…",
+    "next-page": "Ir a la página siguiente",
+    "open-menu": "Abrir menú",
+    "page": "Página",
+    "pagination": "Paginación",
+    "pagination-navigation": "Navegación de paginación",
+    "previous-page": "Ir a la página anterior",
+    "records": "Registros",
+    "remove-filter": "Eliminar filtro",
+    "select-dates": "Seleccionar fechas",
+    "show-hidden-breadcrumbs": "Mostrar migas de pan ocultas",
+    "today": "Hoy"
+  }
+}

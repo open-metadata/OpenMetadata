@@ -12,12 +12,18 @@
  */
 
 import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -59,14 +65,14 @@ import {
 } from '../../../utils/TablePureUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import withSuspenseFallback, {
-  TAB_CONTENT_FALLBACK,
-} from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import Table from '../../common/Table/Table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -79,7 +85,7 @@ import {
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor')),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const ModalWithMarkdownEditor = withSuspenseFallback(

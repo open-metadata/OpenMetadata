@@ -31,10 +31,12 @@ import {
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
 import { visitServiceDetailsPage } from '../../../utils/service';
+import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
   checkServiceFieldSectionHighlighting,
   getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -98,12 +100,19 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    // no schema or database filters
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/schemaFilterPattern\\/includes')
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.schemaFilterPattern);
-
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async runAdditionalTests(
@@ -135,10 +144,12 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         .locator('.ant-dropdown:visible [data-menu-id*="dbt"]')
         .waitFor();
       await page.click('[data-menu-id*="dbt"]');
+      await waitForIngestionWorkflowForm(page);
 
-      await page.locator('#root\\/dbtConfigSource__oneof_select').waitFor();
-      await page.selectOption(
-        '#root\\/dbtConfigSource__oneof_select',
+      await selectOneOfOption(
+        page,
+        'root/dbtConfigSource',
+        'select-widget-root/dbtConfigSource__oneof_select',
         'DBT S3 Config'
       );
       await page.fill(
@@ -162,7 +173,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         DBT.s3Prefix
       );
 
-      await page.click('[data-testid="submit-btn"]');
+      await page.click('[data-testid="next-button"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);
 
@@ -192,9 +203,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
       await page.waitForTimeout(3000);
       await getAgentCard(page, response.data[0].name)
-        .getByTestId('more-actions')
+        .getByTestId('run-agent-button')
         .click();
-      await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 

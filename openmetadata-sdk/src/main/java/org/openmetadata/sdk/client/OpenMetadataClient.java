@@ -42,7 +42,6 @@ import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
 import org.openmetadata.sdk.services.feed.AnnouncementService;
-import org.openmetadata.sdk.services.feed.FeedService;
 import org.openmetadata.sdk.services.feed.TaskFormSchemaService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
@@ -70,6 +69,7 @@ import org.openmetadata.sdk.services.storages.DirectoryService;
 import org.openmetadata.sdk.services.storages.FileService;
 import org.openmetadata.sdk.services.storages.SpreadsheetService;
 import org.openmetadata.sdk.services.storages.WorksheetService;
+import org.openmetadata.sdk.services.system.SystemSettingsService;
 import org.openmetadata.sdk.services.tasks.TaskService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
@@ -86,9 +86,6 @@ public class OpenMetadataClient {
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
-
-  // Feeds
-  private final FeedService feed;
 
   // Data Assets
   private final TableService tables;
@@ -129,6 +126,9 @@ public class OpenMetadataClient {
   // Glossary
   private final GlossaryService glossaries;
   private final GlossaryTermService glossaryTerms;
+
+  // System settings
+  private final SystemSettingsService settings;
 
   // Classification
   private final ClassificationService classifications;
@@ -252,6 +252,7 @@ public class OpenMetadataClient {
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
     this.glossaryTerms = new GlossaryTermService(httpClient);
+    this.settings = new SystemSettingsService(httpClient);
 
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
@@ -331,14 +332,6 @@ public class OpenMetadataClient {
 
     // Initialize task form schema services
     this.taskFormSchemas = new TaskFormSchemaService(httpClient);
-
-    // Initialize feed service
-    this.feed = new FeedService(httpClient);
-  }
-
-  // Feed Service Getter
-  public FeedService feed() {
-    return feed;
   }
 
   public OpenMetadataConfig getConfig() {
@@ -457,6 +450,10 @@ public class OpenMetadataClient {
 
   public GlossaryTermService glossaryTerms() {
     return glossaryTerms;
+  }
+
+  public SystemSettingsService settings() {
+    return settings;
   }
 
   // Classification Service Getters

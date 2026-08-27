@@ -2,11 +2,12 @@ package org.openmetadata.service.rdf.translator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
@@ -32,8 +33,10 @@ public class RdfPropertyMapper {
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
-  private final Map<String, UUID> glossaryTermIdCache = new ConcurrentHashMap<>();
-  private final Map<String, UUID> classificationTagIdCache = new ConcurrentHashMap<>();
+  private final Cache<String, UUID> glossaryTermIdCache =
+      Caffeine.newBuilder().maximumSize(1000).build();
+  private final Cache<String, UUID> classificationTagIdCache =
+      Caffeine.newBuilder().maximumSize(1000).build();
   private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
 
   // Common namespace URIs
@@ -103,6 +106,10 @@ public class RdfPropertyMapper {
     this.baseUri = baseUri;
     this.objectMapper = objectMapper;
     this.contextCache = contextCache;
+  }
+
+  public static boolean isIgnoredEntityField(String fieldName) {
+    return IGNORED_PROPERTIES.contains(fieldName);
   }
 
   /**
@@ -472,7 +479,7 @@ public class RdfPropertyMapper {
     if (tagFqn == null || tagFqn.isEmpty()) {
       return null;
     }
-    UUID cached = classificationTagIdCache.get(tagFqn);
+    UUID cached = classificationTagIdCache.getIfPresent(tagFqn);
     if (cached != null) {
       return cached;
     }
@@ -500,8 +507,9 @@ public class RdfPropertyMapper {
       return null;
     }
 
-    if (glossaryTermIdCache.containsKey(termFqn)) {
-      return glossaryTermIdCache.get(termFqn);
+    UUID cached = glossaryTermIdCache.getIfPresent(termFqn);
+    if (cached != null) {
+      return cached;
     }
 
     try {

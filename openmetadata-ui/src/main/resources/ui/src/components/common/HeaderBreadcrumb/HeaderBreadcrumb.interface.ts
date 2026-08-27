@@ -36,6 +36,11 @@ export interface HeaderBreadcrumbProps {
   /** Size of the crumbs. Defaults to 'sm'. */
   size?: BreadcrumbsSize;
   /**
+   * Keep the trail on a single line and collapse the middle crumbs into a `…`
+   * menu when the container is too narrow to fit them all. Defaults to false.
+   */
+  autoCollapse?: boolean;
+  /**
    * Maximum number of crumbs to render inline; longer trails collapse the
    * middle crumbs into a `…` menu (first crumb + trailing crumbs stay
    * visible). Omit to always render every crumb.

@@ -66,6 +66,10 @@
     "expirationDate": {
       "description": "When the access should expire.",
       "$ref": "basic.json#/definitions/timestamp"
+    },
+    "manualGrantReason": {
+      "description": "System-generated summary of why this request was routed to manual approval instead of being granted automatically — for example a partial automatic grant, an enforcement failure, or a timeout during automated evaluation. Absent when access was granted automatically.",
+      "type": "string"
     }
   },
   "required": ["accessType", "reason"],

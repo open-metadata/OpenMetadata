@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 final class PersonaContextMarkdown {
   private static final int COMPACT_MAX_CHARS = 1200;
   private static final int DOCUMENT_OVERHEAD_RESERVE = 1024;
+  private static final String ASSET_CONTEXT_TOOL = "get_asset_context";
 
   private PersonaContextMarkdown() {}
 
@@ -144,8 +145,9 @@ final class PersonaContextMarkdown {
     }
     EntityInterface entity = selected.knowledgeEntity();
     if (entity == null) {
-      if (!nullOrEmpty(item.getContent())) {
-        markdown.append('\n').append(item.getContent().strip()).append('\n');
+      String content = PromptText.forPrompt(item.getContent());
+      if (!nullOrEmpty(content)) {
+        markdown.append('\n').append(content.strip()).append('\n');
       }
       return markdown.toString();
     }
@@ -169,7 +171,7 @@ final class PersonaContextMarkdown {
 
   private static void appendArticleSections(
       StringBuilder markdown, Page page, Set<ContextSection> sections, boolean all) {
-    String content = page.getDescription();
+    String content = PromptText.forPrompt(page.getDescription());
     if ((all || sections.contains(ContextSection.TITLE_SUMMARY)) && !nullOrEmpty(content)) {
       appendSection(markdown, "Summary", firstLine(content));
     }
@@ -191,7 +193,7 @@ final class PersonaContextMarkdown {
       StringBuilder markdown, Metric metric, Set<ContextSection> sections, boolean all) {
     if ((all || sections.contains(ContextSection.DEFINITION))
         && !nullOrEmpty(metric.getDescription())) {
-      appendSection(markdown, "Definition", metric.getDescription());
+      appendSection(markdown, "Definition", PromptText.forPrompt(metric.getDescription()));
     }
     if ((all || sections.contains(ContextSection.FORMULA_EXPRESSION))
         && metric.getMetricExpression() != null
@@ -234,7 +236,7 @@ final class PersonaContextMarkdown {
       StringBuilder markdown, GlossaryTerm term, Set<ContextSection> sections, boolean all) {
     if ((all || sections.contains(ContextSection.DEFINITION))
         && !nullOrEmpty(term.getDescription())) {
-      appendSection(markdown, "Definition", term.getDescription());
+      appendSection(markdown, "Definition", PromptText.forPrompt(term.getDescription()));
     }
     if ((all || sections.contains(ContextSection.SYNONYMS))
         && !listOrEmpty(term.getSynonyms()).isEmpty()) {
@@ -409,7 +411,7 @@ final class PersonaContextMarkdown {
       }
       markdown
           .append("\n_Column-level profile details are caller-sensitive; fetch ")
-          .append(contextEndpoint(context))
+          .append(contextToolCall(context.getEntityType(), context.getFullyQualifiedName()))
           .append(" for the latest permitted profile._\n");
     }
     return markdown.toString();
@@ -418,7 +420,7 @@ final class PersonaContextMarkdown {
   private static String renderCompactEntity(AIContext context) {
     String marker =
         "\n_Compact rendering — fetch "
-            + contextEndpoint(context)
+            + contextToolCall(context.getEntityType(), context.getFullyQualifiedName())
             + " for the complete asset context._\n";
     StringBuilder compact = new StringBuilder();
     compact
@@ -496,13 +498,45 @@ final class PersonaContextMarkdown {
             .append(": ")
             .append(labelOf(item))
             .append('\n');
-    if (!nullOrEmpty(item.getFullyQualifiedName())) {
+    // Prefer an entity link for linkable types; otherwise a bare FQN.
+    String link = entityLink(item);
+    if (link != null) {
+      markdown.append(link).append('\n');
+    } else if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
-    if (!nullOrEmpty(item.getContent())) {
-      markdown.append('\n').append(item.getContent().strip()).append('\n');
+    String content = PromptText.forPrompt(item.getContent());
+    if (!nullOrEmpty(content)) {
+      markdown.append('\n').append(content.strip()).append('\n');
     }
     return markdown.toString();
+  }
+
+  /**
+   * Builds an entity link ({@code [label](#entityType/fqn)}) for a linkable knowledge item, or null
+   * for items with no FQN or a non-linkable type (context memory). The FQN is percent-encoded for
+   * spaces and parentheses.
+   */
+  private static String entityLink(KnowledgeItem item) {
+    if (item.getType() == null || nullOrEmpty(item.getFullyQualifiedName())) {
+      return null;
+    }
+    String entityType =
+        switch (item.getType()) {
+          case METRIC -> "metric";
+          case GLOSSARY_TERM -> "glossaryTerm";
+          case PAGE -> "page";
+          default -> null;
+        };
+    if (entityType == null) {
+      return null;
+    }
+    String encodedFqn =
+        item.getFullyQualifiedName().replace(" ", "%20").replace("(", "%28").replace(")", "%29");
+    // Escape Markdown link-text delimiters so a display name like "Revenue [YTD]" does not
+    // terminate the link text early and produce a broken link.
+    String label = labelOf(item).replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]");
+    return "[" + label + "](#" + entityType + "/" + encodedFqn + ")";
   }
 
   private static void appendManifest(StringBuilder markdown, List<ManifestEntry> manifest) {
@@ -519,7 +553,7 @@ final class PersonaContextMarkdown {
           .append(") — ")
           .append(entry.getReason().value())
           .append("; fetch ")
-          .append(contextEndpoint(entry.getEntityType(), entry.getFullyQualifiedName()));
+          .append(contextToolCall(entry.getEntityType(), entry.getFullyQualifiedName()));
     }
     markdown.append('\n');
   }
@@ -599,26 +633,13 @@ final class PersonaContextMarkdown {
         .withReason(reason);
   }
 
-  private static String contextEndpoint(AIContext context) {
-    return contextEndpoint(context.getEntityType(), context.getFullyQualifiedName());
-  }
-
-  private static String contextEndpoint(String entityType, String fqn) {
-    return "`GET /v1/" + collectionPath(entityType) + "/name/" + fqn + "/context`";
-  }
-
-  static String collectionPath(String entityType) {
-    return switch (entityType) {
-      case "glossaryTerm" -> "glossaryTerms";
-      case "mlmodel" -> "mlmodels";
-      case "searchIndex" -> "searchIndexes";
-      case "databaseSchema" -> "databaseSchemas";
-      case "storedProcedure" -> "storedProcedures";
-      case "apiEndpoint" -> "apiEndpoints";
-      case "page" -> "contextCenter/pages";
-      case "dashboardDataModel" -> "dashboard/datamodels";
-      default -> entityType.endsWith("s") ? entityType : entityType + 's';
-    };
+  static String contextToolCall(String entityType, String fqn) {
+    return ASSET_CONTEXT_TOOL
+        + "(entityType=`"
+        + AIContextMarkdown.inlineCodeValue(entityType)
+        + "`, fqn=`"
+        + AIContextMarkdown.inlineCodeValue(fqn)
+        + "`)";
   }
 
   private static String entityTypeLabel(String entityType) {

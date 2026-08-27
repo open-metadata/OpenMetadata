@@ -18,10 +18,12 @@ be self-sufficient with only pydantic at import time.
 
 import json
 import logging
+import os
+import threading
 from typing import Any, Callable, Dict, Literal, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import WrapSerializer, model_validator
+from pydantic import ConfigDict, WrapSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from pydantic_core.core_schema import SerializationInfo
@@ -34,6 +36,16 @@ logger = logging.getLogger("metadata")
 SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
 
+# model_rebuild() deletes __pydantic_core_schema__/__pydantic_validator__/__pydantic_serializer__
+# before regenerating them, and says so itself: "as model_rebuild() isn't thread-safe, concurrent
+# model instantiations can lead to the parent validator being used". Two ways that bites us. A
+# first build only deletes the core schema, since the validator and serializer mocks are skipped
+# by pydantic's isinstance(..., MockValSer) guard, so a racing thread loses the delete outright
+# ("AttributeError: __pydantic_core_schema__"). A force rebuild of an already built class deletes
+# the real objects, so a racing thread falls through the MRO onto PydanticBaseModel's own mocks.
+# Reentrant because building one schema can rebuild the nested models it references.
+_MODEL_REBUILD_LOCK = threading.RLock()
+
 
 class BaseModel(PydanticBaseModel):
     """
@@ -41,12 +53,50 @@ class BaseModel(PydanticBaseModel):
     Specified as `--base-class BASE_CLASS` in the generator.
     """
 
+    # Lazy per-model schema build (~200MB less import RSS). Guarded by
+    # tests/unit/test_generated_models_defer_build.py. Env override is an ops
+    # kill-switch (redeploy-free), mirroring openai/anthropic's DEFER_PYDANTIC_BUILD.
+    # Read the env directly, NOT via metadata.config.settings: this base class must
+    # import only pydantic — routing it through a metadata package would risk a
+    # circular import at the root of the generated-model hierarchy.
+    model_config = ConfigDict(
+        defer_build=os.environ.get("OM_PYDANTIC_DEFER_BUILD", "true").lower() not in ("0", "false", "no", "off")
+    )
+
+    @classmethod
+    def model_rebuild(cls, *, _parent_namespace_depth: int = 2, **kwargs: Any) -> Optional[bool]:  # noqa: UP045
+        """Rebuild the pydantic-core schema, serialising concurrent builds of the same class."""
+        # Every rebuild funnels through here, including pydantic's own lazy repair from
+        # MockValSer.__getattr__ (see _mock_val_ser.set_model_mocks), which is otherwise unguarded
+        # and races the same way whenever threads first validate a deferred model directly.
+        if _parent_namespace_depth > 0:
+            # This override adds a frame between the caller and pydantic's own parent-frame walk.
+            _parent_namespace_depth += 1
+        with _MODEL_REBUILD_LOCK:
+            return super().model_rebuild(_parent_namespace_depth=_parent_namespace_depth, **kwargs)
+
     def model_post_init(self, context: Any, /):
         """
         This function is used to parse the FilterPattern fields for the Connection classes.
         This is needed because dict is defined in the JSON schema for the FilterPattern field,
         but a FilterPattern object is required in the generated code.
         """
+        # Build the schema of a model the first time one is instantiated. With
+        # defer_build a nested model's schema only ever gets inlined into its parent, so
+        # the class keeps the MockValSer that pydantic put on it in place of a real
+        # serializer (see _mock_val_ser.set_model_mocks). Serialization fallbacks read
+        # type(value).__pydantic_serializer__ straight off the class, which does not go
+        # through MockValSer.__getattr__ and so never triggers its lazy rebuild;
+        # pydantic-core then fails to convert the mock with
+        # "'MockValSer' object cannot be converted to 'SchemaSerializer'". Building here
+        # keeps the import-time saving, since importing a module instantiates nothing.
+        # _parent_namespace_depth=0: forward refs must resolve against the model's own
+        # module, not against whichever frame happened to instantiate it.
+        # Checked before calling so the steady-state path never touches the rebuild lock.
+        cls = type(self)
+        if not cls.__pydantic_complete__:
+            cls.model_rebuild(_parent_namespace_depth=0)
+
         # pylint: disable=import-outside-toplevel
         try:
             if not self.__class__.__name__.endswith("Connection"):
@@ -56,7 +106,7 @@ class BaseModel(PydanticBaseModel):
                 return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
-                    from metadata.generated.schema.type.filterPattern import (  # noqa: PLC0415
+                    from metadata.generated.schema.type.filterPattern import (
                         FilterPattern,
                     )
 
@@ -67,21 +117,15 @@ class BaseModel(PydanticBaseModel):
             logger.warning(f"Exception while parsing FilterPattern: {exc}")
 
     @model_validator(mode="after")
-    @classmethod
-    def parse_name(cls, values):  # pylint: disable=inconsistent-return-statements
+    def parse_name(self):  # pylint: disable=inconsistent-return-statements
         """
         Transform entity names using hybrid configuration system.
         """
-
-        if not values:
-            return values
-
         try:
-            # Try new hybrid system first
-            return transform_entity_names(entity=values, model=cls)
+            return transform_entity_names(entity=self, model=type(self))
         except Exception as exc:
             logger.warning("Exception while parsing Basemodel: %s", exc)
-            return values
+            return self
 
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
@@ -181,7 +225,7 @@ class _CustomSecretStr(SecretStr):
         expect a string (e.g. URL building with ``quote_plus``) do not crash.
         """
         # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import  # noqa: PLC0415
+        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
             SecretsManagerFactory,
         )
 

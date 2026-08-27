@@ -13,16 +13,24 @@
 
 import { Dropdown } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, Key, useCallback, useRef, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../common/Loader/Loader';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 import { NO_AGENT_PERMISSIONS } from '../utils/agents.utils';
 
 interface AgentOverflowMenuProps {
+  allowedActions?: string[];
+  /**
+   * Every item in this menu reaches the pipeline service, so the whole menu closes down when it
+   * is unreachable rather than each item failing on click.
+   */
+  isDisabled?: boolean;
   permissions?: AgentActionPermissions;
   status: AgentStatus;
-  onAction: (action: string) => void;
+  enabled?: boolean;
+  onAction: (action: string) => void | Promise<void>;
 }
 
 interface MenuItem {
@@ -33,48 +41,78 @@ interface MenuItem {
 }
 
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
+  allowedActions,
+  enabled,
+  isDisabled,
   onAction,
   permissions = NO_AGENT_PERMISSIONS,
   status,
 }) => {
   const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  // react-aria closes the menu synchronously in the same press handler that
+  // fires `onAction`, so a state update would land too late to block it.
+  const pendingActionRef = useRef<string | null>(null);
   const isActive = status === 'running' || status === 'queued';
 
-  const allItems: MenuItem[] = isActive
-    ? [
-        { id: 'pause', label: t('label.pause'), testId: 'pause-button' },
-        { id: 'kill', label: t('label.kill-run'), testId: 'kill-button' },
-        {
-          id: 'edit',
-          label: t('label.edit-configuration'),
-          testId: 'edit-button',
-        },
-        {
-          danger: true,
-          id: 'delete',
-          label: t('label.delete-agent'),
-          testId: 'delete-button',
-        },
-      ]
-    : [
-        { id: 'run', label: t('label.run-now'), testId: 'run-button' },
-        {
-          id: 'redeploy',
-          label: t('label.re-deploy-sentence'),
-          testId: 're-deploy-button',
-        },
-        {
-          id: 'edit',
-          label: t('label.edit-configuration'),
-          testId: 'edit-button',
-        },
-        {
-          danger: true,
-          id: 'delete',
-          label: t('label.delete-agent'),
-          testId: 'delete-button',
-        },
-      ];
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open || !pendingActionRef.current) {
+      setIsOpen(open);
+    }
+  }, []);
+
+  const handleAction = useCallback(
+    (key: Key) => {
+      const action = String(key);
+      const result = onAction(action);
+
+      if (result instanceof Promise) {
+        const settle = () => {
+          pendingActionRef.current = null;
+          setPendingAction(null);
+          setIsOpen(false);
+        };
+        pendingActionRef.current = action;
+        setPendingAction(action);
+        void result.then(settle, settle);
+      } else {
+        setIsOpen(false);
+      }
+    },
+    [onAction]
+  );
+
+  // `enabled` defaults to true in the IngestionPipeline schema, so an absent
+  // flag means the agent is running and only an explicit false means paused.
+  const pauseResumeOption: MenuItem =
+    enabled === false
+      ? { id: 'resume', label: t('label.resume'), testId: 'resume-button' }
+      : { id: 'pause', label: t('label.pause'), testId: 'pause-button' };
+
+  const allItems: MenuItem[] = [
+    pauseResumeOption,
+    ...(isActive
+      ? [{ id: 'kill', label: t('label.kill-run'), testId: 'kill-button' }]
+      : [
+          {
+            id: 'redeploy',
+            label: t('label.re-deploy-sentence'),
+            testId: 're-deploy-button',
+          },
+        ]),
+    {
+      id: 'edit',
+      label: t('label.edit-configuration'),
+      testId: 'edit-button',
+    },
+    {
+      danger: true,
+      id: 'delete',
+      label: t('label.delete-agent'),
+      testId: 'delete-button',
+    },
+  ];
 
   const PERMISSION_BY_ITEM: Record<string, boolean> = {
     run: permissions.trigger,
@@ -82,33 +120,43 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
     edit: permissions.edit,
     kill: permissions.edit,
     pause: permissions.edit,
+    resume: permissions.edit,
     delete: permissions.delete,
   };
 
-  const items = allItems.filter((item) => PERMISSION_BY_ITEM[item.id]);
+  const items = allItems.filter(
+    (item) =>
+      (allowedActions?.includes(item.id) ?? true) && PERMISSION_BY_ITEM[item.id]
+  );
 
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <Dropdown.Root>
+    <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
       <AriaButton
         aria-label={t('label.more-action-plural')}
         className={
           'tw:grid tw:size-8.5 tw:cursor-pointer tw:place-items-center' +
           ' tw:rounded-lg tw:border tw:border-secondary' +
-          ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none'
+          ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none' +
+          ' tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
         }
-        data-testid="more-actions">
+        data-testid="more-actions"
+        isDisabled={isDisabled}>
         <DotsVertical size={18} />
       </AriaButton>
       <Dropdown.Popover data-testid="actions-dropdown">
-        <Dropdown.Menu onAction={(key) => onAction(String(key))}>
+        <Dropdown.Menu onAction={handleAction}>
           {items.map((item) => (
             <Dropdown.Item
               data-testid={item.testId}
+              icon={() =>
+                pendingAction === item.id ? <Loader size="x-small" /> : null
+              }
               id={item.id}
+              isDisabled={Boolean(pendingAction)}
               key={item.id}
               textValue={item.label}>
               <span className={item.danger ? 'tw:text-error-primary' : ''}>

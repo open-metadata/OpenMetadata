@@ -10,17 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { upperFirst } from 'lodash';
+import { isEmpty, upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { CACHE_WARMUP_APPLICATION_NAME } from '../constants/constants';
 import {
+  CACHE_WARMUP_APPLICATION_NAME,
+  MCP_APPLICATION_NAME,
+} from '../constants/constants';
+import {
+  AppRunRecord,
+  Stats,
   Status,
   StepStats,
 } from '../generated/entity/applications/appRunRecord';
+import { formatJsonString } from './StringUtils';
 
 export const isCacheWarmupApplication = (appName?: string) =>
   appName === CACHE_WARMUP_APPLICATION_NAME;
+
+export const isMcpApplication = (appName?: string) =>
+  appName === MCP_APPLICATION_NAME;
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {
@@ -69,6 +78,36 @@ const VECTOR_INDEXABLE_ENTITIES = new Set([
   'searchindex',
   'topic',
 ]);
+
+/**
+ * Format avg stage latency as a short human string. Returns "—" when no records or no time
+ * has been recorded yet (e.g. fresh job, or stages that haven't reported timing because the
+ * legacy non-distributed path is in use). Below 1 ms shows "<1 ms" rather than rounding to 0.
+ */
+export const formatLatencyAverage = (
+  totalTimeMs?: number,
+  successRecords?: number
+): string => {
+  // No timing recorded yet (legacy non-distributed path) or no records to divide by.
+  // totalTimeMs === 0 with successRecords > 0 is a valid sub-millisecond batch and
+  // falls through to the "<1 ms" branch.
+  if (
+    totalTimeMs === undefined ||
+    successRecords === undefined ||
+    successRecords <= 0
+  ) {
+    return '—';
+  }
+  const avgMs = totalTimeMs / successRecords;
+  if (avgMs < 1) {
+    return '<1 ms';
+  }
+  if (avgMs < 1000) {
+    return `${avgMs.toFixed(1)} ms`;
+  }
+
+  return `${(avgMs / 1000).toFixed(2)} s`;
+};
 
 export const getEntityStatsData = (data: {
   [key: string]: StepStats;
@@ -136,36 +175,6 @@ export const getEntityStatsData = (data: {
 };
 
 /**
- * Format avg stage latency as a short human string. Returns "—" when no records or no time
- * has been recorded yet (e.g. fresh job, or stages that haven't reported timing because the
- * legacy non-distributed path is in use). Below 1 ms shows "<1 ms" rather than rounding to 0.
- */
-export const formatLatencyAverage = (
-  totalTimeMs?: number,
-  successRecords?: number
-): string => {
-  // No timing recorded yet (legacy non-distributed path) or no records to divide by.
-  // totalTimeMs === 0 with successRecords > 0 is a valid sub-millisecond batch and
-  // falls through to the "<1 ms" branch.
-  if (
-    totalTimeMs === undefined ||
-    successRecords === undefined ||
-    successRecords <= 0
-  ) {
-    return '—';
-  }
-  const avgMs = totalTimeMs / successRecords;
-  if (avgMs < 1) {
-    return '<1 ms';
-  }
-  if (avgMs < 1000) {
-    return `${avgMs.toFixed(1)} ms`;
-  }
-
-  return `${(avgMs / 1000).toFixed(2)} s`;
-};
-
-/**
  * Format throughput in records per second derived from the same total-time / success-records
  * pair. Useful as a secondary signal next to avg latency when comparing entities or runs.
  */
@@ -195,4 +204,36 @@ export const formatThroughput = (
   }
 
   return `${prefix}${rps.toFixed(1)} r/s`;
+};
+
+const APP_RUN_STAT_KEYS: (keyof Stats)[] = [
+  'jobStats',
+  'readerStats',
+  'processStats',
+  'sinkStats',
+  'vectorStats',
+  'entityStats',
+];
+
+// The failure log text rendered by AppLogsViewer / the log modal for an app run.
+// It comes from the record itself (no API fetch).
+export const getAppRunFailureLogs = (record: AppRunRecord): string =>
+  formatJsonString(
+    JSON.stringify(
+      record.failureContext?.stackTrace ?? record.failureContext?.failure ?? {}
+    )
+  );
+
+// Whether an app run has any stats content to render inline (stats cards/tables
+// or server stats). When false, the only thing AppLogsViewer would show is the
+// "View Logs" button — so callers can open the log modal directly instead.
+export const hasAppRunStats = (record: AppRunRecord): boolean => {
+  const successStats = record.successContext?.stats;
+  const failureStats = record.failureContext?.stats as Stats | undefined;
+  const hasStatBlocks = APP_RUN_STAT_KEYS.some(
+    (key) => successStats?.[key] || failureStats?.[key]
+  );
+  const hasServerStats = !isEmpty(record.successContext?.serverStats);
+
+  return hasStatBlocks || hasServerStats;
 };

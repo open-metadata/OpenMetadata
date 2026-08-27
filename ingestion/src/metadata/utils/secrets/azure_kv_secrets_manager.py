@@ -48,9 +48,9 @@ def _() -> None:
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional["AzureCredentials"]:  # noqa: F821
-    from airflow.configuration import conf  # noqa: PLC0415
+    from airflow.configuration import conf
 
-    from metadata.generated.schema.security.credentials.azureCredentials import (  # noqa: PLC0415
+    from metadata.generated.schema.security.credentials.azureCredentials import (
         AzureCredentials,
     )
 
@@ -72,7 +72,7 @@ def _() -> Optional["AzureCredentials"]:  # noqa: F821
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
 def _() -> Optional["AzureCredentials"]:  # noqa: F821
-    from metadata.generated.schema.security.credentials.azureCredentials import (  # noqa: PLC0415
+    from metadata.generated.schema.security.credentials.azureCredentials import (
         AzureCredentials,
     )
 

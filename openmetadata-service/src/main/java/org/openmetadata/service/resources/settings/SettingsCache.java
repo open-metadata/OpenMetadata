@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
-import static org.openmetadata.schema.settings.SettingsType.AI_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
@@ -27,7 +27,6 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
-import static org.openmetadata.schema.settings.SettingsType.SEARCH_INDEX_MAPPINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -48,6 +47,7 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -56,7 +56,6 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -76,10 +75,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.resources.system.AISettingsHandler;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
-import org.openmetadata.service.search.SearchFieldLimits;
-import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
@@ -174,6 +170,9 @@ public class SettingsCache {
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
+    // Initialise App Configuration (tenant-wide "first impression" default app mode)
+    seedAppConfiguration(applicationConfig);
+
     // Initialise Search Settings
     Settings storedSearchSettings =
         Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
@@ -205,37 +204,6 @@ public class SettingsCache {
       }
     } catch (IOException e) {
       LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
-    }
-
-    // Initialise AI Settings
-    Settings storedAiSettings =
-        Entity.getSystemRepository().getConfigWithKey(AI_SETTINGS.toString());
-    try {
-      List<String> aiJsonDataFiles =
-          EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
-      if (!aiJsonDataFiles.isEmpty()) {
-        String aiJson =
-            CommonUtil.getResourceAsStream(
-                EntityRepository.class.getClassLoader(), aiJsonDataFiles.get(0));
-        AISettings defaultAiSettings = JsonUtils.readValue(aiJson, AISettings.class);
-        if (storedAiSettings == null) {
-          Settings setting =
-              new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
-          Entity.getSystemRepository().createNewSetting(setting);
-        } else {
-          AISettings existingAiSettings =
-              JsonUtils.convertValue(storedAiSettings.getConfigValue(), AISettings.class);
-          AISettings mergedAiSettings =
-              new AISettingsHandler().mergeAISettings(defaultAiSettings, existingAiSettings);
-          if (!JsonUtils.pojoToJson(mergedAiSettings)
-              .equals(JsonUtils.pojoToJson(existingAiSettings))) {
-            storedAiSettings.setConfigValue(mergedAiSettings);
-            Entity.getSystemRepository().createOrUpdate(storedAiSettings);
-          }
-        }
-      }
-    } catch (IOException e) {
-      LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
     }
 
     // Initialise Certification Settings
@@ -328,12 +296,13 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
     if (storedMcpConfig == null) {
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          applicationConfig.getMcpConfiguration() != null
-              ? applicationConfig.getMcpConfiguration()
-              : new org.openmetadata.schema.api.configuration.MCPConfiguration();
-      Settings setting =
-          new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-      Entity.getSystemRepository().createNewSetting(setting);
+          applicationConfig.getMcpConfiguration();
+      if (mcpConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
     }
 
     Settings storedScimConfig =
@@ -528,9 +497,28 @@ public class SettingsCache {
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+  }
 
-    // Initialize admin-editable, per-language/per-entity search index mappings (hardened at seed)
-    SearchIndexMappingsSeeder.seedIfAbsent();
+  /**
+   * Seeds {@link SettingsType#APP_CONFIGURATION} from yaml on first boot only. If a DB row
+   * already exists, yaml is ignored - the DB is the source of truth once seeded, and admins
+   * mutate it at runtime via {@code /v1/system/settings/appConfiguration}.
+   *
+   * <p>Extracted from {@link #createDefaultConfiguration} so it can be unit tested in isolation
+   * without exercising every other settings-seed block in that method.
+   */
+  public static void seedAppConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+    Settings storedAppConfig =
+        Entity.getSystemRepository().getConfigWithKey(APP_CONFIGURATION.toString());
+    if (storedAppConfig == null) {
+      AppConfiguration appConfig =
+          applicationConfig.getAppConfiguration() != null
+              ? applicationConfig.getAppConfiguration()
+              : new AppConfiguration();
+      Settings setting =
+          new Settings().withConfigType(APP_CONFIGURATION).withConfigValue(appConfig);
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
   }
 
   private static GlossaryTermRelationType createRelationType(
@@ -573,13 +561,18 @@ public class SettingsCache {
 
   public static <T> T getSettingOrDefault(
       SettingsType settingName, T defaultValue, Class<T> clazz) {
+    T result = defaultValue;
     try {
       Object configValue = CACHE.get(settingName.toString()).getConfigValue();
-      return JsonUtils.convertValue(configValue, clazz);
+      result = JsonUtils.convertValue(configValue, clazz);
+    } catch (CacheLoader.InvalidCacheLoadException ex) {
+      // The loader returns null for a setting that was never configured. Serving the caller's
+      // default is what this method exists for, so it is not a failure.
+      LOG.debug("Setting {} is not configured, using the supplied default", settingName);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
-      return defaultValue;
     }
+    return result;
   }
 
   public static void cleanUp() {
@@ -593,10 +586,6 @@ public class SettingsCache {
       // If search settings are being invalidated, also invalidate aggregated fields
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
         CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
-      }
-      // Stored mapping edits change the per-entity field limits (e.g. depth) used at build time
-      if (SEARCH_INDEX_MAPPINGS.toString().equals(settingsName)) {
-        SearchFieldLimits.invalidateEntityCache();
       }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);

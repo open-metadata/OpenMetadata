@@ -38,7 +38,7 @@ interface UseAgentActionsResult {
  * so the caller can refresh the list.
  */
 export const useAgentActions = (
-  onChanged?: () => void
+  onChanged?: () => void | Promise<void>
 ): UseAgentActionsResult => {
   const { t } = useTranslation();
 
@@ -53,7 +53,7 @@ export const useAgentActions = (
         showSuccessToast(
           t('message.pipeline-action-success-message', { action: actionLabel })
         );
-        onChanged?.();
+        await onChanged?.();
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
