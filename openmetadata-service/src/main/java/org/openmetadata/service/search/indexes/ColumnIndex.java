@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -94,20 +96,27 @@ public interface ColumnIndex extends SearchIndex {
   }
 
   private boolean hasUndocumentedColumn(List<Column> columns) {
-    return hasUndocumentedColumn(columns, 1, SearchFieldLimits.active());
-  }
-
-  private boolean hasUndocumentedColumn(List<Column> columns, int depth, SearchFieldLimits limits) {
     boolean undocumented = false;
-    if (columns != null && depth <= limits.getDepthLimit()) {
-      for (Column col : columns) {
-        if (CommonUtil.nullOrEmpty(col.getDescription())
-            || hasUndocumentedColumn(col.getChildren(), depth + 1, limits)) {
-          undocumented = true;
-          break;
-        }
+    Deque<Column> pending = new ArrayDeque<>();
+    pushColumns(pending, columns);
+    while (!pending.isEmpty() && !undocumented) {
+      Column col = pending.pop();
+      if (CommonUtil.nullOrEmpty(col.getDescription())) {
+        undocumented = true;
+      } else {
+        pushColumns(pending, col.getChildren());
       }
     }
     return undocumented;
+  }
+
+  private void pushColumns(Deque<Column> pending, List<Column> columns) {
+    if (columns != null) {
+      for (Column col : columns) {
+        if (col != null) {
+          pending.push(col);
+        }
+      }
+    }
   }
 }

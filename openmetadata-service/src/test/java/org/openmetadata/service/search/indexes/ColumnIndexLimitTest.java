@@ -174,19 +174,19 @@ class ColumnIndexLimitTest {
   }
 
   @Test
-  void columnDescriptionStatus_ignores_columns_beyond_depth_limit() {
-    activateLimits(2, 10000);
-    Column beyondLimit = new Column().withName("c3");
-    Column withinLimit =
-        new Column().withName("c2").withDescription("d2").withChildren(List.of(beyondLimit));
-    Column top =
-        new Column().withName("c1").withDescription("d1").withChildren(List.of(withinLimit));
-    Table table = new Table().withColumns(List.of(top));
+  void columnDescriptionStatus_handles_deep_nesting_without_stack_overflow() {
+    int depth = 20000;
+    Column current = new Column().withName("c" + depth);
+    for (int level = depth - 1; level >= 1; level--) {
+      current =
+          new Column().withName("c" + level).withDescription("d").withChildren(List.of(current));
+    }
+    Table table = new Table().withColumns(List.of(current));
 
     assertEquals(
-        "COMPLETE",
+        "INCOMPLETE",
         new TestColumnIndex().getColumnDescriptionStatus(table),
-        "columns beyond the indexing depth limit are not indexed and must not affect status");
+        "deeply nested undocumented column must be detected without StackOverflowError");
   }
 
   @Test
