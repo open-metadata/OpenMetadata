@@ -18,10 +18,8 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import type { Thread } from '../generated/entity/feed/thread';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { TaskEntityStatus, type Task as TaskEntity } from '../rest/tasksAPI';
-import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtilsPure';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
@@ -59,44 +57,6 @@ export const getKnowledgeCenterPagePath = (
 
   // Articles live under the Context Center; /knowledge-center/<fqn> is not a registered route.
   return `${ROUTES.CONTEXT_CENTER_ARTICLES}/${encodedFqn}/${tab}/${subTab}`;
-};
-
-export const getTaskDetailPath = (task: Thread) => {
-  const entityFqn = getEntityFQNFromAbout(task.about) ?? '';
-  const entityType = getEntityTypeFromAbout(task.about) ?? '';
-
-  if (entityType === EntityType.TEST_CASE) {
-    return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
-  } else if (entityType === EntityType.USER) {
-    return getUserPath(
-      entityFqn,
-      EntityTabs.ACTIVITY_FEED,
-      ActivityFeedTabs.TASKS
-    );
-  } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
-      entityType as EntityType
-    )
-  ) {
-    return getGlossaryTermDetailsPath(
-      entityFqn,
-      EntityTabs.ACTIVITY_FEED,
-      ActivityFeedTabs.TASKS
-    );
-  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
-    return getKnowledgeCenterPagePath(
-      entityFqn,
-      EntityTabs.ACTIVITY_FEED,
-      ActivityFeedTabs.TASKS
-    );
-  }
-
-  return getEntityDetailsPath(
-    entityType as EntityType,
-    entityFqn,
-    EntityTabs.ACTIVITY_FEED,
-    ActivityFeedTabs.TASKS
-  );
 };
 
 export const getTaskDetailPathFromTask = (task: TaskEntity) => {
