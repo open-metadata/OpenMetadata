@@ -515,6 +515,27 @@ export const runTableParitySuite = (
     });
   });
 
+  describe(`${suiteName} — horizontal scroll`, () => {
+    it('widens the table to scroll.x rather than squeezing it', () => {
+      // AntD gives the table that width and lets the wrapper scroll. Squeezing
+      // it instead crams every column and spills the ones that cannot wrap.
+      renderTable({ scroll: { x: 1440 } });
+
+      const table = document.querySelector('table') as HTMLElement;
+
+      expect(table.style.width).toBe('1440px');
+      expect(table.style.minWidth).toBe('100%');
+    });
+
+    it('leaves the width alone without scroll.x', () => {
+      renderTable({});
+
+      const table = document.querySelector('table') as HTMLElement;
+
+      expect(table.style.width).toBe('');
+    });
+  });
+
   describe(`${suiteName} — bordered`, () => {
     it('draws the grid when bordered is set', () => {
       renderTable({ bordered: true });

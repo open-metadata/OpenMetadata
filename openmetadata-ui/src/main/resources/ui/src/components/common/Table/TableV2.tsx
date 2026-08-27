@@ -1153,6 +1153,18 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
+              style={
+                // AntD reads `scroll.x` as the table's own width and lets the
+                // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
+                // table is squeezed into its container instead, and columns
+                // that cannot wrap spill over their neighbours.
+                scroll?.x
+                  ? {
+                      width: scroll.x as string | number,
+                      minWidth: '100%',
+                    }
+                  : undefined
+              }
               disabledBehavior="selection"
               disabledKeys={disabledRowKeys}
               dragAndDropHooks={
