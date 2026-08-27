@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -30,7 +31,9 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -59,9 +62,67 @@ class TypeRegistryTest {
     TypeRegistry.CUSTOM_PROPERTIES.clear();
     TypeRegistry.CUSTOM_PROPERTY_SCHEMAS.clear();
     TypeRegistry.TYPES.clear();
+    TypeRegistry.TYPE_UPDATED_AT.clear();
     TypeRegistry.MISSING_CUSTOM_PROPERTIES.invalidateAll();
     TypeRegistry.RECENTLY_REFRESHED_TYPES.invalidateAll();
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
     Entity.setTypeRepository(null);
+  }
+
+  /**
+   * Multi-replica desync of the {@code TYPES} map: a custom property type created on a peer replica
+   * (e.g. via {@code POST /metadata/types} with {@code category=field}) is absent from this
+   * process's registry. Validating a custom property that references it must self-heal by re-reading
+   * the type from the shared database instead of rejecting the property as an unknown type.
+   */
+  @Test
+  void validateCustomProperties_selfHealsMissingPropertyTypeFromDatabase() {
+    String fieldType = "currency";
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getByName(any(), eq(fieldType), any()))
+        .thenReturn(
+            new Type()
+                .withName(fieldType)
+                .withCategory(Category.Field)
+                .withSchema("{\"type\":\"string\"}"));
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().validateCustomProperties(tableTypeUsingPropertyType(fieldType));
+
+    assertNotNull(
+        TypeRegistry.TYPES.get(fieldType),
+        "Missing property type should be self-healed from the database");
+  }
+
+  /**
+   * When the referenced property type is genuinely absent — not in the registry and not in the
+   * database — validation must still reject it after the self-heal attempt.
+   */
+  @Test
+  void validateCustomProperties_throwsWhenPropertyTypeAbsentEvenAfterReload() {
+    String fieldType = "ghostType";
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getByName(any(), eq(fieldType), any()))
+        .thenThrow(new RuntimeException("type not found"));
+    Entity.setTypeRepository(repository);
+
+    Type tableType = tableTypeUsingPropertyType(fieldType);
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> TypeRegistry.instance().validateCustomProperties(tableType));
+  }
+
+  private static Type tableTypeUsingPropertyType(String propertyTypeName) {
+    return new Type()
+        .withName(ENTITY_TYPE)
+        .withCategory(Category.Entity)
+        .withCustomProperties(
+            List.of(
+                new CustomProperty()
+                    .withName("price")
+                    .withPropertyType(new EntityReference().withName(propertyTypeName))));
   }
 
   /**
@@ -162,6 +223,131 @@ class TypeRegistryTest {
         "Next lookup must retry the database immediately, not wait out the coalescing window");
   }
 
+  /**
+   * A custom property deleted on a peer replica is a cache hit locally, so the miss-heal never
+   * re-reads it. The version check must notice the owning type's {@code updatedAt} advanced, evict
+   * the type's cached properties, and reload — dropping the deleted property.
+   */
+  @Test
+  void getSchema_dropsDeletedPropertyWhenTypeUpdatedAtAdvanced() {
+    seedBasePropertyType();
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getUpdatedAt(ENTITY_TYPE)).thenReturn(200L);
+    when(repository.getByName(any(), eq(ENTITY_TYPE), any())).thenReturn(tableTypeWith(null, 200L));
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().addType(tableTypeWith("gone", 100L));
+    assertNotNull(
+        TypeRegistry.CUSTOM_PROPERTY_SCHEMAS.get(
+            TypeRegistry.getCustomPropertyFQN(ENTITY_TYPE, "gone")),
+        "Precondition: stale replica still has the deleted property cached");
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
+
+    assertNull(
+        TypeRegistry.instance().getSchema(ENTITY_TYPE, "gone"),
+        "A property deleted on a peer must be dropped once the version check reloads the type");
+  }
+
+  /**
+   * An edit to a property's config on a peer (e.g. enum values changed) is a cache hit locally. The
+   * version check must reload the type so the fresh config replaces the stale one.
+   */
+  @Test
+  void getCustomPropertyConfig_refreshesEditedConfigWhenTypeUpdatedAtAdvanced() {
+    seedBasePropertyType();
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getUpdatedAt(ENTITY_TYPE)).thenReturn(200L);
+    when(repository.getByName(any(), eq(ENTITY_TYPE), any()))
+        .thenReturn(tableTypeWithConfig("size", "new", 200L));
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().addType(tableTypeWithConfig("size", "old", 100L));
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
+
+    assertEquals(
+        "new",
+        TypeRegistry.getCustomPropertyConfig(ENTITY_TYPE, "size"),
+        "An edited config must be refreshed from the database on the version check");
+  }
+
+  /** An unchanged {@code updatedAt} must serve the cached hit without reloading the type. */
+  @Test
+  void getSchema_servesCachedHitWithoutReloadWhenUnchanged() {
+    seedBasePropertyType();
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getUpdatedAt(ENTITY_TYPE)).thenReturn(100L);
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().addType(tableTypeWith("stable", 100L));
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
+
+    assertNotNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "stable"));
+    verify(repository, times(0)).getByName(any(), eq(ENTITY_TYPE), any());
+  }
+
+  /** Repeated reads within the window issue a single {@code updatedAt} check (coalescing). */
+  @Test
+  void getSchema_coalescesVersionChecksWithinWindow() {
+    seedBasePropertyType();
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getUpdatedAt(ENTITY_TYPE)).thenReturn(100L);
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().addType(tableTypeWith("stable", 100L));
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
+
+    TypeRegistry.instance().getSchema(ENTITY_TYPE, "stable");
+    TypeRegistry.instance().getSchema(ENTITY_TYPE, "stable");
+
+    verify(repository, times(1)).getUpdatedAt(ENTITY_TYPE);
+  }
+
+  /**
+   * Column-level custom properties attach to the {@code tableColumn} type, not the parent
+   * {@code table}. The version check must key on the entity type actually queried, so a column
+   * property change is detected on {@code tableColumn} and never resolved against {@code table}.
+   */
+  @Test
+  void getSchema_columnLevelChangeIsKeyedOnColumnTypeNotParent() {
+    seedBasePropertyType();
+    String columnType = "tableColumn";
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getUpdatedAt(columnType)).thenReturn(200L);
+    when(repository.getByName(any(), eq(columnType), any()))
+        .thenReturn(typeWith(columnType, null, 200L));
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().addType(typeWith(columnType, "colProp", 100L));
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
+
+    assertNull(
+        TypeRegistry.instance().getSchema(columnType, "colProp"),
+        "A deleted column custom property must drop after reload keyed on tableColumn");
+    verify(repository, times(0)).getUpdatedAt(ENTITY_TYPE);
+  }
+
+  /** A transient database failure during the version check must serve the last-known cached hit. */
+  @Test
+  void getSchema_dbFailureOnVersionCheckServesCachedHit() {
+    seedBasePropertyType();
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getUpdatedAt(ENTITY_TYPE)).thenThrow(new RuntimeException("db blip"));
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().addType(tableTypeWith("stable", 100L));
+    TypeRegistry.RECENTLY_VERSION_CHECKED_TYPES.invalidateAll();
+
+    assertNotNull(
+        TypeRegistry.instance().getSchema(ENTITY_TYPE, "stable"),
+        "A transient DB failure on the version check serves the last-known cached schema");
+  }
+
   private void seedBasePropertyType() {
     TypeRegistry.TYPES.put(
         STRING_TYPE, new Type().withName(STRING_TYPE).withSchema("{\"type\":\"string\"}"));
@@ -176,6 +362,38 @@ class TypeRegistryTest {
                 new CustomProperty()
                     .withName(propertyName)
                     .withPropertyType(new EntityReference().withName(STRING_TYPE))));
+  }
+
+  private Type tableTypeWith(String propertyName, Long updatedAt) {
+    return typeWith(ENTITY_TYPE, propertyName, updatedAt);
+  }
+
+  private Type typeWith(String typeName, String propertyName, Long updatedAt) {
+    Type type =
+        new Type().withName(typeName).withCategory(Category.Entity).withUpdatedAt(updatedAt);
+    if (propertyName == null) {
+      type.withCustomProperties(List.of());
+    } else {
+      type.withCustomProperties(
+          List.of(
+              new CustomProperty()
+                  .withName(propertyName)
+                  .withPropertyType(new EntityReference().withName(STRING_TYPE))));
+    }
+    return type;
+  }
+
+  private Type tableTypeWithConfig(String propertyName, String config, Long updatedAt) {
+    return new Type()
+        .withName(ENTITY_TYPE)
+        .withCategory(Category.Entity)
+        .withUpdatedAt(updatedAt)
+        .withCustomProperties(
+            List.of(
+                new CustomProperty()
+                    .withName(propertyName)
+                    .withPropertyType(new EntityReference().withName(STRING_TYPE))
+                    .withCustomPropertyConfig(new CustomPropertyConfig().withConfig(config))));
   }
 
   private TypeRepository repositoryReturningTableWith(String propertyName) {

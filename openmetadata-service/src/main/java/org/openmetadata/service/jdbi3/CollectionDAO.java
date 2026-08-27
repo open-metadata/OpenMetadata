@@ -7960,6 +7960,9 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @SqlQuery("SELECT updatedAt FROM type_entity WHERE name = :name")
+    Long findUpdatedAtByName(@Bind("name") String name);
   }
 
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
