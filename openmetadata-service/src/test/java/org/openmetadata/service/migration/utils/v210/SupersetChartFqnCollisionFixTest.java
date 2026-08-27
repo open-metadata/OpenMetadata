@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -37,20 +38,28 @@ class SupersetChartFqnCollisionFixTest {
     CollectionDAO.DashboardServiceDAO dashboardServiceDAO =
         mock(CollectionDAO.DashboardServiceDAO.class);
     CollectionDAO.ChartDAO chartDAO = mock(CollectionDAO.ChartDAO.class);
+    CollectionDAO.DashboardDAO dashboardDAO = mock(CollectionDAO.DashboardDAO.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
     Entity.setSearchRepository(searchRepository);
 
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(dashboardServiceDAO);
     when(collectionDAO.chartDAO()).thenReturn(chartDAO);
+    when(collectionDAO.dashboardDAO()).thenReturn(dashboardDAO);
 
     UUID serviceId = UUID.randomUUID();
     UUID chartId = UUID.randomUUID();
+    UUID dashboardId = UUID.randomUUID();
 
     stubSupersetServiceRows(handle, serviceId);
     when(relationshipDAO.findTo(
             serviceId, Entity.DASHBOARD_SERVICE, Relationship.CONTAINS.ordinal(), Entity.CHART))
-        .thenReturn(List.of(relationship(chartId)));
+        .thenReturn(List.of(relationship(chartId, Entity.CHART)));
+    // The chart sits on this dashboard -- Dashboard's own search doc embeds a denormalized
+    // copy of its charts' names, so renaming the chart must also nudge the dashboard's index.
+    when(relationshipDAO.findFrom(
+            chartId, Entity.CHART, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD))
+        .thenReturn(List.of(relationship(dashboardId, Entity.DASHBOARD)));
 
     String serviceFqn = "superset";
     DashboardService service =
@@ -60,9 +69,11 @@ class SupersetChartFqnCollisionFixTest {
             .withFullyQualifiedName(serviceFqn);
     Chart chart =
         new Chart().withId(chartId).withName("1").withFullyQualifiedName(serviceFqn + ".1");
+    Dashboard dashboard = new Dashboard().withId(dashboardId).withName("1");
 
     when(dashboardServiceDAO.findEntityById(serviceId)).thenReturn(service);
     when(chartDAO.findEntityById(chartId)).thenReturn(chart);
+    when(dashboardDAO.findEntityById(dashboardId)).thenReturn(dashboard);
 
     SupersetChartFqnCollisionFix.fixSupersetChartFqnCollision(handle, collectionDAO);
 
@@ -71,6 +82,7 @@ class SupersetChartFqnCollisionFixTest {
     assertEquals(expectedFqn, chart.getFullyQualifiedName());
     verify(chartDAO).update(chart);
     verify(searchRepository).updateEntityIndex(chart);
+    verify(searchRepository).updateEntityIndex(dashboard);
   }
 
   @Test
@@ -93,7 +105,7 @@ class SupersetChartFqnCollisionFixTest {
     stubSupersetServiceRows(handle, serviceId);
     when(relationshipDAO.findTo(
             serviceId, Entity.DASHBOARD_SERVICE, Relationship.CONTAINS.ordinal(), Entity.CHART))
-        .thenReturn(List.of(relationship(chartId)));
+        .thenReturn(List.of(relationship(chartId, Entity.CHART)));
 
     String serviceFqn = "superset";
     DashboardService service =
@@ -140,10 +152,10 @@ class SupersetChartFqnCollisionFixTest {
     when(handle.createQuery(GET_SUPERSET_SERVICES).mapToMap().list()).thenReturn(rows);
   }
 
-  private static CollectionDAO.EntityRelationshipRecord relationship(UUID id) {
+  private static CollectionDAO.EntityRelationshipRecord relationship(UUID id, String type) {
     return CollectionDAO.EntityRelationshipRecord.builder()
         .id(id)
-        .type(Entity.CHART)
+        .type(type)
         .json("{}")
         .build();
   }

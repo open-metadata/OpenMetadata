@@ -8,6 +8,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -60,7 +61,7 @@ public class SupersetChartFqnCollisionFix {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Error finding Superset services: {}", e.getMessage());
+      LOG.warn("Error finding Superset services", e);
     }
     return serviceIds;
   }
@@ -97,10 +98,11 @@ public class SupersetChartFqnCollisionFix {
         chart.setFullyQualifiedName(newFqn);
         collectionDAO.chartDAO().update(chart);
         reindexChart(chart);
+        reindexParentDashboards(collectionDAO, chartId);
         fixedCount = 1;
       }
     } catch (Exception e) {
-      LOG.warn("Error processing Chart entity {}: {}", chartId, e.getMessage());
+      LOG.warn("Error processing Chart entity {}", chartId, e);
     }
     return fixedCount;
   }
@@ -114,6 +116,35 @@ public class SupersetChartFqnCollisionFix {
               + "run 'Recreate Search Indexes' to sync.",
           chart.getId(),
           e);
+    }
+  }
+
+  /**
+   * A Dashboard's own search-index document embeds a denormalized copy of its charts' id/name
+   * (see DashboardIndex's "charts" field, searchable via "charts.name"). Renaming a chart via
+   * this migration's raw DB update bypasses the normal EntityRepository update flow that would
+   * otherwise cascade this reindex automatically, so every parent Dashboard needs a manual nudge
+   * too -- otherwise its search document keeps showing the chart's old, pre-fix name.
+   */
+  private static void reindexParentDashboards(CollectionDAO collectionDAO, UUID chartId) {
+    List<CollectionDAO.EntityRelationshipRecord> dashboards =
+        collectionDAO
+            .relationshipDAO()
+            .findFrom(chartId, Entity.CHART, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD);
+    for (CollectionDAO.EntityRelationshipRecord record : dashboards) {
+      try {
+        Dashboard dashboard = collectionDAO.dashboardDAO().findEntityById(record.getId());
+        if (dashboard != null) {
+          Entity.getSearchRepository().updateEntityIndex(dashboard);
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "Chart {} was renamed but parent Dashboard {} search index could not be refreshed; "
+                + "run 'Recreate Search Indexes' to sync.",
+            chartId,
+            record.getId(),
+            e);
+      }
     }
   }
 
