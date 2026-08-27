@@ -48,3 +48,9 @@ export const GLOSSARY_TERM_STATUS_OPTIONS = [
 
 export const GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME =
   'GlossaryTermApprovalWorkflow';
+
+export const DEFAULT_GLOSSARY_TERM_STATUS_FILTER = [
+  EntityStatus.Approved,
+  EntityStatus.Draft,
+  EntityStatus.InReview,
+];

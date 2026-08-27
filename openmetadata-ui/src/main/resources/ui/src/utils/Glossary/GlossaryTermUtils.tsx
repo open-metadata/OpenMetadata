@@ -55,6 +55,15 @@ const AssetsTabs = withSuspenseFallback(
   )
 );
 
+const GlossaryTermChildrenCountBadge = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTermChildrenCountBadge/GlossaryTermChildrenCountBadge.component'
+      )
+  )
+);
+
 const GlossaryTermTab = withSuspenseFallback(
   lazy(
     () =>
@@ -112,6 +121,7 @@ export const getGlossaryTermDetailPageTabs = (
     refreshActiveGlossaryTerm,
     setAssetModalVisible,
     setPreviewAsset,
+    childrenRefreshTrigger,
   } = props;
 
   // Draft / In Review terms can still reach Approved, so use the actionable
@@ -152,11 +162,12 @@ export const getGlossaryTermDetailPageTabs = (
                 {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
                   i18n.t('label.glossary-term-plural')}
                 <span className="p-l-xs ">
-                  {getCountBadge(
-                    glossaryTerm.childrenCount || 0,
-                    '',
-                    activeTab === EntityTabs.GLOSSARY_TERMS
-                  )}
+                  <GlossaryTermChildrenCountBadge
+                    fqn={glossaryTerm.fullyQualifiedName}
+                    initialCount={glossaryTerm.childrenCount}
+                    isActive={activeTab === EntityTabs.GLOSSARY_TERMS}
+                    refreshTrigger={childrenRefreshTrigger}
+                  />
                 </span>
               </div>
             ),

@@ -22,6 +22,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
+import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -84,12 +85,16 @@ const GlossaryDetails = ({
   isVersionView,
   toggleTabExpanded,
   isTabExpanded,
+  termsRefreshTrigger,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeGlossary: glossary } = useGlossaryStore();
+  const { activeGlossary: glossary, termsStatusFilter } = useGlossaryStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
+  );
+  const [termCount, setTermCount] = useState<number>(
+    glossary.termCount ?? glossary.childrenCount ?? 0
   );
   const { onAddGlossaryTerm } = useGlossaryStore();
 
@@ -123,6 +128,48 @@ const GlossaryDetails = ({
     }
   }, [glossary.fullyQualifiedName]);
 
+  // Terms tab badge: count direct children filtered to the same entityStatus the
+  // table is currently using, via limit=0 (count-only, no row fetch) — glossary.termCount /
+  // childrenCount count all nested descendants with no status filter, so they can
+  // disagree with what the table actually lists. termsStatusFilter is seeded in
+  // useGlossary.store with the table's own default filter (not undefined), so once
+  // the table has mounted and pushed its live filter via setTermsStatusFilter (see
+  // GlossaryTermTab.component.tsx), a genuinely-undefined value here means the user
+  // explicitly selected All statuses (no filter) — not "not yet published" — so it
+  // must be passed straight through, not defaulted.
+  useEffect(() => {
+    const fqn = glossary.fullyQualifiedName;
+    if (!fqn) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchTermCount = async () => {
+      try {
+        const { paging } = await getFirstLevelGlossaryTermsPaginated(
+          fqn,
+          0,
+          undefined,
+          termsStatusFilter
+        );
+        if (isMounted) {
+          setTermCount(paging.total ?? 0);
+        }
+      } catch {
+        if (isMounted) {
+          setTermCount(0);
+        }
+      }
+    };
+
+    fetchTermCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [glossary.fullyQualifiedName, termsRefreshTrigger, termsStatusFilter]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
@@ -138,7 +185,7 @@ const GlossaryDetails = ({
       {
         label: (
           <TabsLabel
-            count={glossary.termCount ?? glossary.childrenCount ?? 0}
+            count={termCount}
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
@@ -208,6 +255,7 @@ const GlossaryDetails = ({
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
+    termCount,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
     activeTab,

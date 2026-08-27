@@ -43,6 +43,9 @@ export interface GlossaryTermDetailPageTabProps {
   refreshActiveGlossaryTerm?: () => void;
   setAssetModalVisible: (visible: boolean) => void;
   setPreviewAsset: (asset?: EntityDetailsObjectInterface) => void;
+  // Bumped by the parent after a term is successfully added, so the Terms tab's
+  // children-count badge re-fetches instead of staying stale until page reload.
+  childrenRefreshTrigger?: number;
 }
 
 class GlossaryTermClassBase {

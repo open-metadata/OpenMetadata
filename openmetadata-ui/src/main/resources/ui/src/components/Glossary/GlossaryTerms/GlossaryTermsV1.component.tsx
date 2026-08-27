@@ -80,6 +80,7 @@ const GlossaryTermsV1 = ({
   isVersionView,
   isTabExpanded,
   toggleTabExpanded,
+  childrenRefreshTrigger,
 }: GlossaryTermsV1Props) => {
   const { tab: activeTab, version } = useRequiredParams<{
     tab: EntityTabs;
@@ -215,6 +216,7 @@ const GlossaryTermsV1 = ({
       refreshActiveGlossaryTerm,
       setAssetModalVisible,
       setPreviewAsset,
+      childrenRefreshTrigger,
     });
 
     return getDetailsTabWithNewLabel(
@@ -233,6 +235,7 @@ const GlossaryTermsV1 = ({
     feedCount.totalTasksCount,
     isSummaryPanelOpen,
     isVersionView,
+    childrenRefreshTrigger,
     assetPermissions,
     handleAssetSave,
     previewAsset,
