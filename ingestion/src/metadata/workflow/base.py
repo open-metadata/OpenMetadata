@@ -17,7 +17,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from statistics import mean
-from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
+from typing import Any, Dict, List, Optional, TypeVar, Union, cast  # noqa: UP035
 
 from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
@@ -40,6 +40,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
+    OpenMetadataWorkflowConfig,
     SourceConfig,
     WorkflowConfig,
 )
@@ -370,7 +371,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         return self._run_id
 
     def _source_config_with_explicit_type(self) -> SourceConfig:
-        source_config = self.config.source.sourceConfig
+        workflow_config = cast("OpenMetadataWorkflowConfig", self.config)
+        source_config = workflow_config.source.sourceConfig
         config = source_config.config
         if not isinstance(config, OpenMetadataBaseModel):
             return source_config
