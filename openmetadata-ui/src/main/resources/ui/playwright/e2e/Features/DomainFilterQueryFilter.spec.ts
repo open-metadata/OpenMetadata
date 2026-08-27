@@ -51,6 +51,14 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
+const getDomainMustClauses = (queryFilter: string): unknown[] => {
+  try {
+    return get(JSON.parse(queryFilter), 'query.bool.must', []);
+  } catch {
+    return [];
+  }
+};
+
 const expectQueryVisibleForDomain = async (
   page: Page,
   table: TableClass,
@@ -64,10 +72,23 @@ const expectQueryVisibleForDomain = async (
     const url = new URL(response.url());
     const queryFilter = url.searchParams.get('query_filter') ?? '';
 
-    return (
-      url.pathname.endsWith('/api/v1/search/query') &&
-      url.searchParams.get('index')?.includes('query') === true &&
-      queryFilter.includes(domain.responseData.fullyQualifiedName ?? '')
+    if (
+      !url.pathname.endsWith('/api/v1/search/query') ||
+      url.searchParams.get('index')?.includes('query') !== true
+    ) {
+      return false;
+    }
+
+    const mustClauses = getDomainMustClauses(queryFilter);
+    const domainFqn = domain.responseData.fullyQualifiedName;
+
+    return mustClauses.some((mustClause) =>
+      get(mustClause, 'bool.should', []).some(
+        (domainClause: unknown) =>
+          get(domainClause, 'term.domains.fullyQualifiedName') === domainFqn ||
+          get(domainClause, 'prefix.domains.fullyQualifiedName') ===
+            `${domainFqn}.`
+      )
     );
   });
   const queriesTab = page.getByTestId('table_queries');

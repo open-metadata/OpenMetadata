@@ -517,6 +517,12 @@ public class QueryRepository extends EntityRepository<Query> {
     postUpdate(query, query);
   }
 
+  @Override
+  protected void postUpdate(Query original, Query updated) {
+    populateQueryUsageAndDomains(updated);
+    super.postUpdate(original, updated);
+  }
+
   private void populateQueryUsageAndDomains(Query query) {
     EntityUtil.Fields fields =
         new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD + "," + FIELD_DOMAINS);
@@ -577,7 +583,6 @@ public class QueryRepository extends EntityRepository<Query> {
                 deleted,
                 EntityUtil.entityReferenceMatch);
             storeQueryUsedIn(updated.getId(), added, deleted);
-            populateQueryUsageAndDomains(updated);
           });
       compareAndUpdate(
           "processedLineage",
