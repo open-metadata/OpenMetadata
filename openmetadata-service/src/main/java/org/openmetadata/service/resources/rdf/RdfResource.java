@@ -1135,6 +1135,22 @@ public class RdfResource {
     return Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED).getId();
   }
 
+  /**
+   * Guard-striping key for the update path.
+   *
+   * <p>Deliberately not {@link #requireAuthenticatedUserName}: adding the concurrency guard to
+   * updates must not also introduce an authentication precondition the endpoint never had.
+   * {@code authorizeAdmin} has already run by this point, so a real caller always has a principal;
+   * the fallback only keeps the guard from throwing where one is absent.
+   */
+  private static String guardPrincipal(SecurityContext securityContext) {
+    return Optional.ofNullable(securityContext)
+        .map(SecurityContext::getUserPrincipal)
+        .map(Principal::getName)
+        .filter(name -> !nullOrEmpty(name) && !name.isBlank())
+        .orElse("anonymous");
+  }
+
   private static String requireAuthenticatedUserName(SecurityContext securityContext) {
     return Optional.ofNullable(securityContext)
         .map(SecurityContext::getUserPrincipal)
@@ -1242,15 +1258,35 @@ public class RdfResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "SPARQL UPDATE query", required = true) SparqlQuery sparqlQuery) {
     authorizer.authorizeAdmin(securityContext);
-    executeSparqlUpdate(sparqlQuery.getQuery());
+    executeSparqlUpdate(guardPrincipal(securityContext), sparqlQuery.getQuery());
     return Response.ok(new SparqlUpdateResult("success")).build();
   }
 
-  private void executeSparqlUpdate(String query) {
+  /**
+   * Updates run under the same admission guard as reads.
+   *
+   * <p>Only the query path was guarded, so a write - which holds locks and is strictly more
+   * expensive than a read - had no concurrency ceiling and no timeout. A handful of slow concurrent
+   * updates could pin the triplestore while reads were still being politely rate-limited.
+   */
+  private void executeSparqlUpdate(String principal, String query) {
     try {
-      sparqlService().update(query);
+      SPARQL_EXECUTION_GUARD.execute(
+          principal,
+          () -> {
+            sparqlService().update(query);
+            return null;
+          });
     } catch (SparqlFederationGuard.FederationDisallowedException exception) {
       throw new ForbiddenException(exception.getMessage(), exception);
+    } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
+      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+    } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
+      throw new ServiceUnavailableException(
+          Response.status(Response.Status.SERVICE_UNAVAILABLE)
+              .entity(exception.getMessage())
+              .build(),
+          exception);
     }
   }
 

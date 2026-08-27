@@ -49,11 +49,15 @@ public enum RdfSerializationFormat {
     if (nullOrEmpty(requested) || requested.isBlank()) {
       return defaultFormat;
     }
+    // Media types are accepted alongside the short names because callers legitimately hold either:
+    // the REST layer negotiates on "text/turtle" while the tools and query string use "turtle".
+    // Only short names were recognised before, so a caller asking for "text/turtle" fell through to
+    // the writer's RDF/XML default and got XML in a response still labelled turtle.
     return switch (requested.trim().toLowerCase(Locale.ROOT)) {
-      case "turtle", "ttl" -> TURTLE;
-      case "rdfxml", "rdf+xml", "rdf/xml", "xml" -> RDF_XML;
-      case "ntriples", "n-triples", "nt" -> N_TRIPLES;
-      case "jsonld", "json-ld", "ld+json" -> JSON_LD;
+      case "turtle", "ttl", "text/turtle" -> TURTLE;
+      case "rdfxml", "rdf+xml", "rdf/xml", "xml", "application/rdf+xml" -> RDF_XML;
+      case "ntriples", "n-triples", "nt", "application/n-triples", "text/plain" -> N_TRIPLES;
+      case "jsonld", "json-ld", "ld+json", "application/ld+json" -> JSON_LD;
       default -> throw new IllegalArgumentException(
           "Unsupported RDF serialization format: " + requested);
     };

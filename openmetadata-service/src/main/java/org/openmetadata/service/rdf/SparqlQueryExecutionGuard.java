@@ -127,8 +127,20 @@ public final class SparqlQueryExecutionGuard {
     return stripes;
   }
 
+  /**
+   * Re-surfaces a failure from the worker thread without disguising it.
+   *
+   * <p>{@link Error} is rethrown untouched. Wrapping it in {@code IllegalStateException("SPARQL
+   * query execution failed")} turned a {@code NoClassDefFoundError} for a missing jena-shacl class
+   * into a generic query failure, and the category table then mapped that message to a 404 - so a
+   * broken classpath was reported as a missing resource and the real cause never reached the caller.
+   * An {@code Error} is also not a query problem and must not be swallowed by a query-level handler.
+   */
   private static RuntimeException propagate(final ExecutionException exception) {
     final Throwable cause = exception.getCause();
+    if (cause instanceof Error error) {
+      throw error;
+    }
     if (cause instanceof RuntimeException runtimeException) {
       return runtimeException;
     }

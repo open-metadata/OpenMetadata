@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryException;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.sparql.modify.request.UpdateLoad;
 import org.apache.jena.sparql.modify.request.UpdateModify;
 import org.apache.jena.sparql.modify.request.UpdateVisitorBase;
 import org.apache.jena.sparql.syntax.ElementService;
@@ -150,6 +151,10 @@ public final class SparqlFederationGuard {
   private static final class EndpointCollector extends ElementVisitorBase {
     private final Set<String> endpoints = new LinkedHashSet<>();
 
+    private void addEndpoint(String endpoint) {
+      endpoints.add(endpoint);
+    }
+
     @Override
     public void visit(ElementService el) {
       if (el.getServiceNode().isVariable()) {
@@ -180,6 +185,19 @@ public final class SparqlFederationGuard {
     public void visit(final UpdateModify update) {
       if (update.getWherePattern() != null) {
         ElementWalker.walk(update.getWherePattern(), endpointCollector);
+      }
+    }
+
+    /**
+     * {@code LOAD <uri>} fetches an external document without a SERVICE clause, so walking only
+     * UPDATE graph patterns left the allowlist wide open to it: {@code LOAD
+     * <http://elsewhere.example/g> INTO GRAPH <g>} reaches outside the deployment exactly the way a
+     * federated SERVICE does. Treating the load source as an endpoint puts it under the same policy.
+     */
+    @Override
+    public void visit(final UpdateLoad update) {
+      if (update.getSource() != null) {
+        endpointCollector.addEndpoint(update.getSource());
       }
     }
   }

@@ -280,6 +280,29 @@ class SparqlFederationGuardTest {
     }
 
     @Test
+    @DisplayName("LOAD from a disallowed source is rejected")
+    void loadFromDisallowedSourceRejected() {
+      final UpdateRequest request =
+          UpdateFactory.create("LOAD <" + DBPEDIA + "> INTO GRAPH <urn:graph:target>");
+
+      final SparqlFederationGuard.FederationDisallowedException exception =
+          assertThrows(
+              SparqlFederationGuard.FederationDisallowedException.class,
+              () -> withAllowlist(WIKIDATA).enforceUpdate(request));
+
+      assertEquals(DBPEDIA, exception.getBlockedEndpoint());
+    }
+
+    @Test
+    @DisplayName("LOAD from an allowlisted source is accepted")
+    void loadFromAllowlistedSourceAccepted() {
+      final UpdateRequest request =
+          UpdateFactory.create("LOAD <" + WIKIDATA + "> INTO GRAPH <urn:graph:target>");
+
+      assertDoesNotThrow(() -> withAllowlist(WIKIDATA).enforceUpdate(request));
+    }
+
+    @Test
     @DisplayName("SERVICE text in inserted data does not trigger the guard")
     void serviceTextInInsertedDataAllowed() {
       final UpdateRequest request =

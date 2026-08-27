@@ -27,6 +27,34 @@ import org.junit.jupiter.api.Test;
 
 class SparqlQueryExecutionGuardTest {
 
+  /**
+   * An {@link Error} from the worker thread must reach the caller unchanged.
+   *
+   * <p>It used to be wrapped in {@code IllegalStateException("SPARQL query execution failed")}. A
+   * missing jena-shacl class therefore surfaced as a generic query failure that the MCP category
+   * table mapped to a 404, so a broken classpath looked like a missing resource and the real
+   * {@code NoClassDefFoundError} never reached the caller.
+   */
+  @Test
+  void rethrowsErrorsWithoutWrappingThemAsQueryFailures() {
+    try (ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      SparqlQueryExecutionGuard guard =
+          new SparqlQueryExecutionGuard(1, 1, 1, 1_000, queryExecutor);
+
+      NoClassDefFoundError raised =
+          assertThrows(
+              NoClassDefFoundError.class,
+              () ->
+                  guard.execute(
+                      "principal",
+                      () -> {
+                        throw new NoClassDefFoundError("org/apache/jena/shacl/ShaclException");
+                      }));
+
+      assertEquals("org/apache/jena/shacl/ShaclException", raised.getMessage());
+    }
+  }
+
   @Test
   void rejectsQueriesAboveTheActiveCapacity() throws Exception {
     try (ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor();
