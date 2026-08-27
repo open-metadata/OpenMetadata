@@ -13,8 +13,8 @@
 
 package org.openmetadata.mcp.tools;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -27,9 +27,17 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 /** Executes bounded, read-only SPARQL queries for MCP clients. */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
-  private static final int DEFAULT_MAX_BYTES = 1024 * 1024;
-  private static final int HARD_MAX_BYTES = 16 * 1024 * 1024;
-  private static final int MIN_MAX_BYTES = 1024;
+  /**
+   * Default and ceiling both come from the dispatch-level budget rather than a standalone megabyte
+   * figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so a
+   * large SELECT was executed and paid for in full, then discarded wholesale by {@code
+   * DefaultToolContext.applyBudget} and replaced with a data-less truncation stub. See {@link
+   * RdfBody}. {@code maxBytes} can therefore only narrow the response, never widen it.
+   */
+  private static final int DEFAULT_MAX_BYTES = RdfBody.MAX_BYTES;
+
+  private static final int HARD_MAX_BYTES = RdfBody.MAX_BYTES;
+  private static final int MIN_MAX_BYTES = RdfBody.MIN_BYTES;
   private final GuardedQueryExecutor guardedQueryExecutor;
 
   public SparqlQueryTool() {
@@ -47,8 +55,21 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     this.guardedQueryExecutor = Objects.requireNonNull(guardedQueryExecutor);
   }
 
+  /**
+   * {@code warning} carries {@link RdfSparqlService.QueryResult#warning()} - set when the requested
+   * inference level was not actually applied because the graph exceeded {@code
+   * maxInMemoryInferenceTriples}. The REST endpoint surfaces this as the {@code OM-Inference-Warning}
+   * header; dropping it here meant an {@code inferenceLevel: "owl"} call silently returned
+   * un-inferred results that looked authoritative. Null when the query ran as asked.
+   */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Result(
-      String format, String queryType, String body, boolean truncated, int byteCount) {}
+      String format,
+      String queryType,
+      String body,
+      boolean truncated,
+      int byteCount,
+      String warning) {}
 
   @Override
   protected Result executeAuthorized(
@@ -60,52 +81,28 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     RdfRepository repository = repository();
     String inferenceLevel = parameters.optionalString("inferenceLevel");
     int maxBytes =
-        clamp(parameters.integer("maxBytes", DEFAULT_MAX_BYTES), MIN_MAX_BYTES, HARD_MAX_BYTES);
+        RdfBody.clamp(
+            parameters.integer("maxBytes", DEFAULT_MAX_BYTES), MIN_MAX_BYTES, HARD_MAX_BYTES);
     RdfSparqlService sparqlService =
         new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
     RdfSparqlService.QueryResult queryResult =
         guardedQueryExecutor.execute(
             CommonUtils.principal(securityContext),
             () -> sparqlService.query(query, parameters.optionalString("format"), inferenceLevel));
-    BoundedBody body = BoundedBody.from(queryResult.body(), maxBytes);
+    RdfBody.Bounded body = RdfBody.bound(queryResult.body(), maxBytes);
 
     return new Result(
         queryResult.format(),
         query.parsed().queryType().toString(),
         body.value(),
         body.truncated(),
-        body.byteCount());
-  }
-
-  private static int clamp(int value, int minimum, int maximum) {
-    return Math.min(Math.max(value, minimum), maximum);
+        body.byteCount(),
+        queryResult.warning());
   }
 
   @FunctionalInterface
   interface GuardedQueryExecutor {
     RdfSparqlService.QueryResult execute(
         String principal, Supplier<RdfSparqlService.QueryResult> query);
-  }
-
-  private record BoundedBody(String value, boolean truncated, int byteCount) {
-
-    private BoundedBody {
-      value = Objects.requireNonNullElse(value, "");
-    }
-
-    private static BoundedBody from(String response, int maxBytes) {
-      byte[] bytes = Objects.requireNonNullElse(response, "").getBytes(StandardCharsets.UTF_8);
-      int end = utf8Boundary(bytes, Math.min(bytes.length, maxBytes));
-      return new BoundedBody(
-          new String(bytes, 0, end, StandardCharsets.UTF_8), bytes.length > maxBytes, bytes.length);
-    }
-
-    private static int utf8Boundary(byte[] bytes, int proposedEnd) {
-      int end = proposedEnd;
-      while (end < bytes.length && end > 0 && (bytes[end] & 0xC0) == 0x80) {
-        end--;
-      }
-      return end;
-    }
   }
 }

@@ -83,6 +83,19 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
     return Result.of(tagFqn, entityType, limit, offset, matches);
   }
 
+  /**
+   * One row per entity, not one row per {@code rdf:type}.
+   *
+   * <p>{@code ?entity a ?entityType} with {@code DISTINCT} emitted a separate row for every type an
+   * entity carries, and OpenMetadata really does type some entities more than once - three LLM
+   * models in a live graph are typed as both {@code om:LlmModel} and {@code om:LLMModel}, two
+   * ontology classes differing only in case. That turned 15 matching entities into 18 rows and
+   * silently corrupted {@code limit}/{@code offset}: a page could contain the same asset twice while
+   * the caller believed it had seen 18 distinct assets. Grouping by {@code ?entity} collapses the
+   * duplicates, and {@code MIN} makes the surviving type, FQN and label a deterministic choice
+   * rather than an arbitrary one. Multiple FQN or label triples on one entity are collapsed the same
+   * way.
+   */
   static String buildSparql(String tagFqn, String entityType, int limit, int offset) {
     String typeFilter = entityTypeFilter(entityType);
     ParameterizedSparqlString query =
@@ -90,15 +103,18 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
             """
             PREFIX om: <https://open-metadata.org/ontology/>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            SELECT DISTINCT ?entity ?entityType ?fqn ?label WHERE {
+            SELECT ?entity
+                   (MIN(?typeIri) AS ?entityType)
+                   (MIN(?fqnValue) AS ?fqn)
+                   (MIN(?labelValue) AS ?label) WHERE {
               { ?tag om:tagFQN ?requestedTag }
               UNION { ?tag om:fullyQualifiedName ?requestedTag }
               { ?entity om:hasTag ?tag }
               UNION { ?entity om:hasGlossaryTerm ?tag }
-              ?entity a ?entityType .
-              OPTIONAL { ?entity om:fullyQualifiedName ?fqn }
-              OPTIONAL { ?entity rdfs:label ?label }
-            %s} ORDER BY ?fqn LIMIT %d OFFSET %d
+              ?entity a ?typeIri .
+              OPTIONAL { ?entity om:fullyQualifiedName ?fqnValue }
+              OPTIONAL { ?entity rdfs:label ?labelValue }
+            %s} GROUP BY ?entity ORDER BY ?fqn LIMIT %d OFFSET %d
             """
                 .formatted(typeFilter, limit, offset));
     query.setLiteral("requestedTag", tagFqn);
@@ -107,8 +123,8 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
 
   private static String entityTypeFilter(String entityType) {
     return McpToolParameters.isBlank(entityType)
-        ? "  FILTER(STRSTARTS(STR(?entityType), \"%s\"))\n".formatted(ONTOLOGY_NAMESPACE)
-        : "  FILTER(?entityType = <%s%s>)\n".formatted(ONTOLOGY_NAMESPACE, capitalize(entityType));
+        ? "  FILTER(STRSTARTS(STR(?typeIri), \"%s\"))\n".formatted(ONTOLOGY_NAMESPACE)
+        : "  FILTER(?typeIri = <%s%s>)\n".formatted(ONTOLOGY_NAMESPACE, capitalize(entityType));
   }
 
   static List<EntityMatch> parseRows(String selectJson) {

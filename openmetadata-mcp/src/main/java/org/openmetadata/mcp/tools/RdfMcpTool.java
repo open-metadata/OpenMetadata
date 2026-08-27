@@ -19,6 +19,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -37,7 +38,7 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
   protected final RdfRepository repository() {
     RdfRepository repository = repositorySupplier.get();
     if (repository == null || !repository.isEnabled()) {
-      throw new IllegalStateException("RDF repository is not enabled on this OpenMetadata server");
+      throw new RdfNotEnabledException();
     }
     return repository;
   }
@@ -50,6 +51,32 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
     return executeAuthorized(securityContext, params);
+  }
+
+  /**
+   * Runs a triplestore read under the shared admission guard (global and per-principal concurrency
+   * plus a hard timeout).
+   *
+   * <p>Only {@code SparqlQueryTool} was guarded originally, leaving the expensive surfaces open:
+   * {@code EntityNeighborhoodTool} emits up to fourteen UNION branches of unbounded {@code ?s ?p ?o}
+   * at depth 3, and a {@code DESCRIBE} can walk an arbitrary subgraph.
+   */
+  protected final <R> R guardedRead(
+      final CatalogSecurityContext securityContext, final Supplier<R> read) {
+    return SparqlQueryExecutionGuard.shared().execute(guardKey(securityContext), read);
+  }
+
+  /**
+   * Per-principal key for the admission guard, tolerating a context with no principal.
+   *
+   * <p>{@link CommonUtils#principal} dereferences the principal directly, so a context without one
+   * throws NPE inside the guard. Unauthenticated callers share one stripe: rate-limited together
+   * rather than each getting a private allowance.
+   */
+  private static String guardKey(final CatalogSecurityContext securityContext) {
+    return securityContext == null || securityContext.getUserPrincipal() == null
+        ? "anonymous"
+        : securityContext.getUserPrincipal().getName();
   }
 
   protected abstract T executeAuthorized(

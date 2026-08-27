@@ -35,9 +35,21 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
     super(repositorySupplier);
   }
 
+  /**
+   * {@code truncated} / {@code byteCount} mirror {@code SparqlQueryTool.Result}. The full ontology
+   * serializes to roughly 65 KB of Turtle, which cleared the dispatch cap only by luck; an ontology
+   * that grows past it would have had the entire response replaced by a data-less stub. Prefer
+   * {@code resource} for a focused DESCRIBE over pulling the whole document.
+   */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Result(
-      String scope, String resource, String format, String mediaType, String body) {
+      String scope,
+      String resource,
+      String format,
+      String mediaType,
+      String body,
+      boolean truncated,
+      int byteCount) {
     public Result {
       body = Objects.requireNonNullElse(body, "");
     }
@@ -52,23 +64,56 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
     RdfSerializationFormat format =
         RdfSerializationFormat.parse(parameters.optionalString("format"));
 
+    int maxBytes =
+        RdfBody.clamp(
+            parameters.integer("maxBytes", RdfBody.MAX_BYTES),
+            RdfBody.MIN_BYTES,
+            RdfBody.MAX_BYTES);
+
     return McpToolParameters.isBlank(resource)
-        ? fullOntology(format)
-        : describe(validateResource(resource), format);
+        ? fullOntology(format, maxBytes)
+        : describe(securityContext, validateResource(resource), format, maxBytes);
   }
 
-  private Result fullOntology(RdfSerializationFormat format) {
+  private Result fullOntology(RdfSerializationFormat format, int maxBytes) {
     OntologyDocument.SerializedOntology ontology =
         OntologyDocument.serialize(format.externalName());
+    RdfBody.Bounded body = RdfBody.bound(ontology.body(), maxBytes);
     return new Result(
-        "full-ontology", null, ontology.format(), ontology.mediaType(), ontology.body());
+        "full-ontology",
+        null,
+        ontology.format(),
+        ontology.mediaType(),
+        body.value(),
+        body.truncated(),
+        body.byteCount());
   }
 
-  private Result describe(String resource, RdfSerializationFormat format) {
+  private Result describe(
+      CatalogSecurityContext securityContext,
+      String resource,
+      RdfSerializationFormat format,
+      int maxBytes) {
+    RdfRepository repository = repository();
+    // The guard call stays outside any catch: QueryCapacityException and QueryTimeoutException
+    // carry their own 429/503 classification, and folding them into an IllegalStateException here
+    // would report a busy or slow triplestore as an opaque server error.
+    String response = guardedRead(securityContext, () -> runDescribe(repository, resource, format));
+    RdfBody.Bounded body = RdfBody.bound(response, maxBytes);
+    return new Result(
+        "describe",
+        resource,
+        format.externalName(),
+        format.mediaType(),
+        body.value(),
+        body.truncated(),
+        body.byteCount());
+  }
+
+  private static String runDescribe(
+      RdfRepository repository, String resource, RdfSerializationFormat format) {
     try {
-      String body =
-          repository().executeSparqlQueryDirect("DESCRIBE <" + resource + ">", format.mediaType());
-      return new Result("describe", resource, format.externalName(), format.mediaType(), body);
+      return repository.executeSparqlQueryDirect("DESCRIBE <" + resource + ">", format.mediaType());
     } catch (RuntimeException exception) {
       throw new IllegalStateException("Ontology DESCRIBE failed for " + resource, exception);
     }

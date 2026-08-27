@@ -16,11 +16,13 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
 import java.util.Optional;
 import org.openmetadata.schema.utils.JsonUtils;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 record SparqlResultSet<T>(Bindings<T> results) {
 
   static <T> List<T> rows(String json, TypeReference<SparqlResultSet<T>> resultType) {
@@ -39,7 +41,19 @@ record SparqlResultSet<T>(Bindings<T> results) {
     return List.copyOf(listOrEmpty(values));
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   record Bindings<T>(List<T> bindings) {}
 
+  /**
+   * One SPARQL JSON binding value.
+   *
+   * <p>SPARQL 1.1 Results JSON always sends {@code "type"} beside {@code "value"}, and adds {@code
+   * "datatype"} for typed literals and {@code "xml:lang"} for language-tagged ones. Without
+   * {@code ignoreUnknown} Jackson rejected every real binding with {@code UnrecognizedPropertyException:
+   * Unrecognized field "type"}, which surfaced to callers as a blanket 400 "JSON parsing failed" the
+   * moment a query matched anything. Only {@code value} is modelled because the tools return display
+   * strings; the remaining keys are deliberately discarded rather than rejected.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
   record Value(String value) {}
 }

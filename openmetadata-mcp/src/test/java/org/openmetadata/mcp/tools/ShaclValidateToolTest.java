@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
-import org.openmetadata.service.rdf.RdfValidationService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -108,7 +107,7 @@ class ShaclValidateToolTest {
     when(repository.executeSparqlQueryDirect(anyString(), anyString()))
         .thenReturn(conformingTable());
 
-    RdfValidationService.ValidationResult result =
+    ShaclValidateTool.Result result =
         tool(repository)
             .execute(
                 AUTHORIZER,
@@ -131,7 +130,7 @@ class ShaclValidateToolTest {
               om:fromColumn "service.database.schema.table.column" .
             """);
 
-    RdfValidationService.ValidationResult result =
+    ShaclValidateTool.Result result =
         tool(repository)
             .execute(
                 AUTHORIZER,
@@ -160,7 +159,7 @@ class ShaclValidateToolTest {
     when(repository.executeSparqlQueryDirect(anyString(), anyString())).thenReturn("");
 
     for (Object fullGraph : List.of(true, "true")) {
-      RdfValidationService.ValidationResult result =
+      ShaclValidateTool.Result result =
           tool(repository).execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("fullGraph", fullGraph));
       assertEquals("full-graph", result.scope());
     }

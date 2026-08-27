@@ -89,9 +89,9 @@ class EntityNeighborhoodToolTest {
         .thenReturn(
             """
             {"results":{"bindings":[{
-              "direction":{"value":"outgoing"},
-              "predicate":{"value":"https://open-metadata.org/ontology/hasColumn"},
-              "neighbor":{"value":"urn:column"}
+              "direction":{"type":"literal","value":"outgoing"},
+              "predicate":{"type":"uri","value":"https://open-metadata.org/ontology/hasColumn"},
+              "neighbor":{"type":"uri","value":"urn:column"}
             }]}}
             """);
 
@@ -183,6 +183,42 @@ class EntityNeighborhoodToolTest {
                 new EntityNeighborhoodTool(() -> null)
                     .execute(AUTHORIZER, SECURITY_CONTEXT, params));
     assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  /**
+   * A hub start node must not starve the deeper hops.
+   *
+   * <p>The traversal branches used to share one {@code LIMIT} over an unordered UNION, so on a node
+   * with many 1-hop edges the 1-hop branches could consume the whole budget and the 2-hop triples
+   * would silently never appear - {@code depth} looked honoured while having no effect. Each branch
+   * now carries its own limit, so the 2-hop edge survives even when the 1-hop fan-out dwarfs it.
+   */
+  @Test
+  void deeperHopsSurviveAHighDegreeStartNode() {
+    Model source = ModelFactory.createDefaultModel();
+    Resource start = source.createResource("urn:start");
+    Property predicate = source.createProperty("urn:connected-to");
+    Resource hop = source.createResource("urn:hop");
+    for (int i = 0; i < 200; i++) {
+      source.add(start, predicate, source.createResource("urn:noise-" + i));
+    }
+    source.add(start, predicate, hop);
+    Resource twoHop = source.createResource("urn:two-hop");
+    source.add(hop, predicate, twoHop);
+
+    String query = EntityNeighborhoodTool.buildConstructQuery("urn:start", 2, 6);
+    try (QueryExecution execution = QueryExecutionFactory.create(query, source)) {
+      Model result = execution.execConstruct();
+      try {
+        assertTrue(
+            result.contains(hop, predicate, twoHop),
+            "2-hop triple was crowded out by the 1-hop fan-out, so depth had no effect");
+      } finally {
+        result.close();
+      }
+    } finally {
+      source.close();
+    }
   }
 
   private static EntityNeighborhoodTool tool(RdfRepository repository) {

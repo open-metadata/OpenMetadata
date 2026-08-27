@@ -23,7 +23,14 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -87,10 +94,10 @@ class FindByTagToolTest {
         .thenReturn(
             """
             {"results":{"bindings":[{
-              "entity":{"value":"https://open-metadata.org/entity/table/abc"},
-              "entityType":{"value":"https://open-metadata.org/ontology/Table"},
-              "fqn":{"value":"service.database.schema.table"},
-              "label":{"value":"table"}
+              "entity":{"type":"uri","value":"https://open-metadata.org/entity/table/abc"},
+              "entityType":{"type":"uri","value":"https://open-metadata.org/ontology/Table"},
+              "fqn":{"type":"literal","value":"service.database.schema.table"},
+              "label":{"type":"literal","value":"table"}
             }]}}
             """);
 
@@ -110,7 +117,51 @@ class FindByTagToolTest {
     assertTrue(query.contains("\"BusinessTerms.PII\""));
     assertTrue(
         query.contains(
-            "FILTER(STRSTARTS(STR(?entityType), \"https://open-metadata.org/ontology/\"))"));
+            "FILTER(STRSTARTS(STR(?typeIri), \"https://open-metadata.org/ontology/\"))"));
+  }
+
+  /**
+   * An entity carrying two ontology types must still be one result row.
+   *
+   * <p>OpenMetadata really does double-type some assets - LLM models appear as both {@code
+   * om:LlmModel} and {@code om:LLMModel} in a live graph. With {@code ?entity a ?entityType} in the
+   * projection each type produced its own row, so a single asset was returned twice and the
+   * limit/offset window silently counted it twice.
+   */
+  @Test
+  void doubleTypedEntityYieldsOneRow() {
+    Model source = ModelFactory.createDefaultModel();
+    String ns = "https://open-metadata.org/ontology/";
+    Resource tag = source.createResource("urn:tag:pii");
+    Resource entity = source.createResource("urn:entity:model");
+    Property tagFqn = source.createProperty(ns + "tagFQN");
+    Property hasTag = source.createProperty(ns + "hasTag");
+    Property fqn = source.createProperty(ns + "fullyQualifiedName");
+    source.add(tag, tagFqn, "PII.Sensitive");
+    source.add(entity, hasTag, tag);
+    source.add(entity, fqn, "service.llm.model");
+    source.add(
+        entity,
+        source.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
+        source.createResource(ns + "LlmModel"));
+    source.add(
+        entity,
+        source.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
+        source.createResource(ns + "LLMModel"));
+
+    String query = FindByTagTool.buildSparql("PII.Sensitive", null, 50, 0);
+    int rows = 0;
+    try (QueryExecution execution = QueryExecutionFactory.create(query, source)) {
+      ResultSet results = execution.execSelect();
+      while (results.hasNext()) {
+        results.next();
+        rows++;
+      }
+    } finally {
+      source.close();
+    }
+
+    assertEquals(1, rows, "a double-typed entity was returned once per rdf:type instead of once");
   }
 
   @Test

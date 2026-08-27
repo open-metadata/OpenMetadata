@@ -21,7 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -50,9 +52,19 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Edge(String direction, String predicate, String neighbor, String neighborLabel) {}
 
-  /** Typed neighborhood payload serialized by the MCP transport. */
+  /**
+   * Typed neighborhood payload serialized by the MCP transport. {@code truncated} / {@code
+   * byteCount} describe {@code triples}: a depth-3 hub entity can serialize past the dispatch cap,
+   * which would otherwise replace the whole response with a data-less stub.
+   */
   public record Neighborhood(
-      String entityUri, int depth, int limit, String triples, List<Edge> edges) {
+      String entityUri,
+      int depth,
+      int limit,
+      String triples,
+      List<Edge> edges,
+      boolean truncated,
+      int byteCount) {
     public Neighborhood {
       triples = Objects.requireNonNullElse(triples, "");
       edges = List.copyOf(edges);
@@ -69,20 +81,51 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
     int limit = clamp(parameters.integer("limit", DEFAULT_LIMIT), MIN_LIMIT, MAX_LIMIT);
     RdfRepository repository = repository();
 
-    return queryNeighborhood(repository, entity.uri(repository.getBaseUri()), depth, limit);
+    return queryNeighborhood(
+        securityContext, repository, entity.uri(repository.getBaseUri()), depth, limit);
   }
 
-  private static Neighborhood queryNeighborhood(
+  private Neighborhood queryNeighborhood(
+      CatalogSecurityContext securityContext,
+      RdfRepository repository,
+      String entityUri,
+      int depth,
+      int limit) {
+    // guardedRead sits outside the wrapping below: a capacity or timeout rejection carries its own
+    // 429/503 classification and must not be flattened into a generic "query failed".
+    String triples =
+        guardedRead(securityContext, () -> runConstruct(repository, entityUri, depth, limit));
+    RdfBody.Bounded bounded = RdfBody.bound(triples, RdfBody.MAX_BYTES);
+    List<Edge> edges = fetchEdges(repository, entityUri, limit);
+    return new Neighborhood(
+        entityUri,
+        depth,
+        limit,
+        bounded.value(),
+        fitEdges(edges, bounded.value().length()),
+        bounded.truncated(),
+        bounded.byteCount());
+  }
+
+  private static String runConstruct(
       RdfRepository repository, String entityUri, int depth, int limit) {
     try {
-      String triples =
-          repository.executeSparqlQuery(
-              buildConstructQuery(entityUri, depth, limit), "text/turtle");
-      return new Neighborhood(
-          entityUri, depth, limit, triples, fetchEdges(repository, entityUri, limit));
+      return repository.executeSparqlQuery(
+          buildConstructQuery(entityUri, depth, limit), "text/turtle");
     } catch (RuntimeException exception) {
       throw new IllegalStateException("Neighborhood query failed for " + entityUri, exception);
     }
+  }
+
+  /**
+   * Trims the edge summary to whatever budget the Turtle payload left behind. The triples are the
+   * authoritative answer, so when both cannot fit the summary is what gives way.
+   */
+  private static List<Edge> fitEdges(List<Edge> edges, int triplesChars) {
+    long remaining = ResponseBudget.defaultBudgetChars() - triplesChars;
+    return remaining <= 0
+        ? List.of()
+        : edges.subList(0, ResponseBudget.fitWithin(edges, remaining).count());
   }
 
   /**
@@ -102,14 +145,25 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
   }
 
   /**
-   * Emits every edge traversed by every outgoing/incoming path through the requested depth.
+   * Emits every edge traversed by every outgoing/incoming path through the requested depth, giving
+   * each traversal branch its own share of {@code limit}.
+   *
+   * <p>One {@code LIMIT} over the whole UNION applied to an unordered solution set, so on a
+   * high-degree start node the 1-hop branches could consume the entire budget and leave nothing for
+   * the deeper ones - {@code depth} had no observable effect while still appearing to succeed. The
+   * share is rounded up so a small {@code limit} still yields a row per branch.
    */
   static String buildConstructQuery(String entityUri, int depth, int limit) {
     String entity = "<" + entityUri + ">";
     int boundedDepth = clamp(depth, MIN_DEPTH, MAX_DEPTH);
     String construct = constructTemplate(boundedDepth);
-    String paths = String.join(" }\n    UNION { ", traversalPatterns(entity, boundedDepth));
-    return "CONSTRUCT {\n" + construct + "\n} WHERE {\n    { " + paths + " }\n} LIMIT " + limit;
+    List<String> patterns = traversalPatterns(entity, boundedDepth);
+    int perBranch = Math.max(1, (int) Math.ceil((double) limit / patterns.size()));
+    String paths =
+        patterns.stream()
+            .map(pattern -> "{ SELECT * WHERE { " + pattern + " } LIMIT " + perBranch + " }")
+            .collect(Collectors.joining("\n    UNION "));
+    return "CONSTRUCT {\n" + construct + "\n} WHERE {\n    " + paths + "\n}";
   }
 
   private static String constructTemplate(int depth) {
