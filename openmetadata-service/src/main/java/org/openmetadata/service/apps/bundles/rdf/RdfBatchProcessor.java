@@ -48,6 +48,7 @@ public class RdfBatchProcessor {
           "eventSubscription",
           Entity.EVENT_SUBSCRIPTION,
           "vote",
+          Entity.CONVERSATION,
           Entity.THREAD);
 
   public static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =

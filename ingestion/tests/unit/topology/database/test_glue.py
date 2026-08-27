@@ -299,6 +299,132 @@ class GlueUnitTest(TestCase):
         self.assertFalse(is_iceberg_2)
         self.assertFalse(is_iceberg_3)
 
+    def _custom_db_name_source(self, pages):
+        """A source configured with a custom databaseName, reading the given catalog pages."""
+        with patch(
+            "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection",
+            return_value=False,
+        ):
+            source = GlueSource.create(
+                mock_glue_config_db_test["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database"] = MOCK_CUSTOM_DB_NAME
+        source._get_glue_database_and_schemas = lambda: pages
+        return source
+
+    def test_custom_db_name_still_discovers_schemas(self):
+        """databaseName names the OpenMetadata database, it does not select a Glue catalog.
+
+        The catalog check compares against a Glue CatalogId, so a custom name matched
+        nothing and every schema was dropped while the run still reported Success.
+        """
+        source = self._custom_db_name_source([DatabasePage(**mock_data.get("mock_database_paginator"))])
+
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(source.get_database_schema_names())  # noqa: SIM300
+        assert source.status.failures == []
+        assert source.status.warnings == []
+
+    def test_custom_db_name_merges_catalogs_and_warns(self):
+        """One name means one database, so catalogs merge. Say so, rather than dropping them."""
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(
+                            CatalogId=MOCK_DATABASE.name.root,
+                            Name="default",
+                            Description="current catalog schema",
+                        ),
+                        GlueSchema(
+                            CatalogId="different-catalog",
+                            Name="foreign_schema",
+                            Description="other catalog schema",
+                        ),
+                    ]
+                )
+            ]
+        )
+
+        assert ["default", "foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert len(source.status.warnings) == 1
+        assert "more than one catalog" in source.status.warnings[0][MOCK_CUSTOM_DB_NAME]
+
+    def test_schema_without_catalog_id_is_not_counted_as_another_catalog(self):
+        """A missing CatalogId is not a second catalog, so it must not warn about merging."""
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(CatalogId=MOCK_DATABASE.name.root, Name="default"),
+                        GlueSchema(Name="schema_without_catalog"),
+                    ]
+                )
+            ]
+        )
+
+        assert ["default", "schema_without_catalog"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert source.status.warnings == []
+
+    def test_tables_are_read_from_the_schema_own_catalog(self):
+        """A schema from another catalog must not have its tables read from the caller's."""
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(CatalogId="different-catalog", Name="foreign_schema"),
+                    ]
+                )
+            ]
+        )
+        assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+
+        paginator = Mock()
+        paginator.paginate.return_value = [mock_data.get("mock_table_paginator")]
+        source.glue = Mock()
+        source.glue.get_paginator.return_value = paginator
+        source.context.get().__dict__["database_schema"] = "foreign_schema"
+
+        list(source._get_glue_tables())
+
+        paginator.paginate.assert_called_once_with(DatabaseName="foreign_schema", CatalogId="different-catalog")
+
+    def test_iceberg_columns_are_read_from_the_schema_own_catalog(self):
+        """The Iceberg detail lookup must name the same catalog the schema came from.
+
+        Reading it from the caller's catalog raises, and the broad fallback then serves
+        the unfiltered storage-descriptor columns, so dropped columns come back as live.
+        """
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(CatalogId="different-catalog", Name="foreign_schema"),
+                    ]
+                )
+            ]
+        )
+        assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+
+        iceberg_table = Mock()
+        iceberg_table.Name = "iceberg_table"
+        iceberg_table.Parameters.table_type = "ICEBERG"
+        source.context.get().__dict__["database_schema"] = "foreign_schema"
+        # The topology context is shared, so a stray table_data leaks into later tests.
+        source.context.get().__dict__["table_data"] = iceberg_table
+        self.addCleanup(source.context.get().__dict__.pop, "table_data", None)
+        source.glue = Mock()
+        source.glue.get_table.return_value = {"Table": {"StorageDescriptor": {"Columns": []}}}
+
+        list(source.get_columns(Mock()))
+
+        source.glue.get_table.assert_called_once_with(
+            DatabaseName="foreign_schema",
+            Name="iceberg_table",
+            CatalogId="different-catalog",
+        )
+
 
 class TestGlueColumnDeduplication:
     """Glue may return a partition key in StorageDescriptor.Columns as well as in PartitionKeys.
