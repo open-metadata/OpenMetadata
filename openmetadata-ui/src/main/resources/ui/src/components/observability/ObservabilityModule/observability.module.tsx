@@ -73,7 +73,7 @@ const AlertDetailsPage = withSuspenseFallback(
 
 export const observabilityModule: AppModule = {
   id: 'observability',
-  navOrder: 20,
+  navOrder: 40,
   labelKey: 'label.observability',
   icon: ObservabilityIcon,
   activeIcon: ObservabilityActiveIcon,

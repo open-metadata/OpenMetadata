@@ -92,7 +92,7 @@ const ContextCenterArchivePage = withSuspenseFallback(
 
 export const contextCenterModule: AppModule = {
   id: 'context-center',
-  navOrder: 60,
+  navOrder: 80,
   labelKey: 'label.context-center',
   icon: ContextCenterIcon,
   activeIcon: ContextCenterActiveIcon,
