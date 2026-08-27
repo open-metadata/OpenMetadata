@@ -38,7 +38,7 @@ from metadata.pii.algorithms.feature_extraction import (
     is_non_pii_datatype,
     split_column_name,
 )
-from metadata.pii.algorithms.preprocessing import preprocess_values
+from metadata.pii.algorithms.preprocessing import ner_normalize_values, preprocess_values
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
     combine_patchers,
@@ -124,16 +124,33 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             return {}
         context = split_column_name(column_name) if column_name else None
 
-        content_results = extract_pii_tags(
-            self._presidio_analyzer,
-            str_values,
-            context=context,
-            recognizer_result_patcher=combine_patchers(
-                date_time_patcher,
-                url_patcher,
-                *self._extra_patchers,
-            ),
+        patcher = combine_patchers(date_time_patcher, url_patcher, *self._extra_patchers)
+
+        # First pass: original values — pattern recognisers (IBAN, CRYPTO, …) need the
+        # original casing and must not receive title-cased input.
+        content_results: Dict[PIITag, float] = dict(  # noqa: UP006
+            extract_pii_tags(
+                self._presidio_analyzer,
+                str_values,
+                context=context,
+                recognizer_result_patcher=patcher,
+            )
         )
+
+        # Second pass: NER-normalised values — purely alphabetic ALL-CAPS tokens are
+        # title-cased so spaCy NER (trained on mixed-case text) can detect names like
+        # "SERGE".  We union by taking the max score per tag so neither pass loses signal.
+        ner_values = ner_normalize_values(str_values)
+        if ner_values != str_values:
+            ner_results = extract_pii_tags(
+                self._presidio_analyzer,
+                ner_values,
+                context=context,
+                recognizer_result_patcher=patcher,
+            )
+            for tag, score in ner_results.items():
+                if score > content_results.get(tag, 0.0):
+                    content_results[tag] = score
 
         column_name_matches: Set[PIITag] = set()  # noqa: UP006
 

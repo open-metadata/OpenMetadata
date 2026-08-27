@@ -15,6 +15,7 @@ import pytest
 from metadata.pii.algorithms.preprocessing import (
     MAX_NLP_TEXT_LENGTH,
     convert_to_str,
+    ner_normalize_values,
     preprocess_values,
 )
 
@@ -51,23 +52,46 @@ def test_preprocesses_sequences_correctly(input_values, expected):
 @pytest.mark.parametrize(
     "input_values,expected",
     [
-        # ALL-CAPS names are title-cased so spaCy NER can recognise them
-        (["SERGE"], ["Serge"]),
-        (["THÉODORE"], ["Théodore"]),
-        (["JOHN DOE"], ["John Doe"]),
-        # Mixed-case and lower-case strings are left unchanged
+        # preprocess_values preserves original casing — no normalisation
+        (["SERGE"], ["SERGE"]),
+        (["THÉODORE"], ["THÉODORE"]),
+        (["JOHN DOE"], ["JOHN DOE"]),
         (["John"], ["John"]),
         (["john"], ["john"]),
         (["John Doe"], ["John Doe"]),
-        # Strings with no cased characters (digits/punctuation) have isupper() False → unchanged
         (["123"], ["123"]),
         (["2024-01-15"], ["2024-01-15"]),
         ([], []),
     ],
 )
-def test_preprocess_values_normalises_allcaps(input_values, expected):
-    """ALL-CAPS tokens must be title-cased for spaCy NER (fixes #31991)."""
+def test_preprocess_values_preserves_original_casing(input_values, expected):
+    """preprocess_values must not alter casing so pattern recognisers see original values."""
     assert preprocess_values(input_values) == expected
+
+
+@pytest.mark.parametrize(
+    "input_values,expected",
+    [
+        # Purely alphabetic ALL-CAPS → title-cased for NER
+        (["SERGE"], ["Serge"]),
+        (["THÉODORE"], ["Théodore"]),
+        (["JOHN DOE"], ["John Doe"]),
+        # Mixed or lower-case → unchanged
+        (["John"], ["John"]),
+        (["john"], ["john"]),
+        (["John Doe"], ["John Doe"]),
+        # Tokens with digits must NOT be normalised (IBANs, RAMQ, crypto, …)
+        (["GB82WEST12345698765432"], ["GB82WEST12345698765432"]),
+        (["ABCD12345678"], ["ABCD12345678"]),
+        # Pure digit strings also unchanged
+        (["123"], ["123"]),
+        (["2024-01-15"], ["2024-01-15"]),
+        ([], []),
+    ],
+)
+def test_ner_normalize_values(input_values, expected):
+    """ner_normalize_values title-cases purely-alphabetic ALL-CAPS tokens only."""
+    assert ner_normalize_values(input_values) == expected
 
 
 def test_normal_length_string_processed_correctly():

@@ -59,7 +59,25 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP00
     return None
 
 
+def _is_allcaps_alpha(s: str) -> bool:
+    """Return True for ALL-CAPS strings that contain no digit characters.
+
+    Digits disqualify structured identifiers such as IBANs
+    ("GB82WEST12345698765432") or RAMQ codes ("ABCD12345678") that happen to
+    satisfy str.isupper() but whose uppercase pattern matters for regex
+    recognisers and must not be title-cased.
+    """
+    return bool(s) and s.isupper() and not any(c.isdigit() for c in s)
+
+
 def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
+    """Convert sample column values to a flat list of strings for PII analysis.
+
+    No case normalisation is applied here so that pattern-based recognisers
+    (IBAN, CRYPTO, etc.) always receive the original casing.  Call
+    :func:`ner_normalize_values` on the result when a second NER-friendly pass
+    is needed.
+    """
     result: List[str] = []  # noqa: UP006
     for value in values:
         converted_value = convert_to_str(value)
@@ -72,9 +90,22 @@ def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
 
         # skip empty strings
         converted_value = [el.strip() for el in converted_value if el.strip()]
-        # Normalise ALL-CAPS tokens so spaCy NER (trained on mixed-case text)
-        # can recognise names like "SERGE" or "THÉODORE" as PERSON entities.
-        converted_value = [el.title() if el.isupper() else el for el in converted_value]
         result.extend(converted_value)
 
     return result
+
+
+def ner_normalize_values(values: List[str]) -> List[str]:  # noqa: UP006
+    """Return a copy of *values* with purely alphabetic ALL-CAPS tokens title-cased.
+
+    spaCy NER models are trained on mixed-case text and miss names like "SERGE"
+    or "THÉODORE".  Tokens that contain digits are left untouched because they
+    may be structured identifiers (IBANs, health card numbers, etc.) whose
+    uppercase pattern is load-bearing for regex recognisers.
+
+    Returns the input list unchanged when no ALL-CAPS alpha tokens are present,
+    so callers can cheaply detect whether a second NER pass is worthwhile by
+    comparing identity (``ner_values is values`` is never True, but
+    ``ner_values == values`` is True when there is nothing to normalise).
+    """
+    return [el.title() if _is_allcaps_alpha(el) else el for el in values]
