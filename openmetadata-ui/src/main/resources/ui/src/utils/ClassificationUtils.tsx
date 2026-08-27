@@ -21,6 +21,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
+import { Icon } from '../components/common/Icon/Icon';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -28,7 +29,6 @@ import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getDeleteButtonData } from './ClassificationPureUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
@@ -87,11 +87,11 @@ export const getCommonColumns = (options?: {
       width: 200,
       render: (_, record) => (
         <div className="d-flex items-center gap-2">
-          {record.style?.iconURL &&
-            renderIcon(record.style.iconURL, {
-              size: 18,
-              className: 'flex-shrink-0',
-            })}
+          <Icon
+            className="tw:shrink-0"
+            iconValue={record.style?.iconURL}
+            size={18}
+          />
           <Link
             className="m-b-0"
             data-testid={record.name}
