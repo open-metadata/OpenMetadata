@@ -20,13 +20,17 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import {
+  PERMISSION_STALE_TIME,
+  permissionQueryKeys,
+} from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { queryClient } from '../../queryClient';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
@@ -39,7 +43,6 @@ import {
   getUIPermission,
 } from '../../utils/PermissionsUtils';
 import {
-  EntityPermissionMap,
   PermissionContextType,
   PermissionProviderProps,
   ResourceEntity,
@@ -69,39 +72,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
-  const [entitiesPermission, setEntitiesPermission] =
-    useState<EntityPermissionMap>({} as EntityPermissionMap);
-
-  const [resourcesPermission, setResourcesPermission] = useState<UIPermission>(
-    {} as UIPermission
-  );
-
-  /*
-   * Inflight-Promise caches. The settled values live in React state
-   * ({@code entitiesPermission} / {@code resourcesPermission}) so renders
-   * re-evaluate when permissions resolve, but state writes are deferred to
-   * the next render — meaning two components calling
-   * {@code getEntityPermissionByFqn(table, fqn)} on the SAME mount commit
-   * both see {@code entitiesPermission[fqn]} as undefined and both fire the
-   * network call. With these refs, the second caller picks up the Promise
-   * the first caller stored synchronously and {@code await}s the same
-   * response — one network round-trip instead of N.
-   *
-   * Keyed by entityId / entityFqn / ResourceEntity — same keys the React
-   * state uses. Entries are cleared in the Promise's then/catch so a
-   * subsequent call after settlement reads from React state (fast path)
-   * and doesn't keep the Promise hanging around forever.
-   */
-  const entityPermissionByIdInflight = useRef<
-    Map<string, Promise<ReturnType<typeof getOperationPermissions>>>
-  >(new Map());
-  const entityPermissionByFqnInflight = useRef<
-    Map<string, Promise<ReturnType<typeof getOperationPermissions>>>
-  >(new Map());
-  const resourcePermissionInflight = useRef<
-    Map<ResourceEntity, Promise<ReturnType<typeof getOperationPermissions>>>
-  >(new Map());
-
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
@@ -126,117 +96,63 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   }, [redirectToStoredPath]);
 
+  /**
+   * All three fetchers are backed by the singleton {@code queryClient} under
+   * {@code permissionQueryKeys} — the SAME cache and key namespace
+   * {@code useEntityPermissions}/{@code useBulkEntityPermissions} use.
+   * {@code fetchQuery} returns cached-fresh data without a request, dedupes
+   * concurrent identical calls, and respects {@code PERMISSION_STALE_TIME} —
+   * everything the old hand-rolled state maps + inflight-Promise refs did,
+   * plus cross-cache invalidation (#27591).
+   */
   const fetchEntityPermission = useCallback(
-    async (resource: ResourceEntity, entityId: string) => {
-      const entityPermission = entitiesPermission[entityId];
-      if (entityPermission) {
-        return entityPermission;
-      }
-      const inflight = entityPermissionByIdInflight.current.get(entityId);
-      if (inflight) {
-        return inflight;
-      }
-      const promise = getEntityPermissionById(resource, entityId)
-        .then((response) => {
-          const operationPermission = getOperationPermissions(response);
-          setEntitiesPermission((prev) => ({
-            ...prev,
-            [entityId]: operationPermission,
-          }));
-          entityPermissionByIdInflight.current.delete(entityId);
-
-          return operationPermission;
-        })
-        .catch((err) => {
-          entityPermissionByIdInflight.current.delete(entityId);
-
-          throw err;
-        });
-      entityPermissionByIdInflight.current.set(entityId, promise);
-
-      return promise;
-    },
-    [entitiesPermission, setEntitiesPermission]
+    (resource: ResourceEntity, entityId: string) =>
+      queryClient.fetchQuery({
+        queryKey: permissionQueryKeys.entityById(resource, entityId),
+        queryFn: async () =>
+          getOperationPermissions(
+            await getEntityPermissionById(resource, entityId)
+          ),
+        staleTime: PERMISSION_STALE_TIME,
+      }),
+    []
   );
 
   const fetchEntityPermissionByFqn = useCallback(
-    async (resource: ResourceEntity, entityFqn: string) => {
-      const entityPermission = entitiesPermission[entityFqn];
-      if (entityPermission) {
-        return entityPermission;
-      }
-      const inflight = entityPermissionByFqnInflight.current.get(entityFqn);
-      if (inflight) {
-        return inflight;
-      }
-      const promise = getEntityPermissionByFqn(resource, entityFqn)
-        .then((response) => {
-          const operationPermission = getOperationPermissions(response);
-          setEntitiesPermission((prev) => ({
-            ...prev,
-            [entityFqn]: operationPermission,
-          }));
-          entityPermissionByFqnInflight.current.delete(entityFqn);
-
-          return operationPermission;
-        })
-        .catch((err) => {
-          entityPermissionByFqnInflight.current.delete(entityFqn);
-
-          throw err;
-        });
-      entityPermissionByFqnInflight.current.set(entityFqn, promise);
-
-      return promise;
-    },
-    [entitiesPermission, setEntitiesPermission]
+    (resource: ResourceEntity, entityFqn: string) =>
+      queryClient.fetchQuery({
+        queryKey: permissionQueryKeys.entity(resource, entityFqn),
+        queryFn: async () =>
+          getOperationPermissions(
+            await getEntityPermissionByFqn(resource, entityFqn)
+          ),
+        staleTime: PERMISSION_STALE_TIME,
+      }),
+    []
   );
 
   const fetchResourcePermission = useCallback(
-    async (resource: ResourceEntity) => {
-      const resourcePermission = resourcesPermission[resource];
-      if (resourcePermission) {
-        return resourcePermission;
-      }
-      const inflight = resourcePermissionInflight.current.get(resource);
-      if (inflight) {
-        return inflight;
-      }
-      const promise = getResourcePermission(resource)
-        .then((response) => {
-          const operationPermission = getOperationPermissions(response, true);
-          setResourcesPermission((prev) => ({
-            ...prev,
-            [resource]: operationPermission,
-          }));
-          resourcePermissionInflight.current.delete(resource);
-
-          return operationPermission;
-        })
-        .catch((err) => {
-          resourcePermissionInflight.current.delete(resource);
-
-          throw err;
-        });
-      resourcePermissionInflight.current.set(resource, promise);
-
-      return promise;
-    },
-    [resourcesPermission, setResourcesPermission]
+    (resource: ResourceEntity) =>
+      queryClient.fetchQuery({
+        queryKey: permissionQueryKeys.resource(resource),
+        queryFn: async () =>
+          // Resource-level: conditions can't be evaluated without an entity —
+          // conditionalAllow counts as "can attempt" (Task 2, #31783).
+          getOperationPermissions(await getResourcePermission(resource), true),
+        staleTime: PERMISSION_STALE_TIME,
+      }),
+    []
   );
 
   const resetPermissions = useCallback(() => {
-    setEntitiesPermission({} as EntityPermissionMap);
     setPermissions({} as UIPermission);
-    setResourcesPermission({} as UIPermission);
-    // Drop any unresolved Promises too — after a logout/login boundary the
-    // old principal's inflight calls would resolve into a cache that another
-    // user can read, which is wrong. Clearing the refs here ensures the
-    // next caller fires a fresh request scoped to the new session.
-    entityPermissionByIdInflight.current.clear();
-    entityPermissionByFqnInflight.current.clear();
-    resourcePermissionInflight.current.clear();
-  }, [setEntitiesPermission, setPermissions, setResourcesPermission]);
+    // Drop every cached permission (entity, entityById, resource) too —
+    // after a logout/login boundary the old principal's cached values would
+    // otherwise resolve into a cache the new user can read, which is wrong.
+    // This reaches BOTH the legacy provider path and the hook path since
+    // they share the same queryClient + key namespace.
+    queryClient.removeQueries({ queryKey: permissionQueryKeys.all });
+  }, [setPermissions]);
 
   useEffect(() => {
     /**
