@@ -3532,7 +3532,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Use getIndexOrAliasName to get the correct index name with prefix
     String indexName =
-        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+        searchRepository.routeToStagedIfActive(
+            searchRepository.getIndexOrAliasName("pipeline_status_search_index"));
     searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 
     LOG.debug(
