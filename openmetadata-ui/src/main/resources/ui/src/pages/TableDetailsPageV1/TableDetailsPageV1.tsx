@@ -162,21 +162,44 @@ const TableDetailsPageV1: React.FC = () => {
     ) : undefined;
   }, [dqFailureCount, tableFqn]);
 
-  // Two useEntityPermissions calls in this component (this one and the one after
-  // {@code tableDetails} below) are intentional, not an oversight: {@code tableFields}/
-  // {@code tableCacheKey}/the entity {@code useQuery}'s {@code enabled} below all need view
-  // flags BEFORE {@code tableDetails} exists (it's the result of that very query), while the
-  // edit flags later in this component need {@code deleted}, which only exists AFTER
-  // {@code tableDetails} resolves. View flags are never {@code deleted}-gated (see
-  // {@link getDerivedPermissionFlags}), so this early call is unaffected by omitting
-  // {@code deleted} — only the later call's edit flags need it. Both calls share one React
-  // Query cache entry (same queryKey), so this costs an extra derivation, not an extra fetch.
+  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity,
+  // not by position convenience: getDerivedPermissionFlags never gates view flags on
+  // `deleted` (only canEdit* is), so this view-tier call is correct to run this early —
+  // before {@code tableDetails} exists — because it has to be: {@code tableFields}/
+  // {@code tableCacheKey}/the entity {@code useQuery}'s {@code enabled} below need these view
+  // flags to even RUN that query, and {@code tableDetails} is that query's result. That's a
+  // real ordering cycle (view flags gate the fetch that would supply `deleted`), not a
+  // shortcut. The edit-tier call (canEditCustomFields, canEditLineage — the only flags that
+  // need `deleted`) lives further down, at the earliest point `deleted` exists; see the
+  // comment there. Both calls share one React Query cache entry (same queryKey), so having
+  // two costs an extra derivation, not an extra fetch — never diverges into two fetches as
+  // long as both pass the identical (resource, identifier) pair.
   const {
-    permissions: tablePermissions, // raw perms for child props during sweep
+    permissions: tablePermissions, // children consume the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: viewBasicPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+    canViewSampleData: viewSampleDataPermission,
+    canViewQueries: viewQueriesPermission,
+    canViewDataProfile: viewProfilerPermission,
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
-    canViewBasic: canViewTableInQuery,
   } = useEntityPermissions(ResourceEntity.TABLE, tableFqn);
+  // Same value as viewBasicPermission above, named for what it means at its one call site
+  // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
+  const canViewTableInQuery = viewBasicPermission;
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
+    }
+  }, [permissionsError]);
 
   // Field set the page reads from the server. The permission-gated extras (USAGE_SUMMARY,
   // TESTSUITE) become part of the React Query cache key so a permission flip doesn't serve
@@ -397,10 +420,23 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  // Permission fetching itself now lives in useEntityPermissions (called above and again
-  // below). This effect keeps the one unrelated side effect the old fetch effect's cleanup
-  // carried — resetting the DQ lineage store when the table FQN changes — decoupled from
-  // permissions.
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
+  // of this component (see its comment for why this component calls the hook twice). This is
+  // the earliest point `deleted` exists (destructured just above, from {@code tableDetails}
+  // resolved by the entity useQuery): every canEdit* flag is gated on it, so a soft-deleted
+  // entity must read as edit-locked from the first render that knows about it — don't
+  // destructure a canEdit* flag or `can` from the view-tier call above, it was captured
+  // before `deleted` existed and would silently return an ungated edit permission.
+  const {
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
+    deleted: Boolean(deleted),
+  });
+
+  // Permission fetching itself now lives in useEntityPermissions (called above, twice). This
+  // effect keeps the one unrelated side effect the old fetch effect's cleanup carried —
+  // resetting the DQ lineage store when the table FQN changes — decoupled from permissions.
   useEffect(() => {
     return () => {
       setDqLineageData(undefined);
@@ -516,34 +552,6 @@ const TableDetailsPageV1: React.FC = () => {
         'extension'
       ));
   };
-
-  // Second useEntityPermissions call — see the comment on the first call above for why this
-  // component calls the hook twice. This one supplies {@code deleted} (now available from
-  // {@code tableDetails}, resolved above) so the edit flags below are gated correctly.
-  const {
-    isLoading: isPermissionsLoading,
-    error: permissionsError,
-    canEditCustomFields: editCustomAttributePermission,
-    canEditLineage: editLineagePermission,
-    canViewBasic: viewBasicPermission,
-    canViewAll: viewAllPermission,
-    canViewCustomFields: viewCustomPropertiesPermission,
-    canViewSampleData: viewSampleDataPermission,
-    canViewQueries: viewQueriesPermission,
-    canViewDataProfile: viewProfilerPermission,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
-    deleted: Boolean(tableDetails?.deleted),
-  });
-
-  useEffect(() => {
-    if (permissionsError) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
-    }
-  }, [permissionsError]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

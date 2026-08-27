@@ -91,7 +91,13 @@ export const getDerivedPermissionFlags = (
     canCreate: Boolean(permissions[Operation.Create]),
     canDelete: Boolean(permissions[Operation.Delete]),
     canViewAll: Boolean(permissions[Operation.ViewAll]),
-    canViewBasic: Boolean(permissions[Operation.ViewBasic]),
+    // Prioritized (not raw): falls back to ViewAll when the ViewBasic key is
+    // absent from the permissions payload (see getPrioritizedViewPermission).
+    // The page-access gate this flag drives previously ran on
+    // getPrioritizedViewPermission(perms, Operation.ViewBasic) — a raw read
+    // here would regress a real case (ViewBasic key absent, ViewAll true)
+    // from "page renders" to "permission ErrorPlaceHolder".
+    canViewBasic: view(Operation.ViewBasic),
     canViewSampleData: view(Operation.ViewSampleData),
     canViewQueries: view(Operation.ViewQueries),
     canViewDataProfile: view(Operation.ViewDataProfile),
