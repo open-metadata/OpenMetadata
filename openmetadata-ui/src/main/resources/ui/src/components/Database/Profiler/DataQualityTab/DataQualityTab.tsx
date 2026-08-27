@@ -358,9 +358,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleRestoreTestCase = async () => {
-    // Preserve the record when a user dismisses the modal while the restore
-    // request is pending; cancelling clears selectedTestCase immediately.
-    const testCase = selectedTestCase?.data;
+    // Snapshot the action so completion clears only its own modal; the user may
+    // dismiss it and select another row while the restore request is pending.
+    const restoreAction = selectedTestCase;
+    const testCase = restoreAction?.data;
     if (!testCase?.id) {
       return;
     }
@@ -374,7 +375,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         })
       );
       afterDeleteAction?.();
-      handleCancel();
+      setSelectedTestCase((currentAction) =>
+        currentAction === restoreAction ? undefined : currentAction
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

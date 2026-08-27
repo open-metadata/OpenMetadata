@@ -1492,9 +1492,14 @@ describe('DataQualityTab test', () => {
       expect(afterDeleteAction).toHaveBeenCalled();
     });
 
-    it('should finish restoring after the modal is cancelled while the request is pending', async () => {
+    it('should preserve a new selection when an older restore finishes', async () => {
       let resolveRestore: (() => void) | undefined;
       const afterDeleteAction = jest.fn();
+      const secondDeletedTestCase = {
+        ...deletedTestCase,
+        id: 'second-deleted-test-case-id',
+        name: 'second_deleted_test_case',
+      };
       (restoreTestCase as jest.Mock).mockImplementationOnce(
         () =>
           new Promise<void>((resolve) => {
@@ -1506,7 +1511,7 @@ describe('DataQualityTab test', () => {
           {...mockProps}
           afterDeleteAction={afterDeleteAction}
           deletionMode={TEST_CASE_DELETION_MODE.SOFT}
-          testCases={[deletedTestCase]}
+          testCases={[deletedTestCase, secondDeletedTestCase]}
         />
       );
 
@@ -1522,11 +1527,22 @@ describe('DataQualityTab test', () => {
         expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id)
       );
       fireEvent.click(await screen.findByText('cancel'));
+      fireEvent.click(
+        await screen.findByTestId(
+          `action-dropdown-${secondDeletedTestCase.name}`
+        )
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${secondDeletedTestCase.name}`)
+      );
+
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
 
       await act(async () => resolveRestore?.());
 
       await waitFor(() => expect(afterDeleteAction).toHaveBeenCalled());
 
+      expect(screen.getByText('ConfirmationModal')).toBeInTheDocument();
       expect(showSuccessToast).toHaveBeenCalled();
       expect(showErrorToast).not.toHaveBeenCalled();
     });
