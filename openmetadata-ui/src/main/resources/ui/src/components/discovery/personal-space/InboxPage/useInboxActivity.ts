@@ -12,14 +12,16 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { FeedFilter } from '../../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
-import { Thread, ThreadType } from '../../../../generated/entity/feed/thread';
+import { Conversation } from '../../../../generated/entity/feed/conversation';
+import { ConversationFilterType } from '../../../../generated/type/conversationFilterType';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getAllFeeds, getUserActivity } from '../../../../rest/feedsAPI';
+import { getUserActivity } from '../../../../rest/activityAPI';
+import { listConversations } from '../../../../rest/conversationsAPI';
 import { useMemo } from 'react';
 import {
   ACTIVITY_LIMIT,
+  CONVERSATION_LIMIT,
   getActivityWindowDays,
   getFeedTimestamp,
   InboxDateRange,
@@ -33,19 +35,19 @@ const INBOX_ACTIVITY_STALE_TIME = 30 * 1000;
 
 export interface InboxActivityResult {
   activities: ActivityEvent[];
-  threads: Thread[];
+  threads: Conversation[];
 }
 
 // Exactly one of `activity` or `feed`, matching ActivityFeedItem's props.
 export interface InboxActivityItem {
   activity?: ActivityEvent;
-  feed?: Thread;
+  feed?: Conversation;
 }
 
 /**
  * Mirrors OSS ActivityFeedTab: the user's own activity events
- * (`/activity/user/{id}`) plus conversation threads. Admins see every
- * conversation (FeedFilter.ALL); everyone else only owned/followed threads.
+ * (`/activity/user/{id}`) plus conversations. Admins see every conversation
+ * (no filter); everyone else only owned/followed ones.
  */
 export const fetchInboxActivity = async (
   scope: InboxScope,
@@ -64,26 +66,30 @@ export const fetchInboxActivity = async (
     limit: ACTIVITY_LIMIT,
   });
 
-  const conversationRequest = getAllFeeds(
-    undefined,
-    undefined,
-    ThreadType.Conversation,
-    isAll ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS,
-    undefined,
-    isAll ? undefined : userId,
-    ACTIVITY_LIMIT,
+  const conversationRequest = listConversations({
+    filterType: isAll ? undefined : ConversationFilterType.OwnerOrFollows,
+    userId: isAll ? undefined : userId,
+    limit: CONVERSATION_LIMIT,
     startTs,
-    endTs
-  );
+    endTs,
+  });
 
-  const [activityRes, conversationRes] = await Promise.all([
+  // allSettled, not all: these two feed independent halves of the tab, and the
+  // conversation list is only the fallback shown when there is no activity.
+  // Failing the pair together let a single bad conversation request blank the
+  // activity list as well, which is how a 400 on `limit` emptied the whole tab.
+  const [activityRes, conversationRes] = await Promise.allSettled([
     activityRequest,
     conversationRequest,
   ]);
 
   return {
-    activities: activityRes.data ?? [],
-    threads: conversationRes.data ?? [],
+    activities:
+      activityRes.status === 'fulfilled' ? activityRes.value.data ?? [] : [],
+    threads:
+      conversationRes.status === 'fulfilled'
+        ? conversationRes.value.data ?? []
+        : [],
   };
 };
 
@@ -96,8 +102,8 @@ export interface UseInboxActivity {
 
 /**
  * Single source for the Inbox Activity feed, shared by the tab list and the
- * badge (deduped via react-query). Activity events and conversation threads
- * interleave newest-first — upstream parity, OpenMetadata#30879.
+ * badge (deduped via react-query). Activity events and conversations interleave
+ * newest-first — upstream parity, OpenMetadata#30879.
  */
 export const useInboxActivity = (
   scope: InboxScope,

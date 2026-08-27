@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
 import { DateFilterType } from 'Models';
@@ -21,7 +20,7 @@ import {
   ActivityEvent,
   ActivityEventType,
 } from '../../../../generated/entity/activity/activityEvent';
-import { CardStyle, Thread } from '../../../../generated/entity/feed/thread';
+import { Conversation } from '../../../../generated/entity/feed/conversation';
 import {
   Task,
   TaskStatus,
@@ -31,8 +30,11 @@ import { Reaction, ReactionType } from '../../../../generated/type/reaction';
 import {
   addActivityReaction,
   removeActivityReaction,
-  updateThread,
-} from '../../../../rest/feedsAPI';
+} from '../../../../rest/activityAPI';
+import {
+  addConversationReaction,
+  removeConversationReaction,
+} from '../../../../rest/conversationsAPI';
 import {
   formatDateTimeLong,
   getCurrentMillis,
@@ -60,26 +62,6 @@ export const formatActivityTime = (timestamp?: number): string => {
     ? formatDateTimeLong(timestamp, ACTIVITY_DATE_FORMAT)
     : getRelativeTime(timestamp);
 };
-
-// Deep link the backend stores on a chat-collaborator notification thread. It
-// doubles as the marker for those threads: `about` has to point at a registered
-// entity (the invitee's user), so the conversation only travels in this field.
-const CONVERSATION_PATH_PREFIX = '/conversations/';
-
-/**
- * Whether a thread is the notification written when someone is added as a
- * collaborator on an AI chat conversation.
- */
-export const isChatCollaboratorThread = (feed: Thread): boolean =>
-  Boolean(feed.entityUrlLink?.startsWith(CONVERSATION_PATH_PREFIX));
-
-/**
- * Conversation title for the card's entity chip. `entityRef` resolves to the
- * invitee's user (threads take it from `about`), so the title is carried
- * separately rather than derived from the thread's entity.
- */
-export const getChatConversationTitle = (feed: Thread): string | undefined =>
-  feed.feedInfo?.headerMessage || undefined;
 
 /**
  * Header action text for an activity-event card ("updated Description for"),
@@ -129,25 +111,8 @@ export const getActivityEventLabel = (
   }
 };
 
-/**
- * Header action text for a conversation-thread card (the fallback shown when the
- * activity stream is empty), e.g. "posted on" or "Reported a test Failure on",
- * derived from the thread's card style.
- */
-export const getActivityActionLabel = (feed: Thread, t: TFunction): string => {
-  if (isChatCollaboratorThread(feed)) {
-    return t('label.added-you-as-a-collaborator-on');
-  }
-
-  if (feed.cardStyle === CardStyle.TestCaseResult) {
-    return t('label.reported-test-failure-on');
-  }
-
-  return t('label.posted-on');
-};
-
 // Activity feed scope: "all" shows every conversation; "me" restricts to
-// threads the current user owns or follows.
+// conversations the current user owns or follows.
 export type InboxScope = 'all' | 'me';
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
@@ -181,6 +146,11 @@ export const MAX_ACTIVITY_DAYS = 30;
 
 // Single-window page size (200 = /activity per-request max; no cursor paging).
 export const ACTIVITY_LIMIT = 200;
+
+// /conversations caps limit at 100 (@Max(100) on ConversationResource.list) —
+// half what /activity allows. Sending ACTIVITY_LIMIT here fails bean validation
+// with a 400, so the two endpoints need separate constants.
+export const CONVERSATION_LIMIT = 100;
 
 // Presets capped to the activity API's 30-day window (drops 60-day+); titles are
 // translated by the picker's consumer.
@@ -267,27 +237,29 @@ export interface ActivityBucket {
   // Sub-label shown next to the bucket title, e.g. "Tuesday, July 9" or a
   // "July 4 - July 7" range for the Earlier bucket.
   dateText: string;
-  items: Thread[];
+  items: Conversation[];
 }
 
-export const getFeedTimestamp = (feed: Thread): number =>
-  feed.threadTs ?? feed.updatedAt ?? 0;
+// Exported because useInboxActivity sorts the merged activity+conversation list
+// by it. createdAt is the Conversation V2 counterpart of the legacy threadTs.
+export const getFeedTimestamp = (feed: Conversation): number =>
+  feed.createdAt ?? feed.updatedAt ?? 0;
 
 const SINGLE_DAY_FORMAT = 'cccc, LLLL d';
 const RANGE_DAY_FORMAT = 'LLLL d';
 
 /**
- * Bucket activity feeds into Today / Yesterday / Earlier (matching the figma),
+ * Bucket conversations into Today / Yesterday / Earlier (matching the figma),
  * each with a human date sub-label. Earlier collapses everything older into a
  * single group with a date range. Empty buckets are omitted; order is fixed
  * (today → yesterday → earlier).
  */
-export const getActivityBuckets = (feeds: Thread[]): ActivityBucket[] => {
+export const getActivityBuckets = (feeds: Conversation[]): ActivityBucket[] => {
   const now = DateTime.now();
   const yesterdayStart = now.minus({ days: 1 });
-  const today: Thread[] = [];
-  const yesterday: Thread[] = [];
-  const earlier: Thread[] = [];
+  const today: Conversation[] = [];
+  const yesterday: Conversation[] = [];
+  const earlier: Conversation[] = [];
 
   feeds.forEach((feed) => {
     const dt = DateTime.fromMillis(getFeedTimestamp(feed));
@@ -300,7 +272,7 @@ export const getActivityBuckets = (feeds: Thread[]): ActivityBucket[] => {
     }
   });
 
-  const singleDate = (items: Thread[]): string =>
+  const singleDate = (items: Conversation[]): string =>
     DateTime.fromMillis(getFeedTimestamp(items[0])).toFormat(SINGLE_DAY_FORMAT);
 
   const buckets: ActivityBucket[] = [];
@@ -406,11 +378,11 @@ export const toggleActivityReaction = async (
 };
 
 /**
- * Toggle the user's reaction on a conversation thread via a thread PATCH;
- * returns the optimistic list.
+ * Toggle the user's reaction on a conversation root via PUT/DELETE
+ * /conversations/{id}/reaction; returns the optimistic list.
  */
-export const toggleThreadReaction = async (
-  feedId: string,
+export const toggleConversationReaction = async (
+  conversationId: string,
   currentReactions: Reaction[],
   reactionType: ReactionType,
   operation: ReactionOperation,
@@ -439,8 +411,11 @@ export const toggleThreadReaction = async (
             )
         );
 
-  const patch = compare({ reactions: existing }, { reactions: updated });
-  await updateThread(feedId, patch);
+  if (operation === ReactionOperation.ADD) {
+    await addConversationReaction(conversationId, reactionType);
+  } else {
+    await removeConversationReaction(conversationId, reactionType);
+  }
 
   return updated;
 };

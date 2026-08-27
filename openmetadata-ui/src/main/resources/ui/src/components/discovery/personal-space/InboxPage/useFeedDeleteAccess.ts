@@ -21,9 +21,18 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getResourcePermission } from '../../../../rest/permissionAPI';
 import { FEED_DELETE_ACCESS_QUERY_KEY } from '../inbox.constants';
 
+// Conversation V2 (OpenMetadata#30909) renamed the policy resource behind
+// comments from `feed` to `conversation`: FeedResource is gone and
+// ConversationResourceContext.getResource() returns Entity.CONVERSATION. The
+// OSS ResourceEntity enum still only carries FEED, so the value is spelled out
+// here — asking for `feed` now yields no descriptor, which reads as "no Delete
+// permission" and silently hides the delete action from everyone.
+const CONVERSATION_RESOURCE = 'conversation' as ResourceEntity;
+
 /**
- * Preflights the current user's evaluated `feed` resource permission
- * (GET /v1/permissions/feed) and returns the raw {@link Access} for Delete.
+ * Preflights the current user's evaluated `conversation` resource permission
+ * (GET /v1/permissions/conversation) and returns the raw {@link Access} for
+ * Delete.
  *
  * Deliberately bypasses `usePermissionProvider()`: that path collapses Access
  * to `access === Allow`, losing `ConditionalAllow` — the state that lets an
@@ -49,7 +58,7 @@ export const useFeedDeleteAccess = (enabled: boolean): Access | undefined => {
     queryKey: FEED_DELETE_ACCESS_QUERY_KEY,
     queryFn: async () => {
       const resourcePermission = await getResourcePermission(
-        ResourceEntity.FEED
+        CONVERSATION_RESOURCE
       );
 
       return (

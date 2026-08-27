@@ -13,7 +13,7 @@
 
 import { renderHook } from '@testing-library/react';
 
-const mockGetAllFeeds = jest.fn();
+const mockListConversations = jest.fn();
 let mockSeenTs: number | null = 1000;
 
 jest.mock('@tanstack/react-query', () => ({
@@ -32,8 +32,8 @@ jest.mock('@tanstack/react-query', () => ({
   },
 }));
 
-jest.mock('../rest/feedsAPI', () => ({
-  getAllFeeds: (...args: unknown[]) => mockGetAllFeeds(...args),
+jest.mock('../rest/conversationsAPI', () => ({
+  listConversations: (...args: unknown[]) => mockListConversations(...args),
 }));
 
 jest.mock('./useApplicationStore', () => ({
@@ -45,31 +45,34 @@ jest.mock('./usePersonalSpaceStore', () => ({
     selector({ inboxActivitySeenTs: mockSeenTs }),
 }));
 
-import { FeedFilter } from '../enums/mydata.enum';
+import { ConversationFilterType } from '../generated/type/conversationFilterType';
 import { useUnreadInboxActivity } from './useUnreadInboxActivity';
 
 describe('useUnreadInboxActivity', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSeenTs = 1000;
-    mockGetAllFeeds.mockResolvedValue({ paging: { total: 7 } });
+    mockListConversations.mockResolvedValue({ paging: { total: 7 } });
   });
 
   /**
-   * OWNER_OR_FOLLOWS matches threads the user created, and the author of a
-   * collaborator notification is the person who shared the chat — using it would
-   * badge them for their own action.
+   * OWNER_OR_FOLLOWS also matches conversations the user created, which would
+   * badge them for their own posts.
    */
-  it('counts only threads that mention the user', () => {
+  it('counts only conversations that mention the user', () => {
     renderHook(() => useUnreadInboxActivity());
 
-    expect(mockGetAllFeeds.mock.calls[0][3]).toBe(FeedFilter.MENTIONS);
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({ filterType: ConversationFilterType.Mentions })
+    );
   });
 
   it('counts only what arrived after the last look at the Inbox', () => {
     renderHook(() => useUnreadInboxActivity());
 
-    expect(mockGetAllFeeds.mock.calls[0][7]).toBe(1000);
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({ startTs: 1000 })
+    );
   });
 
   /**
@@ -81,7 +84,7 @@ describe('useUnreadInboxActivity', () => {
 
     const { result } = renderHook(() => useUnreadInboxActivity());
 
-    expect(mockGetAllFeeds).not.toHaveBeenCalled();
+    expect(mockListConversations).not.toHaveBeenCalled();
     expect(result.current).toBe(0);
   });
 });

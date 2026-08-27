@@ -13,9 +13,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../components/discovery/personal-space/inbox.constants';
-import { FeedFilter } from '../enums/mydata.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
-import { getAllFeeds } from '../rest/feedsAPI';
+import { ConversationFilterType } from '../generated/type/conversationFilterType';
+import { listConversations } from '../rest/conversationsAPI';
 import { useApplicationStore } from './useApplicationStore';
 import { usePersonalSpaceStore } from './usePersonalSpaceStore';
 
@@ -25,16 +24,15 @@ const UNREAD_ACTIVITY_STALE_TIME = 30 * 1000;
  * Count of activity the user has not looked at yet — what the sidebar Inbox
  * badge shows alongside open tasks.
  *
- * <p>Scoped to {@link FeedFilter.MENTIONS} — threads that name this user. Not
- * `ALL`, which would leave an admin permanently lit with everyone else's
- * activity; and not `OWNER_OR_FOLLOWS`, which matches threads the user
- * *created*: the notification's author is the person who shared the chat, so
- * they would be badged for their own action.
+ * <p>Scoped to {@link ConversationFilterType.Mentions} — conversations that name
+ * this user. Not unfiltered, which would leave an admin permanently lit with
+ * everyone else's activity; and not `OWNER_OR_FOLLOWS`, which also matches
+ * conversations the user *created*, badging them for their own posts.
  *
- * <p>Feeds carry no server-side read state, so "unread" is everything newer than
- * the locally stored seen-mark. Before the first visit there is no mark and
- * nothing is counted — a brand-new user should not open Collate to a badge for
- * activity that predates them.
+ * <p>Conversations carry no server-side read state, so "unread" is everything
+ * newer than the locally stored seen-mark. Before the first visit there is no
+ * mark and nothing is counted — a brand-new user should not open Collate to a
+ * badge for activity that predates them.
  */
 export const useUnreadInboxActivity = (): number => {
   const { currentUser } = useApplicationStore();
@@ -44,16 +42,12 @@ export const useUnreadInboxActivity = (): number => {
   const { data: unreadCount = 0 } = useQuery({
     queryKey: [...INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY, userId, seenTs],
     queryFn: () =>
-      getAllFeeds(
-        undefined,
-        undefined,
-        ThreadType.Conversation,
-        FeedFilter.MENTIONS,
-        undefined,
+      listConversations({
+        filterType: ConversationFilterType.Mentions,
         userId,
-        1,
-        seenTs ?? undefined
-      )
+        limit: 1,
+        startTs: seenTs ?? undefined,
+      })
         .then((res) => res.paging?.total ?? 0)
         .catch(() => 0),
     enabled: Boolean(userId) && seenTs !== null,

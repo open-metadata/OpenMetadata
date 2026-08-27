@@ -26,7 +26,7 @@ import ProfilePicture from '../../../../../components/common/ProfilePicture/Prof
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ReactionOperation } from '../../../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../../../generated/entity/feed/thread';
+import { Conversation } from '../../../../../generated/entity/feed/conversation';
 import { Reaction, ReactionType } from '../../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
@@ -35,28 +35,24 @@ import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import {
   formatActivityTime,
-  getActivityActionLabel,
   getActivityEventLabel,
-  getChatConversationTitle,
-  isChatCollaboratorThread,
   toggleActivityReaction,
-  toggleThreadReaction,
+  toggleConversationReaction,
 } from '../inbox.utils';
 import './activity-feed-item.less';
 
 export interface ActivityFeedItemSelection {
   activity?: ActivityEvent;
-  feed?: Thread;
+  feed?: Conversation;
 }
 
 export interface ActivityFeedItemProps {
   // Exactly one of `activity` (2.0 event) or `feed` (conversation fallback).
   activity?: ActivityEvent;
-  feed?: Thread;
+  feed?: Conversation;
   isActive?: boolean;
   onClick: (selection: ActivityFeedItemSelection) => void;
 }
@@ -65,8 +61,7 @@ export interface ActivityFeedItemProps {
  * A single Inbox card: actor + action + entity chip, the message body, and a
  * footer with reactions (plus a comment affordance for conversations —
  * change-event activities are read-only). Renders either a 2.0 activity event
- * or a conversation thread. Clicking opens the detail drawer, except on a
- * collaborator invite, which opens the conversation it invites you to.
+ * or a conversation. Clicking opens the detail drawer.
  */
 const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
@@ -75,13 +70,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const isActivity = Boolean(activity);
 
   const actorName = isActivity
     ? activity?.actor?.name ?? ''
-    : feed?.createdBy ?? '';
+    : feed?.createdBy?.name ?? '';
   const [, , user] = useUserProfile({ permission: false, name: actorName });
 
   const sourceReactions = ((isActivity
@@ -95,28 +89,23 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     );
   }, [activity?.reactions, feed?.reactions, isActivity]);
 
-  // `entityRef` resolves to the invitee's user record, not the conversation, so
-  // the chip takes its title and icon from the thread instead.
-  const isConversationThread =
-    !isActivity && !!feed && isChatCollaboratorThread(feed);
-
   const authorName =
     getEntityName(user) ||
-    (isActivity ? activity?.actor?.displayName : undefined) ||
+    (isActivity
+      ? activity?.actor?.displayName
+      : feed?.createdBy?.displayName) ||
     actorName;
   const actionLabel = activity
     ? getActivityEventLabel(activity, t)
     : feed
-    ? getActivityActionLabel(feed, t)
+    ? t('label.posted-on')
     : '';
   const entity = isActivity ? activity?.entity : feed?.entityRef;
-  const entityName = isConversationThread
-    ? getChatConversationTitle(feed as Thread) ?? t('label.conversation')
-    : entity?.displayName || entity?.name || entity?.type;
+  const entityName = entity?.displayName || entity?.name || entity?.type;
   const timestamp = isActivity
     ? activity?.timestamp
-    : feed?.threadTs ?? feed?.updatedAt;
-  const commentCount = feed?.postsCount ?? feed?.posts?.length ?? 0;
+    : feed?.createdAt ?? feed?.updatedAt;
+  const commentCount = feed?.replyCount ?? 0;
 
   const message = useMemo(
     () =>
@@ -126,15 +115,9 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     [isActivity, activity?.summary, feed?.message]
   );
 
-  // A collaborator invite is about the conversation it grants access to, so it
-  // opens there; every other card opens the detail drawer.
   const handleActivate = useCallback(() => {
-    if (isConversationThread && feed?.entityUrlLink) {
-      navigate(feed.entityUrlLink);
-    } else {
-      onClick(isActivity ? { activity } : { feed });
-    }
-  }, [isConversationThread, feed, activity, isActivity, navigate, onClick]);
+    onClick(isActivity ? { activity } : { feed });
+  }, [feed, activity, isActivity, onClick]);
 
   const handleReactionSelect = async (
     reactionType: ReactionType,
@@ -150,7 +133,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               operation,
               currentUser
             )
-          : await toggleThreadReaction(
+          : await toggleConversationReaction(
               feed?.id as string,
               reactions,
               reactionType,
@@ -201,20 +184,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           </Typography>
           {entityName && (
             <Badge className="tw:shrink-0 tw:gap-1" size="sm" type="modern">
-              {isConversationThread ? (
+              {entity?.type && (
                 <span className="tw:flex tw:items-center tw:gap-2">
-                  <span className="tw:flex tw:items-center">
-                    <MessageDotsCircle className="tw:size-4" />
+                  <span className="tw:flex tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
+                    {searchClassBase.getEntityIcon(entity.type)}
                   </span>
                 </span>
-              ) : (
-                entity?.type && (
-                  <span className="tw:flex tw:items-center tw:gap-2">
-                    <span className="tw:flex tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
-                      {searchClassBase.getEntityIcon(entity.type)}
-                    </span>
-                  </span>
-                )
               )}
               <Typography
                 className="tw:text-secondary"

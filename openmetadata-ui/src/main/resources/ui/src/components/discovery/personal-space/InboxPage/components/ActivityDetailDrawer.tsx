@@ -30,16 +30,19 @@ import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModa
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
-import { Post, Thread } from '../../../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../../../generated/entity/feed/conversation';
 import { Access } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
 import {
-  deletePostById,
-  getPostsFeedById,
-  postFeedById,
-  updatePost,
-} from '../../../../../rest/feedsAPI';
+  createConversationReply,
+  deleteConversationReply,
+  listConversationReplies,
+  patchConversationReply,
+} from '../../../../../rest/conversationsAPI';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -53,19 +56,19 @@ import {
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import {
   formatActivityTime,
-  getActivityActionLabel,
   getActivityEventLabel,
+  getFeedTimestamp,
 } from '../inbox.utils';
 import './activity-detail-drawer.less';
 
 export interface ActivityDetailDrawerProps {
   // Exactly one of `activity` (2.0 event) or `feed` (conversation fallback).
   activity?: ActivityEvent;
-  feed?: Thread;
+  feed?: Conversation;
   open: boolean;
   onClose: () => void;
   // Notify the parent that a comment was added so it can refresh counts.
-  onPosted?: (threadId: string) => void;
+  onPosted?: (conversationId: string) => void;
 }
 
 const CommentsSkeleton: React.FC = () => (
@@ -83,12 +86,12 @@ const CommentsSkeleton: React.FC = () => (
 );
 
 interface CommentRowProps {
-  post: Post;
-  threadId: string;
+  reply: ConversationReply;
+  conversationId: string;
   // Evaluated `feed` Delete access, preflighted once at drawer level
   // (undefined while loading, on failure, or for admins who skip the fetch).
   deleteAccess?: Access;
-  // Reload the thread's posts after an edit or delete.
+  // Reload the conversation's replies after an edit or delete.
   onChanged: () => void;
 }
 
@@ -98,21 +101,25 @@ interface CommentRowProps {
  * API would 403.
  */
 const CommentRow: React.FC<CommentRowProps> = ({
-  post,
-  threadId,
+  reply,
+  conversationId,
   deleteAccess,
   onChanged,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  // A reply carries its author as an EntityReference rather than the bare
+  // username the legacy post did.
+  const authorLogin = reply.author?.name ?? '';
   const [, , user] = useUserProfile({
     permission: false,
-    name: post.from ?? '',
+    name: authorLogin,
   });
-  const authorName = getEntityName(user) || post.from;
+  const authorName =
+    getEntityName(user) || reply.author?.displayName || authorLogin;
 
   const isAuthor =
-    Boolean(currentUser?.name) && post.from === currentUser?.name;
+    Boolean(currentUser?.name) && authorLogin === currentUser?.name;
   const canEdit = isAuthor;
   const isAdmin = Boolean(currentUser?.isAdmin);
   // Admins bypass policy evaluation server-side. ConditionalAllow → author
@@ -135,21 +142,21 @@ const CommentRow: React.FC<CommentRowProps> = ({
         return;
       }
       try {
-        const patch = compare(post, { ...post, message });
-        await updatePost(threadId, post.id, patch);
+        const patch = compare(reply, { ...reply, message });
+        await patchConversationReply(conversationId, reply.id, patch);
         setIsEditPost(false);
         onChanged();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [post, threadId, onChanged]
+    [reply, conversationId, onChanged]
   );
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
     try {
-      await deletePostById(threadId, post.id);
+      await deleteConversationReply(conversationId, reply.id);
       onChanged();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -158,7 +165,7 @@ const CommentRow: React.FC<CommentRowProps> = ({
       setShowDeleteDialog(false);
       setIsDeleting(false);
     }
-  }, [post.id, threadId, onChanged]);
+  }, [reply.id, conversationId, onChanged]);
 
   return (
     <Box
@@ -172,7 +179,7 @@ const CommentRow: React.FC<CommentRowProps> = ({
         <Box align="center" gap={2}>
           <ProfilePicture
             displayName={authorName}
-            name={post.from ?? ''}
+            name={authorLogin}
             width="26"
           />
           <Typography size="text-sm" weight="medium">
@@ -207,7 +214,7 @@ const CommentRow: React.FC<CommentRowProps> = ({
           <ActivityFeedEditorNew
             focused
             defaultValue={MarkdownToHTMLConverter.makeHtml(
-              getFrontEndFormat(post.message)
+              getFrontEndFormat(reply.message)
             )}
             onSave={handleEditSave}
           />
@@ -225,12 +232,12 @@ const CommentRow: React.FC<CommentRowProps> = ({
         <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3 tw:border-[0.6px]">
           <RichTextEditorPreviewerV1
             className="inbox-feed-message tw:text-sm"
-            markdown={getFrontEndFormat(post.message)}
+            markdown={getFrontEndFormat(reply.message)}
           />
         </Box>
       )}
       <Typography className="tw:text-secondary" size="text-xs">
-        {formatActivityTime(post.postTs)}
+        {formatActivityTime(reply.createdAt)}
       </Typography>
 
       <DeleteModal
@@ -260,74 +267,70 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   const { t } = useTranslation();
   const isActivity = Boolean(activity);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [thread, setThread] = useState<Thread | undefined>();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [replies, setReplies] = useState<ConversationReply[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const actorName = isActivity
     ? activity?.actor?.name ?? ''
-    : feed?.createdBy ?? '';
+    : feed?.createdBy?.name ?? '';
   const [, , author] = useUserProfile({ permission: false, name: actorName });
   const authorName =
     getEntityName(author) ||
-    (isActivity ? activity?.actor?.displayName : undefined) ||
+    (isActivity
+      ? activity?.actor?.displayName
+      : feed?.createdBy?.displayName) ||
     actorName;
 
-  const loadPosts = useCallback(async (threadId: string) => {
-    try {
-      const res = await getPostsFeedById(threadId);
-      setPosts(res.data ?? []);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, []);
-
-  // Only conversation threads carry posts; change-event activities are
-  // read-only (open-metadata/OpenMetadata#30879).
-  const loadThread = useCallback(async () => {
-    setThread(undefined);
-    setPosts([]);
+  // Replies are their own resource in Conversation V2 rather than a field on
+  // the root, so refreshing the list is a reply read, not a re-read of the
+  // conversation.
+  const loadReplies = useCallback(async () => {
     if (!feed?.id) {
       return;
     }
-    setThread(feed);
     setIsLoading(true);
     try {
-      await loadPosts(feed.id);
+      const res = await listConversationReplies(feed.id);
+      setReplies(res.data ?? []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [feed, loadPosts]);
+  }, [feed?.id]);
 
+  // Only conversations carry replies; change-event activities are read-only
+  // (open-metadata/OpenMetadata#30879).
   useEffect(() => {
+    setReplies([]);
     if (open && feed?.id) {
-      loadThread();
+      loadReplies();
     }
-  }, [open, feed?.id, loadThread]);
+  }, [open, feed?.id, loadReplies]);
 
   const handleSave = useCallback(
     async (message: string) => {
-      if (!message || !thread) {
+      if (!message || !feed?.id) {
         return;
       }
       try {
-        await postFeedById(thread.id, { message } as Post);
-        await loadPosts(thread.id);
-        onPosted?.(thread.id);
+        await createConversationReply(feed.id, { message });
+        await loadReplies();
+        onPosted?.(feed.id);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [thread, loadPosts, onPosted]
+    [feed?.id, loadReplies, onPosted]
   );
 
-  // Reload posts and the parent's comment count after an edit or delete.
+  // Reload replies and the parent's comment count after an edit or delete.
   const handleCommentChanged = useCallback(() => {
-    if (thread?.id) {
-      loadPosts(thread.id);
-      onPosted?.(thread.id);
+    if (feed?.id) {
+      loadReplies();
+      onPosted?.(feed.id);
     }
-  }, [loadPosts, onPosted, thread?.id]);
+  }, [loadReplies, onPosted, feed?.id]);
 
   // Read-only activities never comment, so only conversations preflight.
   const canComment = Boolean(feed?.id);
@@ -336,7 +339,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   const actionLabel = activity
     ? getActivityEventLabel(activity, t)
     : feed
-    ? getActivityActionLabel(feed, t)
+    ? t('label.posted-on')
     : '';
   const entity = isActivity ? activity?.entity : feed?.entityRef;
   const entityName = entity?.displayName || entity?.name || entity?.type;
@@ -345,7 +348,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     : feed?.message ?? '';
   const timestamp = isActivity
     ? activity?.timestamp
-    : feed?.threadTs ?? feed?.updatedAt;
+    : feed && getFeedTimestamp(feed);
   // Mirrors ChatDrawer's expand/collapse chrome.
   const panelWidth = isExpanded ? '100%' : '45%';
 
@@ -463,14 +466,14 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {isLoading && <CommentsSkeleton />}
 
-                {!isLoading && thread?.id && posts.length > 0 && (
+                {!isLoading && feed?.id && replies.length > 0 && (
                   <Box direction="col" gap={4}>
-                    {posts.map((post) => (
+                    {replies.map((reply) => (
                       <CommentRow
+                        conversationId={feed.id}
                         deleteAccess={feedDeleteAccess}
-                        key={post.id}
-                        post={post}
-                        threadId={thread.id}
+                        key={reply.id}
+                        reply={reply}
                         onChanged={handleCommentChanged}
                       />
                     ))}

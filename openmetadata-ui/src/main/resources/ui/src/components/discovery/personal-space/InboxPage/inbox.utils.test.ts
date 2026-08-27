@@ -18,13 +18,16 @@ import {
   ActivityEvent,
   ActivityEventType,
 } from '../../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../../generated/entity/feed/thread';
+import { Conversation } from '../../../../generated/entity/feed/conversation';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
 import {
   addActivityReaction,
   removeActivityReaction,
-  updateThread,
-} from '../../../../rest/feedsAPI';
+} from '../../../../rest/activityAPI';
+import {
+  addConversationReaction,
+  removeConversationReaction,
+} from '../../../../rest/conversationsAPI';
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   // Bucket by calendar day derived from the ms timestamp.
@@ -39,30 +42,31 @@ jest.mock('../../../../constants/profiler.constant', () => ({
   PROFILER_FILTER_RANGE: { last30days: { days: 30 } },
 }));
 
-jest.mock('../../../../rest/feedsAPI', () => ({
+jest.mock('../../../../rest/activityAPI', () => ({
   addActivityReaction: jest.fn().mockResolvedValue({}),
   removeActivityReaction: jest.fn().mockResolvedValue(undefined),
-  updateThread: jest.fn().mockResolvedValue({}),
 }));
 
-import { CardStyle } from '../../../../generated/entity/feed/thread';
+jest.mock('../../../../rest/conversationsAPI', () => ({
+  addConversationReaction: jest.fn().mockResolvedValue({}),
+  removeConversationReaction: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
   formatInboxDateTime,
-  getActivityActionLabel,
   getActivityBuckets,
   getActivityEventLabel,
-  getChatConversationTitle,
   groupByRelativeDay,
-  isChatCollaboratorThread,
   isTaskOpen,
   toggleActivityReaction,
-  toggleThreadReaction,
+  toggleConversationReaction,
 } from './inbox.utils';
 
 const mockAddReaction = addActivityReaction as jest.Mock;
 const mockRemoveReaction = removeActivityReaction as jest.Mock;
-const mockUpdateThread = updateThread as jest.Mock;
+const mockAddConversationReaction = addConversationReaction as jest.Mock;
+const mockRemoveConversationReaction = removeConversationReaction as jest.Mock;
 const t = ((key: string) => key) as TFunction;
 
 describe('inbox.utils', () => {
@@ -129,53 +133,6 @@ describe('inbox.utils', () => {
         getActivityEventLabel(activity(ActivityEventType.EntityUpdated), t)
       ).toBe('label.updated-lowercase label.on-lowercase');
     });
-
-    it('returns the collaborator label for a chat-share notification', () => {
-      const feed = {
-        entityUrlLink: '/conversations/abc-123',
-      } as Thread;
-
-      expect(getActivityActionLabel(feed, t)).toBe(
-        'label.added-you-as-a-collaborator-on'
-      );
-    });
-  });
-
-  describe('isChatCollaboratorThread', () => {
-    it('matches a thread carrying a conversation deep link', () => {
-      expect(
-        isChatCollaboratorThread({
-          entityUrlLink: '/conversations/abc-123',
-        } as Thread)
-      ).toBe(true);
-    });
-
-    it.each([
-      ['no entityUrlLink', {}],
-      ['an unrelated entity link', { entityUrlLink: '/table/foo.bar' }],
-      // A path that merely contains the segment must not match, or ordinary
-      // activity on an entity with a similar URL would render as a chat share.
-      ['the segment mid-path', { entityUrlLink: '/x/conversations/abc' }],
-    ])('does not match a thread with %s', (_label, feed) => {
-      expect(isChatCollaboratorThread(feed as Thread)).toBe(false);
-    });
-  });
-
-  describe('getChatConversationTitle', () => {
-    it('reads the title the backend stores for the entity chip', () => {
-      expect(
-        getChatConversationTitle({
-          feedInfo: { headerMessage: 'Chat Initialization' },
-        } as Thread)
-      ).toBe('Chat Initialization');
-    });
-
-    it.each([
-      ['feedInfo is absent', {}],
-      ['headerMessage is empty', { feedInfo: { headerMessage: '' } }],
-    ])('returns undefined when %s', (_label, feed) => {
-      expect(getChatConversationTitle(feed as Thread)).toBeUndefined();
-    });
   });
 
   describe('groupByRelativeDay', () => {
@@ -219,11 +176,11 @@ describe('inbox.utils', () => {
       const oldOlder = now.minus({ days: 10 }).toMillis();
 
       const feeds = [
-        { id: 'today', threadTs: todayTs },
-        { id: 'yest', threadTs: yesterdayTs },
-        { id: 'old-a', threadTs: oldOlder },
-        { id: 'old-b', threadTs: oldNewer },
-      ] as Thread[];
+        { id: 'today', createdAt: todayTs },
+        { id: 'yest', createdAt: yesterdayTs },
+        { id: 'old-a', createdAt: oldOlder },
+        { id: 'old-b', createdAt: oldNewer },
+      ] as Conversation[];
 
       const buckets = getActivityBuckets(feeds);
 
@@ -244,8 +201,8 @@ describe('inbox.utils', () => {
     it('omits empty buckets and uses a single date when earlier spans one day', () => {
       const old = now.minus({ days: 3 }).toMillis();
       const buckets = getActivityBuckets([
-        { id: 'o', threadTs: old },
-      ] as Thread[]);
+        { id: 'o', createdAt: old },
+      ] as Conversation[]);
 
       expect(buckets).toHaveLength(1);
       expect(buckets[0].key).toBe('earlier');
@@ -277,27 +234,18 @@ describe('inbox.utils', () => {
     });
   });
 
-  describe('getActivityActionLabel', () => {
-    it('returns the test-failure label for TestCaseResult threads', () => {
-      const feed = { cardStyle: CardStyle.TestCaseResult } as Thread;
-
-      expect(getActivityActionLabel(feed, t)).toBe(
-        'label.reported-test-failure-on'
-      );
+  describe('toggleConversationReaction', () => {
+    beforeEach(() => {
+      mockAddConversationReaction.mockClear();
+      mockRemoveConversationReaction.mockClear();
     });
-
-    it('returns the posted-on label otherwise', () => {
-      expect(getActivityActionLabel({} as Thread, t)).toBe('label.posted-on');
-    });
-  });
-
-  describe('toggleThreadReaction', () => {
-    beforeEach(() => mockUpdateThread.mockClear());
 
     const user = { id: 'u1', name: 'alice', displayName: 'Alice' };
 
-    it('adds a reaction and persists it via a thread PATCH', async () => {
-      const result = await toggleThreadReaction(
+    // The reaction endpoints exist because a conversation PATCH is author-gated —
+    // reacting to someone else's conversation has to be its own operation.
+    it('adds a reaction via the conversation reaction endpoint', async () => {
+      const result = await toggleConversationReaction(
         'f1',
         [],
         ReactionType.Heart,
@@ -306,8 +254,11 @@ describe('inbox.utils', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(mockUpdateThread).toHaveBeenCalledTimes(1);
-      expect(mockUpdateThread.mock.calls[0][0]).toBe('f1');
+      expect(mockAddConversationReaction).toHaveBeenCalledWith(
+        'f1',
+        ReactionType.Heart
+      );
+      expect(mockRemoveConversationReaction).not.toHaveBeenCalled();
     });
 
     it('removes the current user reaction', async () => {
@@ -316,7 +267,7 @@ describe('inbox.utils', () => {
         { reactionType: ReactionType.Heart, user: { id: 'u2' } },
       ] as Reaction[];
 
-      const result = await toggleThreadReaction(
+      const result = await toggleConversationReaction(
         'f1',
         existing,
         ReactionType.Heart,
@@ -325,7 +276,11 @@ describe('inbox.utils', () => {
       );
 
       expect(result.map((r) => r.user?.id)).toEqual(['u2']);
-      expect(mockUpdateThread).toHaveBeenCalledWith('f1', expect.any(Array));
+      expect(mockRemoveConversationReaction).toHaveBeenCalledWith(
+        'f1',
+        ReactionType.Heart
+      );
+      expect(mockAddConversationReaction).not.toHaveBeenCalled();
     });
   });
 
