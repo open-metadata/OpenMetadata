@@ -762,9 +762,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                 required={!isViewOnly}
                               />
                               <Tooltip
-                                title={t(
-                                  'message.what-should-ai-remember'
-                                )}>
+                                title={t('message.what-should-ai-remember')}>
                                 <TooltipTrigger className="tw:leading-0">
                                   <InfoCircle
                                     className="tw:text-utility-gray-400 tw:cursor-pointer"
