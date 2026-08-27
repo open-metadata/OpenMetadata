@@ -18,18 +18,17 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
@@ -45,11 +44,6 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
@@ -93,40 +87,43 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [mlModelPermissions, setMlModelPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const { getEntityPermission } = usePermissionProvider();
-
   const mlModelName = useMemo(
     () => getEntityName(mlModelDetail),
     [mlModelDetail]
   );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.ML_MODEL,
-        mlModelDetail.id
-      );
-      setMlModelPermissions(entityPermission);
-    } catch {
+  // Single useEntityPermissions call, by id — no genuine cycle here (contrast a fetch-owning
+  // page's two-call pattern): like PipelineDetails.component.tsx, this component already
+  // receives {@code mlModelDetail} (and therefore {@code mlModelDetail.deleted}) as a prop
+  // from its first render, so there is no ordering constraint requiring a separate
+  // pre-`deleted` call. The old component never gated rendering on a permission-loading flag
+  // either (it rendered immediately with deny-all permissions, then re-rendered once the
+  // fetch resolved) — this hook call preserves that by not consuming `isLoading`.
+  const {
+    permissions: mlModelPermissions, // children consume the raw OperationPermission prop
+    error: permissionsError,
+    hasViewAccess,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.ML_MODEL,
+    { id: mlModelDetail.id },
+    { deleted: Boolean(mlModelDetail.deleted) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.ml-model'),
         })
       );
     }
-  }, [mlModelDetail.id, getEntityPermission, setMlModelPermissions]);
+  }, [permissionsError]);
 
-  useEffect(() => {
-    if (mlModelDetail.id) {
-      fetchResourcePermission();
-    }
-  }, [mlModelDetail.id]);
-
-  const { isFollowing, deleted } = useMemo(() => {
+  const { isFollowing } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -162,11 +159,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [decodedMlModelFqn]);
 
   useEffect(() => {
-    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+    if (hasViewAccess) {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [mlModelPermissions, decodedMlModelFqn]);
+  }, [hasViewAccess, decodedMlModelFqn]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -326,40 +323,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
-  );
-
-  const {
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(mlModelPermissions, Operation.EditTags) &&
-        !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          mlModelPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          mlModelPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          mlModelPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewAllPermission: mlModelPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        mlModelPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [mlModelPermissions, deleted]
   );
 
   const tabs = useMemo(() => {
