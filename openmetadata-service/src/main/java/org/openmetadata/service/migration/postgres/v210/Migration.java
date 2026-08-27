@@ -17,23 +17,34 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.SupersetChartFqnCollisionFix;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
   }
 
   @Override
+  @SneakyThrows
   public void runDataMigration() {
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
+
+    try {
+      SupersetChartFqnCollisionFix.fixSupersetChartFqnCollision(handle, collectionDAO);
+    } catch (Exception e) {
+      LOG.error("Failed to fix Superset chart/dashboard FQN collisions in v210 migration.", e);
+    }
   }
 }

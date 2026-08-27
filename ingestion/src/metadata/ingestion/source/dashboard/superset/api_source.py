@@ -200,7 +200,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     logger.warning(f"chart details for id: {chart_id} not found, skipped")
                     continue
                 chart_request = CreateChartRequest(
-                    name=EntityName(str(chart_json.id)),
+                    name=EntityName(f"chart_{chart_json.id}"),
                     displayName=chart_json.slice_name,
                     description=(Markdown(chart_json.description) if chart_json.description else None),
                     chartType=get_standard_chart_type(chart_json.viz_type),
