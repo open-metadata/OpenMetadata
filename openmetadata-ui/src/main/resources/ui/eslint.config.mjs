@@ -22,7 +22,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
-import jsoncParser from 'jsonc-eslint-parser';
+import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
@@ -177,7 +177,10 @@ export default [
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-use-before-define': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — safe reorders
+      // where possible, documented disables for mutual-recursion / derived-below
+      // cases. Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-use-before-define': 'error',
       'no-unused-expressions': 'off',
       '@typescript-eslint/no-unused-expressions': [
         'error',
@@ -194,7 +197,11 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
       // for no longer reproduces — verified running against this config, where
@@ -349,7 +356,11 @@ export default [
       'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
       'react/no-unstable-nested-components': 'warn', // 25 across 23 files
       'react/no-danger': 'warn', // 0 in sample
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
+      // removed / narrowed where safe, documented disables where the value is
+      // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
+      // (that would change throw-on-null to silent undefined). Promoted to error.
+      '@typescript-eslint/no-non-null-assertion': 'error',
 
       // Import architecture and request fan-out. These are warnings while the
       // measured legacy backlog is worked down; they are reporting-only and do

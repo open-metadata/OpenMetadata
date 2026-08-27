@@ -643,13 +643,17 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):  # noqa: UP
                     else:
                         raise error  # noqa: TRY201
 
-                host_port_str = str(getattr(config.serviceConnection.root.config, "hostPort", None) or "")
-                if "localhost" not in host_port_str:
+                service_connection = getattr(config, "serviceConnection", None)
+                connection_config = getattr(getattr(service_connection, "root", None), "config", None)
+                host_port = getattr(connection_config, "hostPort", None)
+                host_port_str = str(host_port or "")
+                if connection_config is None or host_port is None or "localhost" not in host_port_str:
                     raise error  # noqa: TRY201
 
-                host_port_type = type(config.serviceConnection.root.config.hostPort)
                 docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
-                config.serviceConnection.root.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
+                setattr(  # noqa: B010
+                    connection_config, "hostPort", type(host_port)(docker_host_port_str)
+                )
                 func(*args, **kwargs)
 
         return wrapper

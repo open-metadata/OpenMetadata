@@ -170,13 +170,15 @@ const Lineage = ({
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
   return (
-    <Card className="lineage-card card-padding-0" data-testid="lineage-details">
-      <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary ">
+    <Card
+      className="lineage-card card-padding-0 tw:flex tw:flex-col"
+      data-testid="lineage-details">
+      <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary tw:shrink-0">
         {header}
       </div>
 
       <div
-        className="lineage-container"
+        className="lineage-container tw:flex-1 tw:min-h-0 tw:overflow-hidden"
         data-testid="lineage-container"
         id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>

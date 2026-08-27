@@ -14,20 +14,35 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 /**
- * Migration utility for 2.1.0: alignment of stored hybrid search weights with the shipped defaults.
- * The legacy thread-storage archival helper below is not wired to a migration step.
+ * Migration utilities for 2.1.0: the Conversation V2 cutover, legacy thread archival, and alignment
+ * of stored hybrid search weights with the shipped defaults.
  */
 @Slf4j
 public class MigrationUtil {
+  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+  private static final String CREATE_CONVERSATION_RULE_NAME =
+      "DataConsumerPolicy-CreateConversation-Rule";
   private static final double PREVIOUS_KEYWORD_WEIGHT = 0.4;
   private static final double PREVIOUS_SEMANTIC_WEIGHT = 0.6;
   private static final double KEYWORD_WEIGHT = 0.6;
@@ -40,6 +55,55 @@ public class MigrationUtil {
   public MigrationUtil(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
     this.connectionType = connectionType;
+  }
+
+  /** Add the Conversation V2 create grant to existing DataConsumer policies. */
+  public static void addCreateConversationRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists =
+          policy.getRules().stream()
+              .anyMatch(rule -> CREATE_CONVERSATION_RULE_NAME.equals(rule.getName()));
+      if (!ruleExists) {
+        Rule rule =
+            new Rule()
+                .withName(CREATE_CONVERSATION_RULE_NAME)
+                .withDescription("Allow authenticated users to create conversations and replies.")
+                .withResources(List.of(Entity.CONVERSATION))
+                .withOperations(List.of(MetadataOperation.CREATE))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(rule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", CREATE_CONVERSATION_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException exception) {
+      LOG.warn("{} not found, skipping Conversation rule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception exception) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          CREATE_CONVERSATION_RULE_NAME,
+          DATA_CONSUMER_POLICY,
+          exception.getMessage(),
+          exception);
+    }
+  }
+
+  public static void refreshConversationNotificationTemplates() {
+    try {
+      NotificationTemplateRepository repository =
+          (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
+      repository.initOrUpdateSeedDataFromResources();
+    } catch (Exception exception) {
+      LOG.warn(
+          "Could not refresh Conversation V2 system notification templates: {}",
+          exception.getMessage());
+    }
   }
 
   public void archiveLegacyThreadStorage() {

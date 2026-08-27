@@ -12,7 +12,6 @@
  */
 
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -22,6 +21,7 @@ import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TableAntd from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';

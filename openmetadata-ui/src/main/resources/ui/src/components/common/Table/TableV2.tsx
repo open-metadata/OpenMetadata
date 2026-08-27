@@ -41,14 +41,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
-import type { ColumnsType } from 'antd/es/table/interface';
-import type {
-  ColumnType,
-  FilterValue,
-  SorterResult,
-  TableCurrentDataSource,
-  TablePaginationConfig,
-} from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import React, {
@@ -81,6 +73,14 @@ import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
+import type {
+  ColumnsType,
+  ColumnType,
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from './Table.interface';
 import {
   TableColumnDropdownList,
   TableComponentProps,
@@ -198,9 +198,11 @@ const TableV2 = <T extends object>(
             String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx) === colKey
         ) as ColumnType<T> | undefined;
 
-        return col?.onFilter
+        const onFilter = col?.onFilter;
+
+        return onFilter
           ? selectedKeys.some((key) =>
-              col.onFilter!(key as React.Key | boolean, record)
+              onFilter(key as React.Key | boolean, record)
             )
           : true;
       })
