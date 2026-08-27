@@ -14,6 +14,8 @@
 package org.openmetadata.mcp.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -303,5 +305,29 @@ class RootCauseAnalysisToolTest {
     assertThat(outDownstream.get("downstreamImpactedEdgesCount")).isEqualTo(200);
     assertThat(JsonUtils.pojoToJson(output).length())
         .isLessThan(McpResponseTrim.MAX_RESPONSE_CHARS);
+  }
+
+  @Test
+  void summaryDistinguishesLocalFailuresFromInheritedOnes() {
+    String fqn = "sample_data.ecommerce_db.shopify.dim_address";
+
+    String inherited = RootCauseAnalysisTool.summarize(fqn, 2, false);
+    assertTrue(
+        inherited.contains("2 failing upstream"),
+        "an upstream cause must be stated as upstream: " + inherited);
+    assertTrue(inherited.contains("root cause is upstream"), inherited);
+
+    // The regression: the DQ walk returns the analysed entity among its own nodes, so counting
+    // nodes previously reported "Found 1 upstream failure(s)" for an asset with a clean upstream.
+    String local = RootCauseAnalysisTool.summarize(fqn, 0, true);
+    assertTrue(
+        local.contains("originate on this asset itself"),
+        "failures with a clean upstream must be attributed locally: " + local);
+    assertFalse(
+        local.contains("upstream failure"),
+        "must not claim an upstream failure when none exists: " + local);
+
+    String clean = RootCauseAnalysisTool.summarize(fqn, 0, false);
+    assertTrue(clean.contains("No failing tests found"), clean);
   }
 }

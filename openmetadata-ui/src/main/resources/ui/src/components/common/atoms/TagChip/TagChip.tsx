@@ -21,7 +21,7 @@ import classNames from 'classnames';
 import { FC, KeyboardEvent, MouseEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { reduceColorOpacity } from '../../../../utils/ColorUtils';
-import { renderIcon } from '../../../../utils/IconUtils';
+import { Icon } from '../../Icon/Icon';
 
 export interface TagChipProps {
   label: string;
@@ -89,16 +89,15 @@ const TagChip: FC<TagChipProps> = ({
   const { t } = useTranslation();
 
   const chipIcon = useMemo(
-    () =>
-      icon ? (
-        renderIcon(icon, {
-          size: 12,
-          style: { marginRight: 4, flexShrink: 0 },
-        })
-      ) : (
-        <Tag01 size={sizeStyles[size].icon} />
-      ),
-    [icon]
+    () => (
+      <Icon
+        className="tw:mr-1 tw:shrink-0"
+        fallback={<Tag01 size={sizeStyles[size].icon} />}
+        iconValue={icon}
+        size={12}
+      />
+    ),
+    [icon, size]
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
