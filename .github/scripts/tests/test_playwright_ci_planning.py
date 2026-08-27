@@ -2375,6 +2375,75 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
     assert selection["unmappedFiles"] == []
 
 
+def test_impact_mapping_cannot_reselect_a_delegated_spec(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    spec_path = spec_dir / "Delegated.spec.ts"
+    spec_path.write_text("test('delegated', () => undefined);\n")
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": ["playwright/e2e/Features/Delegated.spec.ts"],
+                "sharedInfrastructure": [],
+                "mappings": [
+                    {
+                        "sources": ["src/rdf/**"],
+                        "projects": ["chromium"],
+                        "specs": ["playwright/e2e/Features/Delegated.spec.ts"],
+                    }
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text("src/rdf/Processor.java\n")
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == []
+
+
+def test_security_impact_mapping_includes_ingestion_permission_specs():
+    selector = load_script("select_playwright_tests")
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
+        in entry["sources"]
+    )
+
+    assert "Ingestion" in mapping["projects"]
+    assert selector.matches(
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts", mapping["specs"]
+    )
+
+
 def test_summary_reconciles_results_and_evaluates_performance_independently():
     # The playwright-summary job lives in the postgres PR caller (not the
     # reusable) so branch protection can require its unprefixed check name.

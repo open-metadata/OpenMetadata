@@ -14,31 +14,42 @@
 import { Button, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { Operation } from 'fast-json-patch';
-import { isEqual, isUndefined } from 'lodash';
-import { FC, Fragment, lazy, RefObject, useEffect, useState } from 'react';
+import { isUndefined } from 'lodash';
+import {
+  FC,
+  Fragment,
+  lazy,
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getAllFeeds } from '../../../rest/feedsAPI';
+import {
+  createConversation,
+  listConversations,
+} from '../../../rest/conversationsAPI';
 import { TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
+import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
+import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
+
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
-    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
-      default: m.TaskTabNew,
+    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((module) => ({
+      default: module.TaskTabNew,
     }))
   )
 );
@@ -55,258 +66,160 @@ const TaskFeedCardFromTask = withSuspenseFallback(
   lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
-const ActivityThread = withSuspenseFallback(
-  lazy(() => import('./ActivityThread'))
-);
-
-const ActivityThreadList = withSuspenseFallback(
-  lazy(() => import('./ActivityThreadList'))
-);
-
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
-);
-
-const ConfirmationModal = withSuspenseFallback(
-  lazy(() => import('../../Modals/ConfirmationModal/ConfirmationModal'))
 );
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
   onCancel,
-  postFeedHandler,
-  createThread,
-  deletePostHandler,
-  updateThreadHandler,
   className,
   showHeader = true,
   view,
 }) => {
   const { t } = useTranslation();
   const {
-    tasks,
-    selectedTask,
-    setActiveTask,
+    entityThread: conversations,
+    entityPaging,
     getTaskData,
     loading,
-    entityPaging,
+    refreshActivityFeed,
+    selectedTask,
+    selectedThread: selectedConversation,
+    setActiveTask,
+    setActiveThread: setActiveConversation,
+    tasks,
   } = useActivityFeedProvider();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<Thread>();
-  const [selectedThreadId, setSelectedThreadId] = useState<string>('');
-  const [showNewConversation, setShowNewConversation] =
-    useState<boolean>(false);
-
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
-    confirmStateInitialValue
-  );
-
-  const [elementRef, isInView] = useElementInView(observerOptions);
-
+  const [showNewConversation, setShowNewConversation] = useState(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const [isThreadLoading, setIsThreadLoading] = useState(false);
-
+  const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [taskStatusGroup, setTaskStatusGroup] = useState<TaskStatusGroup>(
     TaskStatusGroup.Open
   );
+  const [elementRef, isInView] = useElementInView(observerOptions);
+  const conversationsRef = useRef(conversations);
 
   const isTaskType = view === 'tasks';
-
   const isConversationType = view === 'conversations';
+  const isTaskClosed = taskStatusGroup === TaskStatusGroup.Closed;
 
-  const isTaskClosed = taskStatusGroup === 'closed';
-  const taskList = tasks ?? [];
+  const getPanelData = useCallback(
+    async (after?: string) => {
+      if (isTaskType) {
+        await getTaskData?.(
+          FeedFilter.ALL,
+          after,
+          (threadLink ? getEntityType(threadLink) : undefined) as EntityType,
+          threadLink ? getEntityFQN(threadLink) : undefined,
+          taskStatusGroup
+        );
 
-  const getThreads = (after?: string) => {
-    if (isTaskType) {
-      getTaskData?.(
-        FeedFilter.ALL,
-        after,
-        (threadLink ? getEntityType(threadLink) : undefined) as EntityType,
-        threadLink ? getEntityFQN(threadLink) : undefined,
-        taskStatusGroup
-      );
+        return;
+      }
 
-      return;
-    }
-
-    setIsThreadLoading(true);
-
-    const fetchPromise = getAllFeeds(
-      threadLink,
-      after,
-      ThreadType.Conversation,
-      FeedFilter.ALL,
-      undefined
-    );
-
-    fetchPromise
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        setThreads((prevData) => {
-          if (after) {
-            return [...prevData, ...data];
-          } else {
-            return [...data];
-          }
+      setIsConversationLoading(true);
+      try {
+        const response = await listConversations({
+          after,
+          entityLink: threadLink,
         });
-        setPaging(pagingObj);
-      })
-      .catch((err: AxiosError) => {
+        refreshActivityFeed(
+          after
+            ? [...conversationsRef.current, ...response.data]
+            : response.data
+        );
+        setPaging(response.paging);
+      } catch (error) {
         showErrorToast(
-          err,
+          error as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.thread-plural-lowercase'),
+            entity: t('label.conversation-plural-lowercase'),
           })
         );
-      })
-      .finally(() => {
-        setIsThreadLoading(false);
+      } finally {
+        setIsConversationLoading(false);
+      }
+    },
+    [
+      getTaskData,
+      isTaskType,
+      refreshActivityFeed,
+      taskStatusGroup,
+      threadLink,
+      t,
+    ]
+  );
+
+  const onPostConversation = async (message: string) => {
+    try {
+      const conversation = await createConversation({
+        about: threadLink,
+        message,
       });
-  };
-
-  const onDiscard = () => {
-    setConfirmationState(confirmStateInitialValue);
-  };
-
-  const loadNewThreads = () => {
-    setTimeout(() => {
-      getThreads();
-    }, 500);
-  };
-
-  const onPostDelete = () => {
-    if (confirmationState.postId && confirmationState.threadId) {
-      deletePostHandler?.(
-        confirmationState.threadId,
-        confirmationState.postId,
-        confirmationState.isThread
+      refreshActivityFeed([conversation, ...conversations]);
+      setShowNewConversation(false);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
       );
-    }
-    onDiscard();
-    loadNewThreads();
-  };
-
-  const onConfirmation = (data: ConfirmState) => {
-    setConfirmationState(data);
-  };
-
-  const onShowNewConversation = (value: boolean) => {
-    setShowNewConversation(value);
-  };
-
-  const postFeed = (value: string) => {
-    postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
-    loadNewThreads();
-  };
-
-  const onThreadIdSelect = (id: string) => {
-    setSelectedThreadId(id);
-  };
-
-  const onThreadSelect = (id: string) => {
-    const thread = threads.find((f) => f.id === id);
-    if (thread) {
-      setSelectedThread(thread);
     }
   };
 
   const onBack = () => {
-    setSelectedThread(undefined);
+    setActiveConversation(undefined);
     setActiveTask(undefined);
   };
 
-  const onPostThread = async (value: string) => {
-    const data = {
-      message: value,
-      about: threadLink,
-    };
-    await createThread(data);
-    loadNewThreads();
-  };
-
-  const onUpdateThread = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadHandler(threadId, postId, isThread, data);
-    loadNewThreads();
-  };
-
-  const getLoader = () => {
-    return isThreadLoading ? <Loader /> : null;
-  };
-
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      getThreads(pagingObj.after);
-    }
-  };
-
-  const onSwitchChange = (checked: boolean) => {
-    setTaskStatusGroup(checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open);
-  };
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   useEffect(() => {
-    const escapeKeyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    const escapeKeyHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         onCancel?.();
       }
     };
     document.addEventListener('keydown', escapeKeyHandler);
 
-    return () => {
-      document.removeEventListener('keydown', escapeKeyHandler);
-    };
-  }, []);
+    return () => document.removeEventListener('keydown', escapeKeyHandler);
+  }, [onCancel]);
 
   useEffect(() => {
-    if (isConversationType) {
-      onThreadSelect(selectedThread?.id as string);
+    setActiveConversation(undefined);
+    getPanelData();
+  }, [getPanelData, setActiveConversation]);
+
+  useEffect(() => {
+    const currentPaging = isTaskType ? entityPaging : paging;
+    const currentLoading = isTaskType ? loading : isConversationLoading;
+    if (isInView && currentPaging?.after && !currentLoading) {
+      getPanelData(currentPaging.after);
     }
-  }, [threads]);
-
-  useEffect(() => {
-    getThreads();
   }, [
-    getTaskData,
-    isConversationType,
+    entityPaging,
+    getPanelData,
+    isConversationLoading,
+    isInView,
     isTaskType,
-    taskStatusGroup,
-    threadLink,
-    view,
+    loading,
+    paging,
   ]);
-
-  useEffect(() => {
-    fetchMoreThread(
-      isInView,
-      isTaskType ? entityPaging : paging,
-      isTaskType ? loading : isThreadLoading
-    );
-  }, [entityPaging, isInView, isTaskType, isThreadLoading, loading, paging]);
 
   return (
     <Fragment>
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
-            entityLink={selectedThread?.about ?? threadLink}
-            noun={
-              isConversationType
-                ? t('label.conversation-plural')
-                : t('label.task-plural')
-            }
+            entityLink={selectedConversation?.about ?? threadLink}
+            noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}
             onShowNewConversation={
-              threads.length > 0 && isUndefined(selectedThread)
-                ? onShowNewConversation
+              conversations.length > 0 && isUndefined(selectedConversation)
+                ? setShowNewConversation
                 : undefined
             }
           />
@@ -316,12 +229,18 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             align="center"
             className="w-full justify-end p-r-xs m-t-xs"
             size={4}>
-            <Switch size="small" onChange={onSwitchChange} />
+            <Switch
+              size="small"
+              onChange={(checked) =>
+                setTaskStatusGroup(
+                  checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open
+                )
+              }
+            />
             <span>{t('label.closed-task-plural')}</span>
           </Space>
         )}
 
-        {/* When user selects a thread will show that particular thread from here */}
         {isTaskType && !isUndefined(selectedTask) ? (
           <Fragment>
             <Button
@@ -340,7 +259,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               task={selectedTask}
             />
           </Fragment>
-        ) : !isUndefined(selectedThread) ? (
+        ) : !isUndefined(selectedConversation) ? (
           <Fragment>
             <Button
               className="m-b-sm p-0"
@@ -349,87 +268,81 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               onClick={onBack}>
               {t('label.back')}
             </Button>
-            <ActivityThread
-              postFeed={postFeed}
-              selectedThread={selectedThread}
-              updateThreadHandler={onUpdateThread}
-              onConfirmation={onConfirmation}
+            <ActivityFeedCardNew
+              isForFeedTab
+              isOpenInDrawer
+              showThread
+              feed={selectedConversation}
             />
           </Fragment>
         ) : (
           <Fragment>
-            {showNewConversation ||
-            (isEqual(threads.length, 0) && !isThreadLoading) ? (
-              <>
-                {isConversationType && (
-                  <Space className="w-full" direction="vertical">
-                    <Typography.Paragraph>
-                      {t('message.new-conversation')}
-                    </Typography.Paragraph>
-                    <ActivityFeedEditor
-                      placeHolder={t('message.enter-a-field', {
-                        field: t('label.message-lowercase'),
-                      })}
-                      onSave={onPostThread}
-                    />
-                  </Space>
-                )}
-                {isTaskType && !loading && (
-                  <ErrorPlaceHolder
-                    className="mt-24"
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography.Paragraph>
-                      {isTaskClosed
-                        ? t('message.no-closed-task')
-                        : t('message.no-open-task')}
-                    </Typography.Paragraph>
-                  </ErrorPlaceHolder>
-                )}
-              </>
-            ) : null}
+            {(showNewConversation ||
+              (conversations.length === 0 && !isConversationLoading)) &&
+              isConversationType && (
+                <Space className="w-full" direction="vertical">
+                  <Typography.Paragraph>
+                    {t('message.new-conversation')}
+                  </Typography.Paragraph>
+                  <ActivityFeedEditor
+                    placeHolder={t('message.enter-a-field', {
+                      field: t('label.message-lowercase'),
+                    })}
+                    onSave={onPostConversation}
+                  />
+                </Space>
+              )}
+
             {isTaskType ? (
+              tasks.length === 0 && !loading ? (
+                <ErrorPlaceHolder
+                  className="mt-24"
+                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  <Typography.Paragraph>
+                    {isTaskClosed
+                      ? t('message.no-closed-task')
+                      : t('message.no-open-task')}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolder>
+              ) : (
+                <div className={classNames(className, 'd-flex flex-col gap-3')}>
+                  {tasks.map((task) => (
+                    <TaskFeedCardFromTask
+                      isOpenInDrawer
+                      isActive={selectedTask?.id === task.id}
+                      key={task.id}
+                      task={task}
+                      onAfterClose={() => getPanelData()}
+                      onTaskClick={setActiveTask}
+                    />
+                  ))}
+                </div>
+              )
+            ) : (
               <div className={classNames(className, 'd-flex flex-col gap-3')}>
-                {taskList.map((task) => (
-                  <TaskFeedCardFromTask
-                    isOpenInDrawer
-                    isActive={selectedTask?.id === task.id}
-                    key={task.id}
-                    task={task}
-                    onAfterClose={loadNewThreads}
-                    onTaskClick={setActiveTask}
+                {conversations.map((conversation) => (
+                  <FeedPanelBodyV1New
+                    isForFeedTab
+                    feed={conversation}
+                    isActive={false}
+                    key={conversation.id}
+                    onFeedClick={setActiveConversation}
                   />
                 ))}
               </div>
-            ) : (
-              <ActivityThreadList
-                className={classNames(className)}
-                postFeed={postFeed}
-                selectedThreadId={selectedThreadId}
-                threads={threads}
-                updateThreadHandler={onUpdateThread}
-                onConfirmation={onConfirmation}
-                onThreadIdSelect={onThreadIdSelect}
-                onThreadSelect={onThreadSelect}
-              />
             )}
+
             <div
               data-testid="observer-element"
               id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}>
-              {isTaskType ? loading ? <Loader /> : null : getLoader()}
+              {(isTaskType ? loading : isConversationLoading) ? (
+                <Loader />
+              ) : null}
             </div>
           </Fragment>
         )}
       </div>
-      <ConfirmationModal
-        bodyText={t('message.confirm-delete-message')}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.delete')}
-        header={t('message.delete-message-question-mark')}
-        visible={confirmationState.state}
-        onCancel={onDiscard}
-        onConfirm={onPostDelete}
-      />
     </Fragment>
   );
 };
