@@ -317,6 +317,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
+    EntityReference domainRef = isAdd ? getEntityReferenceById(DOMAIN, entityId, ALL) : null;
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
@@ -325,7 +326,6 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-        EntityReference domainRef = getEntityReferenceById(DOMAIN, entityId, ALL);
         LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
       }
 
@@ -339,7 +339,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      searchRepository.updateEntity(ref);
+      // Re-index the asset and fan its re-derived domains out to inherited descendants in search.
+      // Uniform for add and remove: on add descendants follow the newly assigned domain; on remove
+      // they follow whatever the asset now inherits from its own ancestry (or are cleared if none),
+      // matching the entity page. Descendants with an explicit domain are left untouched.
+      searchRepository.updateEntityAndPropagateInheritedDomainsToChildren(ref);
     }
 
     result.withSuccessRequest(success);

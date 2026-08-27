@@ -32,6 +32,13 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
     UnityCatalogConnection,
 )
 
+DatabricksAuthConnection = Union[DatabricksConnection, UnityCatalogConnection]
+DEFAULT_SCHEME = "databricks"
+
+
+def _host(connection: DatabricksAuthConnection) -> str:
+    return connection.hostPort.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0]
+
 
 def get_personal_access_token_auth(
     connection: Union[DatabricksConnection, UnityCatalogConnection],
@@ -97,3 +104,62 @@ def get_auth_config(
         )
 
     return auth_method(connection)
+
+
+class DataDiffConnectionError(Exception):
+    """Raised when a connection cannot be described to data-diff.
+
+    Not a ValueError: the data-diff param setter swallows those and falls back to a
+    credential-less URL, which parks the driver on an interactive OAuth flow.
+    """
+
+
+def get_data_diff_auth(connection: DatabricksAuthConnection) -> dict:
+    """Credential fields for a data-diff connection dict.
+
+    Every value is a plain string: data-diff caches connections on ``json.dumps``
+    of the dict, so credential providers are built on its side, not passed in.
+
+    Raises:
+        DataDiffConnectionError: on an unsupported authentication type.
+    """
+    auth_type = connection.authType
+    if isinstance(auth_type, PersonalAccessToken):
+        return {
+            "auth_method": "pat",
+            "access_token": auth_type.token.get_secret_value(),
+        }
+    if isinstance(auth_type, DatabricksOauth):
+        return {
+            "auth_method": "oauth-m2m",
+            "databricks_client_id": auth_type.clientId,
+            "databricks_client_secret": auth_type.clientSecret.get_secret_value(),
+        }
+    if isinstance(auth_type, AzureAdSetup):
+        return {
+            "auth_method": "azure-sp-m2m",
+            "azure_client_id": auth_type.azureClientId,
+            "azure_client_secret": auth_type.azureClientSecret.get_secret_value(),
+            "azure_tenant_id": auth_type.azureTenantId,
+        }
+    raise DataDiffConnectionError(
+        f"Unsupported authentication type for Data Diff: {type(auth_type).__name__}"
+    )
+
+
+def get_data_diff_connection_dict(connection: DatabricksAuthConnection) -> dict:
+    """Service-level data-diff connection dict, without the table's catalog and schema.
+
+    Raises:
+        DataDiffConnectionError: when the connection cannot be expressed to data-diff.
+    """
+    if not connection.httpPath:
+        raise DataDiffConnectionError(
+            "Data Diff requires the connection's HTTP Path to be set"
+        )
+    return {
+        "driver": DEFAULT_SCHEME,
+        "server_hostname": _host(connection),
+        "http_path": connection.httpPath,
+        **get_data_diff_auth(connection),
+    }

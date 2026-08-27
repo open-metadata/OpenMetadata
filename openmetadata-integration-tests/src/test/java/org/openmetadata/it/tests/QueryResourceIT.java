@@ -7,9 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -31,6 +35,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.query.QueryResource;
 
 /**
@@ -43,6 +48,8 @@ import org.openmetadata.service.resources.query.QueryResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // Query has special name handling (null names allowed, uses checksum)
   // Query doesn't support dataProducts field
@@ -389,6 +396,67 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertTrue(
         queryUsedIn.stream().anyMatch(ref -> ref.getId().equals(table.getId())),
         "Query should reference the table it was used in");
+  }
+
+  @Test
+  void queryUsageUpdatesSearchResults(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
+    CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("query_usage_search"))
+            .withQuery("SELECT * FROM query_usage_search")
+            .withQueryUsedIn(List.of())
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(request);
+    EntityReference tableReference = table.getEntityReference();
+    String usagePath = "/v1/queries/" + query.getId() + "/usage";
+
+    client.getHttpClient().execute(HttpMethod.PUT, usagePath, List.of(tableReference), Void.class);
+
+    Awaitility.await("Query should appear for the table after usage is added")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertQueryListedForTable(client, table, query.getId(), true));
+
+    client
+        .getHttpClient()
+        .execute(HttpMethod.DELETE, usagePath, List.of(tableReference), Void.class);
+
+    Awaitility.await("Query should disappear for the table after usage is removed")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertQueryListedForTable(client, table, query.getId(), false));
+  }
+
+  private void assertQueryListedForTable(
+      OpenMetadataClient client, Table table, UUID queryId, boolean expected) {
+    String response =
+        client.search().query("id:" + queryId).index("query_search_index").size(1).execute();
+    boolean tableListed = false;
+    try {
+      JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+      for (JsonNode hit : hits) {
+        JsonNode source = hit.path("_source");
+        if (queryId.toString().equals(source.path("id").asText())) {
+          for (JsonNode queryUsedIn : source.path("queryUsedIn")) {
+            if (table.getId().toString().equals(queryUsedIn.path("id").asText())) {
+              tableListed = true;
+            }
+          }
+        }
+      }
+    } catch (Exception exception) {
+      throw new AssertionError("Unable to parse query search response", exception);
+    }
+    assertEquals(
+        expected, tableListed, "Query usage search document should match the relationship");
   }
 
   @Test

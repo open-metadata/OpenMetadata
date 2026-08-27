@@ -12,8 +12,7 @@
 """
 Source connection handler
 """
-import importlib
-import sys
+
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import quote_plus
@@ -41,6 +40,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.db2.utils import (
     check_clidriver_version,
     install_clidriver,
+    patch_ibmi_dialect,
 )
 from metadata.utils.constants import THREE_MIN, UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -104,17 +104,11 @@ def get_connection(connection: Db2Connection) -> Engine:
         clidriver_version = check_clidriver_version(clidriver_version)
         if clidriver_version:
             install_clidriver(clidriver_version.value)
-            # Invalidate cached clidriver module so the next import
-            # picks up the freshly installed path
-            sys.modules.pop("clidriver", None)
 
     # prepare license
     # pylint: disable=import-outside-toplevel
     if connection.license and connection.licenseFileName:
         import clidriver
-
-        if clidriver_version:
-            importlib.reload(clidriver)
 
         license_dir = Path(clidriver.__path__[0], "license")
         license_dir.mkdir(parents=True, exist_ok=True)
@@ -136,6 +130,7 @@ def get_connection(connection: Db2Connection) -> Engine:
             connection = ssl_manager.setup_ssl(connection)
 
     if is_ibmi:
+        patch_ibmi_dialect()
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=_get_ibmi_connection_url,

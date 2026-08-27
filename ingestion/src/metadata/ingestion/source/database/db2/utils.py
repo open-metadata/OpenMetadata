@@ -12,9 +12,13 @@
 """
 Module to define overriden dialect methods
 """
-from enum import Enum
 
-from sqlalchemy import and_, join, sql
+import sys
+from enum import Enum
+from threading import Lock
+from types import SimpleNamespace
+
+from sqlalchemy import and_, join, select, sql, text
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes as sa_types
 
@@ -25,6 +29,9 @@ logger = ingestion_logger()
 BASE_CLIDRIVER_URL = (
     "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli"
 )
+
+_CLIDRIVER_INSTALL_LOCK = Lock()
+_CLIDRIVER_INSTALL_STATE = SimpleNamespace(version=None)
 
 
 class DB2CLIDriverVersions(Enum):
@@ -159,16 +166,25 @@ def check_clidriver_version(clidriver_version: str):
     return DB2CLIDriverVersions(clidriver_version)
 
 
-# pylint: disable=too-many-statements,too-many-branches
 def install_clidriver(clidriver_version: str) -> None:
-    """
-    Install the CLI Driver for DB2
-    """
+    """Install a DB2 CLI driver version once per process."""
+    with _CLIDRIVER_INSTALL_LOCK:
+        if _CLIDRIVER_INSTALL_STATE.version == clidriver_version:
+            return
+
+        _CLIDRIVER_INSTALL_STATE.version = None
+        if _install_clidriver(clidriver_version):
+            sys.modules.pop("clidriver", None)
+            _CLIDRIVER_INSTALL_STATE.version = clidriver_version
+
+
+# pylint: disable=too-many-statements,too-many-branches
+def _install_clidriver(clidriver_version: str) -> bool:
+    """Install the requested DB2 CLI driver version."""
     # pylint: disable=import-outside-toplevel
     import os
     import platform
     import subprocess
-    import sys
     from importlib.metadata import PackageNotFoundError, distribution
     from urllib.request import URLError, urlopen
 
@@ -216,9 +232,9 @@ def install_clidriver(clidriver_version: str) -> None:
             )
     else:
         logger.error(
-            f"Unsupported operating system for db2 driver installation: {system}"
+            "Unsupported operating system for db2 driver installation: %s", system
         )
-        return None
+        return False
 
     # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
     os.environ["CLIDRIVER_VERSION"] = clidriver_version
@@ -226,8 +242,8 @@ def install_clidriver(clidriver_version: str) -> None:
         os.environ["IBM_DB_INSTALLER_URL"] = clidriver_url
     else:
         os.environ["IBM_DB_INSTALLER_URL"] = default_clidriver_url
-    logger.info(f"Set IBM_DB_INSTALLER_URL to {os.environ['IBM_DB_INSTALLER_URL']}")
-    logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")
+    logger.info("Set IBM_DB_INSTALLER_URL to %s", os.environ["IBM_DB_INSTALLER_URL"])
+    logger.info("Set CLIDRIVER_VERSION to %s", os.environ["CLIDRIVER_VERSION"])
     # Uninstall ibm_db if it is already installed
     try:
         distribution("ibm_db")
@@ -251,4 +267,72 @@ def install_clidriver(clidriver_version: str) -> None:
             "--no-cache-dir",
         ]
     )
-    return None
+    return True
+
+
+_IBMI_PATCHED = False
+
+
+def _ibmi_compat_select(*args, **kwargs):
+    """Translate the SA-1.x ``select([cols], whereclause, order_by=...)`` form to
+    the modern signature. sqlalchemy-ibmi 0.9.3 uses the legacy form, removed in
+    SA 2.0. ``order_by`` must be carried over: get_foreign_keys and get_indexes
+    rely on it to group multi-column constraints in column order."""
+    if args and isinstance(args[0], (list, tuple)):
+        statement = select(*args[0])
+        for whereclause in args[1:]:
+            if whereclause is not None:
+                statement = statement.where(whereclause)
+        order_by = kwargs.pop("order_by", None)
+        if order_by is not None:
+            statement = statement.order_by(*order_by)
+        if kwargs:
+            raise TypeError(f"Unsupported legacy select() keywords: {sorted(kwargs)}")
+        return statement
+    return select(*args, **kwargs)
+
+
+def get_default_schema_name_ibmi(self, connection):
+    """SA 2.0 rejects raw strings passed to ``Connection.execute``."""
+    return self.normalize_name(
+        connection.execute(text("VALUES CURRENT_SCHEMA")).scalar()
+    )
+
+
+def check_text_server_ibmi(self, connection):  # pylint: disable=unused-argument
+    """SA 2.0 rejects raw strings passed to ``Connection.execute``."""
+    return connection.execute(
+        text("SELECT COUNT(*) FROM QSYS2.SYSTEXTSERVERS")
+    ).scalar()
+
+
+def patch_ibmi_dialect() -> bool:
+    """Adapt the sqlalchemy-ibmi dialect to SQLAlchemy 2.0 at runtime.
+
+    sqlalchemy-ibmi 0.9.3 pins sqlalchemy<2 but is installed with --no-deps, so
+    its SA-1.x call sites survive into a SA 2.0 runtime and fail on first use.
+    Reassigning the module-level ``select`` covers every legacy reflection query
+    at once, since the dialect resolves it as a global on each call.
+    """
+    global _IBMI_PATCHED  # noqa: PLW0603  # pylint: disable=global-statement
+    if _IBMI_PATCHED:
+        return True
+    try:
+        import sqlalchemy_ibmi.base as ibmi_base  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        logger.debug("sqlalchemy-ibmi not installed - ibmi scheme unavailable")
+        return False
+
+    # A partially-initialised module (interrupted import) satisfies the import
+    # above but lacks the dialect, so assigning onto it would raise instead.
+    dialect = getattr(ibmi_base, "IBMiDb2Dialect", None)
+    if dialect is None:
+        logger.debug("sqlalchemy-ibmi is not usable - ibmi scheme unavailable")
+        return False
+
+    # pylint: disable=protected-access
+    ibmi_base.select = _ibmi_compat_select
+    dialect._get_default_schema_name = get_default_schema_name_ibmi
+    dialect._check_text_server = check_text_server_ibmi
+    _IBMI_PATCHED = True
+    return True

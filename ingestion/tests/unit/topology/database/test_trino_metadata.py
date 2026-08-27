@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.trino.metadata import (
     TrinoSource,
+    _get_columns,
     get_view_definition,
 )
 
@@ -247,6 +248,42 @@ class TestTrinoIcebergDetection(unittest.TestCase):
         mock_self.inspector.get_table_names.return_value = ["orders"]
         result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
         assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+
+
+class TestTrinoColumnComments:
+    """`SHOW COLUMNS` reports an unset column comment as '', which must not become a description"""
+
+    @staticmethod
+    def _mock_connection(records):
+        connection = Mock()
+        connection.dialect.identifier_preparer.quote.side_effect = lambda value: f'"{value}"'
+        connection.execute.return_value = records
+        return connection
+
+    @staticmethod
+    def _record(name, comment):
+        record = Mock()
+        record.Column = name
+        record.Type = "varchar"
+        record.Comment = comment
+        return record
+
+    def _columns_for(self, records):
+        mock_self = Mock()
+        mock_self._get_default_schema_name.return_value = "test_schema"
+        return _get_columns(mock_self, self._mock_connection(records), "test_table", "test_schema")
+
+    def test_unset_comment_is_none(self):
+        columns = self._columns_for([self._record("id", "")])
+        assert columns[0]["comment"] is None
+
+    def test_populated_comment_is_preserved(self):
+        columns = self._columns_for([self._record("name", "Name of the student")])
+        assert columns[0]["comment"] == "Name of the student"
+
+    def test_null_comment_is_none(self):
+        columns = self._columns_for([self._record("age", None)])
+        assert columns[0]["comment"] is None
 
 
 if __name__ == "__main__":

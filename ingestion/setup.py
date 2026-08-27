@@ -20,7 +20,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.2.2",  # CVE-2026-42252 BashOperator Jinja2 injection
+    # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
+    "airflow": "apache-airflow==3.3.0",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -179,14 +181,14 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.3",
+    "collate-sqllineage==2.1.7",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.11",
+    "collate-data-diff>=0.11.15",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -253,7 +255,9 @@ plugins: Dict[str, Set[str]] = {
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {
-        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
+        # Its SA-1.x call sites are adapted at runtime by
+        # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],

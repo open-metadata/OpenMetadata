@@ -113,6 +113,7 @@ public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
+  static final String SORT_FIELD_DISPLAY_NAME = "displayName";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
@@ -223,6 +224,15 @@ public class IngestionPipelineResource
     }
   }
 
+  // Sorting is optional and lenient: only `displayName` is supported, and any other value (or none)
+  // falls through to the default name-ordered listing rather than erroring. The repository reads
+  // the
+  // sort off the filter and swaps in the display-name keyset query, so the resource keeps a single
+  // listInternal path — auth, domain filter and cursor validation are shared, not forked.
+  private boolean isDisplayNameSort(String sortField) {
+    return SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField);
+  }
+
   @GET
   @Valid
   @Operation(
@@ -300,7 +310,26 @@ public class IngestionPipelineResource
               description = "List Ingestion Pipelines by provider..",
               schema = @Schema(implementation = ProviderType.class))
           @QueryParam("provider")
-          ProviderType provider) {
+          ProviderType provider,
+      @Parameter(
+              description =
+                  "Optionally order the list by a field instead of the default `name`. Only "
+                      + "`displayName` is supported — it orders by the effective display name "
+                      + "(`displayName` falling back to `name`), the value clients render. Any other "
+                      + "value (or none) falls through to the default `name` ordering rather than "
+                      + "erroring.",
+              schema = @Schema(type = "string", allowableValues = SORT_FIELD_DISPLAY_NAME))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description = "Direction to apply to `sortField`.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
@@ -309,6 +338,9 @@ public class IngestionPipelineResource
             .addQueryParam("testSuite", testSuiteParam)
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
+    if (isDisplayNameSort(sortField)) {
+      filter.withSort(SORT_FIELD_DISPLAY_NAME, sortOrder);
+    }
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

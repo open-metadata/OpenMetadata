@@ -13,10 +13,11 @@ import logging
 import random
 import string
 import traceback
+from contextlib import contextmanager
 from decimal import Decimal
 from functools import reduce
 from itertools import islice
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, cast  # noqa: UP035
 from urllib.parse import urlparse
 
 import data_diff
@@ -77,6 +78,8 @@ SUPPORTED_DIALECTS = [
     Dialects.Databricks,
     Dialects.UnityCatalog,
 ]
+
+DUPLICATE_KEY_MESSAGE = "Duplicate primary keys"
 
 
 class SchemaDiffResult(BaseModel):
@@ -175,6 +178,29 @@ class UnsupportedDialectError(Exception):
         super().__init__(f"Unsupported dialect in param {param}: {dialect}")
 
 
+class DuplicateKeyError(Exception):
+    """A diff key column is not unique, which makes a row-level diff undefined.
+
+    The message names the key columns only. The duplicated values themselves are row data, which
+    this test result is not the place to publish, and finding them costs a scan of the table.
+    """
+
+    def __init__(
+        self,
+        key_columns: List[str],  # noqa: UP006
+        table: Optional[str] = None,  # noqa: UP045
+    ):
+        if len(key_columns) == 1:
+            subject = f"Key column '{key_columns[0]}' is"
+        else:
+            subject = f"Key columns ({', '.join(repr(c) for c in key_columns)}) are"
+        location = f"in {table}" if table else "in one of the compared tables"
+        super().__init__(
+            f"{subject} not unique {location}. A row-level diff needs a unique key: "
+            "pick a unique column, or add more columns to the key."
+        )
+
+
 def masked(s: str, mask: bool = True) -> str:
     """Mask a string if masked is True otherwise return the string.
     Only for development purposes, do not use in production.
@@ -215,6 +241,14 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         try:
             self._validate_dialects()
             return self._run()
+        except DuplicateKeyError as e:
+            logger.error(f"[Data Diff]: {e}")
+            result = TestCaseResult(
+                timestamp=self.execution_date,  # type: ignore
+                testCaseStatus=TestCaseStatus.Aborted,
+                result=str(e),
+            )
+            return result  # noqa: RET504
         except DataDiffMismatchingKeyTypesError as e:
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
@@ -257,9 +291,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
-        threshold = self.get_test_case_param_value(
-            self.test_case.parameterValues, "threshold", int, default=0
-        )
+        threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
+        # get_test_case_param_value is typed on the caster it is handed, so its return widens to type[int] | None
+        threshold = cast("int", threshold or 0)
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
             # Exclude incomparable columns (different data types) from the comparison
@@ -278,40 +312,38 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.extra_columns = common_columns
         table_diff_iter = self.get_table_diff()
 
-        if not threshold or self.test_case.computePassedFailedRowCount:
-            stats = table_diff_iter.get_stats_dict()
-            if stats["total"] > 0:
-                logger.debug("Sample of failed rows:")
-                # depending on the data, this require scanning a lot of data
-                # so we only log the sample in debug mode. data can be sensitive
-                # so it is masked by default
-                for s in islice(
-                    self.safe_table_diff_iterator(),
-                    10 if logger.level <= logging.DEBUG else 0,
-                ):
-                    logger.debug("%s", str([s[0]] + [masked(st) for st in s[1]]))
-            test_case_result = self.get_row_diff_test_case_result(
+        with self._duplicate_keys_named(table_diff_iter):
+            if not threshold or self.test_case.computePassedFailedRowCount:
+                stats = table_diff_iter.get_stats_dict()
+                if stats["total"] > 0:
+                    logger.debug("Sample of failed rows:")
+                    # depending on the data, this require scanning a lot of data
+                    # so we only log the sample in debug mode. data can be sensitive
+                    # so it is masked by default
+                    for s in islice(
+                        self.safe_table_diff_iterator(),
+                        10 if logger.level <= logging.DEBUG else 0,
+                    ):
+                        logger.debug("%s", str([s[0]] + [masked(st) for st in s[1]]))
+                test_case_result = self.get_row_diff_test_case_result(
+                    threshold,
+                    stats["total"],
+                    stats["updated"],
+                    stats["exclusive_A"],
+                    stats["exclusive_B"],
+                    column_diff,
+                )
+                count = self._compute_row_count(self.runner, None)  # type: ignore
+                test_case_result.passedRows = stats["unchanged"]
+                if count:
+                    test_case_result.passedRowsPercentage = (test_case_result.passedRows or 0) / count * 100
+                    test_case_result.failedRowsPercentage = (test_case_result.failedRows or 0) / count * 100
+                return test_case_result
+            return self.get_row_diff_test_case_result(
                 threshold,
-                stats["total"],
-                stats["updated"],
-                stats["exclusive_A"],
-                stats["exclusive_B"],
-                column_diff,
+                self.calculate_diffs_with_limit(table_diff_iter, threshold),
+                column_diff=column_diff,
             )
-            count = self._compute_row_count(self.runner, None)  # type: ignore
-            test_case_result.passedRows = stats["unchanged"]
-            test_case_result.passedRowsPercentage = (
-                test_case_result.passedRows / count * 100
-            )
-            test_case_result.failedRowsPercentage = (
-                test_case_result.failedRows / count * 100
-            )
-            return test_case_result
-        return self.get_row_diff_test_case_result(
-            threshold,
-            self.calculate_diffs_with_limit(table_diff_iter, threshold),
-            column_diff,
-        )
 
     def get_incomparable_columns(self) -> List[str]:
         """Get the columns that have types that are not comparable between the two tables. For example
@@ -322,7 +354,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         """
 
         table1 = data_diff.connect_to_table(
-            self.runtime_params.table1.serviceUrl,
+            self.runtime_params.table1.data_diff_service_url,
             self.runtime_params.table1.path,
             self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
@@ -337,7 +369,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             else None,
         ).with_schema()
         table2 = data_diff.connect_to_table(
-            self.runtime_params.table2.serviceUrl,
+            self.runtime_params.table2.data_diff_service_url,
             self.runtime_params.table2.path,
             self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
@@ -405,7 +437,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         """Calls data_diff.diff_tables with the parameters from the test case."""
         left_where, right_where = self.sample_where_clause()
         table1 = data_diff.connect_to_table(
-            self.runtime_params.table1.serviceUrl,
+            self.runtime_params.table1.data_diff_service_url,
             self.runtime_params.table1.path,
             self.runtime_params.table1.key_columns,  # type: ignore
             extra_columns=self.runtime_params.table1.extra_columns,
@@ -419,7 +451,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             else None,
         )
         table2 = data_diff.connect_to_table(
-            self.runtime_params.table2.serviceUrl,
+            self.runtime_params.table2.data_diff_service_url,
             self.runtime_params.table2.path,
             self.runtime_params.table2.key_columns,  # type: ignore
             extra_columns=self.runtime_params.table2.extra_columns,
@@ -634,7 +666,61 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
 
-    def get_column_diff(self) -> Optional[ColumnDiffResult]:
+    @contextmanager
+    def _duplicate_keys_named(self, table_diff_iter: DiffResultWrapper) -> Iterator[None]:
+        """Re-raise data-diff's duplicate-key failures with the key columns named.
+
+        A key that is not unique makes a row-level diff undefined, and data-diff reports it in two
+        equally opaque ways: joindiff validates the key itself and raises
+        `ValueError("Duplicate primary keys")`, while hashdiff only trips over it in `_get_stats`,
+        which folds rows into a `{key: sign}` map and asserts a key never repeats with the same
+        sign - a bare `AssertionError`. Neither names the key, so we do.
+
+        We deliberately do not check uniqueness up front: that is a COUNT/COUNT DISTINCT over both
+        tables on every run, far too expensive on a large table to pay for an error that only
+        happens when the key is misconfigured. Both paths here are reached only once the diff has
+        already failed, and neither queries anything.
+        """
+        try:
+            yield
+        except ValueError as exc:
+            if DUPLICATE_KEY_MESSAGE not in str(exc):
+                raise
+            # joindiff does not say which of the two tables it found the duplicates in.
+            raise DuplicateKeyError(self._diff_key_columns()) from exc
+        except AssertionError as exc:
+            table_param = self._table_with_duplicate_keys(table_diff_iter)
+            if table_param is None:
+                # Some other invariant inside data-diff; nothing useful to add.
+                raise
+            raise DuplicateKeyError(
+                list(table_param.key_columns or []),
+                table_param.fullyQualifiedName or table_param.path,
+            ) from exc
+
+    def _diff_key_columns(self) -> List[str]:  # noqa: UP006
+        """The key columns the diff runs on. Both sides diff on the same key."""
+        return list(self.runtime_params.table1.key_columns or self.runtime_params.table2.key_columns or [])
+
+    def _table_with_duplicate_keys(self, table_diff_iter: DiffResultWrapper) -> Optional[TableParameter]:  # noqa: UP045
+        """The table whose rows repeat a key, or None if the diffed rows show no duplicate.
+
+        Read off the rows `_get_stats` had already materialised into `result_list` when it failed,
+        so this costs no query. A row is `(sign, values)` with the key first; "-" rows come from
+        table1 and "+" rows from table2.
+        """
+        key_length = len(self._diff_key_columns())
+        if not key_length:
+            return None
+        seen = set()
+        for sign, values in table_diff_iter.result_list:
+            marker = (sign, tuple(values[:key_length]))
+            if marker in seen:
+                return self.runtime_params.table1 if sign == "-" else self.runtime_params.table2
+            seen.add(marker)
+        return None
+
+    def get_column_diff(self) -> Optional[ColumnDiffResult]:  # noqa: UP045
         """Get the column diff between the two tables. If there are no differences, return None."""
         removed, added = self.get_changed_added_columns(
             [

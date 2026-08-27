@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -297,9 +300,13 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <>testLoader</>);
-});
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <>testLoader</>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.useFakeTimers();
 
@@ -678,5 +685,258 @@ describe('TestDetailsPageV1 component', () => {
       }),
       expect.anything()
     );
+  });
+
+  describe('Queries tab count', () => {
+    const getQueriesTabProps = () =>
+      (TabsLabel as unknown as jest.Mock).mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.id === EntityTabs.TABLE_QUERIES);
+
+    const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
+
+    const renderPage = async () => {
+      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+          ViewBasic: true,
+        })),
+      }));
+      // The count effect keys on fullyQualifiedName, which the shared mock omits —
+      // without it the effect never re-runs once tableDetails resolves.
+      (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          name: 'test',
+          id: '123',
+          fullyQualifiedName: 'fqn',
+          columns: [],
+        })
+      );
+
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    beforeEach(() => {
+      (TabsLabel as unknown as jest.Mock).mockClear();
+      (getQueriesList as jest.Mock).mockClear();
+    });
+
+    it('should render the skeleton instead of a count while the request is in flight', async () => {
+      let resolveCount: (value: { paging: { total: number } }) => void = () =>
+        undefined;
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+
+      await renderPage();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      // Every render so far, not just the latest — one frame with isLoading
+      // false is the placeholder 0 this guards against.
+      expect(getQueriesTabProps()).not.toHaveLength(0);
+      expect(
+        getQueriesTabProps().every((props) => props.isLoading)
+      ).toBeTruthy();
+
+      await act(async () => {
+        resolveCount({ paging: { total: 7 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should fall back to 0 when the count request fails', async () => {
+      (getQueriesList as jest.Mock).mockRejectedValue(new Error('failed'));
+
+      await renderPage();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 0, isLoading: false })
+        )
+      );
+    });
+
+    it('should ignore a late count response for a table the user already left', async () => {
+      const resolvers: Record<
+        string,
+        (value: { paging: { total: number } }) => void
+      > = {};
+      (getQueriesList as jest.Mock).mockImplementation(
+        ({ entityId }: { entityId: string }) =>
+          new Promise((resolve) => {
+            resolvers[entityId] = resolve;
+          })
+      );
+      const tableFor = (id: string) => ({
+        name: `test-${id}`,
+        id,
+        fullyQualifiedName: `fqn-${id}`,
+        columns: [],
+      });
+
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+      (getTableDetailsByFQN as jest.Mock).mockImplementation((fqn: string) =>
+        Promise.resolve(tableFor(fqn === 'fqn-b' ? 'b' : 'a'))
+      );
+      (useParams as jest.Mock).mockReturnValue({ fqn: 'fqn-a', tab: 'schema' });
+
+      let rerender: (ui: React.ReactElement) => void = () => undefined;
+
+      await act(async () => {
+        ({ rerender } = render(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        ));
+      });
+
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: 'a',
+        })
+      );
+
+      (useParams as jest.Mock).mockReturnValue({ fqn: 'fqn-b', tab: 'schema' });
+
+      await act(async () => {
+        rerender(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: 'b',
+        })
+      );
+
+      // Table A's request resolves only now, after the user moved to table B.
+      await act(async () => {
+        resolvers.a({ paging: { total: 7 } });
+      });
+
+      expect(getLatestQueriesTabProps()).toEqual(
+        expect.objectContaining({ isLoading: true })
+      );
+      expect(getLatestQueriesTabProps()?.count).not.toBe(7);
+
+      await act(async () => {
+        resolvers.b({ paging: { total: 3 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 3, isLoading: false })
+        )
+      );
+    });
+
+    it('should ignore a stale response for a table the user returned to', async () => {
+      // Same entityId for both A requests, so they can only be told apart by
+      // request order — keyed by call index, not by id.
+      const resolvers: Array<(value: { paging: { total: number } }) => void> =
+        [];
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+      const tableFor = (id: string) => ({
+        name: `test-${id}`,
+        id,
+        fullyQualifiedName: `fqn-${id}`,
+        columns: [],
+      });
+
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+      (getTableDetailsByFQN as jest.Mock).mockImplementation((fqn: string) =>
+        Promise.resolve(tableFor(fqn === 'fqn-b' ? 'b' : 'a'))
+      );
+
+      const goTo = async (
+        fqn: string,
+        rerender?: (ui: React.ReactElement) => void
+      ) => {
+        (useParams as jest.Mock).mockReturnValue({ fqn, tab: 'schema' });
+        const ui = (
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+        let result: ReturnType<typeof render> | undefined;
+
+        await act(async () => {
+          if (rerender) {
+            rerender(ui);
+          } else {
+            result = render(ui);
+          }
+        });
+
+        return result;
+      };
+
+      const { rerender } = (await goTo('fqn-a'))!;
+
+      await waitFor(() => expect(resolvers).toHaveLength(1));
+
+      await goTo('fqn-b', rerender);
+
+      await waitFor(() => expect(resolvers).toHaveLength(2));
+
+      await goTo('fqn-a', rerender);
+
+      await waitFor(() => expect(resolvers).toHaveLength(3));
+
+      // The first request for table A resolves only now — after the user left A and
+      // came back, so a newer request for the same id is already in flight.
+      await act(async () => {
+        resolvers[0]({ paging: { total: 7 } });
+      });
+
+      expect(getLatestQueriesTabProps()).toEqual(
+        expect.objectContaining({ isLoading: true })
+      );
+      expect(getLatestQueriesTabProps()?.count).not.toBe(7);
+
+      await act(async () => {
+        resolvers[2]({ paging: { total: 3 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 3, isLoading: false })
+        )
+      );
+    });
   });
 });

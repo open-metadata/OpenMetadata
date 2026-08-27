@@ -495,6 +495,9 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     List<IndexStats> result = new ArrayList<>();
     String statsPattern = buildScopedPattern(null);
     var statsResponse = client.indices().stats(s -> s.index(statsPattern));
+    // Fetch aliases once for the inventory instead of leasing one connection per index.
+    var aliasResponse = client.indices().getAlias(g -> g.index(statsPattern));
+    var aliasesByIndex = aliasResponse.aliases();
     var indices = statsResponse.indices();
     for (var entry : indices.entrySet()) {
       String indexName = entry.getKey();
@@ -530,7 +533,9 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         }
       }
       String health = stats.health() != null ? stats.health().name().toUpperCase() : "UNKNOWN";
-      Set<String> aliases = getAliases(indexName);
+      var aliasMetadata = aliasesByIndex.get(indexName);
+      Set<String> aliases =
+          aliasMetadata == null ? Set.of() : new HashSet<>(aliasMetadata.aliases().keySet());
       result.add(
           new IndexStats(
               indexName,

@@ -2,12 +2,12 @@
 This guide will help you setup the Ingestion framework and connectors
 ---
 
-![Python version 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+![Python version 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 
 OpenMetadata Ingestion is a simple framework to build connectors and ingest metadata of various systems through OpenMetadata APIs. It could be used in an orchestration framework(e.g. Apache Airflow) to ingest metadata.
 **Prerequisites**
 
-- Python &gt;= 3.9.x
+- Python &gt;= 3.10.x
 
 ### Docs
 

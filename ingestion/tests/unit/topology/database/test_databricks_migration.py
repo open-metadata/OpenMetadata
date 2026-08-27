@@ -75,22 +75,26 @@ class TestTypeMap:
 
 
 class TestDatabricksBaseDefaultScheme:
-    """Verify DatabricksBaseTableParameter uses the new default scheme"""
+    """Verify the data diff connection uses the new default scheme"""
 
     def test_default_scheme(self):
-        from metadata.ingestion.source.database.common.data_diff.databricks_base import (
-            DatabricksBaseTableParameter,
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
+        from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+            DatabricksConnection,
+        )
+        from metadata.ingestion.source.database.databricks.auth import (
+            get_data_diff_connection_dict,
         )
 
-        class FakeConfig:
-            hostPort = "host:443"  # noqa: N815
-            token = "secret"
-
-        result = DatabricksBaseTableParameter._get_service_connection_config(
-            FakeConfig()
+        connection = DatabricksConnection(
+            hostPort="workspace.cloud.databricks.com:443",
+            httpPath="/sql/1.0/warehouses/abc123",
+            authType=PersonalAccessToken(token="dapi123"),
         )
-        assert result is not None
-        assert "databricks+connector" not in result
+
+        assert get_data_diff_connection_dict(connection)["driver"] == "databricks"
 
 
 class TestDatabricksPipelineConnectionUrl:

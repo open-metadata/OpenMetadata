@@ -125,9 +125,7 @@ describe('tagFormFields', () => {
         placeholder: 'label.name',
         type: FieldTypes.TEXT_MUI,
         props: {
-          inputProps: {
-            'data-testid': 'name',
-          },
+          'data-testid': 'name',
           disabled: false,
         },
         formItemProps: {
@@ -148,13 +146,9 @@ describe('tagFormFields', () => {
       expect(result.required).toBe(true);
     });
 
-    it('should have correct validation triggers', () => {
-      const result = getNameField(false);
-
-      expect(result.formItemProps?.validateTrigger).toEqual([
-        'onChange',
-        'onBlur',
-      ]);
+    it('should forward disabled prop', () => {
+      expect(getNameField(true).props?.disabled).toBe(true);
+      expect(getNameField(false).props?.disabled).toBe(false);
     });
   });
 
@@ -171,9 +165,7 @@ describe('tagFormFields', () => {
         placeholder: 'label.display-name',
         type: FieldTypes.TEXT_MUI,
         props: {
-          inputProps: {
-            'data-testid': 'displayName',
-          },
+          'data-testid': 'displayName',
           disabled: false,
         },
       });

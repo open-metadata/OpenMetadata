@@ -356,7 +356,8 @@ ORACLE_CONSTRAINTS = textwrap.dedent(
             loc.position as loc_pos,
             rem.position as rem_pos,
             ac.search_condition,
-            ac.delete_rule
+            ac.delete_rule,
+            ac.index_name
         FROM {prefix}_CONSTRAINTS{dblink} ac,
             {prefix}_CONS_COLUMNS{dblink} loc,
             {prefix}_CONS_COLUMNS{dblink} rem

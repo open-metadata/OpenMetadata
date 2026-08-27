@@ -13,7 +13,9 @@
 
 import { get } from 'lodash';
 import { lazy } from 'react';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -37,7 +39,8 @@ const DirectoryChildrenTable = withSuspenseFallback(
       import(
         '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable'
       )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 export interface DirectoryDetailPageTabProps {

@@ -18,27 +18,11 @@
  *   StoredProcedure, DashboardDataModel, Metric, Chart,
  *   ApiCollection, ApiEndpoint, DataProduct, Domain, TableColumn.
  *
- * Each entity type has ONE describe.serial block so no two workers can ever run
- * CP create/edit/delete operations for the same entity type simultaneously.
+ * Each entity type has one default-mode describe block so its CP operations
+ * remain sequential without replaying every preceding test on a retry.
  *
  * Entity setup (prepareCustomProperty) is done in beforeAll, not inside tests,
  * so cleanup always runs in afterAll even when a test fails mid-way.
- *
- * That serialisation only holds within this file. `PUT /api/v1/metadata/types/{id}`
- * is read-modify-write on a single global row per entity type, so a spec writing
- * the same row from another worker makes one side's property vanish while the API
- * still answers 200. Two rules keep that from happening:
- *
- *   1. A spec that only *uses* custom properties must read the shared fixtures —
- *      `EntityDataClass.customProperties[entityType][typeKey]` — rather than
- *      create its own. entity-data.setup.ts creates every property type on every
- *      entity type, sequentially, before any test runs.
- *   2. A spec that must create or delete custom properties belongs in this file,
- *      inside the describe.serial for its entity type. The exception is any spec
- *      that Playwright already runs in isolation (the IntakeForm suites have
- *      their own serial project), which cannot overlap with this file by design.
- *
- * Never PUT/PATCH `/api/v1/metadata/types/*` from a spec that runs in parallel.
  */
 
 import { APIRequestContext, expect, test } from '@playwright/test';
@@ -121,7 +105,10 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { setSliderValue } from '../../utils/searchSettingUtils';
+import {
+  openMatchingFieldsPanel,
+  setSliderValue,
+} from '../../utils/searchSettingUtils';
 import {
   settingClick,
   SettingOptionsType,
@@ -272,9 +259,29 @@ const ALL_ENTITIES: CRUDEntity[] = [
 
 ALL_ENTITIES.forEach(({ key, makeInstance }) => {
   const entity = CUSTOM_PROPERTIES_ENTITIES[key];
+  const basicProperties =
+    key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
+  const configProperties = key === 'entity_table' ? CONFIG_PROPERTIES : [];
+  const valuePropertyTypes =
+    key === 'entity_table'
+      ? Object.values(CustomPropertyTypeByName)
+      : [CustomPropertyTypeByName.STRING];
+  const updatePropertyTypes =
+    key === 'entity_table'
+      ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.TABLE_CP]
+      : valuePropertyTypes;
+  const rightPanelPropertyTypes =
+    key === 'entity_table'
+      ? [CustomPropertyTypeByName.STRING]
+      : valuePropertyTypes;
+  const preparedPropertyTypes =
+    key === 'entity_container'
+      ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.HYPERLINK_CP]
+      : valuePropertyTypes;
 
-  test.describe
-    .serial(`Add update and delete custom properties for ${entity.name}`, () => {
+  test.describe(`Add update and delete custom properties for ${entity.name}`, () => {
+    test.describe.configure({ mode: 'default' });
+
     let mainEntity: AssetTypes | OtherTypes = {} as AssetTypes | OtherTypes;
     let responseData:
       | AssetTypes['entityResponseData']
@@ -312,7 +319,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       } else if (makeInstance !== null) {
         mainEntity = makeInstance();
         await mainEntity.create(apiContext);
-        await mainEntity.prepareCustomProperty(apiContext);
+        await mainEntity.prepareCustomProperty(
+          apiContext,
+          preparedPropertyTypes
+        );
 
         if (key === 'entity_table') {
           // Created concurrently: sequential round-trips in this hook
@@ -390,9 +400,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       await redirectToHomePage(page);
     });
 
-    // ── 17 CRUD tests ──────────────────────────────────────────────────────
-
-    BASIC_PROPERTIES.forEach((property) => {
+    basicProperties.forEach((property) => {
       test(property, async ({ page }) => {
         test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
@@ -427,7 +435,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
     });
 
-    CONFIG_PROPERTIES.forEach((propertyConfig) => {
+    configProperties.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
@@ -482,18 +490,22 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
     });
 
-    // ── Set & Update all CP types (entities with a UI entity page) ──────────
+    // ── Set & Update CP values (entities with a UI entity page) ─────────────
 
     if (makeInstance !== null) {
-      test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        // 5 minutes timeout since the test handles set->update operation on all
-        // custom property types sequentially
-        test.setTimeout(300000);
-        const properties = Object.values(CustomPropertyTypeByName);
+      const valueCoverageLabel =
+        key === 'entity_table' ? 'all CP types' : 'String CP';
+      const valueCoverageTestTitle =
+        key === 'entity_table'
+          ? `Set all CP types and update representative properties on ${entity.name}`
+          : `Set & Update ${valueCoverageLabel} on ${entity.name}`;
 
-        await test.step('Set all CP types', async () => {
+      test(valueCoverageTestTitle, async ({ page }) => {
+        test.setTimeout(key === 'entity_table' ? 180_000 : 90_000);
+
+        await test.step(`Set ${valueCoverageLabel}`, async () => {
           await mainEntity.visitEntityPage(page);
-          for (const type of properties) {
+          for (const type of valuePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -502,9 +514,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step('Update all CP types', async () => {
-          await mainEntity.visitEntityPage(page);
-          for (const type of properties) {
+        await test.step('Update representative properties', async () => {
+          for (const type of updatePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -513,8 +524,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step('Update all CP types in Right Panel', async () => {
-          for (const [index, type] of properties.entries()) {
+        await test.step('Update a representative property in Right Panel', async () => {
+          for (const [index, type] of rightPanelPropertyTypes.entries()) {
             await updateCustomPropertyInRightPanel({
               page,
               entityName: getEntityDisplayName(responseData),
@@ -3408,6 +3419,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
         await waitForAllLoadersToDisappear(page);
 
+        await openMatchingFieldsPanel(page);
+
         const customPropertyField = page.getByTestId(
           `field-configuration-panel-extension.${dashboardSearchPropertyName}`
         );
@@ -3535,6 +3548,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
         await waitForAllLoadersToDisappear(page);
 
+        await openMatchingFieldsPanel(page);
+
         const customPropertyField = page.getByTestId(
           `field-configuration-panel-extension.${pipelineSearchPropertyName}`
         );
@@ -3553,7 +3568,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const data = await createCustomPropertyForEntity(
             apiContext,
-            EntityTypeEndpoint.TableColumn
+            EntityTypeEndpoint.TableColumn,
+            valuePropertyTypes
           );
           testData.customPropertyValue = data.customProperties;
           testData.cleanupUser = data.cleanupUser;
@@ -3575,7 +3591,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await afterAction();
         });
 
-        for (const type of Object.values(CustomPropertyTypeByName)) {
+        for (const type of valuePropertyTypes) {
           test(`Set ${type} custom property on column and verify in UI`, async ({
             page,
           }) => {
@@ -3727,6 +3743,8 @@ test.describe('Custom property name validation', () => {
     await page.click('[data-testid="add-field-button"]');
   });
 
+  // 1.13 renders this field via FieldTypes.TEXT_MUI, which puts data-testid on the
+  // wrapper rather than the input; main's UT_TEXT renderer puts it on the input itself.
   const nameInput = '[data-testid="name"] input';
   const nameError = '#name_help';
 

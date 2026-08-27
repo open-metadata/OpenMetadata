@@ -448,6 +448,142 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
     return constraint_data
 
 
+def _prepare_constraint_args(self, connection, table_name, schema, **kw):
+    dblink = kw.get("dblink", "")
+    if dblink and not dblink.startswith("@"):
+        dblink = f"@{dblink}"
+
+    if kw.get("oracle_resolve_synonyms", False):
+        rows = list(
+            self._get_synonyms(
+                connection,
+                schema,
+                [table_name],
+                dblink,
+                info_cache=kw.get("info_cache"),
+            )
+        )
+        if rows:
+            row = rows[0]
+            table_name = self.denormalize_name(row.table_name)
+            schema = self.denormalize_name(row.table_owner)
+            if row.db_link:
+                dblink = row.db_link if row.db_link.startswith("@") else f"@{row.db_link}"
+    else:
+        table_name = self.denormalize_name(table_name)
+        schema = self.denormalize_name(schema or self.default_schema_name)
+
+    return table_name, schema, dblink
+
+
+@reflection.cache
+def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+    """Reflect a primary key from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    constrained_columns = []
+    constraint_name = None
+    for row in constraint_data:
+        if row[1] == "P":
+            constraint_name = constraint_name or self.normalize_name(row[0])
+            constrained_columns.append(self.normalize_name(row[2]))
+
+    return {"constrained_columns": constrained_columns, "name": constraint_name}
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    """Reflect unique constraints from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    unique_constraints = {}
+    for row in constraint_data:
+        if row[1] != "U":
+            continue
+        constraint_name = self.normalize_name(row[0])
+        index_name = self.normalize_name(row[10])
+        constraint = unique_constraints.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "column_names": [],
+                "duplicates_index": constraint_name if index_name == constraint_name else None,
+            },
+        )
+        constraint["column_names"].append(self.normalize_name(row[2]))
+
+    return list(unique_constraints.values())
+
+
+@reflection.cache
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+    """Reflect foreign keys from the selected Oracle catalog."""
+    requested_schema = schema
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    foreign_keys = {}
+    for row in constraint_data:
+        if row[1] != "R":
+            continue
+
+        constraint_name = self.normalize_name(row[0])
+        local_column = self.normalize_name(row[2])
+        remote_table = self.normalize_name(row[3])
+        remote_column = self.normalize_name(row[4])
+        remote_owner = self.normalize_name(row[5])
+
+        if remote_table is None:
+            util.warn(
+                f"Got 'None' querying 'table_name' from {_get_table_prefix(self)}_CONS_COLUMNS{dblink}; "
+                "does the user have proper rights to the table?"
+            )
+            continue
+
+        foreign_key = foreign_keys.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "constrained_columns": [],
+                "referred_schema": None,
+                "referred_table": remote_table,
+                "referred_columns": [],
+                "options": {},
+            },
+        )
+        if requested_schema is not None or self.denormalize_name(remote_owner) != schema:
+            foreign_key["referred_schema"] = remote_owner
+        if row[9] != "NO ACTION":
+            foreign_key["options"]["ondelete"] = row[9]
+        foreign_key["constrained_columns"].append(local_column)
+        foreign_key["referred_columns"].append(remote_column)
+
+    return list(foreign_keys.values())
+
+
 # ---------------------------------------------------------------------------
 # Preserve-case variants — bound at instance level only when
 # preserveIdentifierCase=True.  The original functions above are unchanged.

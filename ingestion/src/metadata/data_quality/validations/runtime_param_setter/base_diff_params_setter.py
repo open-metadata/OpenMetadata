@@ -189,6 +189,8 @@ class BaseTableParameter:
             else override_url
         )
         if isinstance(source_url, dict):
+            # Both sides of a same-service diff are handed the same dict
+            source_url = dict(source_url)
             source_url["driver"] = source_url["driver"].split("+")[0]
             return source_url
 

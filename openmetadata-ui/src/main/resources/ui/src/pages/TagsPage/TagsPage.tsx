@@ -39,6 +39,7 @@ import {
 import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
+import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -93,6 +94,8 @@ const TagsPage = () => {
   const [isTagDrawerOpen, setIsTagDrawerOpen] = useState<boolean>(false);
   const [isClassificationDrawerOpen, setIsClassificationDrawerOpen] =
     useState<boolean>(false);
+  const [editClassification, setEditClassification] =
+    useState<Classification>();
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -568,6 +571,20 @@ const TagsPage = () => {
     ]
   );
 
+  const classificationFormPermissions = useMemo(
+    () => ({
+      createTags: createClassificationPermission,
+      editAll: classificationPermissions.EditAll,
+      editDescription:
+        classificationPermissions.EditAll ||
+        classificationPermissions.EditDescription,
+      editDisplayName:
+        classificationPermissions.EditAll ||
+        classificationPermissions.EditDisplayName,
+    }),
+    [createClassificationPermission, classificationPermissions]
+  );
+
   const disableEditButton = useMemo(
     () =>
       !(
@@ -607,13 +624,20 @@ const TagsPage = () => {
 
   const handleClassificationDrawerClose = useCallback(() => {
     setIsClassificationDrawerOpen(false);
+    setEditClassification(undefined);
     classificationForm.resetFields();
   }, [classificationForm]);
 
   const handleClassificationDrawerOpen = useCallback(() => {
+    setEditClassification(undefined);
     setIsClassificationDrawerOpen(true);
     classificationForm.resetFields();
   }, [classificationForm]);
+
+  const handleEditClassificationClick = useCallback(() => {
+    setEditClassification(currentClassification);
+    setIsClassificationDrawerOpen(true);
+  }, [currentClassification]);
 
   const handleTagFormSubmit = useCallback(
     async (formData: CreateTag) => {
@@ -632,13 +656,25 @@ const TagsPage = () => {
     async (formData: CreateClassification) => {
       setIsClassificationFormLoading(true);
       try {
-        await handleCreateClassification(formData);
+        if (editClassification) {
+          await handleUpdateClassification({
+            ...editClassification,
+            ...formData,
+          } as Classification);
+        } else {
+          await handleCreateClassification(formData);
+        }
         handleClassificationDrawerClose();
       } finally {
         setIsClassificationFormLoading(false);
       }
     },
-    [handleCreateClassification, handleClassificationDrawerClose]
+    [
+      editClassification,
+      handleUpdateClassification,
+      handleCreateClassification,
+      handleClassificationDrawerClose,
+    ]
   );
 
   const handleEditTagClick = useCallback(
@@ -778,6 +814,7 @@ const TagsPage = () => {
                 handleActionDeleteTag={handleActionDeleteTag}
                 handleAddNewTagClick={handleAddNewTagClick}
                 handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleEditClassificationClick={handleEditClassificationClick}
                 handleEditTagClick={handleEditTagClick}
                 handleToggleDisable={handleToggleDisable}
                 handleUpdateClassification={handleUpdateClassification}
@@ -809,6 +846,9 @@ const TagsPage = () => {
         editTag={editTag}
         formRef={tagForm}
         isLoading={isTagFormLoading}
+        isParentAutoClassificationEnabled={
+          currentClassification?.autoClassificationConfig?.enabled ?? false
+        }
         isTier={isTier}
         open={isTagDrawerOpen}
         permissions={tagsFormPermissions}
@@ -819,10 +859,15 @@ const TagsPage = () => {
 
       <ClassificationFormDrawer
         classifications={classifications}
+        editClassification={editClassification}
         formRef={classificationForm}
         isLoading={isClassificationFormLoading}
+        isSystemClassification={
+          editClassification?.provider === ProviderType.System
+        }
         isTier={isTier}
         open={isClassificationDrawerOpen}
+        permissions={classificationFormPermissions}
         onClose={handleClassificationDrawerClose}
         onSubmit={handleClassificationFormSubmit}
       />

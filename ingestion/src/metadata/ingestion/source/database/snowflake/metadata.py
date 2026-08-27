@@ -100,7 +100,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
-    SNOWFLAKE_SESSION_TAG_QUERY,
+    set_session_tag_query,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
     _current_database_schema,
@@ -284,7 +284,7 @@ class SnowflakeSource(
             @event.listens_for(self.engine, "connect")
             def _set_query_tag(dbapi_connection, connection_record):
                 cursor = dbapi_connection.cursor()
-                cursor.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag))
+                cursor.execute(set_session_tag_query(query_tag))
                 cursor.close()
 
     def set_partition_details(self) -> None:

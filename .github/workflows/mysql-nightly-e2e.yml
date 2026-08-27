@@ -36,8 +36,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+        shardIndex: [1, 2, 3, 4, 5, 6, 7, 8]
+        shardTotal: [8]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -88,14 +88,25 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
+          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
+            echo "🔹 Running IntakeForm + IntakeFormCustomPropertyFields on shard 2"
+
+            # --project=IntakeForm pulls IntakeFormCustomPropertyFields in as its
+            # dep, so a single invocation runs both specs on this isolated shard.
+            # Neither project declares a chromium dep (see playwright.config.ts) —
+            # they must not run concurrently with the chromium project, but on a
+            # dedicated matrix shard there is nothing else running.
+            npx playwright test \
+              --project=IntakeForm
+
           else
-            # Shards 2-6 handle chromium tests (5 shards total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+            # Shards 3-8 handle chromium tests (6 shards total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
+            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/6"
             npx playwright test \
               --project=chromium \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
+              --shard=${CHROMIUM_SHARD}/6
           fi
 
         env:
@@ -199,12 +210,28 @@ jobs:
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Merge Reports and Generate Slack Notification
+      - name: Merge Reports
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
+
+      # Pinned deliberately. This runs from openmetadata-ui/src/main/resources/ui/,
+      # whose .npmrc sets engine-strict=true, so an engines mismatch in any
+      # transitive dep is a hard npm failure rather than a warning. On
+      # 2026-08-22 the unpinned resolve picked up playwright-slack-report@1.1.113
+      # -> undici@8.10.0 (engines: node >=22.19.0) against this branch's node
+      # 22.17.0, and every nightly went red on EBADENGINE while all 8 shards
+      # were green. 1.1.112 has no undici dependency.
+      #
+      # Posting to Slack is a reporting side-effect, not a test signal, so it
+      # also runs as its own step and never fails the run -- matching the
+      # standalone slack-notify job on main.
+      - name: Generate Slack Notification
+        continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           RUN_TITLE: "MySQL Test for OSS Release: ${{ inputs.branch }}"
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
-          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
-          npx playwright-slack-report -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json
+          npx playwright-slack-report@1.1.112 -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json

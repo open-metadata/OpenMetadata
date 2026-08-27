@@ -11,6 +11,7 @@
 """
 Nox sessions for testing and formatting checks.
 """
+
 import os
 
 import nox
@@ -20,8 +21,6 @@ from nox.virtualenv import PassthroughEnv
 #    - Fix ignored unit tests
 #    - Add integration tests
 #    - Address the TODOs in the code
-
-# TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
 SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11", "3.12"]
 

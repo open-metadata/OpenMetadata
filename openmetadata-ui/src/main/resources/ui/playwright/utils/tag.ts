@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -32,7 +31,6 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -56,16 +54,12 @@ export const visitClassificationPage = async (
   classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
-  const classificationResponse = page.waitForResponse(
-    '/api/v1/classifications?**'
-  );
   const fetchTags = page.waitForResponse(
     (url) =>
       url.url().includes('/api/v1/tags') &&
       url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
-  await sidebarClick(page, SidebarItem.TAGS);
-  await classificationResponse;
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
   await expect(
     page
@@ -73,14 +67,6 @@ export const visitClassificationPage = async (
       .locator('.table-container')
       .getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
-
-  const classificationEntry = page
-    .getByTestId('side-panel-classification')
-    .filter({ hasText: classificationDisplayName })
-    .first();
-
-  await expect(classificationEntry).toBeVisible();
-  await classificationEntry.click();
 
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
@@ -277,8 +263,11 @@ export async function validateForm(page: Page) {
 
   // min length validation
   await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
-  await page.locator('[data-testid="name"]').clear();
-  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MIN_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MIN_LENGTH);
   await page.waitForLoadState('domcontentloaded');
 
   await expect(
@@ -286,8 +275,11 @@ export async function validateForm(page: Page) {
   ).toBeVisible();
 
   // max length validation
-  await page.locator('[data-testid="name"]').clear();
-  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MAX_LENGTH);
   await page.waitForLoadState('domcontentloaded');
 
   await expect(
@@ -295,9 +287,10 @@ export async function validateForm(page: Page) {
   ).toBeVisible();
 
   // with special char validation
-  await page.locator('[data-testid="name"]').clear();
+  await page.getByTestId('name').getByRole('textbox').clear();
   await page
-    .locator('[data-testid="name"]')
+    .getByTestId('name')
+    .getByRole('textbox')
     .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
   await page.waitForLoadState('domcontentloaded');
 
@@ -516,8 +509,11 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
 ];
 
 export const fillTagForm = async (adminPage: Page, domain: Domain) => {
-  await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
-  await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+  await adminPage.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+  await adminPage
+    .getByTestId('displayName')
+    .getByRole('textbox')
+    .fill(NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.getByTestId('icon-picker-btn').click();
   await adminPage

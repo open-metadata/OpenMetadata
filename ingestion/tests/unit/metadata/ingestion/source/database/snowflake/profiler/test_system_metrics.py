@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 import pytest
 from sqlalchemy.engine.result import IteratorResult, SimpleResultMetaData
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import coercions, roles
 
 from metadata.generated.schema.entity.data.table import (
     DmlOperationType,
@@ -128,6 +129,55 @@ def test_get_identifiers(
         assert expected_value == resolver.resolve_snowflake_fqn(
             context_database, context_schema, identifier
         )
+
+
+def show_tables_session(rows):
+    """Build a session double that applies SQLAlchemy 2.x statement coercion and yields rows."""
+
+    class _Session:
+        def execute(self, statement):
+            coercions.expect(roles.StatementRole, statement)
+            metadata = SimpleResultMetaData(
+                ["created_on", "name", "database_name", "schema_name"]
+            )
+            return IteratorResult(metadata, iter(rows))
+
+    return _Session()
+
+
+def show_tables_row(name):
+    return ("2026-07-20 00:00:00", name, "MY_DB", "MY_SCHEMA")
+
+
+def test_show_tables_statement_is_accepted_by_sqlalchemy_2x():
+    resolver = SnowflakeTableResovler(
+        show_tables_session([show_tables_row("MY_TABLE")])
+    )
+
+    assert resolver.show_tables("MY_DB", "MY_SCHEMA", "MY_TABLE")[1] == "MY_TABLE"
+
+
+def test_show_tables_matches_uppercase_stored_identifiers():
+    resolver = SnowflakeTableResovler(
+        show_tables_session([show_tables_row("MY_TABLE")])
+    )
+
+    assert resolver.show_tables("my_db", "my_schema", "my_table")[1] == "MY_TABLE"
+
+
+def test_show_tables_skips_rows_matched_only_by_like_wildcards():
+    rows = [show_tables_row("MYATABLE"), show_tables_row("MY_TABLE")]
+    resolver = SnowflakeTableResovler(show_tables_session(rows))
+
+    assert resolver.show_tables("my_db", "my_schema", "my_table")[1] == "MY_TABLE"
+
+
+def test_show_tables_returns_none_when_only_wildcard_matches_exist():
+    resolver = SnowflakeTableResovler(
+        show_tables_session([show_tables_row("MYATABLE")])
+    )
+
+    assert resolver.show_tables("my_db", "my_schema", "my_table") is None
 
 
 class TestSnowflakeSystemMetricsComputerDynamicTable:

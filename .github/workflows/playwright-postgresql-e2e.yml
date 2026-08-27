@@ -189,7 +189,7 @@ jobs:
               --project=DataAssetRulesDisabled \
               --project=Basic \
               --project="Data Insight" \
-              --project=SearchRBAC \
+              --project=SearchRBAC
 
           else
             # Shards 2-6 run common chromium tests equally distributed (5-way sharding)
@@ -273,6 +273,45 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: playwright-results-json-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+      # Intake Form tests mutate global form requirements and must not overlap
+      # projects that create domains or data products. The primary artifacts are
+      # uploaded first because this second Playwright run clears its output paths.
+      - name: Run isolated Intake Form tests
+        id: run-intake-tests
+        if: >-
+          ${{ !cancelled() && matrix.shardIndex == 1 &&
+              (steps.run-tests.outcome == 'success' || steps.run-tests.outcome == 'failure') }}
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: npx playwright test --project=IntakeForm
+        env:
+          PLAYWRIGHT_IS_OSS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Intake Form Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && matrix.shardIndex == 1 && steps.run-intake-tests.outcome != 'skipped' }}
+        with:
+          name: playwright-report-1-intake
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          retention-days: 5
+
+      - name: Upload Intake Form test results (screenshots, traces)
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && matrix.shardIndex == 1 && steps.run-intake-tests.outcome != 'skipped' }}
+        with:
+          name: playwright-test-results-1-intake
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          retention-days: 5
+
+      - name: Upload Intake Form results JSON for summary
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && matrix.shardIndex == 1 && steps.run-intake-tests.outcome != 'skipped' }}
+        with:
+          name: playwright-results-json-1-intake
           path: openmetadata-ui/src/main/resources/ui/playwright/output/results.json
           retention-days: 1
           if-no-files-found: ignore

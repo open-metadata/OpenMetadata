@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
+import { lazy } from 'react';
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
 import {
@@ -22,8 +24,95 @@ import {
   getUniqueFilteredLayout,
   getWidgetWidthLabelFromKey,
 } from './CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from './CustomizableLandingPageUtils';
+import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
+
+jest.mock(
+  '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper',
+  () => ({
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children, loading }) => (
+      <div data-loading={String(Boolean(loading))} data-testid="widget-wrapper">
+        {children}
+      </div>
+    )),
+  })
+);
 
 describe('CustomizableLandingPageUtils', () => {
+  describe('getWidgetFromKey', () => {
+    // Keep the lazy component pending so each assertion observes the Suspense fallback.
+    const PendingWidget = lazy(() => new Promise(() => undefined));
+
+    beforeEach(() => {
+      jest
+        .spyOn(customizeMyDataPageClassBase, 'getWidgetsFromKey')
+        .mockReturnValue(PendingWidget);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should render normal widget chunks without a per-widget loader', () => {
+      const { container } = render(
+        getWidgetFromKey({
+          widgetConfig: {
+            h: 3,
+            i: 'KnowledgePanel.ActivityFeed',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.queryByTestId('widget-wrapper')).not.toBeInTheDocument();
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('should preserve widget slots while edit-mode chunks load', () => {
+      render(
+        getWidgetFromKey({
+          isEditView: true,
+          widgetConfig: {
+            h: 3,
+            i: 'KnowledgePanel.ActivityFeed',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+    });
+
+    it('should render empty placeholders immediately', () => {
+      render(
+        getWidgetFromKey({
+          handleOpenAddWidgetModal: jest.fn(),
+          handlePlaceholderWidgetKey: jest.fn(),
+          widgetConfig: {
+            h: 3,
+            i: 'ExtraWidget.EmptyWidgetPlaceholder',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.getByTestId('add-widget-button')).toBeInTheDocument();
+    });
+  });
+
   describe('getNewWidgetPlacement', () => {
     it('should place widget in same row if space available', () => {
       const currentLayout = [

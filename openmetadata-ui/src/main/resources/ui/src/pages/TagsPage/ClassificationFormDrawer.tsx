@@ -16,6 +16,7 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { isUndefined } from 'lodash';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsForm from './TagsForm';
@@ -27,10 +28,14 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
   classifications,
   isTier,
   isLoading,
+  editClassification,
+  isSystemClassification,
+  permissions,
   onClose,
   onSubmit,
 }) => {
   const { t } = useTranslation();
+  const isEditing = !isUndefined(editClassification);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -52,7 +57,11 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         <>
           <SlideoutMenu.Header data-testid="drawer-header" onClose={close}>
             <Typography as="h4" data-testid="drawer-heading">
-              {t('label.adding-new-classification')}
+              {isEditing
+                ? t('label.edit-entity', {
+                    entity: t('label.classification'),
+                  })
+                : t('label.adding-new-classification')}
             </Typography>
           </SlideoutMenu.Header>
 
@@ -62,8 +71,11 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
               showMutuallyExclusive
               data={classifications}
               formRef={formRef}
-              isEditing={false}
+              initialValues={editClassification}
+              isEditing={isEditing}
+              isSystemTag={isSystemClassification}
               isTier={isTier}
+              permissions={permissions}
               onSubmit={onSubmit}
             />
           </SlideoutMenu.Content>

@@ -273,10 +273,14 @@
 
 // lineage
 .lineage-card {
+  display: flex;
+  flex-direction: column;
+  height: @asset-details-tab-pane-height;
+
   .ant-card-body {
-    height: calc(
-      @asset-details-tab-pane-height - @lineage-card-header-height
-    ); // 280 for  DataAsset header
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   // lineage and it's children's always should be ltr
@@ -309,12 +313,7 @@
   }
 
   .lineage-card {
-    .ant-card-body {
-      // Navbar - breadcrumb
-      height: calc(100vh - @om-navbar-height - 140px);
-      // 120px for card header and breadcrumb + bottom padding 20px
-      overflow-y: auto;
-    }
+    height: calc(100vh - @om-navbar-height - 50px);
   }
 
   .entity-panel-container {

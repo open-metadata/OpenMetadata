@@ -28,7 +28,7 @@ import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getDeleteButtonData } from './ClassificationPureUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
+import { Icon } from '../components/common/Icon/Icon';
 import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
@@ -87,11 +87,11 @@ export const getCommonColumns = (options?: {
       width: 200,
       render: (_, record) => (
         <div className="d-flex items-center gap-2">
-          {record.style?.iconURL &&
-            renderIcon(record.style.iconURL, {
-              size: 18,
-              className: 'flex-shrink-0',
-            })}
+          <Icon
+            className="flex-shrink-0"
+            iconValue={record.style?.iconURL}
+            size={18}
+          />
           <Link
             className="m-b-0"
             data-testid={record.name}
@@ -218,8 +218,28 @@ export const getTagsTableColumn = ({
 export const getClassificationExtraDropdownContent = (
   showDisableOption: boolean,
   isClassificationDisabled: boolean,
-  handleEnableDisableClassificationClick: () => void
+  handleEnableDisableClassificationClick: () => void,
+  showEditOption = false,
+  handleEditClassificationClick: () => void = () => undefined
 ) => [
+  ...(showEditOption
+    ? [
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('label.update-entity', {
+                entity: t('label.classification'),
+              })}
+              icon={EditIcon}
+              id="edit-classification"
+              name={t('label.edit')}
+            />
+          ),
+          key: 'edit-classification-button',
+          onClick: handleEditClassificationClick,
+        },
+      ]
+    : []),
   ...(showDisableOption
     ? [
         {

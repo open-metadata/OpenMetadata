@@ -14,6 +14,7 @@
 import { Chip, ChipProps as MuiChipProps, SxProps, Theme } from '@mui/material';
 import { Tag01, XClose } from '@untitledui/icons';
 import { FC, ReactElement } from 'react';
+import { reduceColorOpacity } from '../../../../utils/ColorUtils';
 
 export interface TagChipProps extends Omit<MuiChipProps, 'variant' | 'color'> {
   label: string;
@@ -48,31 +49,33 @@ const TagChip: FC<TagChipProps> = ({
   ) : undefined;
   const chipIcon = icon !== undefined ? icon : defaultIcon;
 
-  const ellipsisStyles = showEllipsis
-    ? {
-        '& .MuiChip-label': {
+  const labelStyles = {
+    ...(showEllipsis
+      ? {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
           display: 'block',
-        },
-      }
-    : {};
+        }
+      : {}),
+    ...(tagColor ? { color: tagColor } : {}),
+  };
 
   const colorBarStyles = tagColor
     ? {
         position: 'relative' as const,
+        overflow: 'hidden',
         paddingLeft: '12px',
+        backgroundColor: reduceColorOpacity(tagColor, 0.05),
+        borderColor: reduceColorOpacity(tagColor, 0.2),
         '&::before': {
           content: '""',
           position: 'absolute' as const,
           left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '3px',
-          height: '70%',
+          top: 0,
+          bottom: 0,
+          width: '6px',
           backgroundColor: tagColor,
-          borderRadius: '2px 0 0 2px',
         },
       }
     : {};
@@ -104,12 +107,13 @@ const TagChip: FC<TagChipProps> = ({
       sx={{
         maxWidth,
         minWidth: 0,
-        ...ellipsisStyles,
         ...colorBarStyles,
         ...heightStyles,
+        '& .MuiChip-label': labelStyles,
         '& .MuiChip-icon': {
           flexShrink: 0,
           marginLeft: 0,
+          ...(tagColor ? { color: tagColor } : {}),
         },
         ...sx,
       }}

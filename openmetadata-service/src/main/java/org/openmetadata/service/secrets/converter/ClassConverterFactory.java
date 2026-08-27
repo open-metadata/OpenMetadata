@@ -57,6 +57,7 @@ import org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConne
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
+import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
@@ -117,6 +118,7 @@ public final class ClassConverterFactory {
             Map.entry(Workflow.class, new WorkflowClassConverter()),
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
+            Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
             Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),

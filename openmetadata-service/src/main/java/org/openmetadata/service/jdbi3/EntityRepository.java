@@ -6150,7 +6150,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>Subclasses with non-CONTAINS related entities (e.g., dashboard charts attached via HAS)
    * should override {@link #hardDeleteAdditionalChildren(UUID, String)}. Subclasses that need true
    * batched external cleanup (Airflow DAGs, S3, secrets stores) can override
-   * {@link #bulkEntitySpecificCleanup(List)}; the default loops the per-entity hook.
+   * {@link #bulkEntitySpecificCleanup(List, String)}; the default loops the per-entity hook.
    *
    * <p><b>Concurrency:</b> relationship rows and entity rows are deleted as separate auto-committed
    * statements (these are plain {@code EntityRepository} calls, not JDBI SqlObject proxies, so a
@@ -6197,7 +6197,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
           true,
           updatedBy);
-      bulkEntitySpecificCleanup(entities);
+      bulkEntitySpecificCleanup(entities, updatedBy);
       // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
       // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
       // those relationship rows.
@@ -6379,13 +6379,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Hook for entity-type-specific cleanup invoked once per bulk-hard-delete batch. Default
-   * implementation loops {@link #entitySpecificCleanup(EntityInterface)} so subclasses keep
-   * current behavior. Override for true batching where external resources warrant it (e.g.,
+   * implementation loops {@link #entitySpecificCleanup(String, EntityInterface)} so subclasses
+   * keep current behavior. Override for true batching where external resources warrant it (e.g.,
    * Airflow DAG deregistration, S3 object cleanup, secrets-store purges).
    */
-  protected void bulkEntitySpecificCleanup(List<T> entities) {
+  protected void bulkEntitySpecificCleanup(List<T> entities, String deletedBy) {
     for (T entity : entities) {
-      entitySpecificCleanup(entity);
+      // Must be the deletedBy-aware overload: TableRepository overrides only that one (its
+      // residual test case / test suite sweep credits the operator), and dispatching to the
+      // no-arg variant silently skipped it for every entity deleted through an ancestor cascade.
+      entitySpecificCleanup(deletedBy, entity);
     }
   }
 
@@ -10709,6 +10712,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setOwners(ownersMap.getOrDefault(entity.getId(), entity.getOwners()));
       entity.setDomains(domainsMap.getOrDefault(entity.getId(), entity.getDomains()));
     }
+  }
+
+  /**
+   * Batch-loads tags onto these entities in one query, for authorization. Used by the bulk path so a
+   * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
+   */
+  public void batchLoadTags(List<T> entities) {
+    fetchAndSetTags(entities, getFields(FIELD_TAGS));
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {

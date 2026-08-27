@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
@@ -160,6 +161,13 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
+
+  /**
+   * Upper bound on parent ids packed into a single inherited-domain child-propagation terms query,
+   * kept well under Elasticsearch's default {@code index.max_terms_count} (65536). A normal move
+   * carries far fewer and stays one update-by-query.
+   */
+  private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
   private Map<String, IndexMapping> aliasIndexMap;
@@ -1474,6 +1482,29 @@ public class SearchRepository {
   }
 
   /**
+   * Re-index a moved asset AND propagate its (re-derived) domains to its inherited descendants in
+   * search. Used by the Domain-page asset add/remove route: on add the re-read domains are the newly
+   * assigned domain; on remove they are whatever the asset now inherits from its own ancestry (or
+   * none). Reuses the same rebuilt-from-DB read {@link #updateEntity(EntityReference)} performs, then
+   * fans the same re-derived domains out to children through the inherited-guarded {@code
+   * ADD_DOMAINS_SCRIPT}, leaving descendants with an explicit domain untouched.
+   */
+  public void updateEntityAndPropagateInheritedDomainsToChildren(EntityReference entityReference) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+    EntityInterface entity =
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+    entity.setChangeDescription(null);
+    updateEntityIndex(entity);
+    propagateInheritedDomainsForType(
+        entityReference.getType(),
+        List.of(entityReference.getId()),
+        listOrEmpty(entity.getDomains()));
+  }
+
+  /**
    * Bulk update multiple entities in the search index. This is much more efficient than calling
    * updateEntity() for each entity individually.
    *
@@ -1799,6 +1830,77 @@ public class SearchRepository {
       }
     }
     return entityType + ".id";
+  }
+
+  /**
+   * Pushes a moved asset's new domains onto its inherited descendants in search. The asset-move
+   * routes (data product domain change, Domain page asset move) reindex only the direct asset's own
+   * doc, so descendants that inherit their domain keep the stale value in search even though the
+   * entity page recomputes it on read. This mirrors the child fan-out a normal entity update
+   * performs, reusing {@code ADD_DOMAINS_SCRIPT} which overwrites a child only when its domain is
+   * empty or inherited, leaving descendants that carry an explicit domain untouched.
+   */
+  public void propagateInheritedDomainsToChildren(
+      List<EntityReference> assets, List<EntityReference> newDomains) {
+    if (!nullOrEmpty(assets)) {
+      Map<String, List<UUID>> assetIdsByType =
+          assets.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      EntityReference::getType,
+                      Collectors.mapping(EntityReference::getId, Collectors.toList())));
+      assetIdsByType.forEach(
+          (entityType, assetIds) ->
+              propagateInheritedDomainsForType(entityType, assetIds, newDomains));
+    }
+  }
+
+  private void propagateInheritedDomainsForType(
+      String entityType, List<UUID> assetIds, List<EntityReference> newDomains) {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    List<String> childAliases =
+        indexMapping == null
+            ? List.of()
+            : filterChildAliasesByCapability(
+                indexMapping, capability -> capability == null || !capability.isTimeSeries());
+    if (!nullOrEmpty(childAliases)) {
+      Pair<String, Map<String, Object>> updates = buildInheritedDomainUpdate(newDomains);
+      String parentField = resolveParentFieldName(entityType, updates);
+      List<String> parentIds = assetIds.stream().map(UUID::toString).toList();
+      // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count on an
+      // extreme bulk move; a normal move stays a single update-by-query.
+      for (int start = 0; start < parentIds.size(); start += MAX_PARENT_IDS_PER_TERMS_QUERY) {
+        List<String> chunk =
+            List.copyOf(
+                parentIds.subList(
+                    start, Math.min(start + MAX_PARENT_IDS_PER_TERMS_QUERY, parentIds.size())));
+        updateChildrenForInheritedDomains(childAliases, parentField, chunk, updates, entityType);
+      }
+    }
+  }
+
+  private Pair<String, Map<String, Object>> buildInheritedDomainUpdate(
+      List<EntityReference> newDomains) {
+    List<EntityReference> inheritedDomains =
+        newDomains == null
+            ? new ArrayList<>()
+            : JsonUtils.deepCopyList(newDomains, EntityReference.class);
+    inheritedDomains.forEach(domain -> domain.setInherited(true));
+    return new ImmutablePair<>(ADD_DOMAINS_SCRIPT, Map.of("updatedDomains", inheritedDomains));
+  }
+
+  private void updateChildrenForInheritedDomains(
+      List<String> childAliases,
+      String parentField,
+      List<String> parentIds,
+      Pair<String, Map<String, Object>> updates,
+      String entityType) {
+    try {
+      searchClient.updateChildren(childAliases, parentField, parentIds, updates);
+    } catch (IOException e) {
+      String reason = SearchIndexRetryQueue.failureReason("propagateInheritedDomainsToChildren", e);
+      parentIds.forEach(id -> SearchIndexRetryQueue.enqueue(id, null, entityType, reason));
+    }
   }
 
   private void propagateToDomainChildren(
@@ -2313,14 +2415,20 @@ public class SearchRepository {
 
   private String generateRemoveListScript(String fieldName) {
     String cap = capitalizeFirst(fieldName);
+    // Re-add the (inherited) refs only when the child keeps no explicit value of its own.
+    // A domain/owner change is recorded as delete-old + add-new, so this delete branch runs with
+    // params.removed<Field> holding the parent's NEW inherited refs; without the emptiness guard it
+    // would append them onto children that carry an explicit value, matching generateAddListScript.
     return String.format(
         """
         if (ctx._source.%s != null) {
           ctx._source.%s.removeIf(item -> item.inherited == true);
-          ctx._source.%s.addAll(params.removed%s);
+          if (ctx._source.%s.isEmpty()) {
+            ctx._source.%s.addAll(params.removed%s);
+          }
         }
         """,
-        fieldName, fieldName, fieldName, cap);
+        fieldName, fieldName, fieldName, fieldName, cap);
   }
 
   private String generateAddTagLabelListScript() {
@@ -2592,10 +2700,14 @@ public class SearchRepository {
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
       case Entity.DOMAIN -> {
+        // Assets store the domain in the plural "domains" array, so strip the deleted domain from
+        // every referencing asset by matching domains.id. Matching the singular "domain" field left
+        // stale references behind, which a same-named recreated domain then inherited (#28923).
         searchClient.updateChildren(
             GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>(entityType + ".id", docId),
-            new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+            new ImmutablePair<>("domains.id", docId),
+            new ImmutablePair<>(
+                REMOVE_DOMAINS_CHILDREN_SCRIPT, Collections.singletonMap("id", docId)));
         // we are doing below because we want to delete the data products with domain when domain is
         // deleted
         searchClient.deleteEntityByFields(
@@ -3134,6 +3246,17 @@ public class SearchRepository {
       throws IOException {
     return searchClient.aggregate(
         query, entityType, searchAggregation, filter.getCondition(entityType));
+  }
+
+  public JsonObject aggregate(
+      String query,
+      String entityType,
+      SearchAggregation searchAggregation,
+      SearchListFilter filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType), subjectContext);
   }
 
   public DataQualityReport genericAggregation(

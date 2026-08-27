@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.13.1</version>
+    <version>1.13.5</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -29,7 +29,7 @@
     <logback-core.version>1.5.36</logback-core.version>
     <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>24.0.0</kubernetes-client.version>
+    <kubernetes-client.version>25.0.1</kubernetes-client.version>
   </properties>
 
   <dependencyManagement>
@@ -826,10 +826,13 @@
       <version>${quartz.version}</version>
     </dependency>
     <!-- Needed for Quartz -->
+    <!-- 0.14.1 clears CVE-2026-55223 (deserialization sink via DataSource
+         property lookup); natively depends on mchange-commons-java 0.6.1 which
+         also clears SNYK-JAVA-COMMCHANGE-17796416. -->
     <dependency>
       <groupId>com.mchange</groupId>
       <artifactId>c3p0</artifactId>
-      <version>0.12.0</version>
+      <version>0.14.1</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
@@ -971,7 +974,7 @@
     <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
-      <version>1.1.5</version>
+      <version>1.1.8</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>

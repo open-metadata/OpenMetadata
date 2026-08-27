@@ -518,6 +518,55 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
+      return;
+    }
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+
+    client.updateByQuery(
+        u ->
+            u.index(indexNames)
+                .query(anyOfFieldQuery(field, values))
+                .conflicts(Conflicts.Proceed)
+                .script(
+                    s ->
+                        s.source(ss -> ss.scriptString(updates.getKey()))
+                            .lang(ScriptLanguage.Painless)
+                            .params(params))
+                .refresh(true));
+
+    LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
+  }
+
+  private Query anyOfFieldQuery(String field, List<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    Query termsOnField =
+        Query.of(q -> q.terms(t -> t.field(field).terms(tv -> tv.value(fieldValues))));
+    Query result;
+    if (field.endsWith(".keyword")) {
+      result = termsOnField;
+    } else {
+      Query termsOnKeyword =
+          Query.of(
+              q -> q.terms(t -> t.field(field + ".keyword").terms(tv -> tv.value(fieldValues))));
+      result =
+          Query.of(
+              q ->
+                  q.bool(
+                      b -> b.should(termsOnField).should(termsOnKeyword).minimumShouldMatch("1")));
+    }
+    return result;
+  }
+
+  @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot get document by ID.");

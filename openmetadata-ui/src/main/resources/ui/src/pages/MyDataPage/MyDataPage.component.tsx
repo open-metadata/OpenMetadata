@@ -26,7 +26,7 @@ import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
 import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -38,6 +38,7 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -99,11 +100,12 @@ const MyDataPage = () => {
 
         setPersonaPreferences(docData.data?.personPreferences ?? []);
 
-        const pageData = docData.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.LandingPage
-        ) ?? { layout: [], pageType: PageType.LandingPage };
+        const pageData = getPersonaPage(docData, PageType.LandingPage);
+        const customizedLayout = Array.isArray(pageData?.layout)
+          ? (pageData.layout as WidgetConfig[])
+          : [];
 
-        const filteredLayout = pageData.layout
+        const filteredLayout = customizedLayout
           .filter(
             (widget: WidgetConfig) =>
               !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||

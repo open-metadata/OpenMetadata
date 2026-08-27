@@ -63,6 +63,7 @@ public class CreateDomainTool implements McpTool {
     if (params.containsKey("tags")) {
       create.setTags(CommonUtils.buildTagLabels(params.get("tags")));
     }
+    create.setExtension(CommonUtils.extension(params));
 
     final DomainMapper mapper = new DomainMapper();
     final Domain entity = mapper.createToEntity(create, CommonUtils.principal(securityContext));

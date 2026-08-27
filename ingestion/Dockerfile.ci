@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.2.2-python3.12
+FROM apache/airflow:3.3.0-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -94,7 +94,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
-COPY --chown=airflow:0 ingestion/airflow-constraints-3.2.2.txt /home/airflow/airflow-constraints-3.2.2.txt
+COPY --chown=airflow:0 ingestion/airflow-constraints-3.3.0.txt /home/airflow/airflow-constraints-3.3.0.txt
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
 # pip upgrade below only reaches ~/.local, leaving the base image's
@@ -122,17 +122,17 @@ RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 # Install FAB provider for Airflow 3.x Flask Blueprint compatibility
-RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.2.2.txt" || true
+RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.3.0.txt" || true
 
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.2.2.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.3.0.txt"
 
 WORKDIR /home/airflow/ingestion
 
-# Pre-install the unmaintained dialect package that declares SQLAlchemy<2 in its
-# metadata but works at runtime with SQLAlchemy 2.0.
-RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3"
+# Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
+# but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
+RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.64.0"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
@@ -161,10 +161,27 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 RUN mkdir -p /opt/airflow/dag_generated_configs
 
 EXPOSE 8080
-# Airflow 3.2.2 requires universal-pathlib>=0.3.8, but prior installs in this image
+# Airflow 3.3.0 requires universal-pathlib>=0.3.8, but prior installs in this image
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
 
+
+# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
+# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
+# final pip install, or a later install restores the fixture.
+COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
+RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
+
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+
+# Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
+# That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their
+# setup.py and 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x
+# on disk is what keeps scanners reporting CVE-2026-59890.
+# This must remain the final layer in the file -- after `airflow db migrate` as well as after
+# the last pip install. Anything that compiles a package needing pkg_resources, or that runs
+# an import chain still using it, would fail once it is gone, and the error would not look
+# like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"

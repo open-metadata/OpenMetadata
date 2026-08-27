@@ -62,6 +62,7 @@ public class CreateDataProductTool implements McpTool {
     if (params.containsKey("tags")) {
       create.setTags(CommonUtils.buildTagLabels(params.get("tags")));
     }
+    create.setExtension(CommonUtils.extension(params));
 
     final DataProductMapper mapper = new DataProductMapper();
     final DataProduct entity =
