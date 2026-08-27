@@ -239,7 +239,7 @@ def test_self_registration_serializes_default_source_config_type():
     assert "type" not in source_config.model_dump(exclude_unset=True)
 
     request = _self_registration_request(source_config)
-    payload = json.loads(request.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+    payload = json.loads(request.model_dump_json(context={"mask_secrets": False}, by_alias=True, exclude_unset=True))
 
     assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
     assert "type" not in source_config.model_dump(exclude_unset=True)
