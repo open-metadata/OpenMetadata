@@ -70,13 +70,14 @@ const coreAdapter: ParityAdapter = {
   openFilter: () => {
     press(screen.getByLabelText('filter'));
   },
-  queryPageSizeControl: () =>
-    screen.queryByTestId('page-size-selection-dropdown'),
+  queryPageSizeControl: () => screen.queryByTestId('rows-per-page-dropdown'),
   getSelectAllControl: () =>
     document.querySelector(
       'thead input[type="checkbox"]'
     ) as HTMLElement | null,
-  queryPager: () => screen.queryByTestId('pagination'),
+  // The core pager has no single root test id; its next control stands in for
+  // "a pager is on screen".
+  queryPager: () => screen.queryByTestId('next'),
   toggleExpander: (label) => {
     const row = screen
       .getAllByRole('row')
@@ -562,5 +563,56 @@ describe('TableV2 — cells confine their content', () => {
     const cell = screen.getAllByRole('row')[1].querySelector('td, th');
 
     expect((cell as HTMLElement).className).toContain('tw:break-words');
+  });
+});
+
+/**
+ * TableV2-only: AntD renders its own numbered pager, the core one is a
+ * different control, so there is no shared DOM to compare. What matters is
+ * that both ways of changing the page reach the parent — for a server-paged
+ * table `onChange` is the only signal it has to refetch on.
+ */
+describe('TableV2 — the pager reaches the parent', () => {
+  const renderPaged = (onChange: jest.Mock) =>
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={{
+          current: 1,
+          pageSize: 10,
+          pageSizeOptions: ['10', '25'],
+          showSizeChanger: true,
+          total: 40,
+        }}
+        rowKey="name"
+        onChange={onChange}
+      />
+    );
+
+  it('reports a page change', () => {
+    const onChange = jest.fn();
+    renderPaged(onChange);
+
+    fireEvent.click(screen.getByTestId('next'));
+
+    expect(onChange.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ current: 2 })
+    );
+  });
+
+  it('reports a page-size change', () => {
+    const onChange = jest.fn();
+    renderPaged(onChange);
+
+    // The test id sits on the Select wrapper; its button is the trigger.
+    press(
+      within(screen.getByTestId('rows-per-page-dropdown')).getByRole('button')
+    );
+    press(screen.getByTestId('rows-per-page-option-25'));
+
+    expect(onChange.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ pageSize: 25 })
+    );
   });
 });
