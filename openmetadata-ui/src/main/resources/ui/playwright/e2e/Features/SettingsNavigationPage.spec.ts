@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -441,7 +441,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(treeItems.first()).toBeVisible();
 
     const testLibraryItem = treeItems.getByTitle('label.test-library');
-    const overviewItem = treeItems.getByTitle('label.overview');
+    const overviewItem = treeItems.getByTitle('label.overview').first();
     const dataMarketplaceItem = treeItems.getByTitle(
       'label.data-marketplace-section'
     );
