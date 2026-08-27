@@ -31,6 +31,18 @@ export class MetricClass extends EntityClass {
     metricType: string;
     displayName: string;
     unitOfMeasurement: string;
+    dimensions?: {
+      name: string;
+      type: string;
+      expression: string;
+      description: string;
+    }[];
+    measures?: {
+      name: string;
+      aggregation: string;
+      expression: string;
+      description: string;
+    }[];
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
@@ -51,6 +63,28 @@ export class MetricClass extends EntityClass {
       metricType: 'SUM',
       displayName: this.metricName,
       unitOfMeasurement: 'DOLLARS',
+      dimensions: [
+        {
+          name: 'order_date',
+          type: 'TIME',
+          expression: "DATE_TRUNC('day', o.created_at)",
+          description: 'Day the order was placed.',
+        },
+        {
+          name: 'region',
+          type: 'CATEGORICAL',
+          expression: 'c.region',
+          description: 'Customer billing region.',
+        },
+      ],
+      measures: [
+        {
+          name: 'engagements',
+          aggregation: 'SUM',
+          expression: 'likes + comments + shares',
+          description: 'Total interactions across all engagement types.',
+        },
+      ],
     };
 
     this.type = 'Metric';

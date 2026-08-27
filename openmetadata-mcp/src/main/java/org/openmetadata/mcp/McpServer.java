@@ -69,6 +69,19 @@ public class McpServer implements McpServerProvider {
     addStatelessTransport(contextHandler, tools, prompts, config);
   }
 
+  /**
+   * Advertises only the features this server can actually handle.
+   *
+   * <p>Clients trust what we advertise and call it. If we claim a capability we have no handler for,
+   * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
+   * handler (VSCode used to call it), and no resources, because no resources are registered here.
+   * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
+   * replaced with subscriptions/listen.
+   */
+  protected McpSchema.ServerCapabilities buildServerCapabilities() {
+    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
+  }
+
   protected List<McpSchema.Tool> getTools() {
     return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
   }
@@ -83,12 +96,7 @@ public class McpServer implements McpServerProvider {
       List<McpSchema.Prompt> prompts,
       OpenMetadataApplicationConfig config) {
     try {
-      McpSchema.ServerCapabilities serverCapabilities =
-          McpSchema.ServerCapabilities.builder()
-              .tools(true)
-              .prompts(true)
-              .resources(true, true)
-              .build();
+      McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
       String baseUrl = getBaseUrlFromConfig();

@@ -55,7 +55,9 @@ export const visitClassificationPage = async (
 ) => {
   await redirectToHomePage(page);
   const fetchTags = page.waitForResponse(
-    `/api/v1/tags?*parent=${classificationName}**`
+    (url) =>
+      url.url().includes('/api/v1/tags') &&
+      url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 

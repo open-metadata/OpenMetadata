@@ -21,6 +21,7 @@ import pytest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.api.status import Status
 
 from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
@@ -73,6 +74,9 @@ class TableauExpectedValues:
         "order_id",
         "quantity",
     ]
+
+    # Calculated fields keep the RECORD wrapper; every other field collapses
+    EXPECTED_RECORD_FIELDS = {"Sales Summary (Custom SQL)"}  # noqa: RUF012
 
     # Expected tags
     EXPECTED_TAGS = ["Analytics", "workbook"]  # noqa: RUF012
@@ -504,13 +508,23 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             if hasattr(datamodel, "columns") and datamodel.columns:
                 for column in datamodel.columns:
                     if hasattr(column, "dataType") and column.dataType:
-                        # Check if field type matches expected
-                        field_type = str(column.dataType)
-                        self.assertIn(
-                            "DataType.RECORD",
-                            field_type,
-                            f"Field '{column.name.root}' should have tableau-related type",
-                        )
+                        if column.displayName in TableauExpectedValues.EXPECTED_RECORD_FIELDS:
+                            self.assertEqual(
+                                column.dataType,
+                                DataType.RECORD,
+                                f"Calculated field '{column.displayName}' should keep the RECORD wrapper",
+                            )
+                        else:
+                            self.assertNotEqual(
+                                column.dataType,
+                                DataType.RECORD,
+                                f"Field '{column.displayName}' should have collapsed to its real type",
+                            )
+                            self.assertNotEqual(
+                                column.dataType,
+                                DataType.UNKNOWN,
+                                f"Field '{column.displayName}' should have a resolved type",
+                            )
 
     @pytest.mark.order(11)
     def test_lineage(self) -> None:

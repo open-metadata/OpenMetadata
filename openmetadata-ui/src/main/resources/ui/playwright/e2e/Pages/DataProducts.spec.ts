@@ -403,11 +403,18 @@ test.describe('Data Products', () => {
 
     await test.step('Verify empty state is shown', async () => {
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-      await expect(page.getByTestId('data-product-add-button')).toBeVisible();
+      await expect(
+        page
+          .getByTestId('no-data-placeholder')
+          .getByRole('button', { name: 'Add Data Product' })
+      ).toBeVisible();
     });
 
     await test.step('Click add button from empty state', async () => {
-      await page.getByTestId('data-product-add-button').click();
+      await page
+        .getByTestId('no-data-placeholder')
+        .getByRole('button', { name: 'Add Data Product' })
+        .click();
 
       await expect(
         page.getByRole('heading', { name: /add data product/i })

@@ -130,6 +130,14 @@ jest.mock(
   })
 );
 
+jest.mock('../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    navigation: null,
+    isLoading: false,
+  }),
+}));
+
 const mockProps: GlossaryV1Props = {
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,

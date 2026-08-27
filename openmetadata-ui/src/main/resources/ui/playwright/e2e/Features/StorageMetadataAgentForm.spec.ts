@@ -14,6 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -233,6 +234,123 @@ test.describe(
         ).CodeMirror.getValue()
       );
       expect(value).toBe('{x}');
+    });
+  }
+);
+
+const openAutoClassificationAgentForm = async (
+  page: Page,
+  svc: StorageServiceClass
+) => {
+  await redirectToHomePage(page);
+  await svc.visitEntityPage(page);
+  await page.getByTestId('data-assets-header').waitFor();
+  await page.getByTestId('agents').click();
+
+  const metadataSubTab = page.getByTestId('metadata-sub-tab');
+  if (await metadataSubTab.isVisible()) {
+    await metadataSubTab.click();
+  }
+
+  await page.getByTestId('add-new-ingestion-button').click();
+  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
+  await page.locator('[data-menu-id*="autoClassification"]').click();
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('add-ingestion-container').waitFor();
+};
+
+test.describe(
+  'Auto Classification agent form field validation',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    const acService = new StorageServiceClass();
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await acService.create(apiContext);
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await acService.delete(apiContext);
+
+      await afterAction();
+    });
+
+    test('confidence field rejects values outside 0-100 and blocks next step', async ({
+      page,
+    }) => {
+      await openAutoClassificationAgentForm(page, acService);
+      await page.getByTestId('ingestion-section-advanced-toggle').click();
+      const confidenceField = page.locator('#root\\/confidence');
+      await confidenceField.clear();
+      await confidenceField.fill('1000');
+
+      await page.getByTestId('next-button').click();
+
+      await test.step('Error message is shown for out-of-range confidence', async () => {
+        await expect(
+          page.locator('[id="root/confidence"]').locator('..').locator('..')
+        ).toContainText('100');
+      });
+
+      await test.step('Wizard stays on the configuration step', async () => {
+        await expect(page.getByTestId('add-ingestion-container')).toBeVisible();
+        await expect(
+          page.locator('[data-testid="schedular-schedule"]')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Wizard advances after correcting the value', async () => {
+        await confidenceField.clear();
+        await confidenceField.fill('80');
+        await page.getByTestId('next-button').click();
+        await expect(
+          page.locator('[data-testid="schedular-schedule"]')
+        ).toBeVisible();
+      });
+    });
+
+    test('sampleDataCount rejects non-positive values and blocks next step', async ({
+      page,
+    }) => {
+      await openAutoClassificationAgentForm(page, acService);
+      await page.getByTestId('ingestion-section-advanced-toggle').click();
+
+      const sampleCountField = page.locator('#root\\/sampleDataCount');
+      await sampleCountField.clear();
+      await sampleCountField.fill('-1');
+
+      await page.getByTestId('next-button').click();
+
+      await test.step('Error message is shown for negative sample count', async () => {
+        await expect(
+          page
+            .locator('[id="root/sampleDataCount"]')
+            .locator('..')
+            .locator('..')
+        ).toContainText('1');
+      });
+
+      await test.step('Wizard stays on the configuration step', async () => {
+        await expect(page.getByTestId('add-ingestion-container')).toBeVisible();
+        await expect(
+          page.locator('[data-testid="schedular-schedule"]')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Wizard advances after correcting the value', async () => {
+        await sampleCountField.clear();
+        await sampleCountField.fill('50');
+        await page.getByTestId('next-button').click();
+        await expect(
+          page.locator('[data-testid="schedular-schedule"]')
+        ).toBeVisible();
+      });
     });
   }
 );

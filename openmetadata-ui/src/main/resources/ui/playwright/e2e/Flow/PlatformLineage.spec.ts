@@ -23,8 +23,17 @@ test('Verify Platform Lineage View', async ({ page }) => {
   // the download event — the test timed out mid-render every time.
   test.slow();
 
-  // Limit MAX_NODES to get PNG export in time
-  const MAX_NODES = 200;
+  // Cap payload so the client-side toCanvas + PNG encode stays inside the
+  // verifyExportLineagePNG 120s download-event budget. The dominant cost is
+  // DOM cloning in html-to-image, which scales linearly with node count —
+  // ~5000 inner DOM elements per 200 lineage nodes takes ~90s just to
+  // clone on nightly CI runners, leaving no room for encoding. 100 nodes
+  // is enough to prove the export path works end-to-end (verifies the
+  // route intercept, PNG selection, and download event) without dictating
+  // an unreliable rendering budget. Any real-user export of a much larger
+  // graph is protected by the adaptive-pixelRatio cap in
+  // openmetadata-ui/.../utils/Export/ExportUtils.ts.
+  const MAX_NODES = 100;
 
   await page.route('**/api/v1/lineage/getPlatformLineage**', async (route) => {
     const response = await route.fetch();

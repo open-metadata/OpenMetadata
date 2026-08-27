@@ -351,7 +351,7 @@ public class TableRepository extends EntityRepository<Table> {
             ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
             : "retentionPeriod";
     DatabaseSchema schema =
-        getOrLoadInheritanceParent(
+        loadInheritanceParentLeniently(
             table.getDatabaseSchema(), inheritanceFields, DatabaseSchema.class);
     if (schema == null) {
       return;
@@ -1426,7 +1426,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
-    daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
+    deleteTagsPreservingCertification(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
     applyTags(table);
 

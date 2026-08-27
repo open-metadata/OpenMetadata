@@ -155,9 +155,16 @@ def main() -> None:
             "deletedChangedSpecs": sorted(deleted_changed_specs),
             "directChangedSpecs": sorted(direct_changed_specs),
             "changedFiles": changed_files,
+            # Drop specs that are delegated to a dedicated lane (@ontology-rdf /
+            # @knowledge-graph, Auth, nightly, VisualRegression, …). A directly
+            # changed delegated spec already routes to delegatedChangedSpecs
+            # above; this also drops ones pulled in by a source->spec mapping
+            # glob (e.g. `OntologyExplorer*.spec.ts` matching the RDF spec), which
+            # otherwise plan a postgres shard with zero runnable tests.
             "selectors": [
                 {"spec": spec, "projects": sorted(projects)}
                 for spec, projects in sorted(selected.items())
+                if not matches(spec, impact_map.get("delegatedSpecs", []))
             ],
         }
 

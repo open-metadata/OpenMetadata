@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.analytics;
 
+import static org.openmetadata.service.util.JsonStorageUtils.removeNulCharacters;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -633,28 +635,18 @@ public class WebAnalyticEventResource
   }
 
   private static void stripNullCharacters(PageViewData data) {
-    data.setFullUrl(removeNullCharacters(data.getFullUrl()));
-    data.setUrl(removeNullCharacters(data.getUrl()));
-    data.setHostname(removeNullCharacters(data.getHostname()));
-    data.setLanguage(removeNullCharacters(data.getLanguage()));
-    data.setScreenSize(removeNullCharacters(data.getScreenSize()));
-    data.setReferrer(removeNullCharacters(data.getReferrer()));
+    data.setFullUrl(removeNulCharacters(data.getFullUrl()));
+    data.setUrl(removeNulCharacters(data.getUrl()));
+    data.setHostname(removeNulCharacters(data.getHostname()));
+    data.setLanguage(removeNulCharacters(data.getLanguage()));
+    data.setScreenSize(removeNulCharacters(data.getScreenSize()));
+    data.setReferrer(removeNulCharacters(data.getReferrer()));
   }
 
   private static void stripNullCharacters(CustomEvent event) {
-    event.setFullUrl(removeNullCharacters(event.getFullUrl()));
-    event.setUrl(removeNullCharacters(event.getUrl()));
-    event.setHostname(removeNullCharacters(event.getHostname()));
-    event.setEventValue(removeNullCharacters(event.getEventValue()));
-  }
-
-  // PostgreSQL jsonb rejects strings containing the NUL character (\u0000). Strip it from
-  // user-supplied analytics fields so click events that capture page text (e.g. error messages
-  // surfaced from the database) do not fail the insert.
-  static String removeNullCharacters(String input) {
-    if (input == null || input.indexOf('\u0000') < 0) {
-      return input;
-    }
-    return input.replace("\u0000", "");
+    event.setFullUrl(removeNulCharacters(event.getFullUrl()));
+    event.setUrl(removeNulCharacters(event.getUrl()));
+    event.setHostname(removeNulCharacters(event.getHostname()));
+    event.setEventValue(removeNulCharacters(event.getEventValue()));
   }
 }

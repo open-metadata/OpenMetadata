@@ -22,8 +22,7 @@ import {
 import { SearchLg, XClose } from '@untitledui/icons';
 import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
-import dayjs from 'dayjs';
-import { debounce } from 'lodash';
+import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +48,12 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import { exportAuditLogs, getAuditLogs } from '../../rest/auditLogAPI';
+import {
+  exportAuditLogs,
+  getAuditLogExportJob,
+  getAuditLogExportResult,
+  getAuditLogs,
+} from '../../rest/auditLogAPI';
 import {
   AuditLogActiveFilter,
   AuditLogEntry,
@@ -61,6 +65,10 @@ import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
+
+// Fallback cadence for the export modal when the completion websocket event is
+// delivered to a different server than the one holding this client's socket.
+const EXPORT_POLL_INTERVAL_MS = 5000;
 
 const INITIAL_PAGING: Paging = {
   total: 0,
@@ -218,8 +226,8 @@ const AuditLogsPage = () => {
     const element = document.createElement('a');
     const file = new Blob([data], { type: 'application/json' });
 
-    const now = dayjs();
-    const fileName = `audit_logs_${now.format('YYYYMMDD_HHmmss')}.json`;
+    const now = DateTime.now();
+    const fileName = `audit_logs_${now.toFormat('yyyyMMdd_HHmmss')}.json`;
 
     element.href = URL.createObjectURL(file);
     element.download = fileName;
@@ -229,6 +237,32 @@ const AuditLogsPage = () => {
     URL.revokeObjectURL(element.href);
     element.remove();
   }, []);
+
+  const completeExport = useCallback(
+    (data: string) => {
+      handleExportDownload(data);
+      showSuccessToast(t('message.export-successful'));
+      setIsExporting(false);
+      setIsExportModalOpen(false);
+      setExportJob(null);
+      exportJobRef.current = null;
+    },
+    [handleExportDownload, t]
+  );
+
+  // The completion event no longer carries the payload — it can be arbitrarily
+  // large — so it is fetched from the result endpoint, which any server can serve.
+  const downloadExportResult = useCallback(
+    (jobId: string) => {
+      getAuditLogExportResult(jobId)
+        .then(completeExport)
+        .catch((error) => {
+          showErrorToast(error as AxiosError);
+          setIsExporting(false);
+        });
+    },
+    [completeExport]
+  );
 
   const handleExportWebSocketMessage = useCallback(
     (response: CSVExportWebsocketResponse) => {
@@ -248,19 +282,75 @@ const AuditLogsPage = () => {
       setExportJob(updatedJob);
       exportJobRef.current = updatedJob;
 
-      if (response.status === 'COMPLETED' && response.data) {
-        handleExportDownload(response.data);
-        showSuccessToast(t('message.export-successful'));
-        setIsExporting(false);
-        setIsExportModalOpen(false);
-        setExportJob(null);
-        exportJobRef.current = null;
+      if (response.status === 'COMPLETED') {
+        // `data` is still honoured for servers older than this release.
+        if (isString(response.data)) {
+          completeExport(response.data);
+        } else {
+          downloadExportResult(response.jobId);
+        }
       } else if (response.status === 'FAILED') {
         setIsExporting(false);
       }
     },
-    [handleExportDownload, t]
+    [completeExport, downloadExportResult]
   );
+
+  // The completion event only reaches sockets held by the server that ran the
+  // job, so on a multi-server deployment it is usually delivered to a peer and
+  // this modal would otherwise wait forever. Polling is the correctness floor;
+  // the socket above is the fast path. Self-scheduling so a slow response cannot
+  // stack up concurrent polls.
+  useEffect(() => {
+    if (!isExporting || !exportJob?.jobId) {
+      return;
+    }
+
+    const jobId = exportJob.jobId;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const pollOnce = async () => {
+      try {
+        const job = await getAuditLogExportJob(jobId);
+
+        if (cancelled || exportJobRef.current?.jobId !== jobId) {
+          return;
+        }
+
+        if (job.status === 'COMPLETED') {
+          downloadExportResult(jobId);
+
+          return;
+        }
+
+        if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+          setExportJob({ ...job, jobId });
+          exportJobRef.current = { ...job, jobId };
+          setIsExporting(false);
+
+          return;
+        }
+      } catch {
+        // A transient failure must not end the export; the next tick retries.
+      }
+
+      if (!cancelled) {
+        scheduleNextPoll();
+      }
+    };
+
+    const scheduleNextPoll = () => {
+      timeoutId = setTimeout(pollOnce, EXPORT_POLL_INTERVAL_MS);
+    };
+
+    scheduleNextPoll();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [isExporting, exportJob?.jobId, downloadExportResult]);
 
   useEffect(() => {
     if (socket) {

@@ -33,7 +33,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.api.models import (
+    ProfilerProcessorConfig,
+    TableConfig,
+    processor_config_payload,
+)
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.processor.core import Profiler
@@ -99,7 +103,7 @@ class ProfilerSource(ProfilerSourceInterface):
 
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.profiler_config = profiler_config_class.model_validate(config.processor.model_dump().get("config"))
+        self.profiler_config = profiler_config_class.model_validate(processor_config_payload(config.processor))
         self.ometa_client = ometa_client
         self._interface_type: str = config.source.type.lower()
         self._interface = None

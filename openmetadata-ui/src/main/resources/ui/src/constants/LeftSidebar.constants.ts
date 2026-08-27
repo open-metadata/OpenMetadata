@@ -43,7 +43,7 @@ import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.in
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
 import { createIconWithStroke } from '../utils/IconUtils';
-import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
   size?: number;
@@ -56,12 +56,20 @@ const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
-  [ROUTES.CONTEXT_CENTER_DASHBOARD]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_OVERVIEW]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
+};
+
+export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
+  [`/${ENTITY_PATH.metrics}`]: ROUTES.METRICS,
+  [`/${ENTITY_PATH.tags}`]: ROUTES.TAGS,
+  '/glossary-term': ROUTES.GLOSSARY,
+  '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
+  '/test-case': ROUTES.INCIDENT_MANAGER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
@@ -219,11 +227,11 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: SidebarItem.CONTEXT_CENTER,
     children: [
       {
-        key: ROUTES.CONTEXT_CENTER_DASHBOARD,
-        title: 'label.dashboard',
-        redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
+        key: ROUTES.CONTEXT_CENTER_OVERVIEW,
+        title: 'label.overview',
+        redirect_url: ROUTES.CONTEXT_CENTER_OVERVIEW,
         icon: DashboardIcon,
-        dataTestId: `app-bar-item-${SidebarItem.DASHBOARD}`,
+        dataTestId: `app-bar-item-${SidebarItem.OVERVIEW}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,

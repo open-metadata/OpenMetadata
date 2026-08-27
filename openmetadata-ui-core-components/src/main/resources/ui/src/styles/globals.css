@@ -58,6 +58,9 @@
   /* This must match the breakpoint in Sonner: https://github.com/emilkowalski/sonner/blob/main/src/styles.css */
   --breakpoint-xs: 600px;
 
+  /* CONTAINER QUERIES */
+  --container-8xl: 96rem;
+
   /* RADIUS */
   --radius-none: 0px;
   --radius-xs: 0.125rem;

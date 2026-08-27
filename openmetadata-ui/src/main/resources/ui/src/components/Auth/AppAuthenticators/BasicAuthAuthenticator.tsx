@@ -16,6 +16,7 @@ import {
   Fragment,
   ReactNode,
   useCallback,
+  useEffect,
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ import {
 } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   setOidcToken,
   setRefreshToken,
@@ -65,6 +67,20 @@ const BasicAuthenticator = forwardRef(
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect. The previous AuthProvider-side registration used a
+    // ref-deps `useEffect(..., [authenticatorRef.current?.renewIdToken])`
+    // which never re-ran when the lazy authenticator finished loading
+    // (ref changes don't schedule re-renders), so on cold-load the first
+    // 401 raced ahead of the registration and TokenService.refreshToken()
+    // returned null without ever firing the `/api/v1/auth/refresh` HTTP
+    // call — the interceptor then force-logged the user out.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(handleSilentSignIn);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [handleSilentSignIn]);
 
     /**
      * isApplicationLoading is true when the application is loading in AuthProvider

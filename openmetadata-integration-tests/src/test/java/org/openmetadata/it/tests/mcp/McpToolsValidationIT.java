@@ -343,6 +343,25 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(response.get("data").isArray()).isTrue();
   }
 
+  /**
+   * The MCP door reaches the same DAO as the REST door, so it must canonicalize {@code entityType}
+   * the same way — see issue #29542. An LLM caller naturally writes {@code "Column"}, which matched
+   * nothing on PostgreSQL before the fix.
+   */
+  @Test
+  @Order(22)
+  void testGetTestDefinitionsForMixedCaseEntityType() throws Exception {
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("Column");
+    JsonNode result = executeToolCall(toolCall);
+
+    JsonNode response = OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+    JsonNode definitions = response.get("data");
+    assertThat(definitions).isNotEmpty();
+    for (JsonNode definition : definitions) {
+      assertThat(definition.get("entityType").asText()).isEqualTo("COLUMN");
+    }
+  }
+
   @Test
   @Order(12)
   void testCreateTestCase() throws Exception {
@@ -700,13 +719,19 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(firstResult.has("text")).isTrue();
     String responseText = firstResult.get("text").asText();
 
-    JsonNode entityData = OBJECT_MAPPER.readTree(responseText).get("entity");
+    // The patched entity is returned flat, the same shape the create_* tools return. It used to be
+    // wrapped in an "entity" key because the raw PatchResponse was serialized as-is.
+    JsonNode entityData = OBJECT_MAPPER.readTree(responseText);
     assertThat(entityData.has("id")).isTrue();
     assertThat(entityData.has("description")).isTrue();
     assertThat(entityData.get("description").asText())
         .contains("Updated description via MCP patch tool");
     assertThat(entityData.has("fullyQualifiedName")).isTrue();
     assertThat(entityData.get("fullyQualifiedName").asText()).isEqualTo(patchedEntity);
+    assertThat(entityData.path("_operation").asText())
+        .withFailMessage("Patch response payload: %s", responseText)
+        .isEqualTo("updated");
+    assertThat(entityData.has("version")).isTrue();
   }
 
   private void validateLineageResponse(JsonNode result, String expectedEntityFqn) throws Exception {

@@ -1,10 +1,13 @@
 package org.openmetadata.service.search.opensearch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.Script;
 import os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier;
 import os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode;
 import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore;
@@ -412,6 +415,42 @@ public class OpenSearchQueryBuilder {
                   }
                   return cs;
                 }));
+  }
+
+  public static Query matchBoolPrefixQuery(
+      String field, String query, String minimumShouldMatch, String queryName) {
+    return Query.of(
+        q ->
+            q.matchBoolPrefix(
+                m -> {
+                  m.field(field).query(query);
+                  if (minimumShouldMatch != null) {
+                    m.minimumShouldMatch(minimumShouldMatch);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
+                  }
+                  return m;
+                }));
+  }
+
+  public static Query scriptScoreQuery(Query query, String source, Map<String, Double> params) {
+    Map<String, JsonData> scriptParams = new HashMap<>();
+    params.forEach((name, value) -> scriptParams.put(name, JsonData.of(value)));
+    return Query.of(
+        q ->
+            q.scriptScore(
+                ss ->
+                    ss.query(query)
+                        .script(
+                            Script.of(
+                                s ->
+                                    s.inline(
+                                        i ->
+                                            i.source(source)
+                                                .lang(
+                                                    l -> l.builtin(BuiltinScriptLanguage.Painless))
+                                                .params(scriptParams))))));
   }
 
   public static Query functionScoreQuery(

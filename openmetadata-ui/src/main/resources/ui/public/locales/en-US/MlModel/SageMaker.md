@@ -27,7 +27,7 @@ The user must have the following policy set to ingest the metadata from Sagemake
 
 For more information on Sagemaker permissions visit the <a href="https://docs.aws.amazon.com/sagemaker/latest/dg/api-permissions-reference.html" target="_blank">AWS Sagemaker official documentation</a>.
 
-You can find further information on the SageMaker connector in the <a href="https://docs.open-metadata.org/connectors/mlmodel/sagemaker" target="_blank">docs</a>.
+You can find further information on the SageMaker connector in the <a href="https://docs.open-metadata.org/connectors/ml-model/sagemaker" target="_blank">docs</a>.
 
 ## Connection Details
 

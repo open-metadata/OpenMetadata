@@ -147,7 +147,11 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.navigation'),
+        })}>
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader

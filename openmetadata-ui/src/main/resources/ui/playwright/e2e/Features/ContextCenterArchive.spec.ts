@@ -27,9 +27,11 @@ import {
   navigateToDocuments,
   openUploadModal,
   revealFolderRow,
+  searchAndGetDocumentRow,
   selectFolderInSidebar,
   softDeleteDocument,
   uploadFileViaModal,
+  waitForDocumentAbsentFromSearch,
   waitForDocumentInArchive,
   waitForDocumentPermanentlyDeleted,
 } from '../../utils/ContextCenterUtil';
@@ -148,6 +150,12 @@ test.describe('Context Center - Archive Page', () => {
     // ── 9. Search — document NOT visible ────────────────────────────────────
 
     await test.step('searching for the deleted document returns no results', async () => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentAbsentFromSearch(apiContext, documentFileName);
+      await afterAction();
+
       const searchInput = getDocumentSearchInput(page);
 
       await expect
@@ -207,9 +215,8 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('restored document is visible on the documents page', async () => {
       await navigateToDocuments(page);
-      await expect(
-        page.getByTestId(`document-row-${documentId}`)
-      ).toBeVisible();
+      const documentRow = await searchAndGetDocumentRow(page, documentFileName);
+      await expect(documentRow).toBeVisible();
     });
 
     // ── 13. folder name visible on restored document ───────────────────────────────
@@ -219,46 +226,14 @@ test.describe('Context Center - Archive Page', () => {
       await expect(docRow.getByTestId('document-folder-name')).toBeVisible();
     });
 
-    // ── 14. Document visible in search after restore ──────────────────────────
-
-    await test.step('restored document appears in search results', async () => {
-      const restoredId = documentId;
-      const searchInput = getDocumentSearchInput(page);
-
-      await expect
-        .poll(
-          async () => {
-            const searchResPromise = page.waitForResponse(
-              (res) =>
-                res.url().includes('/api/v1/search/query') &&
-                res.url().includes('index=contextFile')
-            );
-            await searchInput.fill('');
-            await searchInput.fill(documentFileName);
-            await searchResPromise;
-
-            return page
-              .getByTestId(`document-row-${restoredId}`)
-              .isVisible()
-              .catch(() => false);
-          },
-          {
-            intervals: [3000, 5000, 10000],
-            message: `Restored document ${restoredId} not found in search after restore`,
-            timeout: 60000,
-          }
-        )
-        .toBe(true);
-    });
-
-    // ── 15. Soft delete restored document again ───────────────────────────────
+    // ── 14. Soft delete restored document again ───────────────────────────────
 
     await test.step('soft delete the restored document', async () => {
       await navigateToDocuments(page);
       await softDeleteDocument(page, `document-row-${documentId}`);
     });
 
-    // ── 16. Archive page — poll until second delete appears ───────────────────
+    // ── 15. Archive page — poll until second delete appears ───────────────────
 
     await test.step('archive API returns the re-deleted document', async () => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -269,7 +244,7 @@ test.describe('Context Center - Archive Page', () => {
       await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
     });
 
-    // ── 17. Permanently delete ────────────────────────────────────────────────
+    // ── 16. Permanently delete ────────────────────────────────────────────────
 
     await test.step('permanently delete the document from the archive', async () => {
       const archiveRow = page.getByTestId(`archive-row-${documentId}`);
@@ -292,7 +267,7 @@ test.describe('Context Center - Archive Page', () => {
       ).not.toBeVisible();
     });
 
-    // ── 18. Verify NOT in archive (API) ──────────────────────────────────────
+    // ── 17. Verify NOT in archive (API) ──────────────────────────────────────
 
     await test.step('permanently deleted document is absent from the archive API', async () => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -300,7 +275,7 @@ test.describe('Context Center - Archive Page', () => {
       await afterAction();
     });
 
-    // ── 19. Verify NOT on documents page ─────────────────────────────────────
+    // ── 18. Verify NOT on documents page ─────────────────────────────────────
 
     await test.step('permanently deleted document is absent from the documents page', async () => {
       await navigateToDocuments(page);
@@ -309,9 +284,15 @@ test.describe('Context Center - Archive Page', () => {
       ).not.toBeVisible();
     });
 
-    // ── 20. Verify NOT in documents search ───────────────────────────────────
+    // ── 19. Verify NOT in documents search ───────────────────────────────────
 
     await test.step('permanently deleted document is absent from documents search', async () => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentAbsentFromSearch(apiContext, documentFileName);
+      await afterAction();
+
       const searchInput = getDocumentSearchInput(page);
 
       await expect
@@ -401,6 +382,7 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     // ── 3. File is visible in the documents list ─────────────────────────────
 
     await test.step('uploaded file is visible with correct folder label', async () => {
+      await selectFolderInSidebar(page, folderName);
       const docRow = getDocumentRowByName(page, documentFileName);
       await expect(docRow).toBeVisible();
       await expect(docRow.getByTestId('document-folder-name')).toContainText(
@@ -410,7 +392,7 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 
     // ── 4. Soft-delete the folder via API ────────────────────────────────────
 
-    await test.step('soft-delete the folder via API', async () => {
+    await test.step('soft-delete the folder via UI', async () => {
       const folderId = folder.id;
       const folderRow = await revealFolderRow(
         page,
@@ -435,11 +417,21 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       await page.getByTestId('confirm-button').click();
       const folderDeleteRes = await folderDeleteResPromise;
       expect(folderDeleteRes.status()).toBe(200);
+      await page
+        .getByTestId('document-row-skeleton')
+        .first()
+        .waitFor({ state: 'detached' });
     });
 
     // ── 5. File is absent from documents search ──────────────────────────────
 
     await test.step('file is no longer visible in documents search after folder delete', async () => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentAbsentFromSearch(apiContext, documentFileName);
+      await afterAction();
+
       const searchInput = getDocumentSearchInput(page);
 
       await expect

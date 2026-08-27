@@ -118,6 +118,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.BackgroundJobCleanupScheduler;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
@@ -273,6 +274,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Metrics initialization now handled by MicrometerBundle
 
+    AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
+
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
@@ -391,9 +394,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
 
-    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
-    // RequestEntityCache, impersonation context) after every response so state
-    // cannot leak across requests that share a Jetty worker thread.
+    // Clears per-request ThreadLocals (ReadBundleContext, RequestEntityCache, impersonation
+    // context) after every response so state cannot leak across requests that share a Jetty
+    // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
 
     // Register User Activity Tracking
@@ -405,6 +408,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
+    environment
+        .lifecycle()
+        .manage(
+            new BackgroundJobCleanupScheduler(
+                jdbi.onDemand(JobDAO.class), CsvAsyncJobManager.getInstance()));
 
     environment
         .lifecycle()
@@ -625,7 +634,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize RDF if enabled (core infrastructure)
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
-      RdfUpdater.initialize(rdfConfig);
+      RdfUpdater.initialize(rdfConfig, config.getAsyncOperationsConfiguration());
       LOG.info("RDF knowledge graph support initialized");
     }
 

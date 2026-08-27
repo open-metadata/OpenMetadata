@@ -23,6 +23,7 @@ import {
 import { TFunction } from 'i18next';
 import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
+import { convertSecondsToHumanReadableFormat } from '../../../utils/date-time/DateTimeUtils';
 import {
   Agent,
   AgentActionPermissions,
@@ -60,11 +61,13 @@ export const canRunAgent = (
 
 export const fmtNum = (n: number): string => n.toLocaleString();
 
-export type EtaState = 'idle' | 'wrapping' | 'seconds' | 'minutes';
+export type EtaState = 'idle' | 'wrapping' | 'seconds' | 'duration';
 
 export interface EtaInfo {
   state: EtaState;
   value?: number;
+  /** Pre-formatted multi-unit duration, e.g. `17h 41m`. Set only for the `duration` state. */
+  duration?: string;
 }
 
 export const getEtaInfo = (s: number | null): EtaInfo => {
@@ -75,7 +78,12 @@ export const getEtaInfo = (s: number | null): EtaInfo => {
     } else if (s < 60) {
       result = { state: 'seconds', value: s };
     } else {
-      result = { state: 'minutes', value: Math.round(s / 60) };
+      // Anything past a minute rolls up into hours/days rather than reading as "~1061 min left".
+      // Capped at two units so a long ETA stays glanceable.
+      result = {
+        state: 'duration',
+        duration: convertSecondsToHumanReadableFormat(s, 2),
+      };
     }
   }
 
@@ -109,7 +117,7 @@ export const formatEtaLong = (info: EtaInfo, t: TFunction): string => {
     idle: EM_DASH,
     wrapping: t('label.wrapping-up'),
     seconds: t('message.seconds-left', { count: info.value }),
-    minutes: t('message.minutes-left', { count: info.value }),
+    duration: t('message.duration-left', { duration: info.duration }),
   };
 
   return byState[info.state];
@@ -120,7 +128,8 @@ export const formatEtaShort = (info: EtaInfo, t: TFunction): string => {
     idle: EM_DASH,
     wrapping: t('label.wrapping-up'),
     seconds: t('message.seconds-short', { count: info.value }),
-    minutes: t('message.minutes-short', { count: info.value }),
+    // The formatted duration already carries its own h/m/s suffixes, so it needs no wrapper copy.
+    duration: info.duration ?? EM_DASH,
   };
 
   return byState[info.state];

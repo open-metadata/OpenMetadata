@@ -63,6 +63,7 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
+    Markdown,
     SqlQuery,
     Timestamp,
     Uuid,
@@ -84,6 +85,7 @@ from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
@@ -103,6 +105,8 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtServiceSource,
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
+    build_upstream_name_map,
+    build_upstream_node,
     check_ephemeral_node,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
@@ -119,8 +123,11 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
     get_dbt_test_definition_name,
+    get_dbt_test_description,
+    get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
+    get_source_physical_name,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -159,6 +166,11 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        # Upstream nodes already reported as unresolved, so a dbt project whose source
+        # database was never ingested reports each missing upstream once instead of once
+        # per referencing model. Bounded by the number of distinct upstream nodes in the
+        # project and reset per project in yield_data_models.
+        self.reported_unresolved_upstreams: set[str] = set()
         self._load_omd_custom_properties()
 
     @classmethod
@@ -651,9 +663,11 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
+        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
         self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-            manifest_entities, manifest_node
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = [node.fqn for node in upstream_nodes]
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM_BY_NAME.value] = build_upstream_name_map(
+            upstream_nodes
         )
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = self._get_latest_result(dbt_objects, key)
 
@@ -670,7 +684,7 @@ class DbtSource(DbtServiceSource):
                 manifest_entities, manifest_node
             )
 
-    def add_dbt_sources(self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects) -> None:
+    def add_dbt_sources(self, key: str, manifest_node, dbt_objects: DbtObjects) -> None:
         """
         Method to append dbt test cases based on sources file for later processing
         In dbt manifest sources node name is table/view name (not test name like with test nodes)
@@ -683,13 +697,39 @@ class DbtSource(DbtServiceSource):
             (item for item in dbt_objects.dbt_sources.results if item.unique_id == key),
             None,
         )
+        if not freshness_test_result:
+            return
 
-        if freshness_test_result:
-            self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-                manifest_entities, manifest_node
-            )
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
+        # A freshness check tests the source table itself. Sources are graph roots with no
+        # depends_on, so resolving upstreams the way a dbt test node does always yields an
+        # empty list and leaves the test case with no table to attach to.
+        source_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=get_corrected_name(manifest_node.database),
+            schema_name=get_corrected_name(manifest_node.schema_),
+            table_name=get_source_physical_name(manifest_node),
+        )
+        table_entity = self._get_table_entity(table_fqn=source_fqn) if source_fqn else None
+        if not table_entity:
+            logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
+            return
+
+        # searchAcrossDatabases lets the lookup resolve under a different service, so the
+        # test case has to follow the entity that was actually found, not the FQN we guessed
+        source_fqn = model_str(table_entity.fullyQualifiedName)
+
+        self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = [source_fqn]
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM_BY_NAME.value] = (
+            build_upstream_name_map([build_upstream_node(manifest_node, source_fqn)])
+        )
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
+        # sources.json results share the dbt_tests collection with run_results.json
+        # results but are a different artifact shape, so tag them at the producer
+        # instead of sniffing the parsed object downstream
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
     def _get_table_entity(self, table_fqn) -> Optional[Table]:  # noqa: UP045
         def search_table(fqn_search_string: str) -> Optional[Table]:  # noqa: UP045
@@ -749,6 +789,7 @@ class DbtSource(DbtServiceSource):
         """
         Yield the data models
         """
+        self.reported_unresolved_upstreams.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -769,11 +810,14 @@ class DbtSource(DbtServiceSource):
             self.context.get().table_domains = {}
             self.context.get().table_custom_properties = {}
             self.context.get().run_results_generate_time = None
+            self.context.get().sources_generate_time = None
 
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
             if dbt_objects.dbt_run_results and dbt_objects.dbt_run_results[0].metadata.generated_at:
                 self.context.get().run_results_generate_time = dbt_objects.dbt_run_results[0].metadata.generated_at
+            if dbt_objects.dbt_sources and dbt_objects.dbt_sources.metadata.generated_at:
+                self.context.get().sources_generate_time = dbt_objects.dbt_sources.metadata.generated_at
             dbt_project_name = getattr(dbt_objects.dbt_manifest.metadata, "project_name", None)
             for key, manifest_node in manifest_entities.items():
                 try:
@@ -797,7 +841,6 @@ class DbtSource(DbtServiceSource):
                         self.add_dbt_sources(
                             key,
                             manifest_node=manifest_node,
-                            manifest_entities=manifest_entities,
                             dbt_objects=dbt_objects,
                         )
 
@@ -933,6 +976,15 @@ class DbtSource(DbtServiceSource):
         """
         Method to fetch the upstream nodes
         """
+        return [node.fqn for node in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
+
+    def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node):
+        """
+        Method to fetch the upstream nodes as UpstreamNode entries.
+
+        The dbt names are kept alongside the FQN because the FQN is built from the model
+        alias, while dbt ``ref()`` expressions carry the model name.
+        """
         upstream_nodes = []
         if (
             hasattr(dbt_node, "depends_on")
@@ -969,7 +1021,7 @@ class DbtSource(DbtServiceSource):
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
                     if check_ephemeral_node(parent_node):
-                        upstream_nodes.extend(self.parse_upstream_nodes(manifest_entities, parent_node))
+                        upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
                         parent_fqn = fqn.build(
                             self.metadata,
@@ -981,8 +1033,8 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        if self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append(parent_fqn)
+                        if parent_fqn and self._get_table_entity(table_fqn=parent_fqn):
+                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
@@ -1158,24 +1210,23 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Lineage upstream nodes",
-                                error=(
-                                    "Error to create DBT lineage from upstream nodes ",
-                                    f"{str(data_model_link.datamodel.upstream)}",  # noqa: RUF010
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt lineage edge dropped: upstream table '{upstream_node}' was not "
+                        f"returned by OpenMetadata, so no edge was created to "
+                        f"'{model_str(to_entity.fullyQualifiedName)}'. Either the table has not been "
+                        "ingested or the lookup itself failed - check the logs above for a "
+                        "search or API error. Further models referencing this upstream are not "
+                        "reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1262,24 +1313,22 @@ class DbtSource(DbtServiceSource):
                             lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Exposure lineage",
-                                error=(
-                                    "Error to create DBT Exposure lineage",
-                                    f"{str(exposure_spec)[:20]}...",
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt exposure lineage edge dropped: upstream table '{upstream_node}' was "
+                        f"not returned by OpenMetadata, so no edge was created to exposure "
+                        f"'{manifest_node.name}'. Either the table has not been ingested or the "
+                        "lookup itself failed - check the logs above for a search or API error. "
+                        "Further nodes referencing this upstream are not reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1835,19 +1884,23 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
-                test_definition_name = get_dbt_test_definition_name(manifest_node)
+                entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                 check_test_definition_exists = self.metadata.get_by_name(
                     fqn=test_definition_name,
                     entity=TestDefinition,
                 )
+                # A TestDefinition is shared by every dbt test of the same type AND
+                # entityType (e.g. column-scoped "unique" tests share one, table-scoped
+                # "unique" tests share a different one - same type, incompatible
+                # entityLink shapes), so its description is only set on creation and
+                # never patched from an individual node.
                 if not check_test_definition_exists:
-                    entity_type = EntityType.TABLE
-                    if get_manifest_column_name(manifest_node):
-                        entity_type = EntityType.COLUMN
+                    test_description = get_dbt_test_description(manifest_node)
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=manifest_node.description,
+                            description=Markdown(test_description) if test_description else None,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -1889,20 +1942,25 @@ class DbtSource(DbtServiceSource):
                     )
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
+                    description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
+                        entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                        test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=manifest_node.description,
-                                testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
+                                description=Markdown(description) if description else None,
+                                testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
                                 owners=None,
                             )
                         )
-                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                    else:
+                        logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                        self.patch_dbt_test_case_description(test_case, description)
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -1912,71 +1970,201 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+        """
+        Keep the description of an already ingested test case in sync with dbt.
+
+        Mirrors how table and column descriptions are handled: an empty
+        description is always filled in, while an existing one is only
+        overridden when dbtUpdateDescriptions is enabled.
+        """
+        if description:
+            logger.debug(f"Patching DBT description for test case: {model_str(test_case.fullyQualifiedName)}")
+            self.metadata.patch_description(
+                entity=TestCase,
+                source=test_case,
+                description=description,
+                force=bool(self.source_config.dbtUpdateDescriptions),
+            )
+
+    @staticmethod
+    def _map_dbt_test_status(status_value: str) -> tuple[TestCaseStatus, int]:
+        """
+        Map a dbt result status onto an OpenMetadata test case status.
+
+        Statuses that are neither a known success nor a known failure (dbt's
+        ``warn`` and ``runtime error``) fall through to Aborted.
+        """
+        if status_value in [item.value for item in DbtTestSuccessEnum]:
+            return TestCaseStatus.Success, 1
+        if status_value in [item.value for item in DbtTestFailureEnum]:
+            return TestCaseStatus.Failed, 0
+        return TestCaseStatus.Aborted, 0
+
+    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> Optional[datetime]:  # noqa: UP045
+        """
+        Resolve when a dbt result was produced.
+
+        Prefers the "execute" timing entry. sources.json runtime-error results carry no
+        timing at all, so fall back to the generated_at of the artifact they came from.
+        """
+        dbt_test_completed_at = None
+        for dbt_test_timing in getattr(dbt_test_result, "timing", None) or []:
+            if dbt_test_timing.name == "execute":
+                dbt_test_completed_at = dbt_test_timing.completed_at
+
+        dbt_timestamp = dbt_test_completed_at or fallback_generate_time
+
+        # check if the timestamp is a str type and convert accordingly
+        if isinstance(dbt_timestamp, str):
+            try:
+                dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+            except ValueError:
+                # dbt-fusion outputs 9-digit nanosecond timestamps like
+                # 2026-07-22T09:27:12.979492347Z which don't match %f (6-digit).
+                # Strip trailing digits to 6-digit precision.
+                dot = dbt_timestamp.rfind(".")
+                if dot != -1:
+                    dbt_timestamp = dbt_timestamp[: dot + 7] + "Z"
+                try:
+                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                except ValueError:
+                    dbt_timestamp = None
+
+        return dbt_timestamp if isinstance(dbt_timestamp, datetime) else None
+
+    @staticmethod
+    def _get_freshness_result_details(dbt_test_result) -> Optional[str]:  # noqa: UP045
+        """
+        Build the result detail of a source freshness check.
+
+        sources.json has no ``message`` field, so the actionable detail is how far behind
+        the source is against its configured thresholds. Runtime errors carry the adapter
+        error instead - that variant holds no freshness measurements at all.
+        """
+        error = getattr(dbt_test_result, "error", None)
+        if error:
+            return str(error)
+
+        details = []
+        age_in_seconds = getattr(dbt_test_result, "max_loaded_at_time_ago_in_s", None)
+        if age_in_seconds is not None:
+            details.append(f"Data is {age_in_seconds / 3600:.1f} hours old")
+        max_loaded_at = getattr(dbt_test_result, "max_loaded_at", None)
+        if max_loaded_at:
+            details.append(f"max_loaded_at={max_loaded_at}")
+        criteria = getattr(dbt_test_result, "criteria", None)
+        for threshold_name in ("warn_after", "error_after"):
+            threshold = getattr(criteria, threshold_name, None)
+            if threshold and threshold.count is not None and threshold.period is not None:
+                details.append(f"{threshold_name}={threshold.count} {threshold.period.value}")
+
+        return "; ".join(details) or None
+
+    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+        """
+        Build the test case result of a `dbt source freshness` run.
+
+        The sources.json shapes have no ``message``, and the runtime-error shape has no
+        ``timing`` either, so none of the run_results.json specific handling applies here.
+        """
+        test_case_status, test_result_value = self._map_dbt_test_status(dbt_test_result.status.value)
+
+        dbt_timestamp = self._resolve_dbt_test_timestamp(dbt_test_result, self.context.get().sources_generate_time)
+        if not dbt_timestamp:
+            logger.debug(
+                "Skipping freshness result for '%s': unparseable timestamp",
+                manifest_node.name,
+            )
+            return None
+
+        return TestCaseResult(
+            timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
+            testCaseStatus=test_case_status,
+            testResultValue=[
+                TestResultValue(
+                    name=dbt_test_result.unique_id,
+                    value=str(test_result_value),
+                )
+            ],
+            sampleData=None,
+            result=(
+                self._get_freshness_result_details(dbt_test_result)
+                if test_case_status != TestCaseStatus.Success
+                else None
+            ),
+        )
+
+    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+        """
+        Build the test case result of a dbt test recorded in run_results.json
+        """
+        # Skip compiled-only entries: `dbt run` includes test nodes in
+        # run_results.json with status="success" but message=null since
+        # no test SQL was executed. Executed dbt tests can also have
+        # message=null, e.g. passing tests with status="pass".
+        if not dbt_test_result.message and dbt_test_result.status.value == DbtTestSuccessEnum.SUCCESS.value:
+            logger.debug(
+                "Skipping compiled-only test result for '%s' (message is null).",
+                manifest_node.name,
+            )
+            return None
+
+        test_case_status, test_result_value = self._map_dbt_test_status(dbt_test_result.status.value)
+
+        dbt_timestamp = self._resolve_dbt_test_timestamp(dbt_test_result, self.context.get().run_results_generate_time)
+        if not dbt_timestamp:
+            logger.debug(
+                "Skipping test case result for '%s': unparseable timestamp",
+                manifest_node.name,
+            )
+            return None
+
+        return TestCaseResult(
+            timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
+            testCaseStatus=test_case_status,
+            testResultValue=[
+                TestResultValue(
+                    name=dbt_test_result.unique_id,
+                    value=str(test_result_value),
+                )
+            ],
+            sampleData=None,
+            result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
+        )
+
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
         """
+        node_name = "unknown"
         try:
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
+                node_name = manifest_node.name
+                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
                     logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
                     return
 
-                # Skip compiled-only entries: `dbt run` includes test nodes in
-                # run_results.json with status="success" but message=null since
-                # no test SQL was executed. Real results always have a message.
-                if not dbt_test_result.message:
-                    logger.debug(
-                        "Skipping compiled-only test result for '%s' (message is null).",
-                        manifest_node.name,
-                    )
+                # sources.json freshness results and run_results.json test results reach
+                # this handler through the same context key but are different artifact
+                # shapes - only run results carry `message`, and freshness runtime errors
+                # carry no `timing` either - so each needs its own builder.
+                test_case_result = (
+                    self._build_freshness_test_case_result(manifest_node, dbt_test_result)
+                    if dbt_test.get(DbtCommonEnum.IS_FRESHNESS.value)
+                    else self._build_run_result_test_case_result(manifest_node, dbt_test_result)
+                )
+                if test_case_result is None:
                     return
 
-                test_case_status = TestCaseStatus.Aborted
-                test_result_value = 0
-                if dbt_test_result.status.value in [item.value for item in DbtTestSuccessEnum]:
-                    test_case_status = TestCaseStatus.Success
-                    test_result_value = 1
-                elif dbt_test_result.status.value in [item.value for item in DbtTestFailureEnum]:
-                    test_case_status = TestCaseStatus.Failed
-                    test_result_value = 0
-
-                # Process the Test Timings
-                dbt_test_timings = dbt_test_result.timing
-                dbt_test_completed_at = None
-                for dbt_test_timing in dbt_test_timings:
-                    if dbt_test_timing.name == "execute":
-                        dbt_test_completed_at = dbt_test_timing.completed_at
-                dbt_timestamp = None
-                if dbt_test_completed_at:
-                    dbt_timestamp = dbt_test_completed_at
-                elif self.context.get().run_results_generate_time:
-                    dbt_timestamp = self.context.get().run_results_generate_time
-
-                # check if the timestamp is a str type and convert accordingly
-                if isinstance(dbt_timestamp, str):
-                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
-
-                # Create the test case result object
-                test_case_result = TestCaseResult(
-                    timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
-                    testCaseStatus=test_case_status,
-                    testResultValue=[
-                        TestResultValue(
-                            name=dbt_test_result.unique_id,
-                            value=str(test_result_value),
-                        )
-                    ],
-                    sampleData=None,
-                    result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
-                )
-
-                # Create the test case fqns and add the results
-                for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+                # Results belong to the single table the test case was created against,
+                # which for multi-upstream tests is not every entry in the upstream list
+                table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
+                if table_fqn:
                     source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -2001,7 +2189,13 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to capture tests results for node: {manifest_node.name} {err}")
+            self.status.failed(
+                StackTraceError(
+                    name=f"DBT Test Result {node_name}",
+                    error=f"Failed to capture test results for node '{node_name}': {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         self.metadata.close()

@@ -10,6 +10,37 @@ from pyhive.hive import _check_status, get_installed_sasl
 from TCLIService import TCLIService, ttypes
 
 
+def _get_http_ssl_context(check_hostname=None, ssl_cert=None):
+    """Build the Hive HTTP SSL context with verification enabled by default."""
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = check_hostname == "true"
+    ssl_cert_parameter_map = {
+        "none": ssl.CERT_NONE,
+        "optional": ssl.CERT_OPTIONAL,
+        "required": ssl.CERT_REQUIRED,
+    }
+    ssl_context.verify_mode = ssl_cert_parameter_map.get(ssl_cert or "required", ssl.CERT_REQUIRED)
+    return ssl_context
+
+
+def _get_ssl_socket_kwargs(
+    ssl_certfile=None,
+    ssl_keyfile=None,
+    ssl_ca_certs=None,
+    ssl_cert_reqs=None,
+):
+    """Build puretransport SSL options with certificate verification enabled."""
+    socket_kwargs = {}
+    if ssl_certfile:
+        socket_kwargs["certfile"] = ssl_certfile
+    if ssl_keyfile:
+        socket_kwargs["keyfile"] = ssl_keyfile
+    if ssl_ca_certs:
+        socket_kwargs["ca_certs"] = ssl_ca_certs
+    socket_kwargs["cert_reqs"] = ssl.CERT_REQUIRED if ssl_cert_reqs is None else ssl_cert_reqs
+    return socket_kwargs
+
+
 class CustomHiveConnection(BaseConnection):
     """Custom Hive connection that integrates puretransport and SSL certificate support"""
 
@@ -41,17 +72,7 @@ class CustomHiveConnection(BaseConnection):
             port = port or 1000
             ssl_context = None
             if scheme == "https":
-                from ssl import create_default_context  # noqa: PLC0415
-
-                ssl_context = create_default_context()
-                ssl_context.check_hostname = check_hostname == "true"
-                ssl_cert = ssl_cert or "none"
-                ssl_cert_parameter_map = {
-                    "none": 0,  # CERT_NONE
-                    "optional": 1,  # CERT_OPTIONAL
-                    "required": 2,  # CERT_REQUIRED
-                }
-                ssl_context.verify_mode = ssl_cert_parameter_map.get(ssl_cert, 0)
+                ssl_context = _get_http_ssl_context(check_hostname=check_hostname, ssl_cert=ssl_cert)
             thrift_transport = thrift.transport.THttpClient.THttpClient(
                 uri_or_host="{scheme}://{host}:{port}/cliservice/".format(scheme=scheme, host=host, port=port),  # noqa: UP032
                 ssl_context=ssl_context,
@@ -92,18 +113,12 @@ class CustomHiveConnection(BaseConnection):
                 # Create puretransport with SSL
                 import puretransport  # noqa: PLC0415
 
-                # Prepare socket_kwargs for SSL
-                socket_kwargs = {}
-                if ssl_certfile:
-                    socket_kwargs["certfile"] = ssl_certfile
-                if ssl_keyfile:
-                    socket_kwargs["keyfile"] = ssl_keyfile
-                if ssl_ca_certs:
-                    socket_kwargs["ca_certs"] = ssl_ca_certs
-                if ssl_cert_reqs is not None:
-                    socket_kwargs["cert_reqs"] = ssl_cert_reqs
-                elif use_ssl:
-                    socket_kwargs["cert_reqs"] = ssl.CERT_NONE
+                socket_kwargs = _get_ssl_socket_kwargs(
+                    ssl_certfile=ssl_certfile,
+                    ssl_keyfile=ssl_keyfile,
+                    ssl_ca_certs=ssl_ca_certs,
+                    ssl_cert_reqs=ssl_cert_reqs,
+                )
 
                 # Create puretransport
                 self._transport = puretransport.transport_factory(
@@ -112,7 +127,7 @@ class CustomHiveConnection(BaseConnection):
                     username=username,
                     password=password or username,
                     use_ssl=use_ssl,
-                    socket_kwargs=socket_kwargs if socket_kwargs else None,
+                    socket_kwargs=socket_kwargs,
                 )
         else:
             # Use standard connection logic

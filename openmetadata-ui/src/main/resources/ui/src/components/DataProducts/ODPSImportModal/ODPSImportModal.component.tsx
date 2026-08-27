@@ -248,7 +248,7 @@ const ODPSImportModal = ({
 
               <TextArea
                 data-testid="odps-yaml-content"
-                placeholder={t('message.paste-odps-yaml-here')}
+                placeholder={t('server.paste-odps-yaml-here')}
                 rows={10}
                 value={yamlContent}
                 onChange={handleTextChange}

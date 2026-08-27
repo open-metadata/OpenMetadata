@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
@@ -76,8 +77,10 @@ import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Assembles the {@link AIContext} (Context Profile) for a data asset: the common knowledge envelope
@@ -262,6 +265,20 @@ public class AIContextBuilder {
     return result;
   }
 
+  /**
+   * The caller for memory visibility, null when this builder was given no usable security context. A
+   * knowledge item may be a context memory, whose excerpt is only retrievable with a subject. The
+   * principal check mirrors {@link ContextMemoryVisibility#enforceVisibility}: {@link
+   * DefaultAuthorizer#getSubjectContext} throws without one.
+   */
+  private SubjectContext subjectContextOrNull() {
+    SubjectContext subject = null;
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    }
+    return subject;
+  }
+
   /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
@@ -274,7 +291,8 @@ public class AIContextBuilder {
             Entity.getEntityReferenceByName(
                 item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
         List<String> passages =
-            vectorService.searchChunksByParent(reference.getId().toString(), query, 1);
+            vectorService.searchChunksByParent(
+                reference.getId().toString(), query, 1, subjectContextOrNull());
         if (!nullOrEmpty(passages)) {
           result = excerpt(passages.getFirst(), limit);
         }
@@ -852,6 +870,23 @@ public class AIContextBuilder {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
       context.withTable(buildTableContext(table));
+    }
+    if (entity instanceof Metric metric) {
+      context.withGeneric(buildMetricContext(metric));
+    }
+    return context;
+  }
+
+  /**
+   * A metric's structural context is its expression — the query that defines it. Without this, asking
+   * get_asset_context about a metric returned only its description, while the same expression was
+   * already reachable through get_knowledge_content and as attached knowledge of a table.
+   */
+  private static GenericAssetContext buildMetricContext(Metric metric) {
+    MetricExpression expression = metric.getMetricExpression();
+    GenericAssetContext context = null;
+    if (expression != null && !nullOrEmpty(expression.getCode())) {
+      context = new GenericAssetContext().withDefinition(expression.getCode());
     }
     return context;
   }

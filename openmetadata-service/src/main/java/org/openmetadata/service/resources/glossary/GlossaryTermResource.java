@@ -52,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
@@ -91,6 +90,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
@@ -1073,18 +1073,21 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            GlossaryTerm movedGlossaryTerm = repository.moveGlossaryTerm(id, moveRequest, userName);
-            WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
-                jobId, securityContext, movedGlossaryTerm);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendMoveOperationFailedNotification(
-                jobId, securityContext, glossaryTerm, e.getMessage());
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            () -> {
+              try {
+                GlossaryTerm movedGlossaryTerm =
+                    repository.moveGlossaryTerm(id, moveRequest, userName);
+                WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
+                    jobId, securityContext, movedGlossaryTerm);
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendMoveOperationFailedNotification(
+                    jobId, securityContext, glossaryTerm, e.getMessage());
+              }
+            });
 
     return Response.accepted()
         .entity(

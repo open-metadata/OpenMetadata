@@ -367,8 +367,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    await getResourceLimit('bot', true, true);
-    await reloadBotMap();
+    await Promise.all([getResourceLimit('bot', true, true), reloadBotMap()]);
     fetchBots(showDeleted);
   }, [selectedUser, reloadBotMap]);
 

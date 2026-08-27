@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -23,6 +26,9 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 class IngestionPipelineRepositoryTest {
@@ -44,6 +50,76 @@ class IngestionPipelineRepositoryTest {
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
+  }
+
+  @Test
+  void deleteDeployedPipelineReportsSkippedCleanupForUnavailableRunner() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
+        .when(pipelineServiceClient)
+        .deletePipeline(pipeline);
+    IngestionPipelineRepository cleanupRepository = repositoryWithClient(pipelineServiceClient);
+
+    boolean wasRunnerCleanupSkipped = cleanupRepository.deleteDeployedPipeline(pipeline, true);
+
+    assertTrue(wasRunnerCleanupSkipped);
+  }
+
+  @Test
+  void deleteDeployedPipelinePreservesUnavailableRunnerFailureByDefault() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionRunnerUnavailableException unavailable =
+        new IngestionRunnerUnavailableException("runner unavailable");
+    doThrow(unavailable).when(pipelineServiceClient).deletePipeline(pipeline);
+    IngestionPipelineRepository cleanupRepository = repositoryWithClient(pipelineServiceClient);
+
+    IngestionRunnerUnavailableException actual =
+        assertThrows(
+            IngestionRunnerUnavailableException.class,
+            () -> cleanupRepository.deleteDeployedPipeline(pipeline, false));
+
+    assertEquals(unavailable, actual);
+  }
+
+  @Test
+  void deleteDeployedPipelineDoesNotSuppressOtherPipelineFailures() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientException deploymentFailure =
+        new PipelineServiceClientException("runner rejected deletion");
+    doThrow(deploymentFailure).when(pipelineServiceClient).deletePipeline(pipeline);
+    IngestionPipelineRepository cleanupRepository = repositoryWithClient(pipelineServiceClient);
+
+    PipelineServiceClientException actual =
+        assertThrows(
+            PipelineServiceClientException.class,
+            () -> cleanupRepository.deleteDeployedPipeline(pipeline, true));
+
+    assertEquals(deploymentFailure, actual);
+  }
+
+  @Test
+  void deleteDeployedPipelineReportsCompletedCleanup() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+
+    boolean wasRunnerCleanupSkipped = cleanupRepository.deleteDeployedPipeline(pipeline, true);
+
+    assertFalse(wasRunnerCleanupSkipped);
+  }
+
+  private IngestionPipelineRepository repositoryWithClient(
+      PipelineServiceClientInterface pipelineServiceClient) {
+    IngestionPipelineRepository cleanupRepository =
+        mock(IngestionPipelineRepository.class, Mockito.CALLS_REAL_METHODS);
+    cleanupRepository.setPipelineServiceClient(pipelineServiceClient);
+    return cleanupRepository;
   }
 
   @Test

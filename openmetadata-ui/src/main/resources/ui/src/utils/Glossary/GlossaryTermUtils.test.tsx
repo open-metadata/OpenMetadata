@@ -14,6 +14,7 @@
 import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
+import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import glossaryTermClassBase, {
   GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
@@ -128,6 +129,63 @@ describe('getGlossaryTermDetailPageTabs', () => {
       const tabs = getGlossaryTermDetailPageTabs(mockProps);
 
       expect(tabs.find((t) => t.key === EntityTabs.ASSETS)).toBeDefined();
+    });
+
+    it('passes a status message and disables Add on the ASSETS tab when the term is not Approved', () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        glossaryTerm: {
+          ...mockGlossaryTerm,
+          entityStatus: EntityStatus.InReview,
+        },
+      });
+      const assetsTab = tabs.find((t) => t.key === EntityTabs.ASSETS);
+      const resizable = assetsTab?.children as React.ReactElement;
+      const assetsTabsProps = (
+        resizable.props.firstPanel.children as React.ReactElement
+      ).props;
+
+      expect(assetsTabsProps.addDisabledMessage).toBeTruthy();
+    });
+
+    it('does not pass a disabled message on the ASSETS tab when the term is Approved', () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        glossaryTerm: {
+          ...mockGlossaryTerm,
+          entityStatus: EntityStatus.Approved,
+        },
+      });
+      const assetsTab = tabs.find((t) => t.key === EntityTabs.ASSETS);
+      const resizable = assetsTab?.children as React.ReactElement;
+      const assetsTabsProps = (
+        resizable.props.firstPanel.children as React.ReactElement
+      ).props;
+
+      expect(assetsTabsProps.addDisabledMessage).toBeUndefined();
+    });
+
+    it('uses a different, status-appropriate disabled message for terminal statuses vs pending ones', () => {
+      const getAssetsMessage = (entityStatus: EntityStatus) => {
+        const tabs = getGlossaryTermDetailPageTabs({
+          ...mockProps,
+          glossaryTerm: { ...mockGlossaryTerm, entityStatus },
+        });
+        const assetsTab = tabs.find((t) => t.key === EntityTabs.ASSETS);
+        const resizable = assetsTab?.children as React.ReactElement;
+
+        return (resizable.props.firstPanel.children as React.ReactElement).props
+          .addDisabledMessage;
+      };
+
+      // Pending (can still be approved) vs terminal (Deprecated will not) must
+      // not share the misleading "once it is approved" copy.
+      const pendingMessage = getAssetsMessage(EntityStatus.InReview);
+      const terminalMessage = getAssetsMessage(EntityStatus.Deprecated);
+
+      expect(pendingMessage).toBeTruthy();
+      expect(terminalMessage).toBeTruthy();
+      expect(terminalMessage).not.toEqual(pendingMessage);
     });
 
     it('includes ACTIVITY_FEED tab', () => {

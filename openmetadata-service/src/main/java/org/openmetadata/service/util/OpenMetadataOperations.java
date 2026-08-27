@@ -1085,8 +1085,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
       }
-      jdbi.open().getConnection();
-      return 0;
+      boolean connectionValid = jdbi.withHandle(handle -> handle.getConnection().isValid(5));
+      return connectionValid ? 0 : 1;
     } catch (Exception e) {
       LOG.error("Failed to check connection due to ", e);
       return 1;

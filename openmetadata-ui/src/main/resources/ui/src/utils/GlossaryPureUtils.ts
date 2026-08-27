@@ -26,7 +26,6 @@ import type { Task } from '../generated/entity/tasks/task';
 import type { User } from '../generated/entity/teams/user';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
-import { calculatePercentageFromValue } from './NumberUtils';
 import { getGlossaryPath } from './RouterUtils';
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
@@ -315,20 +314,17 @@ export const findAndUpdateNested = (
   });
 };
 
-export const glossaryTermTableColumnsWidth = (
-  tableWidth: number,
-  havingCreatePermission: boolean
-) => {
+// Fixed pixel column widths (with horizontal scroll) so the glossary terms
+// table has the same consistent cell spacing as the classification table,
+// instead of columns squeezing/stretching with the container width.
+export const glossaryTermTableColumnsWidth = () => {
   return {
-    name: calculatePercentageFromValue(tableWidth, 30),
-    description: calculatePercentageFromValue(
-      tableWidth,
-      havingCreatePermission ? 21 : 33
-    ),
-    reviewers: calculatePercentageFromValue(tableWidth, 33),
-    synonyms: calculatePercentageFromValue(tableWidth, 33),
-    owners: calculatePercentageFromValue(tableWidth, 17),
-    status: calculatePercentageFromValue(tableWidth, 20),
+    name: 250,
+    description: 350,
+    reviewers: 220,
+    synonyms: 220,
+    owners: 280,
+    status: 150,
   };
 };
 

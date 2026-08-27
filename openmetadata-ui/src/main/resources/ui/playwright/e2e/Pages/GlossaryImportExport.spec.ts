@@ -42,6 +42,7 @@ import {
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
+  suppressCsvJobsTray,
   fillGlossaryRowDetails,
   startCsvPreviewAndWaitForGrid,
   validateImportStatus,
@@ -133,6 +134,17 @@ test.describe('Glossary Bulk Import Export', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+
+    // Tests in this file run in parallel as the same admin user, so their CSV
+    // jobs arrive on this page's socket and auto-open the background jobs tray
+    // — a fixed-position panel at bottom-right, directly over the glossary
+    // right panel where the reviewer "Add" button sits. Playwright then retries
+    // the click against the overlay until the test timeout.
+    // startCsvPreviewAndWaitForGrid already neutralises the tray, but only once
+    // the import preview begins, which is after the reviewer edit.
+    // redirectToHomePage is the only hard navigation here, so injecting once at
+    // this point covers the whole test.
+    await suppressCsvJobsTray(page);
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {

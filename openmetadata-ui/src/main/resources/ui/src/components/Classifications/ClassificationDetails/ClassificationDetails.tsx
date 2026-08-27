@@ -72,6 +72,21 @@ import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
+// Stretch the antd table so its body fills the panel height even with only a
+// few rows — otherwise the body shrinks to its content (scroll.y sets
+// max-height, not height) and the horizontal scrollbar floats mid-panel with
+// empty space below it.
+const TAG_TABLE_FILL_CLASSNAME = [
+  'tw:h-full',
+  'tw:[&_.ant-spin-nested-loading]:h-full',
+  'tw:[&_.ant-spin-container]:h-full',
+  'tw:[&_.ant-table]:h-full tw:[&_.ant-table]:flex tw:[&_.ant-table]:flex-col',
+  'tw:[&_.ant-table-container]:flex-1 tw:[&_.ant-table-container]:min-h-0',
+  'tw:[&_.ant-table-container]:flex tw:[&_.ant-table-container]:flex-col',
+  'tw:[&_.ant-table-header]:shrink-0',
+  'tw:[&_.ant-table-body]:flex-1 tw:[&_.ant-table-body]:!max-h-none',
+].join(' ');
+
 const ClassificationDetails = forwardRef(
   (
     {
@@ -88,6 +103,7 @@ const ClassificationDetails = forwardRef(
       isVersionView = false,
       isClassificationLoading = false,
       handleToggleDisable,
+      handleEditClassificationClick,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -191,7 +207,6 @@ const ClassificationDetails = forwardRef(
       editDescriptionPermission,
       createPermission,
       deletePermission,
-      editDisplayNamePermission,
       editOwnerPermission,
       editDomainPermission,
     } = useMemo(() => {
@@ -210,9 +225,6 @@ const ClassificationDetails = forwardRef(
             classificationPermissions.EditAll),
         deletePermission:
           classificationPermissions.Delete && !isSystemClassification,
-        editDisplayNamePermission:
-          classificationPermissions.EditAll ||
-          classificationPermissions.EditDisplayName,
         editOwnerPermission:
           isEditable &&
           (classificationPermissions.EditAll ||
@@ -245,29 +257,22 @@ const ClassificationDetails = forwardRef(
       [isTier, isSystemClassification, editClassificationPermission]
     );
 
+    // The edit drawer edits every classification field, so it needs full
+    // EditAll access.
+    const showEditOption = useMemo(
+      () =>
+        !isVersionView &&
+        !isClassificationDisabled &&
+        editClassificationPermission,
+      [isVersionView, isClassificationDisabled, editClassificationPermission]
+    );
+
     const showManageButton = useMemo(
       () =>
         !isVersionView &&
-        (editDisplayNamePermission || deletePermission || showDisableOption),
-      [
-        editDisplayNamePermission,
-        deletePermission,
-        showDisableOption,
-        isVersionView,
-      ]
+        (showEditOption || deletePermission || showDisableOption),
+      [showEditOption, deletePermission, showDisableOption, isVersionView]
     );
-
-    const handleUpdateDisplayName = async (data: {
-      name: string;
-      displayName?: string;
-    }) => {
-      if (!isUndefined(currentClassification)) {
-        return handleUpdateClassification?.({
-          ...currentClassification,
-          ...data,
-        });
-      }
-    };
 
     const handleUpdateDescription = async (updatedHTML: string) => {
       if (!isUndefined(currentClassification)) {
@@ -331,12 +336,16 @@ const ClassificationDetails = forwardRef(
         getClassificationExtraDropdownContent(
           showDisableOption,
           isClassificationDisabled,
-          handleEnableDisableClassificationClick
+          handleEnableDisableClassificationClick,
+          showEditOption,
+          handleEditClassificationClick
         ),
       [
         isClassificationDisabled,
         showDisableOption,
         handleEnableDisableClassificationClick,
+        showEditOption,
+        handleEditClassificationClick,
       ]
     );
 
@@ -457,19 +466,14 @@ const ClassificationDetails = forwardRef(
                     <ManageButton
                       isRecursiveDelete
                       afterDeleteAction={handleAfterDeleteAction}
-                      allowRename={!isSystemClassification}
                       allowSoftDelete={false}
                       canDelete={deletePermission && !isClassificationDisabled}
                       displayName={getEntityName(currentClassification)}
-                      editDisplayNamePermission={
-                        editDisplayNamePermission && !isClassificationDisabled
-                      }
                       entityFQN={currentClassification?.fullyQualifiedName}
                       entityId={currentClassification.id}
                       entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}
                       extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleUpdateDisplayName}
                     />
                   )}
                 </ButtonGroup>
@@ -528,6 +532,7 @@ const ClassificationDetails = forwardRef(
                     </Box>
                   ) : (
                     <Table
+                      className={TAG_TABLE_FILL_CLASSNAME}
                       columns={tableColumn}
                       customPaginationProps={{
                         currentPage,

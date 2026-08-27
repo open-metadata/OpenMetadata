@@ -36,7 +36,6 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
-  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -66,16 +65,33 @@ export const visitEntityPage = async (data: {
 }) => {
   const { page, searchTerm, dataTestId } = data;
 
-  await waitForAllLoadersToDisappear(page);
+  // This helper drives the global search box, which only exists inside the app.
+  // Callers reaching here through TableClass.visitEntityPage's fallback branch
+  // may not have navigated at all — the `page` fixture hands out a
+  // browser.newPage(), which sits on about:blank — and that branch runs
+  // precisely when direct navigation was not possible. Without a search box the
+  // fill below waits until the enclosing timeout.
+  //
+  // Probe for the search box rather than inferring from page.url(): a URL check
+  // only tells us whether this is a web page, not whether it is an app page
+  // that renders the global header. Use .first() so the probe reports presence
+  // rather than throwing on strict-mode ambiguity.
+  //
+  // Navigating inline rather than via redirectToHomePage: utils/common.ts
+  // already imports from this module, so importing it back would be circular.
+  const hasSearchBox = await page
+    .getByTestId('searchBox')
+    .first()
+    .waitFor({ state: 'attached', timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
+  if (!hasSearchBox) {
+    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
   }
+
+  await waitForAllLoadersToDisappear(page);
 
   const searchResponse = page.waitForResponse(
     (response) =>
@@ -115,7 +131,6 @@ export const visitEntityPageByFqn = async (data: {
 }) => {
   const { page, endpoint, fqn } = data;
   await waitForAllLoadersToDisappear(page);
-  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
@@ -1502,7 +1517,6 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
@@ -2620,6 +2634,46 @@ export const copyAndGetClipboardText = async (
   }, textareaId);
 
   return clipboardText;
+};
+
+/**
+ * Replaces navigator.clipboard with an in-memory implementation before any page
+ * script runs. Required for grid components (e.g. BulkImport) that call
+ * navigator.clipboard.writeText/readText directly, since the real OS clipboard
+ * API is unreliable in AUT/headless CI even with clipboard permissions granted.
+ *
+ * @param page - Playwright Page object
+ */
+export const mockClipboardApi = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    // The grid only calls navigator.clipboard when window.isSecureContext is true. On a
+    // plain-HTTP AUT origin it is false, so the copy half falls through to execCommand and
+    // writes to the real OS clipboard while the paste half reads this mock - the two never
+    // agree and every paste yields an empty cell.
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    let clipboardData = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          clipboardData = text;
+        },
+        readText: async () => clipboardData,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  // addInitScript only applies to documents loaded after it is registered. Callers install
+  // this mid-test, by which point the fixture has already navigated, so without a reload the
+  // mock never runs and the grid silently uses the real clipboard.
+  if (!page.url().startsWith('about:')) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
 };
 
 /**

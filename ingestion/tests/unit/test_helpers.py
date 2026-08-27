@@ -30,6 +30,7 @@ from metadata.utils.helpers import (
     find_suggestion,
     format_large_string_numbers,
     get_entity_tier_from_tags,
+    is_safe_pandas_query,
     is_safe_sql_query,
     list_to_dict,
     pretty_print_time_duration,
@@ -171,6 +172,8 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_sql_query("truncate table test"))
         self.assertFalse(is_safe_sql_query("TRUNCATE TABLE test"))
 
+        self.assertFalse(is_safe_sql_query("BEGIN TRANSACTION; SELECT * FROM table1; COMMIT"))
+
     def test_is_safe_sql_query_dangerous_functions(self):
         """Test is_safe_sql_query blocks dangerous database functions"""
         self.assertFalse(is_safe_sql_query("SELECT pg_read_file('/etc/passwd')"))
@@ -190,9 +193,71 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_sql_query("EXEC sp_oacreate 'obj'"))
         self.assertFalse(is_safe_sql_query("exec SP_OACREATE 'obj'"))
 
+    def test_is_safe_sql_query_blocks_nested_dangerous_tokens(self):
+        """Dangerous functions and statements are rejected at any parse depth."""
+        self.assertFalse(is_safe_sql_query("SELECT COALESCE(pg_catalog.pg_read_file('/etc/passwd'), '')"))
+        self.assertFalse(is_safe_sql_query('SELECT "pg_catalog"."pg_read_file"(\'/etc/passwd\')'))
+        self.assertFalse(is_safe_sql_query("SELECT (SELECT lo_import('/tmp/payload'))"))
+        self.assertFalse(
+            is_safe_sql_query("WITH changed AS (UPDATE users SET admin = true RETURNING *) SELECT * FROM changed")
+        )
+        self.assertFalse(is_safe_sql_query("SELECT 1; SELECT pg_write_file('/tmp/x', 'data')"))
+
+    def test_is_safe_sql_query_allows_safe_nested_queries_and_token_text(self):
+        """Nested reads and forbidden words inside data or comments remain valid."""
+        self.assertTrue(is_safe_sql_query("SELECT * FROM (SELECT id FROM users) nested_users"))
+        self.assertTrue(is_safe_sql_query("SELECT id, comment, update, copy FROM reviews"))
+        self.assertTrue(is_safe_sql_query('SELECT "delete", [merge], `call` FROM reviews'))
+        self.assertTrue(is_safe_sql_query("SELECT COUNT(update) FROM reviews"))
+        self.assertTrue(is_safe_sql_query("SELECT 'pg_read_file', 'DROP', 'UPDATE'"))
+        self.assertTrue(is_safe_sql_query("SELECT id FROM users -- DROP is comment text"))
+
     def test_is_safe_sql_query_none_input(self):
         """Test is_safe_sql_query handles None input"""
         self.assertTrue(is_safe_sql_query(None))
+
+    def test_is_safe_pandas_query_allows_legitimate_filters(self):
+        """Legitimate DataFrame.query() filter expressions must keep working"""
+        self.assertTrue(is_safe_pandas_query(None))
+        self.assertTrue(is_safe_pandas_query("`age` > 30"))
+        self.assertTrue(is_safe_pandas_query("age > 30 and name == 'x'"))
+        self.assertTrue(is_safe_pandas_query("`age` >= 18 and `age` <= 65"))
+        self.assertTrue(is_safe_pandas_query("1.5 < price < 9.99"))
+        self.assertTrue(is_safe_pandas_query("col1 in ['a', 'b']"))
+        self.assertTrue(is_safe_pandas_query("~(age > 1) or country != 'US'"))
+        # a bare column that happens to contain a double underscore is fine
+        self.assertTrue(is_safe_pandas_query("first__name > 1"))
+        # an @ inside a string literal is data, not a frame reference
+        self.assertTrue(is_safe_pandas_query("email == 'a@b.com'"))
+        # a dunder inside a backtick-quoted identifier is a column name, not an attack
+        self.assertTrue(is_safe_pandas_query("`weird.__col` > 0"))
+
+    def test_is_safe_pandas_query_blocks_frame_variable_injection(self):
+        """`@name` references the calling Python frame -> arbitrary code execution"""
+        self.assertFalse(is_safe_pandas_query("@self.get_client()"))
+        self.assertFalse(is_safe_pandas_query("a == @self.connection.password"))
+        self.assertFalse(is_safe_pandas_query("@os.system('echo pwned') or a > 0"))
+        self.assertFalse(is_safe_pandas_query("@self.exfil.go(@self.connection.password)"))
+
+    def test_is_safe_pandas_query_blocks_calls_and_attribute_access(self):
+        """Method calls and attribute access can execute code, e.g. writing files, so
+        they are rejected even without an @ or dunder"""
+        # Series methods that have side effects (confirmed to write files on pandas 2.1.4)
+        self.assertFalse(is_safe_pandas_query("a.to_csv('/tmp/x')"))
+        self.assertFalse(is_safe_pandas_query("a.values.tofile('/tmp/x')"))
+        # string accessor is still a method call, so it is rejected
+        self.assertFalse(is_safe_pandas_query("`name`.str.len() > 3"))
+        # dunder attribute traversal (the classic sandbox-escape gadget)
+        self.assertFalse(is_safe_pandas_query("a.__class__.__init__.__globals__"))
+        self.assertFalse(is_safe_pandas_query("a.__class__.__mro__[0]"))
+
+    def test_is_safe_pandas_query_blocks_matmul_operator(self):
+        """pandas reserves `@` for frame-variable references, so the binary `@`
+        operator (ast.MatMult) must not be treated as a safe filter"""
+        self.assertFalse(is_safe_pandas_query("a @ b"))
+        # legitimate boolean/bitwise combinations must still be allowed
+        self.assertTrue(is_safe_pandas_query("(a > 1) & (b < 2)"))
+        self.assertTrue(is_safe_pandas_query("a % 2 == 0"))
 
     def test_format_large_string_numbers(self):
         """test format_large_string_numbers"""

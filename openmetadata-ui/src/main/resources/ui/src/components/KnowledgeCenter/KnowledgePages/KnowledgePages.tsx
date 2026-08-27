@@ -155,7 +155,7 @@ const KnowledgePages: FC = () => {
     <WidgetCard
       dataTestId="knowledge-center"
       headerExtra={headerExtra}
-      title={t('label.knowledge-center')}>
+      title={t('label.context-center')}>
       {content}
     </WidgetCard>
   );

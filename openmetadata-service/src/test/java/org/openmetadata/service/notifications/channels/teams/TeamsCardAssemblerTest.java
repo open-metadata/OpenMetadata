@@ -295,6 +295,30 @@ class TeamsCardAssemblerTest {
     return listItem;
   }
 
+  @Test
+  void visitCodeLinkifiesUrlOnlyCodeSpans() {
+    TeamsCardAssembler assembler = new TeamsCardAssembler();
+    Document document = new Document();
+
+    CustomBlock customBlock = new CustomBlock() {};
+    Code url = new Code();
+    url.setLiteral("https://demo.getcollate.io/test-suites/redshift.orders");
+    customBlock.appendChild(url);
+    customBlock.appendChild(new Text(" "));
+    Code command = new Code();
+    command.setLiteral("select * from orders");
+    customBlock.appendChild(command);
+    document.appendChild(customBlock);
+
+    document.accept(assembler);
+
+    String rendered = assertTextBlock(assembler.getBodyItems().getFirst()).getText();
+    assertTrue(
+        rendered.contains(
+            "[https://demo.getcollate.io/test-suites/redshift.orders](https://demo.getcollate.io/test-suites/redshift.orders)"));
+    assertTrue(rendered.contains("`select * from orders`"));
+  }
+
   private static TableBlock createTable(String[] headers, String[] row) {
     TableBlock tableBlock = new TableBlock();
     if (headers != null) {

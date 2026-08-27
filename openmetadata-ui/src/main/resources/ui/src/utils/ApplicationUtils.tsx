@@ -13,7 +13,10 @@
 import { isEmpty, upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { CACHE_WARMUP_APPLICATION_NAME } from '../constants/constants';
+import {
+  CACHE_WARMUP_APPLICATION_NAME,
+  MCP_APPLICATION_NAME,
+} from '../constants/constants';
 import {
   AppRunRecord,
   Stats,
@@ -24,6 +27,9 @@ import { formatJsonString } from './StringUtils';
 
 export const isCacheWarmupApplication = (appName?: string) =>
   appName === CACHE_WARMUP_APPLICATION_NAME;
+
+export const isMcpApplication = (appName?: string) =>
+  appName === MCP_APPLICATION_NAME;
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {

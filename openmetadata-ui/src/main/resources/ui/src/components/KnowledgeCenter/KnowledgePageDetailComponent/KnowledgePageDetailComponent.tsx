@@ -80,6 +80,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
@@ -105,12 +106,16 @@ interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
+  // Called after a successful save so the left-tree can re-fetch and reflect the
+  // updatedAt-desc order (the edited page moves to the top of its branch).
+  onArticleSaved?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
   isRightPanelOpen = true,
   onToggleRightPanel,
+  onArticleSaved,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
@@ -447,6 +452,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           };
         });
         didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -459,6 +465,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       permissions,
       beginTrackedSave,
       endTrackedSave,
+      onArticleSaved,
     ]
   );
 
@@ -479,14 +486,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleContentOnChange = useCallback(
     (content: string) => {
-      const isChanged = !isEqual(knowledgePage?.description ?? '', content);
+      const persistableContent = stripPendingUploadNodes(content);
+      const isChanged = !isEqual(
+        knowledgePage?.description ?? '',
+        persistableContent
+      );
       if (isChanged) {
         setContentChangeState(ContentChangeState.UN_SAVED);
         if (knowledgePage?.id) {
           saveDraftContent(
             knowledgePage.id,
             knowledgePage.fullyQualifiedName,
-            content,
+            persistableContent,
             knowledgePage.version
           );
         }
@@ -496,7 +507,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
-      handleContentSave(content);
+      handleContentSave(persistableContent);
     },
     [knowledgePage, handleContentSave, saveDraftContent]
   );
@@ -524,6 +535,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (existingDraft) {
         setDraft(currentKnowledgePage.id, { version: response.version });
       }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -555,6 +567,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (existingDraft) {
         setDraft(currentKnowledgePage.id, { version: response.version });
       }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -606,6 +619,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           };
         });
         didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -618,6 +632,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       permissions,
       beginTrackedSave,
       endTrackedSave,
+      onArticleSaved,
     ]
   );
 
@@ -972,7 +987,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-page'),
+          entity: t('label.article'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

@@ -19,9 +19,7 @@ import { uniqBy } from 'lodash';
 import { ElementType, Fragment, type CSSProperties } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
 import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
@@ -61,27 +59,30 @@ import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
-import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
+
+import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
+import { ReactComponent as EventSubscriptionIcon } from '../assets/svg/common/event-subscription.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/common/policy.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/common/role.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/common/teams.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/common/user.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
 import {
   ENTITY_ICON_MAPPER,
   NON_SERVICE_TYPE_ASSETS,
@@ -312,25 +313,32 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.PERSONA]: PersonaIcon,
   [EntityType.ROLE]: RoleIcon,
   [EntityType.POLICY]: PolicyIcon,
-  [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
+  [EntityType.EVENT_SUBSCRIPTION]: EventSubscriptionIcon,
   [EntityType.USER]: UserIcon,
-  [EntityType.INGESTION_PIPELINE]: PipelineIcon,
+  [EntityType.INGESTION_PIPELINE]:
+    ENTITY_ICON_MAPPER[EntityType.INGESTION_PIPELINE].icon,
   [EntityType.ALERT]: AlertIcon,
   [EntityType.KPI]: KPIIcon,
-  ['tagCategory']: ClassificationIcon,
-  ['announcement']: AnnouncementIcon,
-  ['conversation']: ConversationIcon,
-  ['task']: TaskIcon,
-  ['dataQuality']: DataQualityIcon,
-  ['services']: ServicesIcon,
-  ['automator']: AutomatorBotIcon,
-  ['notification']: NotificationIcon,
+  tagCategory: ClassificationIcon,
+  announcement: AnnouncementIcon,
+  conversation: ConversationIcon,
+  task: TaskIcon,
+  dataQuality: DataQualityIcon,
+  services: ServicesIcon,
+  automator: AutomatorBotIcon,
+  notification: NotificationIcon,
+  [EntityType.LLM_SERVICE]: ENTITY_ICON_MAPPER[EntityType.LLM_SERVICE].icon,
+  [EntityType.MCP_SERVICE]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVICE].icon,
+  aiFrameworkControl: ENTITY_ICON_MAPPER['aiFrameworkControl'].icon,
+  aiGovernancePolicy: ENTITY_ICON_MAPPER['aiGovernancePolicy'].icon,
+  aiGovernanceFramework: ENTITY_ICON_MAPPER['aiGovernanceFramework'].icon,
+  [EntityType.AUDIT_REPORT]: ENTITY_ICON_MAPPER[EntityType.AUDIT_REPORT].icon,
   [EntityType.API_ENDPOINT]: ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon,
   [EntityType.METRIC]: ENTITY_ICON_MAPPER[EntityType.METRIC].icon,
   [EntityType.API_SERVICE]: ENTITY_ICON_MAPPER[EntityType.API_SERVICE].icon,
   [EntityType.API_COLLECTION]:
     ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon,
-  ['location']: LocationIcon,
+  location: LocationIcon,
   [EntityType.QUERY]: ENTITY_ICON_MAPPER[EntityType.QUERY].icon,
   [EntityType.DIRECTORY]: ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon,
   [EntityType.FILE]: ENTITY_ICON_MAPPER[EntityType.FILE].icon,
@@ -347,16 +355,20 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.SEARCH_SERVICE]:
     ENTITY_ICON_MAPPER[EntityType.SEARCH_SERVICE].icon,
   Governance: GovernanceIcon,
-  contextFile: ENTITY_ICON_MAPPER['contextFile'].icon,
-  contextMemory: ENTITY_ICON_MAPPER['contextMemory'].icon,
-  aiAutomation: ENTITY_ICON_MAPPER['aiAutomation'].icon,
-  folder: ENTITY_ICON_MAPPER['folder'].icon,
-  contextPlugin: ENTITY_ICON_MAPPER['contextPlugin'].icon,
-  marketplace: ENTITY_ICON_MAPPER['marketplace'].icon,
-  dynamicAgent: ENTITY_ICON_MAPPER['dynamicAgent'].icon,
-  dataObservability: ENTITY_ICON_MAPPER['dataObservability'].icon,
-  report: ENTITY_ICON_MAPPER['report'].icon,
-  testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon,
+  contextFile: ENTITY_ICON_MAPPER.contextFile.icon,
+  contextMemory: ENTITY_ICON_MAPPER.contextMemory.icon,
+  aiAutomation: ENTITY_ICON_MAPPER.aiAutomation.icon,
+  folder: ENTITY_ICON_MAPPER.folder.icon,
+  contextPlugin: ENTITY_ICON_MAPPER.contextPlugin.icon,
+  marketplace: ENTITY_ICON_MAPPER.marketplace.icon,
+  dynamicAgent: ENTITY_ICON_MAPPER.dynamicAgent.icon,
+  [EntityType.AI_APPLICATION]:
+    ENTITY_ICON_MAPPER[EntityType.AI_APPLICATION].icon,
+  [EntityType.LLM_MODEL]: ENTITY_ICON_MAPPER[EntityType.LLM_MODEL].icon,
+  [EntityType.MCP_SERVER]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVER].icon,
+  dataObservability: ENTITY_ICON_MAPPER.dataObservability.icon,
+  report: ENTITY_ICON_MAPPER.report.icon,
+  testDefinition: ENTITY_ICON_MAPPER.testDefinition.icon,
 };
 
 export enum EntityIconSize {

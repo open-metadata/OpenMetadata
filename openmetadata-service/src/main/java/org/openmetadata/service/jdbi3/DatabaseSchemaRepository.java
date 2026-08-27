@@ -550,7 +550,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
             : "retentionPeriod";
     Database database =
-        getOrLoadInheritanceParent(schema.getDatabase(), inheritanceFields, Database.class);
+        loadInheritanceParentLeniently(schema.getDatabase(), inheritanceFields, Database.class);
     if (database == null) {
       return;
     }

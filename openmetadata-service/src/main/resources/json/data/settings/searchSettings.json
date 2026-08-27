@@ -121,6 +121,71 @@
         "field": "entityStatus",
         "value": "unprocessed",
         "boost": 0.05
+      },
+      {
+        "field": "entityType",
+        "value": "table",
+        "boost": 0.3
+      },
+      {
+        "field": "entityType",
+        "value": "dashboard",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "topic",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "pipeline",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "mlmodel",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "container",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "searchIndex",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "storedProcedure",
+        "boost": 0.24
+      },
+      {
+        "field": "entityType",
+        "value": "dashboardDataModel",
+        "boost": 0.24
+      },
+      {
+        "field": "entityType",
+        "value": "glossaryTerm",
+        "boost": 0.2
+      },
+      {
+        "field": "entityType",
+        "value": "database",
+        "boost": 0.18
+      },
+      {
+        "field": "entityType",
+        "value": "databaseSchema",
+        "boost": 0.18
+      },
+      {
+        "field": "entityType",
+        "value": "tableColumn",
+        "boost": 0.05
       }
     ],
     "fieldValueBoosts": [
@@ -938,7 +1003,7 @@
         },
         {
           "field": "columns.name.keyword",
-          "boost": 20.0,
+          "boost": 2.0,
           "matchType": "exact"
         },
         {
@@ -1204,21 +1269,26 @@
           "matchType": "standard"
         },
         {
-          "field": "mlFeatures.name",
+          "field": "fields.name",
           "boost": 8.0,
           "matchType": "standard"
         },
         {
-          "field": "mlFeatures.description",
+          "field": "fields.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "fields.description",
           "boost": 1.0,
           "matchType": "standard"
         }
       ],
       "aggregations": [
         {
-          "name": "mlFeatures.name.keyword",
+          "name": "fields.name.keyword",
           "type": "terms",
-          "field": "mlFeatures.name.keyword"
+          "field": "fields.name.keyword"
         }
       ],
       "scoreMode": "sum",
@@ -1227,8 +1297,8 @@
         "name",
         "displayName",
         "description",
-        "mlFeatures.name",
-        "mlFeatures.description"
+        "fields.name",
+        "fields.description"
       ],
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
@@ -1296,7 +1366,7 @@
         },
         {
           "field": "dataModel.columns.name.keyword",
-          "boost": 20.0,
+          "boost": 2.0,
           "matchType": "exact"
         },
         {
@@ -2422,6 +2492,17 @@
           "weight": 70.0
         },
         {
+          "name": "prefixName",
+          "purpose": "Prefix match on the analyzed name fields, so a partially typed name ranks above an incidental substring hit and queries shorter than the n-gram minimum still match.",
+          "fields": [
+            "displayName",
+            "name"
+          ],
+          "matchType": "prefix",
+          "weight": 55.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
           "name": "closeName",
           "purpose": "Close identity match after removing weak query words such as 'in' or 'of'.",
           "fields": [
@@ -2625,11 +2706,12 @@
       },
       "disMaxTieBreaker": 0.05,
       "signals": {
-        "purpose": "Use Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
+        "purpose": "Use entity type, Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
         "boostMode": "sum",
         "scoreMode": "sum",
         "maxBoost": 2.0,
         "fields": [
+          "entityType",
           "tier.tagFQN",
           "entityStatus",
           "usageSummary.weeklyStats.count",
@@ -3370,11 +3452,15 @@
           "description": "Search on parts of the hierarchical name for flexible matching."
         },
         {
-          "name": "searchIndex.responseSchema.name",
+          "name": "fields.name",
           "description": "Search on the names of fields indexed in the search index."
         },
         {
-          "name": "searchIndex.responseSchema.description",
+          "name": "fields.name.keyword",
+          "description": "Exact match on a search index field name for precise lookups."
+        },
+        {
+          "name": "fields.description",
           "description": "Search on field descriptions to find search indexes with fields serving specific purposes."
         },
         {

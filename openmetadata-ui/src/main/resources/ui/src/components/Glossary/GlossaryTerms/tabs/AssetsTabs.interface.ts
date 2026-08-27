@@ -42,6 +42,7 @@ export interface AssetsTabsProps {
   type?: AssetsOfEntity;
   queryFilter?: string | Record<string, unknown>;
   noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
+  addDisabledMessage?: string;
   preloadedData?: SearchedDataProps['data'];
   skipSearch?: boolean;
 }

@@ -258,6 +258,33 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Test
+  void post_topicWithNulInNestedDescription_200_OK(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+    Field schemaField =
+        new Field()
+            .withName("id")
+            .withDataType(FieldDataType.STRING)
+            .withDescription("nested >\u0000< NUL");
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText("{}")
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(List.of(schemaField));
+    CreateTopic request =
+        new CreateTopic()
+            .withName(ns.prefix("topic_with_nul_description"))
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1)
+            .withMessageSchema(schema);
+
+    Topic created = createEntity(request);
+    Topic stored = getEntityWithFields(created.getId().toString(), "messageSchema");
+
+    assertEquals(
+        "nested >< NUL", stored.getMessageSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
   void post_topicWithInvalidSchemaFieldName_4xx(TestNamespace ns) {
     MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 

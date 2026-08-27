@@ -271,7 +271,9 @@ import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -342,8 +344,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
-
-  private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
@@ -606,9 +606,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set by {@link #preloadParentsForBulk(List)} and cleared after use.
    */
   private final ThreadLocal<Map<UUID, EntityInterface>> parentCacheForPrepare = new ThreadLocal<>();
-
-  private static final ThreadLocal<Map<InheritanceCacheKey, EntityInterface>>
-      inheritanceParentCache = ThreadLocal.withInitial(HashMap::new);
 
   protected final ChangeSummarizer<T> changeSummarizer;
 
@@ -958,19 +955,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    if (!requiresParentForInheritance(entity, fields)) {
-      return;
-    }
-    String inheritableFields = getInheritableFields();
-    EntityReference parentRef = getParentReference(entity);
-    EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
-    if (parent == null) {
-      parent = resolveInheritanceParentLeniently(entity, inheritableFields);
-      cacheInheritanceParent(parentRef, inheritableFields, parent);
-    }
-    if (parent != null) {
-      // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
-      applyInheritance(entity, fields, parent);
+    if (requiresParentForInheritance(entity, fields)) {
+      EntityInterface parent = resolveInheritanceParentLeniently(entity, getInheritableFields());
+      if (parent != null) {
+        // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
+        applyInheritance(entity, fields, parent);
+      }
     }
   }
 
@@ -996,7 +986,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Return the parent's EntityReference without loading the parent entity. Subclasses override this
-   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}.
+   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}. A type that can
+   * have several CONTAINS parents at once (e.g. a test case, under both a test suite and a test
+   * definition) must override this (or {@link #setInheritedFields(List, Fields)}) to name the one it
+   * inherits from -- otherwise the ancestor fallback resolves an arbitrary CONTAINS parent.
    */
   protected EntityReference getParentReference(T entity) {
     return null;
@@ -1122,7 +1115,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unchecked")
   public void setInheritedFieldsUntyped(List<?> entities, Fields fields) {
-    setInheritedFields((List<T>) entities, fields);
+    // Inheritance-ancestor path: these came from find() (getEntitiesForInheritance) with an
+    // un-hydrated getParentReference(), so resolve their parent from the CONTAINS relationship and
+    // pass it in -- that is how multi-level inheritance keeps walking up.
+    List<T> ancestors = (List<T>) entities;
+    setInheritedFields(ancestors, fields, batchFetchInheritanceParents(ancestors));
   }
 
   /** Apply inherited fields from a loaded parent to the entity. Override for custom inheritance logic. */
@@ -1176,51 +1173,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Clear the parent cache after bulk prepare. */
   public void clearParentCache() {
     parentCacheForPrepare.remove();
-    inheritanceParentCache.remove();
   }
 
-  public static void clearInheritanceParentCache() {
-    inheritanceParentCache.remove();
-  }
-
-  private EntityInterface getCachedInheritanceParent(EntityReference parentRef, String fields) {
-    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
-      return null;
-    }
-    Map<InheritanceCacheKey, EntityInterface> cache = inheritanceParentCache.get();
-    InheritanceCacheKey directKey = inheritanceCacheKey(parentRef, fields);
-    EntityInterface direct = cache.get(directKey);
-    if (direct != null) {
-      return direct;
-    }
-
-    // Reuse a superset entry when the same parent was already loaded with broader fields
-    // (for example "owners,domains,retentionPeriod" can serve "owners,domains").
-    Set<String> requestedFields = parseFieldSet(directKey.fieldsKey());
-    for (Entry<InheritanceCacheKey, EntityInterface> entry : cache.entrySet()) {
-      InheritanceCacheKey cachedKey = entry.getKey();
-      if (!cachedKey.entityType().equals(parentRef.getType())
-          || !cachedKey.entityId().equals(parentRef.getId())) {
-        continue;
-      }
-      if (parseFieldSet(cachedKey.fieldsKey()).containsAll(requestedFields)) {
-        return entry.getValue();
-      }
-    }
-    return null;
-  }
-
-  protected final <P extends EntityInterface> P getOrLoadInheritanceParent(
+  /**
+   * Loads an inheritance parent, tolerating a parent that has been hard-deleted since the child was
+   * read. Returns null (skip inheritance) rather than propagating, matching {@link
+   * #resolveInheritanceParentLeniently}.
+   */
+  protected final <P extends EntityInterface> P loadInheritanceParentLeniently(
       EntityReference parentRef, String fields, Class<P> parentClass) {
-    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
-      return null;
-    }
-    EntityInterface parent = getCachedInheritanceParent(parentRef, fields);
-    if (parent == null) {
+    P result = null;
+    if (parentRef != null && parentRef.getId() != null && !nullOrEmpty(parentRef.getType())) {
       try {
-        parent =
+        EntityInterface parent =
             Entity.getEntityForInheritance(parentRef.getType(), parentRef.getId(), fields, ALL);
-        cacheInheritanceParent(parentRef, fields, parent);
+        if (parentClass.isInstance(parent)) {
+          result = parentClass.cast(parent);
+        }
       } catch (EntityNotFoundException e) {
         LOG.debug(
             "Inheritance parent {} {} no longer exists; skipping inheritance",
@@ -1228,52 +1197,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             parentRef.getId());
       }
     }
-    if (!parentClass.isInstance(parent)) {
-      return null;
-    }
-    return parentClass.cast(parent);
-  }
-
-  private void cacheInheritanceParent(
-      EntityReference parentRef, String fields, EntityInterface parent) {
-    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
-      return;
-    }
-    if (parent == null || parent.getId() == null) {
-      return;
-    }
-    inheritanceParentCache.get().put(inheritanceCacheKey(parentRef, fields), parent);
-  }
-
-  private InheritanceCacheKey inheritanceCacheKey(EntityReference parentRef, String fields) {
-    return new InheritanceCacheKey(
-        parentRef.getType(), parentRef.getId(), normalizeFieldList(fields));
-  }
-
-  private String normalizeFieldList(String fields) {
-    if (fields == null || fields.isBlank()) {
-      return "";
-    }
-    // Canonicalize field order so cache keys are stable across equivalent requests
-    // (e.g. "owners,domains" and "domains, owners" should share the same parent entry).
-    return fields
-        .lines()
-        .flatMap(line -> Stream.of(line.split(",")))
-        .map(String::trim)
-        .filter(field -> !field.isEmpty())
-        .distinct()
-        .sorted()
-        .collect(Collectors.joining(","));
-  }
-
-  private Set<String> parseFieldSet(String fields) {
-    if (fields == null || fields.isBlank()) {
-      return Collections.emptySet();
-    }
-    return Stream.of(fields.split(","))
-        .map(String::trim)
-        .filter(field -> !field.isEmpty())
-        .collect(Collectors.toSet());
+    return result;
   }
 
   /**
@@ -1283,56 +1207,48 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Repos with complex inheritance (e.g. GlossaryTerm, TestCase) can still override this method directly.
    */
   protected void setInheritedFields(List<T> entities, Fields fields) {
+    // Direct list reads: parent references are already hydrated, so there are no un-hydrated
+    // ancestors to resolve. Only the ancestor path (setInheritedFieldsUntyped) passes those in.
+    setInheritedFields(entities, fields, Map.of());
+  }
+
+  private void setInheritedFields(
+      List<T> entities, Fields fields, Map<UUID, EntityReference> unhydratedParentRefs) {
     if (entities.isEmpty()) return;
     String inheritableFields = getInheritableFields();
 
-    var parentRefMap = new HashMap<UUID, EntityReference>();
+    var parentRefsById = new HashMap<UUID, EntityReference>();
     for (var entity : entities) {
       if (!requiresParentForInheritance(entity, fields)) {
         continue;
       }
-      var ref = getParentReference(entity);
-      if (ref != null && ref.getId() != null) {
-        parentRefMap.putIfAbsent(ref.getId(), ref);
+      var parentRef = getParentReference(entity);
+      if (parentRef != null && parentRef.getId() != null) {
+        parentRefsById.putIfAbsent(parentRef.getId(), parentRef);
       }
     }
+    // Parents resolved from CONTAINS for ancestors whose reference wasn't hydrated by find() (empty
+    // on the direct list path) -- lets multi-level inheritance keep walking up.
+    unhydratedParentRefs.values().forEach(ref -> parentRefsById.putIfAbsent(ref.getId(), ref));
 
-    if (parentRefMap.isEmpty()) {
+    if (parentRefsById.isEmpty()) {
       for (var entity : entities) {
         setInheritedFields(entity, fields);
       }
       return;
     }
 
-    var refsByType =
-        parentRefMap.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
+    var parentRefsByType =
+        parentRefsById.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
 
-    var loadedParents = new HashMap<UUID, EntityInterface>();
-    var missingRefsByType = new HashMap<String, List<EntityReference>>();
-    for (var entry : refsByType.entrySet()) {
-      var missingRefs = new ArrayList<EntityReference>();
-      for (var ref : entry.getValue()) {
-        var cachedParent = getCachedInheritanceParent(ref, inheritableFields);
-        if (cachedParent != null) {
-          loadedParents.put(ref.getId(), cachedParent);
-        } else {
-          missingRefs.add(ref);
-        }
-      }
-      if (!missingRefs.isEmpty()) {
-        missingRefsByType.put(entry.getKey(), missingRefs);
-      }
-    }
-
-    for (var entry : missingRefsByType.entrySet()) {
+    // One bulk load per parent type keeps list endpoints off an N+1, which is what the removed
+    // thread-local parent cache was really buying on this path.
+    var parentsById = new HashMap<UUID, EntityInterface>();
+    for (var entry : parentRefsByType.entrySet()) {
       List<? extends EntityInterface> parents =
           Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
       for (var parent : parents) {
-        loadedParents.put(parent.getId(), parent);
-        var parentRef = parentRefMap.get(parent.getId());
-        if (parentRef != null) {
-          cacheInheritanceParent(parentRef, inheritableFields, parent);
-        }
+        parentsById.put(parent.getId(), parent);
       }
     }
 
@@ -1340,11 +1256,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!requiresParentForInheritance(entity, fields)) {
         continue;
       }
-      var ref = getParentReference(entity);
-      if (ref != null && loadedParents.get(ref.getId()) instanceof EntityInterface parent) {
+      var parentRef = getParentReference(entity);
+      if (parentRef == null || parentRef.getId() == null) {
+        parentRef = unhydratedParentRefs.get(entity.getId());
+      }
+      if (parentRef != null
+          && parentsById.get(parentRef.getId()) instanceof EntityInterface parent) {
         applyInheritance(entity, fields, parent);
       } else {
-        // Preserve behavior when a parent cannot be resolved via batch loading.
+        // Parent could not be resolved via batch loading (no container, or a concurrently-deleted
+        // parent): fall back to the lenient per-entity path.
         setInheritedFields(entity, fields);
       }
     }
@@ -1367,6 +1288,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setName(renameAllowed ? updated.getName() : original.getName());
     updated.setFullyQualifiedName(original.getFullyQualifiedName());
     updated.setChangeDescription(original.getChangeDescription());
+  }
+
+  protected T restorePatchSecrets(T original, T updated) {
+    return updated;
   }
 
   /**
@@ -1542,18 +1467,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    final boolean useCache = cacheAllowed(fromCache);
     T requestCachedEntity =
-        RequestEntityCache.getById(
-            entityType, id, fields, relationIncludes, fromCache, entityClass);
+        RequestEntityCache.getById(entityType, id, fields, relationIncludes, useCache, entityClass);
     if (requestCachedEntity != null) {
       return withHref(uriInfo, requestCachedEntity);
     }
 
-    if (!fromCache) {
+    if (!useCache) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
     T entity =
-        withPhase("entityLookup", () -> find(id, relationIncludes.getDefaultInclude(), fromCache));
+        withPhase("entityLookup", () -> find(id, relationIncludes.getDefaultInclude(), useCache));
     ReadPlan readPlan =
         withPhase("readCreatePlan", () -> createReadPlan(entity, fields, relationIncludes));
     ReadBundle readBundle = withPhase("buildReadBundle", () -> buildReadBundle(entity, readPlan));
@@ -1570,7 +1495,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         "requestCachePutById",
         () ->
             RequestEntityCache.putById(
-                entityType, id, fields, relationIncludes, fromCache, hydratedEntity, entityClass));
+                entityType, id, fields, relationIncludes, useCache, hydratedEntity, entityClass));
     if (hydratedEntity.getFullyQualifiedName() != null) {
       withPhase(
           "requestCachePutByName",
@@ -1580,7 +1505,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   hydratedEntity.getFullyQualifiedName(),
                   fields,
                   relationIncludes,
-                  fromCache,
+                  useCache,
                   hydratedEntity,
                   entityClass));
     }
@@ -1628,7 +1553,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return find(id, include, true);
   }
 
+  /**
+   * Callers ask for cached reads by default; a fresh-read scope overrides them. Governance workflows
+   * open that scope because their reads drive gating decisions, where a stale answer routes an entity
+   * to the wrong terminal status silently.
+   */
+  private static boolean cacheAllowed(boolean fromCache) {
+    return fromCache && !FreshReadScope.isActive();
+  }
+
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
+    fromCache = cacheAllowed(fromCache);
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
       // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
@@ -1758,6 +1693,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    fromCache = cacheAllowed(fromCache);
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     T requestCachedEntity =
         RequestEntityCache.getByName(
@@ -2274,6 +2210,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
+    fromCache = cacheAllowed(fromCache);
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
@@ -2360,19 +2297,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Whether a single entity instance should be written to the search index on the live
-   * create/update path. Defaults to true; override to keep specific instances out of the index
-   * (e.g. {@link ContextMemoryRepository} excludes non-org-wide memories). The bulk reindex applies
-   * the same rule at the DB-query level via {@link #getReindexFilter()}.
+   * create/update path. Defaults to true; override to keep specific instances out of the index.
+   * The bulk reindex applies the same rule at the DB-query level via {@link #getReindexFilter()}.
    */
   public boolean isSearchIndexable(EntityInterface entity) {
     return true;
   }
 
   /**
+   * Whether a single entity instance should be embedded into the vector/semantic index. Defaults to
+   * {@link #isSearchIndexable}; override when an instance may be keyword-searchable but must not be
+   * reachable through the vector path — for instance when its chunk documents cannot carry the
+   * fields its privacy model needs the vector query to filter on.
+   */
+  public boolean isVectorEmbeddable(EntityInterface entity) {
+    return isSearchIndexable(entity);
+  }
+
+  /**
    * Filter the search reindex uses to both list and count this entity's rows. Defaults to all rows;
-   * override to keep specific instances out of the search index (e.g. {@link ContextMemoryRepository}
-   * excludes non-org-wide memories). The reader and every entity-count site share this filter so the
-   * job total matches what actually gets indexed.
+   * override to keep specific instances out of the search index. The reader and every entity-count
+   * site share this filter so the job total matches what actually gets indexed.
    */
   public ListFilter getReindexFilter() {
     return new ListFilter(Include.ALL);
@@ -2808,30 +2753,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  private static final String HISTORY_SORT_NEWEST_FIRST = "DESC";
+  private static final String HISTORY_SORT_OLDEST_FIRST = "ASC";
+  private static final String HISTORY_OLDER_THAN_CURSOR =
+      "AND (updatedAt < :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id < :cursorId))";
+  private static final String HISTORY_NEWER_THAN_CURSOR =
+      "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
+
+  /**
+   * One keyset window of {@link #listEntityHistoryByTimestamp}, expressed as the SQL fragments and
+   * bind values that the paginated history query needs.
+   *
+   * <p>Backward paging ({@code before}) selects rows newer than the cursor, so it must scan
+   * ascending: only then is the page the LIMIT keeps the one adjacent to the cursor. Those rows are
+   * reversed afterwards so that every page reaches the caller newest-first.
+   */
+  private record HistoryPage(
+      String cursorCondition, String sortOrder, Long cursorUpdatedAt, String cursorId) {
+
+    static HistoryPage of(String afterCursor, String beforeCursor) {
+      if (beforeCursor != null) {
+        return keyset(HISTORY_NEWER_THAN_CURSOR, HISTORY_SORT_OLDEST_FIRST, beforeCursor);
+      }
+      if (afterCursor != null) {
+        return keyset(HISTORY_OLDER_THAN_CURSOR, HISTORY_SORT_NEWEST_FIRST, afterCursor);
+      }
+      return new HistoryPage("", HISTORY_SORT_NEWEST_FIRST, null, null);
+    }
+
+    private static HistoryPage keyset(String condition, String sortOrder, String cursor) {
+      String[] parts = decodeAndValidateCursor(cursor).split(":");
+      return new HistoryPage(condition, sortOrder, Long.parseLong(parts[0]), parts[1]);
+    }
+
+    boolean isBackward() {
+      return HISTORY_SORT_OLDEST_FIRST.equals(sortOrder);
+    }
+
+    boolean isFirstPage() {
+      return cursorUpdatedAt == null;
+    }
+  }
+
   public final ResultList<T> listEntityHistoryByTimestamp(
       long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
     String tableName = dao.getTableName();
     int fetchLimit = limit + 1;
-
-    String cursorCondition = "";
-    Long cursorUpdatedAt = null;
-    String cursorId = null;
-
-    if (beforeCursor != null) {
-      cursorCondition =
-          "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
-      String decodedCursor = decodeAndValidateCursor(beforeCursor);
-      String[] parts = decodedCursor.split(":");
-      cursorUpdatedAt = Long.parseLong(parts[0]);
-      cursorId = parts[1];
-    } else if (afterCursor != null) {
-      cursorCondition =
-          "AND (updatedAt < :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id < :cursorId))";
-      String decodedCursor = decodeAndValidateCursor(afterCursor);
-      String[] parts = decodedCursor.split(":");
-      cursorUpdatedAt = Long.parseLong(parts[0]);
-      cursorId = parts[1];
-    }
+    HistoryPage page = HistoryPage.of(afterCursor, beforeCursor);
 
     List<String> jsons =
         daoCollection
@@ -2840,49 +2808,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tableName,
                 startTs,
                 endTs,
-                cursorCondition,
+                page.cursorCondition(),
+                page.sortOrder(),
                 entityType,
-                cursorUpdatedAt,
-                cursorId,
+                page.cursorUpdatedAt(),
+                page.cursorId(),
                 fetchLimit);
 
-    List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
+    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
+    boolean hasMoreInCurrentDirection = entities.size() > limit;
+    if (hasMoreInCurrentDirection) {
+      entities = new ArrayList<>(entities.subList(0, limit));
+    }
+    if (page.isBackward()) {
+      Collections.reverse(entities);
+    }
     setFieldsInBulk(putFields, entities);
     hydrateHistoryEntities(entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
+    return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+  }
 
-    String beforeCursorValue = null;
-    String afterCursorValue = null;
-
-    if (!entities.isEmpty()) {
-      boolean hasMoreInCurrentDirection = entities.size() > limit;
-
-      if (hasMoreInCurrentDirection) {
-        entities = entities.subList(0, limit);
-      }
-
-      T first = entities.getFirst();
-      T last = entities.getLast();
-      String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
-      String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
-
-      if (beforeCursor != null) {
-        if (hasMoreInCurrentDirection) {
-          beforeCursorValue = firstCursor;
-        }
-        afterCursorValue = lastCursor;
-      } else {
-        if (hasMoreInCurrentDirection) {
-          afterCursorValue = lastCursor;
-        }
-        if (afterCursor != null) {
-          beforeCursorValue = firstCursor;
-        }
-      }
+  private ResultList<T> historyPageResult(
+      List<T> entities, HistoryPage page, boolean hasMoreInCurrentDirection, int total) {
+    if (entities.isEmpty()) {
+      return getResultList(entities, null, null, total);
     }
-
-    return getResultList(entities, beforeCursorValue, afterCursorValue, total);
+    T first = entities.getFirst();
+    T last = entities.getLast();
+    String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
+    String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
+    boolean hasNewerVersions = page.isBackward() ? hasMoreInCurrentDirection : !page.isFirstPage();
+    boolean hasOlderVersions = page.isBackward() || hasMoreInCurrentDirection;
+    return getResultList(
+        entities,
+        hasNewerVersions ? firstCursor : null,
+        hasOlderVersions ? lastCursor : null,
+        total);
   }
 
   /**
@@ -2896,7 +2859,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // No additional hydration by default.
   }
 
-  private String decodeAndValidateCursor(String cursor) {
+  private static String decodeAndValidateCursor(String cursor) {
     if (cursor == null) {
       throw new RuntimeException("Cursor is null");
     }
@@ -4283,7 +4246,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
     if (useOptimisticLocking) {
-      LOG.info(
+      LOG.debug(
           "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
           original.getId(),
           original.getVersion(),
@@ -4345,7 +4308,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
     if (useOptimisticLocking) {
-      LOG.info(
+      LOG.debug(
           "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
           original.getId(),
           original.getVersion(),
@@ -4378,6 +4341,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
+    }
+    try (var ignored = phase("patchRestoreSecrets")) {
+      updated = restorePatchSecrets(original, updated);
     }
 
     updated.setUpdatedBy(user);
@@ -4447,7 +4413,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public void patchChangeSummary(
       UUID entityId, String fieldName, ChangeSource changeSource, String user) {
-    T entity = get(null, entityId, getFields("changeDescription"));
+    // We rewrite the whole entity below, so we need all of it. get() returns only the fields
+    // asked for and nulls the rest, which would drop data like a Table's tableConstraints.
+    T entity = find(entityId, NON_DELETED);
     ChangeDescription cd = entity.getChangeDescription();
     if (cd == null) {
       cd = new ChangeDescription().withPreviousVersion(entity.getVersion());
@@ -4471,6 +4439,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Direct dao.update skips invalidateCachesAfterStore, so drop every cached variant so the
     // next read picks up the new changeSummary instead of serving stale JSON.
     invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    // The search doc's descriptionSource lags until the entity is next written; the value is
+    // unchanged here, so only its provenance is stale.
   }
 
   @Transaction
@@ -4889,26 +4859,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               UUID id = entityInterface.getId();
 
+              // Must run before the relationship delete below: the Task 2.0 artifacts
+              // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
+              // which deleteAll() removes, so collecting them afterwards would orphan them.
+              deleteFeedArtifactsAbout(id);
+
               // Delete all the relationships to other entities
               daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-              // Delete all the field relationships to other entities
-              daoCollection
-                  .fieldRelationshipDAO()
-                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              if (shouldCleanupFqnDependents()) {
+                daoCollection
+                    .fieldRelationshipDAO()
+                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              }
 
               // Delete all the extensions of entity
               daoCollection.entityExtensionDAO().deleteAll(id);
 
-              // Delete all the tag labels
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-
-              // when the glossary and tag is deleted, delete its usage
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              if (shouldCleanupFqnDependents()) {
+                daoCollection
+                    .tagUsageDAO()
+                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+                daoCollection
+                    .tagUsageDAO()
+                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              }
               // Delete all the usage data
               daoCollection.usageDAO().delete(id);
 
@@ -4928,6 +4903,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
+    // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
+    // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
+    // workflow queries out of the entity transaction's lock-hold time.
+    cancelWorkflowInstances(List.of(entityInterface.getId()));
     // Re-invalidate after the transaction commits. Any read that slipped in between the
     // pre-delete invalidate and the commit could have re-populated the cache from the
     // still-visible DB row; clearing again here guarantees the next read goes back to the
@@ -4951,6 +4930,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
+
+  protected boolean shouldCleanupFqnDependents() {
+    return true;
+  }
 
   /**
    * Variant of {@link #entitySpecificCleanup(EntityInterface)} that receives the user performing
@@ -5353,7 +5336,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected String serializeForStorage(T entity) {
-    return storageJsonNode(entity).toString();
+    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -6145,6 +6128,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(certTagsByTarget);
   }
 
+  /**
+   * Certification is stored as a {@code tag_usage} row but is surfaced as its own entity field, so
+   * every tags read path filters it out. A caller that wipes tags with the prefix-agnostic
+   * {@code deleteTagsByTarget} and re-applies from {@code entity.getTags()} would therefore drop the
+   * certification permanently (issue #30545). Use this instead when replacing an entity's tags
+   * outside the {@code EntityUpdater} path.
+   */
+  protected void deleteTagsPreservingCertification(String entityFQN) {
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) {
+      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+    } else {
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTargetExcludingPrefix(
+              TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
+    }
+  }
+
   protected void deleteCertificationTag(String entityFQN) {
     String certClassification = getCertificationClassification();
     if (certClassification == null) return;
@@ -6744,7 +6746,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>Subclasses with non-CONTAINS related entities (e.g., dashboard charts attached via HAS)
    * should override {@link #hardDeleteAdditionalChildren(UUID, String)}. Subclasses that need true
    * batched external cleanup (Airflow DAGs, S3, secrets stores) can override
-   * {@link #bulkEntitySpecificCleanup(List)}; the default loops the per-entity hook.
+   * {@link #bulkEntitySpecificCleanup(List, String)}; the default loops the per-entity hook.
    *
    * <p><b>Concurrency:</b> relationship rows and entity rows are deleted as separate auto-committed
    * statements (these are plain {@code EntityRepository} calls, not JDBI SqlObject proxies, so a
@@ -6791,7 +6793,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
           true,
           updatedBy);
-      bulkEntitySpecificCleanup(entities);
+      bulkEntitySpecificCleanup(entities, updatedBy);
       // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
       // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
       // those relationship rows.
@@ -6875,6 +6877,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (jdbi == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
+      cancelWorkflowInstances(entityIds(entities));
       return;
     }
     jdbi.inTransaction(
@@ -6883,6 +6886,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
           bulkDeleteEntityRows(entities);
           return null;
         });
+    // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
+    cancelWorkflowInstances(entityIds(entities));
+  }
+
+  private List<UUID> entityIds(List<T> entities) {
+    List<UUID> entityIds = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      entityIds.add(entity.getId());
+    }
+    return entityIds;
+  }
+
+  private void cancelWorkflowInstances(Collection<UUID> entityIds) {
+    // Workflow-engine failures must never wedge a hard-delete; the entity rows are the source of
+    // truth and the workflow cleanup is best effort.
+    if (!WorkflowHandler.isInitialized()) {
+      return;
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+    } catch (Exception cancelEx) {
+      LOG.warn(
+          "Failed to cancel workflow instances for {} entities: {}",
+          entityIds.size(),
+          cancelEx.getMessage());
+    }
   }
 
   private void bulkCleanupReferences(List<T> entities) {
@@ -6891,6 +6920,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       entityIds.add(entity.getId());
       entityIdStrings.add(entity.getId().toString());
+    }
+    // Must run before batchDeleteRelationships: the Task 2.0 artifacts are found via the
+    // entity --MENTIONED_IN--> artifact edge, which the relationship delete below removes.
+    try (var ignored = phase("bulkHardDeleteFeedArtifacts")) {
+      bulkDeleteFeedArtifactsAbout(entityIds);
     }
     try (var ignored = phase("bulkHardDeleteRelationships")) {
       daoCollection.relationshipDAO().batchDeleteRelationships(entityIds, entityType);
@@ -6906,7 +6940,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
     // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
     // keep the per-entity path.
-    if (!descendantsCoveredByAncestorCascade) {
+    if (shouldCleanupFqnDependents() && !descendantsCoveredByAncestorCascade) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
         for (T entity : entities) {
           String fqn = entity.getFullyQualifiedName();
@@ -6923,6 +6957,71 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
+    }
+  }
+
+  /**
+   * Delete the Task 2.0 feed artifacts (tasks and announcements) that are about this entity.
+   *
+   * <p>{@link FeedRepository#deleteByAbout} only clears the pre-2.0 {@code thread_entity} table and
+   * no-ops once legacy thread storage is unavailable. Tasks and announcements moved to their own
+   * tables in Task 2.0, so a hard delete left them behind as orphans whose {@code about} no longer
+   * resolves. Both are reached through {@code entity --MENTIONED_IN--> artifact}, so they must be
+   * collected here, before the entity's own relationship rows are removed.
+   */
+  private void deleteFeedArtifactsAbout(UUID entityId) {
+    deleteFeedArtifacts(entityId, Entity.TASK, daoCollection.taskDAO());
+    deleteFeedArtifacts(entityId, Entity.ANNOUNCEMENT, daoCollection.announcementDAO());
+  }
+
+  /** Best-effort, mirroring the legacy feed cleanup: a failure must not abort the hard delete. */
+  private void deleteFeedArtifacts(UUID entityId, String artifactType, EntityDAO<?> artifactDao) {
+    try {
+      List<EntityRelationshipRecord> artifacts =
+          daoCollection
+              .relationshipDAO()
+              .findTo(entityId, entityType, Relationship.MENTIONED_IN.ordinal(), artifactType);
+      for (EntityRelationshipRecord artifact : artifacts) {
+        daoCollection.relationshipDAO().deleteAll(artifact.getId(), artifactType);
+        artifactDao.delete(artifact.getId());
+      }
+    } catch (Exception ex) {
+      LOG.warn("Failed to delete {} about {} {}", artifactType, entityType, entityId, ex);
+    }
+  }
+
+  /**
+   * Bulk variant of {@link #deleteFeedArtifactsAbout(UUID)}: one batched {@code findTo} per artifact
+   * type over the whole id set (2 lookups per chunk) instead of 2 per entity, keeping this path
+   * consistent with the surrounding IN-list bulk deletes.
+   */
+  private void bulkDeleteFeedArtifactsAbout(List<UUID> entityIds) {
+    bulkDeleteFeedArtifacts(entityIds, Entity.TASK, daoCollection.taskDAO());
+    bulkDeleteFeedArtifacts(entityIds, Entity.ANNOUNCEMENT, daoCollection.announcementDAO());
+  }
+
+  /** Best-effort, mirroring the legacy feed cleanup: a failure must not abort the hard delete. */
+  private void bulkDeleteFeedArtifacts(
+      List<UUID> entityIds, String artifactType, EntityDAO<?> artifactDao) {
+    try {
+      List<String> fromIds = entityIds.stream().map(UUID::toString).toList();
+      List<CollectionDAO.EntityRelationshipObject> artifacts =
+          daoCollection
+              .relationshipDAO()
+              .findToBatch(fromIds, Relationship.MENTIONED_IN.ordinal(), entityType, artifactType);
+      if (!artifacts.isEmpty()) {
+        List<UUID> artifactIds =
+            artifacts.stream().map(artifact -> UUID.fromString(artifact.getToId())).toList();
+        daoCollection.relationshipDAO().batchDeleteRelationships(artifactIds, artifactType);
+        artifactDao.deleteByIds(artifactIds);
+      }
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to bulk delete {} about {} {} entities",
+          artifactType,
+          entityType,
+          entityIds.size(),
+          ex);
     }
   }
 
@@ -6966,13 +7065,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Hook for entity-type-specific cleanup invoked once per bulk-hard-delete batch. Default
-   * implementation loops {@link #entitySpecificCleanup(EntityInterface)} so subclasses keep
-   * current behavior. Override for true batching where external resources warrant it (e.g.,
+   * implementation loops {@link #entitySpecificCleanup(String, EntityInterface)} so subclasses
+   * keep current behavior. Override for true batching where external resources warrant it (e.g.,
    * Airflow DAG deregistration, S3 object cleanup, secrets-store purges).
    */
-  protected void bulkEntitySpecificCleanup(List<T> entities) {
+  protected void bulkEntitySpecificCleanup(List<T> entities, String deletedBy) {
     for (T entity : entities) {
-      entitySpecificCleanup(entity);
+      // Must be the deletedBy-aware overload: TableRepository overrides only that one (its
+      // residual test case / test suite sweep credits the operator), and dispatching to the
+      // no-arg variant silently skipped it for every entity deleted through an ancestor cascade.
+      entitySpecificCleanup(deletedBy, entity);
     }
   }
 
@@ -7303,6 +7405,52 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return containerMap;
+  }
+
+  /**
+   * Resolve each entity's inheritance parent from its live CONTAINS relationship. Used for ancestors
+   * loaded via find() whose {@link #getParentReference} is not hydrated (e.g. a schema pulled in to
+   * inherit a database service's domain). Only the parent id and type are taken from the relation
+   * row -- {@link Entity#getEntitiesForInheritance} reloads the full parent -- so no extra reference
+   * lookup is issued. If an entity has several live CONTAINS parents (a corrupt/duplicate edge) the
+   * first is used and a warning logged, matching the single-entity read path
+   * {@link #resolveParentReferenceFromToRecords}.
+   */
+  protected final Map<UUID, EntityReference> batchFetchInheritanceParents(List<T> entities) {
+    Map<UUID, EntityReference> parentByEntityId = new HashMap<>();
+    if (nullOrEmpty(entities)) {
+      return parentByEntityId;
+    }
+    List<CollectionDAO.EntityRelationshipObject> relations =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.CONTAINS.ordinal(),
+                Include.NON_DELETED);
+    Set<UUID> warnedMultipleParents = new HashSet<>();
+    for (var relation : relations) {
+      if (relation.getToId() == null
+          || nullOrEmpty(relation.getFromEntity())
+          || nullOrEmpty(relation.getFromId())) {
+        continue;
+      }
+      UUID entityId = UUID.fromString(relation.getToId());
+      EntityReference parentRef =
+          new EntityReference()
+              .withId(UUID.fromString(relation.getFromId()))
+              .withType(relation.getFromEntity());
+      // putIfAbsent keeps the first parent; warn once per entity if more than one live edge exists.
+      if (parentByEntityId.putIfAbsent(entityId, parentRef) != null
+          && warnedMultipleParents.add(entityId)) {
+        LOG.warn(
+            "{} {} has multiple live CONTAINS parents; inheriting from the first "
+                + "(possible duplicate/stale relationship rows)",
+            entityType,
+            entityId);
+      }
+    }
+    return parentByEntityId;
   }
 
   public final EntityReference getFromEntityRef(
@@ -8265,6 +8413,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Validates each data product and hydrates the supplied reference in place.
+   *
+   * <p>Lifecycle handlers receive these references before relationships are reloaded, so search
+   * indexing requires a fully populated reference at this stage.
+   */
   public final void validateDataProducts(List<EntityReference> dataProducts) {
     if (!supportsDataProducts) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
@@ -8272,7 +8426,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nullOrEmpty(dataProducts)) {
       for (EntityReference dataProduct : dataProducts) {
-        getEntityReferenceById(DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+        EntityReference validatedDataProduct =
+            getEntityReferenceById(DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+        EntityUtil.copy(validatedDataProduct, dataProduct);
       }
     }
   }
@@ -8467,7 +8623,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
-    @Setter private boolean overrideMetadata;
+    // Protected so ColumnEntityUpdater can honour it for column-level description/displayName too.
+    @Setter protected boolean overrideMetadata;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
@@ -10563,8 +10720,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (stored == null) { // New column added
           continue;
         }
-        // Store Original and Updated Column Map
-        if (!stored.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+        // Store Original and Updated Column Map. Objects.equals because a column persisted before
+        // its repository set column FQNs on the write path carries a null one, and re-ingesting
+        // that row would otherwise NPE here. The update repopulates the FQN, so rows written by
+        // an older version repair themselves on the next run.
+        //
+        // A null stored FQN is not a rename: this map is a from -> to for rewriting lineage edges
+        // that already exist, and a column being given an FQN for the first time has no prior edge
+        // to rewrite. Skipping it also keeps a null key out of the map handed to
+        // handleColumnLineageUpdates.
+        if (stored.getFullyQualifiedName() != null
+            && !Objects.equals(stored.getFullyQualifiedName(), updated.getFullyQualifiedName())) {
           originalUpdatedColumnFqns.putIfAbsent(
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
@@ -10604,7 +10770,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
+      // A bot PUT preserves a non-empty column description. A bulk force-sync
+      // (overrideMetadata=true) may replace it with a real source comment, but must never blank
+      // it: a connector that finds no comment on the column omits the field entirely, and an
+      // override run must not read that absence as "delete the description".
+      if (operation.isPut()
+          && !nullOrEmpty(origColumn.getDescription())
+          && updatedByBot()
+          && (!overrideMetadata || nullOrEmpty(updatedColumn.getDescription()))) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
@@ -11509,6 +11682,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setOwners(ownersMap.getOrDefault(entity.getId(), entity.getOwners()));
       entity.setDomains(domainsMap.getOrDefault(entity.getId(), entity.getDomains()));
     }
+  }
+
+  /**
+   * Batch-loads tags onto these entities in one query, for authorization. Used by the bulk path so a
+   * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
+   */
+  public void batchLoadTags(List<T> entities) {
+    fetchAndSetTags(entities, getFields(FIELD_TAGS));
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {

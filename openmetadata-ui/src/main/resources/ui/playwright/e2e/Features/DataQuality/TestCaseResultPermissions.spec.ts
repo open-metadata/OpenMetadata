@@ -26,7 +26,10 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForTestCaseDetailsResponse } from '../../../utils/testCases';
+import {
+  verifyTestCaseLastRunBanner,
+  waitForTestCaseDetailsResponse,
+} from '../../../utils/testCases';
 
 // --- Objects ---
 const viewResultsUser = new UserClass();
@@ -113,6 +116,7 @@ test.describe(
       const detailsPromise = waitForTestCaseDetailsResponse(page);
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
       await detailsPromise;
+      await verifyTestCaseLastRunBanner(page, 'failed');
     };
 
     test.beforeAll(async ({ browser }) => {

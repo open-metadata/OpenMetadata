@@ -10,199 +10,387 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook, waitFor } from '@testing-library/react';
-import { useLogStream } from './useLogStream';
+
+import {
+  EventSourceMessage,
+  fetchEventSource,
+} from '@microsoft/fetch-event-source';
+import { act, renderHook } from '@testing-library/react-hooks';
+import {
+  LogStreamEndReason,
+  LogStreamEvent,
+  LogStreamEventType,
+} from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
+import {
+  getIngestionLogStreamUrl,
+  useLogStream,
+  withLogStreamCursor,
+} from './useLogStream';
+
+jest.mock('@microsoft/fetch-event-source', () => ({
+  fetchEventSource: jest.fn(),
+}));
 
 jest.mock('../../../utils/SwTokenStorageUtils', () => ({
-  getOidcToken: jest.fn().mockResolvedValue('test-token'),
+  getOidcToken: jest.fn().mockResolvedValue('test-jwt-token'),
+}));
+
+const mockRefreshToken = jest.fn().mockResolvedValue(undefined);
+
+jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({ refreshToken: mockRefreshToken }),
+  },
 }));
 
 jest.mock('../../../utils/HistoryUtils', () => ({
   getBasePath: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../../utils/StringUtils', () => ({
-  getEncodedFqn: jest.fn((fqn: string) => fqn),
-}));
+const mockFetchEventSource = fetchEventSource as jest.MockedFunction<
+  typeof fetchEventSource
+>;
 
-const encoder = new TextEncoder();
+type StreamInput = Parameters<typeof fetchEventSource>[0];
+type StreamOptions = Parameters<typeof fetchEventSource>[1];
 
-// Builds a minimal reader mock — the hook only calls getReader() then read().
-const makeReaderMock = (chunks: string[]) => {
-  let index = 0;
+const FQN = 'sample_data.log_pipeline';
+const RUN_ID = 'scheduled__2026-08-11T00:00:00+00:00';
+const BASE_URL = `/api/v1/services/ingestionPipelines/logs/${encodeURIComponent(
+  FQN
+)}/stream/${encodeURIComponent(RUN_ID)}`;
 
-  return {
-    read: jest.fn().mockImplementation(async () => {
-      if (index < chunks.length) {
-        return { done: false, value: encoder.encode(chunks[index++]) };
-      }
-
-      return { done: true, value: undefined };
-    }),
-  };
-};
-
-const mockFetch = (chunks: string[], ok = true, status = 200) => {
-  (global.fetch as jest.Mock).mockResolvedValueOnce({
-    ok,
-    status,
-    body: { getReader: () => makeReaderMock(chunks) },
+const flushAsync = async () => {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
   });
 };
 
-beforeEach(() => {
-  global.fetch = jest.fn();
-});
+const neverResolve = () => new Promise<void>(() => undefined);
 
-afterEach(() => {
-  jest.clearAllMocks();
-});
+const send = (options: StreamOptions, event: LogStreamEvent) => {
+  options?.onmessage?.({ data: JSON.stringify(event) } as EventSourceMessage);
+};
+
+const sendRaw = (options: StreamOptions, data: string) => {
+  options?.onmessage?.({ data } as EventSourceMessage);
+};
+
+/** Opens successfully, delivers `events`, then hangs (server still streaming). */
+const openAndSend =
+  (...events: LogStreamEvent[]) =>
+  async (_url: StreamInput, options: StreamOptions) => {
+    await options?.onopen?.({ ok: true, status: 200 } as Response);
+    events.forEach((event) => send(options, event));
+
+    return neverResolve();
+  };
+
+/** Opens successfully, delivers `events`, then closes cleanly. */
+const openSendAndClose =
+  (...events: LogStreamEvent[]) =>
+  async (_url: StreamInput, options: StreamOptions) => {
+    await options?.onopen?.({ ok: true, status: 200 } as Response);
+    events.forEach((event) => send(options, event));
+  };
+
+const renderStream = (enabled = true) =>
+  renderHook(() => useLogStream({ streamUrl: BASE_URL, enabled }));
 
 describe('useLogStream', () => {
-  it('does not fetch when enabled is false', () => {
-    renderHook(() => useLogStream('my.pipeline', 'run-1', false));
-
-    expect(global.fetch).not.toHaveBeenCalled();
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('fetches with the correct URL and Authorization header', async () => {
-    mockFetch(['data: hello\n\n']);
+  it('connects with the stream URL and bearer token, without a cursor', async () => {
+    mockFetchEventSource.mockImplementation(() => neverResolve());
 
-    renderHook(() => useLogStream('my.pipeline', 'run-1', true));
+    renderStream();
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    await flushAsync();
 
-    const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
 
-    expect(url).toBe(
-      '/api/v1/services/ingestionPipelines/logs/my.pipeline/stream/run-1'
-    );
-    expect(options.headers).toEqual({ Authorization: 'Bearer test-token' });
+    const [url, options] = mockFetchEventSource.mock.calls[0];
+
+    expect(url).toBe(BASE_URL);
+    expect(options?.headers).toEqual({
+      Authorization: 'Bearer test-jwt-token',
+    });
   });
 
-  it('parses data: lines and accumulates them into logs', async () => {
-    mockFetch(['data: line one\ndata: line two\n']);
+  it('does not connect when disabled', async () => {
+    renderStream(false);
 
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
-    );
+    await flushAsync();
 
-    await waitFor(() => expect(result.current.streamDone).toBe(true));
-
-    expect(result.current.logs).toBe('line one\nline two');
+    expect(mockFetchEventSource).not.toHaveBeenCalled();
   });
 
-  it('ignores non-data SSE meta lines', async () => {
-    mockFetch(['event: open\nid: 1\ndata: real line\nretry: 3000\n\n']);
+  it('does not connect without a stream url', async () => {
+    renderHook(() => useLogStream({ streamUrl: '', enabled: true }));
 
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
-    );
+    await flushAsync();
 
-    await waitFor(() => expect(result.current.streamDone).toBe(true));
-
-    expect(result.current.logs).toBe('real line');
+    expect(mockFetchEventSource).not.toHaveBeenCalled();
   });
 
-  it('sets loading false after first data line arrives', async () => {
-    mockFetch(['data: first line\n']);
-
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+  it('appends log frames in order and reports live health', async () => {
+    mockFetchEventSource.mockImplementation(
+      openAndSend(
+        { eventType: LogStreamEventType.Logs, logs: 'first\n', after: '1' },
+        { eventType: LogStreamEventType.Logs, logs: 'second\n', after: '2' }
+      )
     );
 
-    expect(result.current.loading).toBe(true);
+    const { result } = renderStream();
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
-  });
+    await flushAsync();
 
-  it('sets streamDone true when the stream closes naturally', async () => {
-    mockFetch(['data: only line\n']);
-
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
-    );
-
-    await waitFor(() => expect(result.current.streamDone).toBe(true));
-
-    expect(result.current.error).toBeNull();
-  });
-
-  it('sets error, clears loading, and marks streamDone on a non-2xx response', async () => {
-    mockFetch([], false, 404);
-
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
-    );
-
-    await waitFor(() =>
-      expect(result.current.error).toBe('Server returned 404')
-    );
-
+    expect(result.current.logs).toBe('first\nsecond\n');
     expect(result.current.loading).toBe(false);
+    expect(result.current.health).toBe('live');
+    expect(result.current.streamDone).toBe(false);
+  });
+
+  it('latches the truncated flag from a replayed frame', async () => {
+    mockFetchEventSource.mockImplementation(
+      openAndSend(
+        {
+          eventType: LogStreamEventType.Logs,
+          logs: 'mid-run\n',
+          after: '40',
+          replay: true,
+          truncated: true,
+        },
+        { eventType: LogStreamEventType.Logs, logs: 'more\n', after: '41' }
+      )
+    );
+
+    const { result } = renderStream();
+
+    await flushAsync();
+
+    expect(result.current.truncated).toBe(true);
+  });
+
+  it('ignores a malformed frame without killing the stream', async () => {
+    mockFetchEventSource.mockImplementation(
+      async (_url, options: StreamOptions) => {
+        await options?.onopen?.({ ok: true, status: 200 } as Response);
+        sendRaw(options, 'not json');
+        send(options, {
+          eventType: LogStreamEventType.Logs,
+          logs: 'survived\n',
+          after: '1',
+        });
+
+        return neverResolve();
+      }
+    );
+
+    const { result } = renderStream();
+
+    await flushAsync();
+
+    expect(result.current.logs).toBe('survived\n');
+    expect(result.current.streamDone).toBe(false);
+  });
+
+  it('stops on a complete frame for a finished run', async () => {
+    mockFetchEventSource.mockImplementation(
+      openSendAndClose(
+        { eventType: LogStreamEventType.Logs, logs: 'done\n', after: '9' },
+        {
+          eventType: LogStreamEventType.Complete,
+          reason: LogStreamEndReason.RunFinished,
+          after: '9',
+        }
+      )
+    );
+
+    const { result } = renderStream();
+
+    await flushAsync();
+
     expect(result.current.streamDone).toBe(true);
+    expect(result.current.endReason).toBe(LogStreamEndReason.RunFinished);
+    expect(result.current.logs).toBe('done\n');
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
   });
 
-  it('sets streamDone true on a network error so the live indicator stops', async () => {
-    (global.fetch as jest.Mock).mockRejectedValueOnce(
-      new Error('Network failure')
+  it('resumes from the last cursor after a server-capped complete', async () => {
+    mockFetchEventSource
+      .mockImplementationOnce(
+        openSendAndClose(
+          { eventType: LogStreamEventType.Logs, logs: 'chunk-1\n', after: '5' },
+          {
+            eventType: LogStreamEventType.Complete,
+            reason: LogStreamEndReason.IdleTimeout,
+            after: '5',
+          }
+        )
+      )
+      .mockImplementationOnce(
+        openAndSend({
+          eventType: LogStreamEventType.Logs,
+          logs: 'chunk-2\n',
+          after: '6',
+        })
+      );
+
+    const { result } = renderStream();
+
+    await flushAsync();
+
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(2);
+    expect(mockFetchEventSource.mock.calls[1][0]).toBe(`${BASE_URL}?after=5`);
+    expect(result.current.logs).toBe('chunk-1\nchunk-2\n');
+    expect(result.current.streamDone).toBe(false);
+  });
+
+  it('surfaces an error frame and stops', async () => {
+    mockFetchEventSource.mockImplementation(
+      openSendAndClose({
+        eventType: LogStreamEventType.Error,
+        message: 'No log backend is configured on this deployment.',
+      })
     );
 
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+    const { result } = renderStream();
+
+    await flushAsync();
+
+    expect(result.current.error).toBe(
+      'No log backend is configured on this deployment.'
     );
-
-    await waitFor(() => expect(result.current.error).toBe('Network failure'));
-
     expect(result.current.streamDone).toBe(true);
-    expect(result.current.loading).toBe(false);
+    expect(result.current.health).toBe('unavailable');
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
   });
 
-  it('flushes the trailing buffer when the stream closes without a trailing newline', async () => {
-    mockFetch(['data: last line without newline']);
-
-    const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+  it('stops without retrying when the deployment has no stream support', async () => {
+    mockFetchEventSource.mockImplementation(
+      async (_url, options: StreamOptions) => {
+        await options?.onopen?.({ ok: false, status: 503 } as Response);
+      }
     );
 
-    await waitFor(() => expect(result.current.streamDone).toBe(true));
+    const { result } = renderStream();
 
-    expect(result.current.logs).toBe('last line without newline');
+    await flushAsync();
+
+    expect(result.current.health).toBe('unavailable');
+    expect(result.current.streamDone).toBe(true);
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
   });
 
-  it('aborts the fetch on unmount', async () => {
-    mockFetch(['data: line\n']);
+  it('refreshes the token once on a 401 and retries', async () => {
+    jest.useFakeTimers();
 
-    const { unmount } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+    mockFetchEventSource
+      .mockImplementationOnce(async (_url, options: StreamOptions) => {
+        await options?.onopen?.({ ok: false, status: 401 } as Response);
+      })
+      .mockImplementationOnce(
+        openAndSend({
+          eventType: LogStreamEventType.Logs,
+          logs: 'after-refresh\n',
+          after: '1',
+        })
+      );
+
+    const { result } = renderStream();
+
+    await flushAsync();
+
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+    });
+    await flushAsync();
+
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(2);
+    expect(result.current.logs).toBe('after-refresh\n');
+
+    jest.useRealTimers();
+  });
+
+  it('aborts the connection on unmount', async () => {
+    let capturedOptions: StreamOptions | undefined;
+    mockFetchEventSource.mockImplementation(
+      async (_url, options: StreamOptions) => {
+        capturedOptions = options;
+
+        return neverResolve();
+      }
     );
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    const { unmount } = renderStream();
 
-    const signal: AbortSignal = (global.fetch as jest.Mock).mock.calls[0][1]
-      .signal;
+    await flushAsync();
 
-    expect(signal.aborted).toBe(false);
+    expect(capturedOptions?.signal?.aborted).toBe(false);
 
     unmount();
 
-    expect(signal.aborted).toBe(true);
+    expect(capturedOptions?.signal?.aborted).toBe(true);
   });
 
-  it('resets state and reconnects when fqn or runId changes', async () => {
-    mockFetch(['data: run-1 line\n']);
+  it('resumes a url that already has query params with an ampersand', async () => {
+    const urlWithQuery = `${BASE_URL}?tail=true`;
+    mockFetchEventSource
+      .mockImplementationOnce(
+        openSendAndClose(
+          {
+            eventType: LogStreamEventType.Logs,
+            logs: 'chunk-1\n',
+            after: '7',
+          },
+          {
+            // A resumable end, so the reconnect is immediate rather than after a
+            // backoff this test would have to wait out.
+            eventType: LogStreamEventType.Complete,
+            reason: LogStreamEndReason.IdleTimeout,
+            after: '7',
+          }
+        )
+      )
+      .mockImplementationOnce(() => neverResolve());
 
-    const { result, rerender } = renderHook(
-      ({ fqn, runId }: { fqn: string; runId: string }) =>
-        useLogStream(fqn, runId, true),
-      { initialProps: { fqn: 'my.pipeline', runId: 'run-1' } }
+    renderHook(() => useLogStream({ streamUrl: urlWithQuery, enabled: true }));
+
+    await flushAsync();
+
+    expect(mockFetchEventSource.mock.calls[1][0]).toBe(
+      `${urlWithQuery}&after=7`
     );
+  });
+});
 
-    await waitFor(() => expect(result.current.streamDone).toBe(true));
+describe('log stream urls', () => {
+  it('builds the ingestion stream url with an encoded fqn and run id', () => {
+    expect(getIngestionLogStreamUrl(FQN, RUN_ID)).toBe(BASE_URL);
+  });
 
-    mockFetch(['data: run-2 line\n']);
-    rerender({ fqn: 'my.pipeline', runId: 'run-2' });
+  it('leaves a url untouched without a cursor', () => {
+    expect(withLogStreamCursor(BASE_URL)).toBe(BASE_URL);
+  });
 
-    await waitFor(() => expect(result.current.logs).toBe('run-2 line'));
+  it('appends the cursor as the only query param', () => {
+    expect(withLogStreamCursor(BASE_URL, 'chunk:12')).toBe(
+      `${BASE_URL}?after=chunk%3A12`
+    );
+  });
+
+  it('appends the cursor to a url that already has query params', () => {
+    expect(withLogStreamCursor(`${BASE_URL}?tail=true`, '5')).toBe(
+      `${BASE_URL}?tail=true&after=5`
+    );
   });
 });

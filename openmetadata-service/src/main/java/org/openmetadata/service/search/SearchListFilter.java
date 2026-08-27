@@ -287,7 +287,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (testSuiteId != null) conditions.add(getTestSuiteIdCondition(testSuiteId));
 
     if (status != null) {
-      conditions.add(String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_TEST_CASE_STATUS, status));
+      conditions.add(getTestCaseStatusCondition(status));
     }
 
     if (type != null) conditions.add(getTestCaseTypeCondition(type, "entityLink"));
@@ -398,6 +398,23 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   private String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
+  }
+
+  /** Comma separated statuses are matched as an OR, a single status still matches exactly. */
+  private String getTestCaseStatusCondition(String status) {
+    List<String> statuses =
+        Arrays.stream(status.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(this::escapeDoubleQuotes)
+            .toList();
+    String condition = "";
+    if (!statuses.isEmpty()) {
+      String statusList = String.join("\", \"", statuses);
+      condition =
+          String.format("{\"terms\": {\"%s\": [\"%s\"]}}", FIELD_TEST_CASE_STATUS, statusList);
+    }
+    return condition;
   }
 
   private String getTestSuiteIdCondition(String testSuiteId) {

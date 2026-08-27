@@ -47,6 +47,11 @@
     "postFilter": {
       "type": "string"
     },
+    "deleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Filter documents by deleted param. Defaults to false so the preview mirrors what Explore shows."
+    },
     "fetchSource": {
       "type": "boolean",
       "default": true

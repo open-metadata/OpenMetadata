@@ -21,10 +21,7 @@ import {
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
-import {
-  visitEntityPage,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -389,14 +386,11 @@ export class TableClass extends EntityClass {
       !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
 
     if (canUseDirectNavigation && tableFqn.length > 0) {
-      const tableResponse = page.waitForResponse(
-        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
-      );
-      await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
-        waitUntil: 'domcontentloaded',
+      await visitEntityPageByFqn({
+        page,
+        endpoint: EntityTypeEndpoint.Table,
+        fqn: tableFqn,
       });
-      await tableResponse;
-      await waitForAllLoadersToDisappear(page);
 
       return;
     }

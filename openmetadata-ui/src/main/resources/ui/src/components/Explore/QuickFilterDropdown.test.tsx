@@ -214,6 +214,19 @@ describe('QuickFilterDropdown', () => {
     jest.useRealTimers();
   });
 
+  // Without a containing block on the list, the Checkbox's absolutely
+  // positioned hidden input resolves against the popover root, escapes the
+  // list's clip, and lets a click on an off-screen option scroll the page.
+  it('should own the containing block for its option list', () => {
+    renderDropdown();
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('quick-filter-option-list')).toHaveClass(
+      'tw:relative'
+    );
+  });
+
   it('should close when the route pathname changes', () => {
     const { rerender } = renderDropdown();
 

@@ -30,10 +30,10 @@ import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityNodeIcon } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -156,7 +156,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     getSearchResults(searchValue);
   }, []);
 
-  const Icon = getEntityNodeIcon(entityType);
+  const entityIcon = useMemo(
+    () => getEntityIcon(entityType, 'tw:h-4 tw:w-4'),
+    [entityType]
+  );
 
   return (
     <Row
@@ -164,9 +167,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       data-testid="suggestion-node"
       gutter={8}
       wrap={false}>
-      <Col>
-        <Icon height={16} name="entity-icon" width={16} />
-      </Col>
+      <Col>{entityIcon}</Col>
       <Col flex="1">
         <Select
           autoFocus

@@ -40,6 +40,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 @Slf4j
 public class EsUtils {
@@ -47,9 +50,24 @@ public class EsUtils {
   private static final ObjectMapper mapper;
   private static final JacksonJsonpMapper jsonpMapper;
 
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+
   static {
     mapper = new ObjectMapper();
     jsonpMapper = new JacksonJsonpMapper(mapper);
+  }
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built on a raw {@code
+   * SearchRequest.Builder}. Non-memory documents are unaffected.
+   */
+  static Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((ElasticQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
   }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
@@ -250,7 +268,10 @@ public class EsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -451,7 +472,10 @@ public class EsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -476,8 +500,13 @@ public class EsUtils {
     Query deletedQuery =
         Query.of(q -> q.term(t -> t.field("deleted").value(!nullOrEmpty(deleted) && deleted)));
 
+    // Platform lineage returns each hit's raw _source and runs without a SubjectContext, so it
+    // cannot tell whose restricted memory a document is: only org-wide memories may come back.
     SearchRequest.Builder searchRequestBuilder =
-        new SearchRequest.Builder().index(indexName).query(deletedQuery).size(10000);
+        new SearchRequest.Builder()
+            .index(indexName)
+            .query(restrictToOrgWideMemories(deletedQuery))
+            .size(10000);
 
     // Apply query filter
     buildSearchSourceFilter(queryFilter, searchRequestBuilder);

@@ -188,6 +188,75 @@ describe('useTestSuitesData', () => {
     );
   });
 
+  it('should reuse a previously loaded sub-tab instead of fetching it again', async () => {
+    const { rerender } = renderData(buildProps());
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.BUNDLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.TABLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+  });
+
+  it('should refetch a cached sub-tab after the cache entry expires', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(0);
+    const { rerender } = renderData(buildProps());
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.BUNDLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    nowSpy.mockReturnValue(60_000);
+    rerender(buildProps({ subTab: DataQualitySubTabs.TABLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(3)
+    );
+
+    nowSpy.mockRestore();
+  });
+
+  it('should evict the oldest response when the cache reaches its limit', async () => {
+    const { rerender } = renderData(buildProps({ searchValue: 'query-0' }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    await Array.from({ length: 20 }, (_, index) => index + 1).reduce(
+      async (previousLoad, index) => {
+        await previousLoad;
+        rerender(buildProps({ searchValue: `query-${index}` }));
+        await waitFor(() =>
+          expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(index + 1)
+        );
+      },
+      Promise.resolve()
+    );
+
+    rerender(buildProps({ searchValue: 'query-0' }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(22)
+    );
+  });
+
   it('should pass the wildcard query and the owner filter key to the fetch', async () => {
     renderData(
       buildProps({

@@ -1,53 +1,216 @@
 package org.openmetadata.service.util;
 
+import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Metrics;
+import java.util.EnumMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 
 /**
- * Single virtual-thread executor for all server-side async dispatch (CSV export/import,
- * bulk asset ops, async delete/restore).
+ * Shared virtual-thread executor with separate raw and database-bounded views.
  *
- * <p>Back-pressure is intentionally <em>not</em> enforced here. The old semaphore-based
- * bounded wrapper was fighting Project Loom — virtual threads scale to millions and are
- * basically free, while the real bottleneck under load is the JDBI connection pool. Letting
- * tasks queue on connection acquisition (with the pool's own timeout) is both simpler and
- * more accurate than guessing at "how many concurrent tasks ≈ connection pool capacity".
+ * <p>The raw view is reserved for continuations and work that does not acquire a database
+ * connection. Top-level DB-heavy operations use the bounded view so they cannot consume the entire
+ * Hikari pool while request threads wait for a connection.
  *
- * <p>If a future use case genuinely needs admission control, it should live at the caller
- * boundary (e.g., a token bucket per user, or a per-operation queue with rejection) rather
- * than at this shared executor.
+ * <p>A task holding a database permit must not wait for another task that needs a permit. Nested
+ * continuations must use {@link #getExecutorService()}.
  */
 @Slf4j
 public class AsyncService {
   private static AsyncService instance;
-  private final ExecutorService executorService;
+  private ExecutorService executorService;
+  private final BoundedAsyncExecutor databaseExecutorService;
+  private final int maxConcurrentDbTasks;
+  private final Map<DatabaseOperation, OperationStats> operationStats;
 
   private static final int DEFAULT_MAX_RETRIES = 3;
   private static final long DEFAULT_INITIAL_RETRY_DELAY_MS = 1000;
   private static final long DEFAULT_OPERATION_TIMEOUT_SECONDS = 60;
   private static final long SHUTDOWN_TIMEOUT_SECONDS = 30;
+  private static final String ACTIVE_TASKS_METRIC = "async.operations.db.active";
+  private static final String QUEUED_TASKS_METRIC = "async.operations.db.queued";
+  private static final String SUBMITTED_TASKS_METRIC = "async.operations.db.submitted";
+  private static final String TASK_LIMIT_METRIC = "async.operations.db.limit";
+
+  public enum DatabaseOperation {
+    APP_OPERATION,
+    AUDIT_LOG,
+    AUDIT_PACK,
+    BULK_ASSET_OPERATION,
+    CSV_CHANGE_EVENT,
+    CSV_IMPORT,
+    ENTITY_DELETE_RESTORE,
+    RDF_UPDATE,
+    SEARCH_OPERATION,
+    TEST_CASE_CLEANUP,
+    USER_CLEANUP,
+    WORKFLOW_TASK
+  }
 
   private AsyncService() {
+    this(new AsyncOperationsConfiguration());
+  }
+
+  private AsyncService(AsyncOperationsConfiguration config) {
+    maxConcurrentDbTasks = config.getMaxConcurrentDbTasks();
     executorService =
         Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("om-async-", 0).factory());
-    LOG.info("AsyncService initialized (virtual-thread-per-task executor)");
+    databaseExecutorService = new BoundedAsyncExecutor(executorService, maxConcurrentDbTasks);
+    operationStats = new EnumMap<>(DatabaseOperation.class);
+    for (DatabaseOperation operation : DatabaseOperation.values()) {
+      operationStats.put(operation, new OperationStats());
+    }
+    LOG.info(
+        "AsyncService initialized (virtual-thread-per-task executor, DB task limit={})",
+        maxConcurrentDbTasks);
+  }
+
+  public static synchronized void initialize(AsyncOperationsConfiguration config) {
+    if (instance == null) {
+      instance = new AsyncService(Objects.requireNonNull(config));
+      instance.registerMetrics();
+    }
   }
 
   public static synchronized AsyncService getInstance() {
     if (instance == null) {
-      instance = new AsyncService();
+      LOG.warn("AsyncService not initialized, using defaults");
+      initialize(new AsyncOperationsConfiguration());
     }
     return instance;
   }
 
   public ExecutorService getExecutorService() {
     return executorService;
+  }
+
+  public ExecutorService getDatabaseExecutorService() {
+    return databaseExecutorService;
+  }
+
+  public int getOperationActiveCount(DatabaseOperation operation) {
+    return operationStats.get(operation).active.get();
+  }
+
+  public int getOperationQueuedCount(DatabaseOperation operation) {
+    return operationStats.get(operation).queued.get();
+  }
+
+  public void executeDatabaseTask(DatabaseOperation operation, String context, Runnable task) {
+    final OperationStats stats = recordSubmission(operation, context);
+    try {
+      databaseExecutorService.execute(() -> stats.run(task), stats::cancelSubmission);
+    } catch (RuntimeException e) {
+      stats.cancelSubmission();
+      throw e;
+    }
+  }
+
+  public <T> CompletableFuture<T> submitDatabaseTask(
+      DatabaseOperation operation, String context, Callable<T> task) {
+    final OperationStats stats = recordSubmission(operation, context);
+    final CompletableFuture<T> future = new CompletableFuture<>();
+    try {
+      databaseExecutorService.execute(
+          () -> completeDatabaseTask(stats, task, future), () -> cancelDatabaseTask(stats, future));
+    } catch (RuntimeException e) {
+      stats.cancelSubmission();
+      throw e;
+    }
+    return future;
+  }
+
+  public <T> Future<T> submitCancellableDatabaseTask(
+      DatabaseOperation operation, String context, Callable<T> task) {
+    final OperationStats stats = recordSubmission(operation, context);
+    final FutureTask<T> future = new FutureTask<>(() -> stats.call(task));
+    try {
+      databaseExecutorService.execute(future, () -> cancelDatabaseTask(stats, future));
+    } catch (RuntimeException e) {
+      stats.cancelSubmission();
+      throw e;
+    }
+    return future;
+  }
+
+  private static <T> void completeDatabaseTask(
+      OperationStats stats, Callable<T> task, CompletableFuture<T> future) {
+    try {
+      future.complete(callDatabaseTask(stats, task));
+    } catch (RuntimeException | Error e) {
+      future.completeExceptionally(e);
+    }
+  }
+
+  private static <T> T callDatabaseTask(OperationStats stats, Callable<T> task) {
+    try {
+      return stats.call(task);
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new CompletionException(e);
+    }
+  }
+
+  private static void cancelDatabaseTask(OperationStats stats, Future<?> future) {
+    stats.cancelSubmission();
+    future.cancel(false);
+  }
+
+  private OperationStats recordSubmission(DatabaseOperation operation, String context) {
+    Objects.requireNonNull(operation);
+    Objects.requireNonNull(context);
+    final OperationStats stats = operationStats.get(operation);
+    final int queued = stats.recordSubmission();
+    if (queued == maxConcurrentDbTasks + 1 || queued % 100 == 0) {
+      LOG.warn(
+          "Database async backlog operation={} context={} queued={} active={} limit={}",
+          operation,
+          context,
+          queued,
+          stats.active.get(),
+          maxConcurrentDbTasks);
+    }
+    return stats;
+  }
+
+  private void registerMetrics() {
+    for (Map.Entry<DatabaseOperation, OperationStats> entry : operationStats.entrySet()) {
+      final String operation = entry.getKey().name().toLowerCase(Locale.ROOT);
+      final OperationStats stats = entry.getValue();
+      Gauge.builder(ACTIVE_TASKS_METRIC, stats, value -> value.active.get())
+          .tag("operation", operation)
+          .description("Running DB-heavy asynchronous operations")
+          .register(Metrics.globalRegistry);
+      Gauge.builder(QUEUED_TASKS_METRIC, stats, value -> value.queued.get())
+          .tag("operation", operation)
+          .description("Queued DB-heavy asynchronous operations")
+          .register(Metrics.globalRegistry);
+      FunctionCounter.builder(SUBMITTED_TASKS_METRIC, stats, value -> value.submitted.get())
+          .tag("operation", operation)
+          .description("Submitted DB-heavy asynchronous operations")
+          .register(Metrics.globalRegistry);
+    }
+    Gauge.builder(TASK_LIMIT_METRIC, this, service -> service.maxConcurrentDbTasks)
+        .description("Configured DB-heavy asynchronous operation limit")
+        .register(Metrics.globalRegistry);
   }
 
   public void execute(Runnable task) {
@@ -206,5 +369,40 @@ public class AsyncService {
 
     throw new RuntimeException(
         String.format("Failed to %s %s", operationName.toLowerCase(), context), lastException);
+  }
+
+  private static final class OperationStats {
+    private final AtomicInteger active = new AtomicInteger();
+    private final AtomicInteger queued = new AtomicInteger();
+    private final AtomicLong submitted = new AtomicLong();
+
+    private int recordSubmission() {
+      submitted.incrementAndGet();
+      return queued.incrementAndGet();
+    }
+
+    private void cancelSubmission() {
+      queued.decrementAndGet();
+    }
+
+    private void run(Runnable task) {
+      queued.decrementAndGet();
+      active.incrementAndGet();
+      try {
+        task.run();
+      } finally {
+        active.decrementAndGet();
+      }
+    }
+
+    private <T> T call(Callable<T> task) throws Exception {
+      queued.decrementAndGet();
+      active.incrementAndGet();
+      try {
+        return task.call();
+      } finally {
+        active.decrementAndGet();
+      }
+    }
   }
 }

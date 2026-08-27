@@ -108,17 +108,69 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallback_noPendingSession_writesErrorResponse() throws Exception {
+  void handleCallback_noPendingSession_redirectsToSignin() throws Exception {
     when(sessionService.getPendingSession(request, response)).thenReturn(Optional.empty());
 
     AuthenticationCodeFlowHandler handler =
         createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_silentAuthError_redirectsToSignin() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"login_required"},
+                "error_description",
+                    new String[] {
+                      "The client specified not to prompt, but the user is not logged in."
+                    }));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
+
+  @Test
+  void handleCallback_nonSilentAuthError_writesErrorResponse() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder().id("pending-session").state("state-abc").build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "error", new String[] {"server_error"}));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
 
     handler.handleCallback(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     String body = captureOutputStream.getCapturedOutput();
-    assertTrue(body.contains("No pending session found for callback"));
+    assertTrue(body.contains("Bad authentication response"));
+    verify(response, never()).sendRedirect(anyString());
   }
 
   @Test

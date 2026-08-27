@@ -54,7 +54,7 @@ class VectorEmbeddingHandlerTest {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.isSearchIndexable(entity)).thenReturn(true);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
@@ -83,7 +83,7 @@ class VectorEmbeddingHandlerTest {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.isSearchIndexable(entity)).thenReturn(true);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
@@ -95,15 +95,25 @@ class VectorEmbeddingHandlerTest {
   }
 
   @Test
-  void testOnEntityUpdatedDeletesChunksForNonIndexableEntity() {
+  void testOnEntityUpdatedDropsChunksAndEmbeddingForNonEmbeddableEntity() {
     EntityInterface entity = createMockEntity("contextMemory");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    IndexMapping indexMapping = mock(IndexMapping.class);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.isSearchIndexable(entity)).thenReturn(false);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(false);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexMapping("contextMemory")).thenReturn(indexMapping);
+      when(searchRepository.getClusterAlias()).thenReturn("");
+      when(indexMapping.getIndexName("")).thenReturn("context_memory_search_index");
 
       handler.onEntityUpdated(entity, null, subjectContext);
 
       verify(vectorIndexService).deleteEntityChunks(entity.getId().toString());
+      // The entity doc keeps its embedding across partial merges, so it has to be cleared
+      // explicitly or a memory flipped to Private stays matchable by kNN.
+      verify(vectorIndexService)
+          .clearEntityEmbedding("context_memory_search_index", entity.getId().toString());
       verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
     }
   }

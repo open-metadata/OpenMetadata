@@ -21,8 +21,9 @@ import {
   ResourceEntity,
   type OperationPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { ServiceCategoryPlural } from '../enums/service.enum';
 import type { APICollection } from '../generated/entity/data/apiCollection';
 import type { Database } from '../generated/entity/data/database';
 import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
@@ -102,6 +103,10 @@ import {
 import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
+
+const SERVICE_ROUTE_CATEGORIES: Set<string> = new Set(
+  Object.values(ServiceCategoryPlural)
+);
 
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
@@ -193,6 +198,28 @@ class EntityUtilClassBase {
     );
   }
 
+  /**
+   * Plural route segment for a caller-supplied service category. Accepts the plural segment
+   * (`databaseServices`) and the singular entity type (`databaseService`) — chat entity links
+   * carry either — and returns undefined for anything that is not a service category.
+   */
+  private getServiceRouteCategory(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    if (SERVICE_ROUTE_CATEGORIES.has(value)) {
+      return value;
+    }
+
+    // The value is model-authored, so it can be a prototype key ("constructor") whose lookup
+    // returns a truthy non-category; validate the result rather than the input.
+    const plural =
+      ServiceCategoryPlural[value as keyof typeof ServiceCategoryPlural];
+
+    return SERVICE_ROUTE_CATEGORIES.has(plural) ? plural : undefined;
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -200,9 +227,11 @@ class EntityUtilClassBase {
     subTab?: string,
     isExecutableTestSuite?: boolean,
     isObservabilityAlert?: boolean,
-    _serviceCategory?: string,
-    _serviceFqn?: string
+    serviceCategory?: string,
+    serviceFqn?: string
   ) {
+    const serviceRouteCategory = this.getServiceRouteCategory(serviceCategory);
+
     switch (indexType) {
       case SearchIndex.TOPIC:
       case EntityType.TOPIC:
@@ -436,6 +465,20 @@ class EntityUtilClassBase {
 
       case EntityType.KNOWLEDGE_PAGE:
         return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
+
+      case EntityType.INGESTION_PIPELINE:
+        // No standalone detail page for a pipeline: route to the owning service's agents
+        // tab. Callers without service context (prepareFeedLink) and unrecognised
+        // categories must fall through, or the URL matches no route.
+        if (serviceFqn && serviceRouteCategory) {
+          return getServiceDetailsPath(
+            serviceFqn,
+            serviceRouteCategory,
+            EntityTabs.AGENTS
+          );
+        }
+
+      // falls through
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:

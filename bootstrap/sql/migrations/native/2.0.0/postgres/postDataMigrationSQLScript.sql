@@ -208,6 +208,19 @@ SET json = jsonb_set(
 WHERE serviceType = 'Databricks'
   AND json::jsonb #> '{connection,config,policyAgentConfig,supportsMaskedAccess}' = 'true'::jsonb;
 
+-- Unity Catalog: same defaults as Databricks (enabled/Full true, Column and Masked false).
+-- The field is new for this serviceType, so every existing row is missing the object
+-- entirely — one full-object write, no guarded flips.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{connection,config,policyAgentConfig}',
+    '{"enabled":true,"supportsColumnAccess":false,"supportsFullAccess":true,"supportsMaskedAccess":false}'::jsonb,
+    true
+)
+WHERE serviceType = 'UnityCatalog'
+  AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NULL;
+
 -- Postgres no longer declares policyAgentConfig. Earlier this script backfilled the
 -- object onto Postgres rows; remove it so the stored shape matches the schema.
 UPDATE dbservice_entity
@@ -272,3 +285,51 @@ SET json = jsonb_set(
 )
 WHERE json->>'name' = 'AutoClassificationBotPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'AutoClassificationBotRule-Allow-Topic'));
+
+-- MCP configuration lives solely in the mcpConfiguration setting. Drop the app-level copy, which
+-- no code reads, and hide the now empty configure step.
+UPDATE installed_apps
+SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
+WHERE name = 'McpApplication';
+
+UPDATE apps_marketplace
+SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
+WHERE name = 'McpApplication';
+
+UPDATE entity_extension
+SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
+WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'McpApplication';
+
+-- Anchor the CVV recognizer regex to the whole sampled value.
+-- `\b\d{3,4}\b` matched the `125` inside values like `SCN-125`, so any column whose name carries a
+-- CvvRecognizer context word (`code`, `card`, `cvv`, ...) and whose values contain a 3-4 digit run
+-- was tagged PII.Sensitive -- `scenario_code`, `error_code`. The context boost sets the score
+-- straight to MAX_SCORE, so a 0.5 "3-4 digits" pattern became a certain match. `\A..\Z` (not `^..$`)
+-- because the recognizer sets the MULTILINE flag, under which `^..$` still matches a single line of
+-- a multi-line value.
+-- Idempotent: the EXISTS gate only matches rows still carrying the old regex.
+-- jsonb_agg with WITH ORDINALITY rather than a bare jsonb_agg so the recognizer order is preserved.
+UPDATE tag
+SET json = jsonb_set(
+        json,
+        '{recognizers}',
+        (
+            SELECT jsonb_agg(
+                       CASE
+                           WHEN rec ->> 'name' = 'CvvRecognizer'
+                               THEN jsonb_set(rec, '{recognizerConfig,patterns,0,regex}', '"\\A\\d{3,4}\\Z"'::jsonb)
+                           ELSE rec
+                       END
+                       ORDER BY rec_idx
+                   )
+            FROM jsonb_array_elements(json -> 'recognizers') WITH ORDINALITY AS r(rec, rec_idx)
+        )
+    )
+WHERE json ->> 'fullyQualifiedName' = 'PII.Sensitive'
+  AND EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(json -> 'recognizers') AS rec
+      WHERE rec ->> 'name' = 'CvvRecognizer'
+        AND rec #>> '{recognizerConfig,patterns,0,regex}' = '\b\d{3,4}\b'
+  );

@@ -29,7 +29,6 @@
     <logback-core.version>1.5.36</logback-core.version>
     <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
   </properties>
 
@@ -1356,6 +1355,14 @@
             <include>**/*Tests.java</include>
             <include>**/*TestCase.java</include>
           </includes>
+          <!--
+            Entity schema used only by SchemaFieldExtractorTest to prove that schema lookup follows
+            the directory layout. Kept out of src/test/resources so that it stays out of the
+            published test-jar and never registers as an entity type in dependent modules.
+          -->
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.basedir}/src/test/schema-probe</additionalClasspathElement>
+          </additionalClasspathElements>
         </configuration>
       </plugin>
     </plugins>

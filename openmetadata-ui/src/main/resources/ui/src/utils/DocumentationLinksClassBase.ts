@@ -80,6 +80,7 @@ class DocumentationLinksClassBase {
       MOST_USED_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-used-assets`,
       MOST_EXPENSIVE_QUERIES_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-expensive-queries`,
       METRICS_DOCS: `${this.docsBaseURL}how-to-guides/data-governance/metrics`,
+      SECRETS_MANAGER_DOCS: `${this.docsBaseURL}deployment/secrets-manager`,
     };
   }
 }

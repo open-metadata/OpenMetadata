@@ -103,8 +103,12 @@
     <postgres.connector.version>42.7.12</postgres.connector.version>
     <jsonschema2pojo.version>1.3.1</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
-    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <tomcat-jdbc.version>11.0.11</tomcat-jdbc.version>
     <hikaricp.version>7.0.2</hikaricp.version>
+    <!-- CVE-2026-15687: Directory Traversal in copyDirectoryFromPod, vulnerable [,25.0.1).
+         Lives at the root because two modules consume it — openmetadata-service and
+         openmetadata-integration-tests. Keep it here so a bump cannot miss one of them. -->
+    <kubernetes-client.version>25.0.1</kubernetes-client.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
@@ -138,7 +142,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
-    <micrometer.version>1.15.12</micrometer.version>
+    <micrometer.version>1.16.7</micrometer.version>
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
@@ -212,10 +216,21 @@
         <artifactId>okhttp</artifactId>
         <version>4.12.0</version>
       </dependency>
+      <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
+           which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
+           artifact, so it would sit on the classpath duplicating the pinned okhttp 4.12.0 jar
+           (split package, resolved by classpath order). client-java 25.0.1 references the exact
+           same 118 okhttp/okio members as 24.0.0, so 4.12.0 satisfies it. Drop this pin only as
+           part of a real okhttp 5 migration. -->
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>logging-interceptor</artifactId>
+        <version>4.12.0</version>
+      </dependency>
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
-        <version>1.2.16</version>
+        <version>1.2.18</version>
       </dependency>
       <!-- CVE-2026-45292: opentelemetry-api 1.37.0 (transitive of
            co.elastic.clients:elasticsearch-java, shaded into elasticsearch-deps)
@@ -232,12 +247,15 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
-      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
-           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
+      <!-- CVE-2026-43869 + CVE-2026-45112 (unbounded read) + CVE-2026-48586 (zlib data
+           amplification): pin to 0.24.0, the first release carrying all three fixes. No Jena
+           release ships a fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be
+           retired by upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
+           statically references TException. -->
       <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
-        <version>0.23.0</version>
+        <version>0.24.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -529,14 +547,14 @@
         <version>${dropwizard.version}</version>
       </dependency>
 
-      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.15.x
-           (pulls client_java 1.3.10); leaving this at 1.3.6 splits the prometheus-metrics
-           family so the 1.3.10 exposition layer calls config APIs absent in 1.3.6
+      <!-- For Prometheus support. Pinned to match micrometer-registry-prometheus 1.16.x
+           (pulls client_java 1.4.3); a mismatched version splits the prometheus-metrics
+           family so one layer calls config APIs absent in the other
            (NoSuchMethodError at runtime). Drives -core/-config across all modules. -->
       <dependency>
         <groupId>io.prometheus</groupId>
         <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
-        <version>1.3.10</version>
+        <version>1.4.3</version>
       </dependency>
 
 
@@ -717,10 +735,13 @@
         <artifactId>azure-identity</artifactId>
         <version>1.15.2</version>
       </dependency>
+      <!-- Pin all transitive io.netty:* to one patched line via the BOM (netty-codec-http et al.
+           arrive transitively through reactor-netty-http and others). 4.1.137.Final clears the
+           CorsHandler Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.136.Final</version>
+        <version>4.1.137.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -774,8 +795,33 @@
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5</artifactId>
+        <version>5.4.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
         <artifactId>httpcore5-h2</artifactId>
         <version>5.4.3</version>
+      </dependency>
+      <!--
+        Keep this in step with the httpcore5 pin above - Apache releases the two together
+        and mixing lines breaks search. httpclient5 5.5/5.5.2 are built against httpcore5
+        5.3.x; on 5.4.x their I/O reactor dispatchers die silently, leaking connection-pool
+        leases until every request fails with DeadlineTimeoutException. 5.6.3 declares
+        httpcore5 5.4.3, so client and core match.
+
+        5.6.3 is also the first release outside the CVE-2026-64607 range (affects
+        5.0-alpha1 through 5.6.2: the classic i/o client leaks a connection when a response
+        carries an invalid Content-Encoding).
+
+        The 5.6 line enables automatic content decompression in the async client, which the
+        search transports also do - see disableContentCompression() in OpenSearchClient and
+        ElasticSearchClient. Do not drop those when touching this pin.
+      -->
+      <dependency>
+        <groupId>org.apache.httpcomponents.client5</groupId>
+        <artifactId>httpclient5</artifactId>
+        <version>5.6.3</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -785,17 +831,17 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcutil-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
            3.1.5 adds CVE-2026-59889. jsonschema2pojo-core is scope=provided so none of this

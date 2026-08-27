@@ -35,6 +35,7 @@ import {
   getDecodedFqn,
   getEncodedFqn,
   getPermissionErrorText,
+  getTrimmedContent,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
@@ -417,6 +418,38 @@ describe('StringUtils', () => {
       expect(getPermissionErrorText('plain error', 'fallback')).toBe(
         'plain error'
       );
+    });
+  });
+
+  describe('getTrimmedContent', () => {
+    it('should trim multi-word content to the limit without a broken last word', () => {
+      const content = 'the quick brown fox jumps over the lazy dog';
+
+      const result = getTrimmedContent(content, 20);
+
+      expect(result.length).toBeLessThanOrEqual(20);
+      // last (potentially broken) word is dropped
+      expect(content.startsWith(result)).toBe(true);
+      expect(result).toBe('the quick brown fox');
+    });
+
+    it('should cap a single space-less token to the limit so see-more truncates', () => {
+      const token = 'Please'.repeat(200);
+
+      const result = getTrimmedContent(token, 350);
+
+      expect(result).toHaveLength(350);
+      expect(result).toBe(token.slice(0, 350));
+      // the returned preview must be shorter than the full token
+      expect(result.length).toBeLessThan(token.length);
+    });
+
+    it('should only consider the first three lines', () => {
+      const content = 'line-one\nline-two\nline-three\nline-four';
+
+      const result = getTrimmedContent(content, 1000);
+
+      expect(result).not.toContain('line-four');
     });
   });
 });

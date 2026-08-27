@@ -296,7 +296,8 @@ jobs:
           # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
           # Embedded nightly recreates a fresh stack each run, so data never persists — these
           # small-footprint suites always create on the fly (jpw.data.mode=ingest). Static/ensure
-          # reuse is only for the persistent external cluster (see java-playwright-external.yml).
+          # reuse only pays off against a cluster you keep around between runs, which no workflow
+          # here does; set OM_URL + OM_ADMIN_TOKEN to point the suites at one by hand.
           STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
             -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
             -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \

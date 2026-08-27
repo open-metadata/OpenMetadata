@@ -40,8 +40,7 @@ const renderItems = () => {
       }
 
       popup = tippy('body', {
-        getReferenceClientRect:
-          props.clientRect as Props['getReferenceClientRect'],
+        getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
         appendTo: () => getDialogContainer(props.editor.view),
         content: component.element,
         showOnCreate: true,
@@ -60,8 +59,7 @@ const renderItems = () => {
       }
       if (hasPopup) {
         popup[0].setProps({
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
         });
       }
     },

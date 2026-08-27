@@ -16,6 +16,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 public class ElasticSearchRequestBuilder {
   private Query query;
@@ -32,6 +35,10 @@ public class ElasticSearchRequestBuilder {
   private Boolean explain;
   private List<String> searchAfter;
   private String preference;
+  private boolean contextMemoryVisibilityResolved;
+
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
 
   public ElasticSearchRequestBuilder() {}
 
@@ -42,6 +49,34 @@ public class ElasticSearchRequestBuilder {
 
   public Query query() {
     return this.query;
+  }
+
+  /** ANDs {@code filterQuery} into the current query as a non-scoring filter clause. */
+  public ElasticSearchRequestBuilder filter(Query filterQuery) {
+    if (query == null) {
+      query = filterQuery;
+    } else {
+      Query existingQuery = query;
+      query =
+          Query.of(
+              qb ->
+                  qb.bool(
+                      b -> {
+                        b.must(existingQuery);
+                        b.filter(filterQuery);
+                        return b;
+                      }));
+    }
+    return this;
+  }
+
+  /**
+   * Records that the caller evaluated ContextMemory visibility for this request's subject, so
+   * {@link #build} leaves the query alone instead of applying its org-wide-only default.
+   */
+  public ElasticSearchRequestBuilder contextMemoryVisibilityResolved() {
+    this.contextMemoryVisibilityResolved = true;
+    return this;
   }
 
   public ElasticSearchRequestBuilder postFilter(Query postFilterQuery) {
@@ -211,7 +246,17 @@ public class ElasticSearchRequestBuilder {
     return this.preference;
   }
 
+  /**
+   * Builds the request, defaulting to org-wide-only ContextMemory visibility unless the caller
+   * resolved it for a concrete subject via {@link #contextMemoryVisibilityResolved()}. Memory
+   * privacy is enforced per query rather than by keeping restricted memories out of the index, so a
+   * search path that forgets to evaluate the subject must fail closed rather than leak.
+   */
   public SearchRequest build(String... indices) {
+    if (!contextMemoryVisibilityResolved) {
+      filter(((ElasticQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2());
+      contextMemoryVisibilityResolved = true;
+    }
     return SearchRequest.of(
         s -> {
           s.index(Arrays.asList(indices));

@@ -226,7 +226,10 @@
   border: 1px solid @grey-15;
   border-radius: @size-sm;
   padding: @size-lg;
-  height: calc(100vh - (@om-navbar-height + @size-2xl));
+  height: calc(
+    100vh - var(--ant-navbar-height, 80px) - @size-2xl -
+      var(--page-alert-offset, 0px)
+  );
   margin-top: @size-xs;
   transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
@@ -256,13 +259,6 @@
   }
 }
 
-// When alert is visible with configured SSO, adjust container height
-.sso-settings-page:has(#page-alert) {
-  .settings-sso {
-    height: calc(100vh - (@om-navbar-height + @size-2xl) - 78px) !important;
-  }
-}
-
 .sso-provider-header {
   display: flex;
   justify-content: space-between;
@@ -276,19 +272,11 @@
   }
 }
 
-// SSO-specific breadcrumb styling - only applies within SSO settings page
 .sso-settings-page {
   .content-height-with-resizable-panel {
-    height: calc(100vh - var(--ant-navbar-height) - @size-2xl + @size-md);
-  }
-}
-
-// When alert is visible in SSO settings page, adjust container height
-.sso-settings-page:has(#page-alert) {
-  .content-height-with-resizable-panel {
-    height: calc(
-      100vh - var(--ant-navbar-height) - @size-2xl + @size-md - 78px
-    ) !important;
+    // 48px page header/breadcrumb minus the 16px the page does not pad;
+    // alert handling comes from --page-alert-offset (page-layout.less).
+    --content-panel-offset: 32px;
   }
 }
 

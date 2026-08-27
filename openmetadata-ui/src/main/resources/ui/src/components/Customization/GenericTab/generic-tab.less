@@ -48,6 +48,20 @@
       padding: @padding-md;
     }
   }
+
+  // `flat` variant: drop the left-panel frame card so the sole widget stands on
+  // its own (used by Domain & Data Product docs, which only hold the Description).
+  // Also drop the frame's inner padding so the widget lines up flush with the
+  // tabs (left) and the right panel (top) instead of being inset by the frame gap.
+  &.flat-left-panel > #KnowledgePanel\.LeftPanel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    > .dynamic-height-widget > .left-panel-content {
+      padding: 0;
+    }
+  }
 }
 
 .ant-tabs.ant-tabs-top.tabs-new {

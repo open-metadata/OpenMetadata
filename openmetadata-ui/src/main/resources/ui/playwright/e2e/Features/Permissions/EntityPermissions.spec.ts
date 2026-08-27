@@ -226,16 +226,20 @@ headerPermTest.describe(
       }
     );
 
-    headerPermTest.skip(
+    headerPermTest(
       'EditTier, EditOwners, EditCertification allowed but EditAll denied – edit buttons not visible',
       async ({ specificEditsPage }) => {
         await headerPermTable.visitEntityPage(specificEditsPage);
 
-        await expect(specificEditsPage.getByTestId('edit-tier')).toBeVisible();
-        await expect(specificEditsPage.getByTestId('edit-owner')).toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-tier')
+        ).not.toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-owner')
+        ).not.toBeVisible();
         await expect(
           specificEditsPage.getByTestId('edit-certification')
-        ).toBeVisible();
+        ).not.toBeVisible();
       }
     );
   }

@@ -25,7 +25,12 @@ const renderTitle = (title: HeaderShellProps['title']) =>
   isValidElement(title) ? (
     title
   ) : (
-    <Typography as="h3" size="text-xl" weight="semibold">
+    <Typography
+      ellipsis
+      as="h3"
+      className="tw:min-w-0"
+      size="text-xl"
+      weight="semibold">
       {title}
     </Typography>
   );
@@ -89,13 +94,15 @@ const HeaderShell = ({
           {leading}
           <Box
             className={classNames(
-              'tw:min-w-0',
+              'tw:min-w-0 tw:flex-1',
               hasStats ? 'tw:gap-2' : 'tw:gap-0.5'
             )}
             direction="col">
-            <Box align="center" direction="row" gap={2}>
+            <Box align="center" className="tw:min-w-0" direction="row" gap={2}>
               {renderTitle(title)}
-              {badge}
+              {badge != null && (
+                <Box className="tw:shrink-0 tw:empty:hidden">{badge}</Box>
+              )}
             </Box>
             {subtitle && renderSubtitle(subtitle)}
             {meta}

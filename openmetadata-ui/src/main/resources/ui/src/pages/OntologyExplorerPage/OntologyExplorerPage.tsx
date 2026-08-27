@@ -63,7 +63,7 @@ const OntologyExplorerPage: React.FC = () => {
     <Typography
       as="span"
       data-testid="heading"
-      size="text-md"
+      size="text-xl"
       weight="semibold">
       {t('label.ontology-explorer')}
     </Typography>

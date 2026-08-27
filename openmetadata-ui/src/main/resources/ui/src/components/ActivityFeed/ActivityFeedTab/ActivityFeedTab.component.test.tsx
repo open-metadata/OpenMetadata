@@ -15,6 +15,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { getFeedCount } from '../../../rest/feedsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ActivityFeedTab } from './ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -25,6 +27,11 @@ const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
 const mockUseRequiredParams = jest.fn();
+const mockFetchEntityActivity = jest.fn();
+const mockFetchUserActivity = jest.fn();
+let mockActivityEvents: { id: string; timestamp: number }[] = [];
+let mockConversationCount = 0;
+let mockActivityCount = 0;
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -65,10 +72,10 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     tasks: [],
     selectedTask: null,
     setActiveTask: jest.fn(),
-    activityEvents: [],
+    activityEvents: mockActivityEvents,
     isActivityLoading: false,
-    fetchEntityActivity: jest.fn(),
-    fetchUserActivity: jest.fn(),
+    fetchEntityActivity: mockFetchEntityActivity,
+    fetchUserActivity: mockFetchUserActivity,
     userId: '',
     selectedActivity: null,
     setActiveActivity: jest.fn(),
@@ -82,9 +89,7 @@ jest.mock('../../../rest/tasksAPI', () => ({
 }));
 
 jest.mock('../../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
+  getFeedCount: jest.fn(),
 }));
 
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
@@ -95,11 +100,18 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
+  // Real implementations — folding the /feed/count array and summing the tab
+  // total are the behaviours the tests below exercise.
+  aggregateFeedCountResponse: jest.requireActual('../../../utils/FeedUtilsPure')
+    .aggregateFeedCountResponse,
+  getFeedTotalCount: jest.requireActual('../../../utils/FeedUtilsPure')
+    .getFeedTotalCount,
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
-      conversationCount: 0,
+      conversationCount: mockConversationCount,
+      activityCount: mockActivityCount,
       mentionCount: 0,
-      totalCount: 0,
+      totalCount: mockConversationCount + mockActivityCount,
       totalTasksCount: 0,
       openTaskCount: 0,
       closedTaskCount: 0,
@@ -162,9 +174,26 @@ const renderComponent = (subTab = ActivityFeedTabs.TASKS) => {
   );
 };
 
+const renderUserComponent = (subTab = ActivityFeedTabs.TASKS) => {
+  mockUseRequiredParams.mockReturnValue({ tab: 'activity_feed', subTab });
+
+  return render(
+    <MemoryRouter>
+      <ActivityFeedTab
+        {...defaultProps}
+        columns={undefined}
+        entityType={EntityType.USER}
+      />
+    </MemoryRouter>
+  );
+};
+
 describe('ActivityFeedTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockActivityEvents = [];
+    mockConversationCount = 0;
+    mockActivityCount = 0;
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
       inProgress: 0,
@@ -173,6 +202,70 @@ describe('ActivityFeedTab', () => {
     });
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+    (getFeedCount as jest.Mock).mockResolvedValue([
+      {
+        entityLink: '<#E::user::admin>',
+        conversationCount: 0,
+        mentionCount: 0,
+      },
+    ]);
+  });
+
+  describe('Activity fetch is gated by tab', () => {
+    it('does NOT fetch entity activity on the Tasks tab', async () => {
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => {
+        expect(mockGetTaskData).toHaveBeenCalled();
+      });
+
+      expect(mockFetchEntityActivity).not.toHaveBeenCalled();
+    });
+
+    it('fetches entity activity on the All tab', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        expect(mockFetchEntityActivity).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('All count = conversations + activity events', () => {
+    it('sums the server conversationCount and activityCount (not client-loaded length)', async () => {
+      mockConversationCount = 3;
+      mockActivityCount = 2;
+      // Client-loaded list has fewer items than the server activity total; the
+      // badge must reflect the SERVER total, so it stays correct under pagination.
+      mockActivityEvents = [{ id: 'a1', timestamp: 1 }];
+
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        const counts = screen
+          .getAllByTestId('filter-count')
+          .map((el) => el.textContent);
+
+        // All badge must be 3 (conversations) + 2 (activity server total) = 5,
+        // NOT 3 + activityEvents.length (1).
+        expect(counts).toContain('5');
+      });
+    });
+  });
+
+  describe('User entity feed counts tolerate an empty /feed/count response', () => {
+    it('still renders the tab when the feed count response is empty', async () => {
+      // A user with no threads gets back [] — indexing res[0] threw here, which
+      // was swallowed by the catch and left the whole tab unrendered.
+      (getFeedCount as jest.Mock).mockResolvedValue([]);
+
+      renderUserComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => expect(getFeedCount).toHaveBeenCalled());
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(screen.getByTestId('task-list')).toBeInTheDocument();
+    });
   });
 
   describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {

@@ -133,6 +133,9 @@ const TestCaseStatusAreaChartWidget = ({
           count: +cur['testCase.fullyQualifiedName'],
         };
       });
+      // Aggregation buckets are not guaranteed to arrive chronologically;
+      // Recharts expects an ascending x-axis for a stable trend line.
+      updatedData.sort((first, second) => first.timestamp - second.timestamp);
 
       setChartData(updatedData);
     } catch {

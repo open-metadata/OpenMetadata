@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { RuleObject } from 'antd/lib/form';
-import yaml from 'js-yaml';
+import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
@@ -140,7 +140,7 @@ export const getUpdatedContractDetails = (
 };
 
 export const downloadContractYamlFile = (contract: DataContract) => {
-  const data = yaml.dump(getUpdatedContractDetails(contract, contract));
+  const data = dump(getUpdatedContractDetails(contract, contract));
   const element = document.createElement('a');
   const file = new Blob([data], { type: 'text/plain' });
   element.textContent = 'download-file';

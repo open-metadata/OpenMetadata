@@ -18,9 +18,17 @@ import SortingDropDown from './SortingDropDown';
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <button {...props}>{children}</button>
-    )),
+    .mockImplementation(
+      ({ children, hideFocusOutline, iconTrailing, size, ...props }) => (
+        <button
+          data-hide-focus-outline={hideFocusOutline}
+          data-size={size}
+          {...props}>
+          {children}
+          {iconTrailing}
+        </button>
+      )
+    ),
   Dropdown: {
     Root: jest.fn().mockImplementation(({ children, ...props }) => (
       <div data-testid="dropdown" {...props}>
@@ -78,6 +86,9 @@ describe('Test Sorting DropDown Component', () => {
     const dropdownButton = dropdown.querySelector('button');
 
     expect(dropdownButton).toBeInTheDocument();
+    expect(dropdownButton).toHaveAttribute('data-size', 'sm');
+    expect(dropdownButton).toHaveAttribute('data-hide-focus-outline', 'true');
+    expect(dropdownButton).not.toHaveClass('quick-filter-dropdown-trigger-btn');
 
     fireEvent.click(dropdownButton!);
 

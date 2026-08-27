@@ -36,7 +36,7 @@ import {
 } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
-import { uniqBy } from 'lodash';
+import { isEmpty, uniqBy } from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -78,6 +78,7 @@ import { EventType } from '../../generated/type/changeEvent';
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
+import { EntityIconSize } from '../EntityIconUtils';
 import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
@@ -89,6 +90,7 @@ import {
   getAlertEventsFilterLabels,
   getMessageFromArgumentName,
   getSelectOptionsFromEnum,
+  getSelectOptionsFromValues,
 } from './AlertsUtilPure';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -879,7 +881,8 @@ export const getFieldByArgumentType = (
   argument: string,
   index: number,
   selectedTrigger: string,
-  containerEntities: string[] = []
+  containerEntities: string[] = [],
+  supportedEventTypes: EventType[] = []
 ) => {
   let field: JSX.Element;
 
@@ -1054,7 +1057,11 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="event-type-select"
           mode="multiple"
-          options={getSelectOptionsFromEnum(EventType)}
+          options={
+            isEmpty(supportedEventTypes)
+              ? getSelectOptionsFromEnum(EventType)
+              : getSelectOptionsFromValues(supportedEventTypes)
+          }
           placeholder={t('label.search-by-type', {
             type: t('label.event-type-lowercase'),
           })}
@@ -1205,7 +1212,8 @@ export const getConditionalField = (
   name: number,
   selectedTrigger: string,
   supportedActions?: EventFilterRule[],
-  containerEntities?: string[]
+  containerEntities?: string[],
+  supportedEventTypes?: EventType[]
 ) => {
   const selectedAction = supportedActions?.find(
     (action) => action.name === condition
@@ -1225,7 +1233,8 @@ export const getConditionalField = (
           argument,
           index,
           selectedTrigger,
-          containerEntities
+          containerEntities,
+          supportedEventTypes
         );
       })}
     </>
@@ -1238,26 +1247,24 @@ export const getSourceOptionsFromResourceList = (
   selectedResource?: string[],
   showIcon?: boolean
 ) =>
-  resources.map((resource) => {
-    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
-
-    return {
-      label: (
-        <div
-          className="d-flex items-center gap-2"
-          data-testid={`${resource}-option`}>
-          {showCheckbox && (
-            <Checkbox checked={selectedResource?.includes(resource)} />
+  resources.map((resource) => ({
+    label: (
+      <div
+        className="d-flex items-center gap-2"
+        data-testid={`${resource}-option`}>
+        {showCheckbox && (
+          <Checkbox checked={selectedResource?.includes(resource)} />
+        )}
+        {showIcon &&
+          searchClassBase.getEntityIconWithBg(
+            resource ?? '',
+            EntityIconSize.Size14
           )}
-          {sourceIcon && showIcon && (
-            <div className="d-flex h-4 w-4">{sourceIcon}</div>
-          )}
-          <span>{getEntityNameLabel(resource ?? '')}</span>
-        </div>
-      ),
-      value: resource ?? '',
-    };
-  });
+        <span>{getEntityNameLabel(resource ?? '')}</span>
+      </div>
+    ),
+    value: resource ?? '',
+  }));
 
 export const getAlertRecentEventsFilterOptions = () => {
   const filters: MenuProps['items'] = Object.values(

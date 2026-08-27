@@ -17,7 +17,16 @@ import { listContextFiles } from '../../../rest/assetAPI';
 import DashboardFoldersCard from './DashboardFoldersCard.component';
 
 jest.mock('../../../rest/assetAPI', () => ({
-  listContextFiles: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  listContextFiles: jest.fn().mockResolvedValue({
+    data: [
+      {
+        id: 'file-1',
+        name: 'report.pdf',
+        displayName: 'report.pdf',
+      },
+    ],
+    paging: {},
+  }),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -41,7 +50,9 @@ const MOCK_FOLDERS: Folder[] = [
 
 describe('DashboardFoldersCard', () => {
   it('renders the folder list with children count badges', () => {
-    render(<DashboardFoldersCard folders={MOCK_FOLDERS} />);
+    render(
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
+    );
 
     expect(screen.getByText('Reports')).toBeInTheDocument();
     expect(screen.getByText('Archive')).toBeInTheDocument();
@@ -49,7 +60,7 @@ describe('DashboardFoldersCard', () => {
   });
 
   it('renders the empty state when there are no folders', () => {
-    render(<DashboardFoldersCard folders={[]} />);
+    render(<DashboardFoldersCard folders={[]} onOpenFile={jest.fn()} />);
 
     expect(
       screen.getByText('message.no-folders-yet-create-one')
@@ -59,7 +70,11 @@ describe('DashboardFoldersCard', () => {
   it('renders the New Folder action with a leading icon and triggers onCreateFolder on click', () => {
     const onCreateFolder = jest.fn();
     render(
-      <DashboardFoldersCard folders={[]} onCreateFolder={onCreateFolder} />
+      <DashboardFoldersCard
+        folders={[]}
+        onCreateFolder={onCreateFolder}
+        onOpenFile={jest.fn()}
+      />
     );
 
     const newFolderButton = screen.getByRole('button', {
@@ -74,8 +89,59 @@ describe('DashboardFoldersCard', () => {
   });
 
   it('does not fetch children until a folder is expanded', () => {
-    render(<DashboardFoldersCard folders={MOCK_FOLDERS} />);
+    render(
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
+    );
 
     expect(listContextFiles).not.toHaveBeenCalled();
+  });
+
+  it('fetches children when the folder name/row is clicked', () => {
+    render(
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reports' }));
+
+    expect(listContextFiles).toHaveBeenCalledWith({
+      folderId: 'folder-1',
+      limit: expect.any(Number),
+    });
+  });
+
+  it('fetches children when the expand chevron is clicked', () => {
+    render(
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
+    );
+
+    const folderNameButton = screen.getByRole('button', { name: 'Reports' });
+    const folderRow = folderNameButton.closest('[role="row"]') as HTMLElement;
+    const rowButtons = Array.from(folderRow.querySelectorAll('button'));
+    const expandButton = rowButtons.find((btn) => btn !== folderNameButton);
+
+    expect(expandButton).toBeDefined();
+
+    fireEvent.click(expandButton as HTMLButtonElement);
+
+    expect(listContextFiles).toHaveBeenCalledWith({
+      folderId: 'folder-1',
+      limit: expect.any(Number),
+    });
+  });
+
+  it('calls onOpenFile with the file id when a child file row is clicked', async () => {
+    const onOpenFile = jest.fn();
+    render(
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={onOpenFile} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reports' }));
+
+    const fileButton = await screen.findByRole('button', {
+      name: 'report.pdf',
+    });
+    fireEvent.click(fileButton);
+
+    expect(onOpenFile).toHaveBeenCalledWith('file-1');
   });
 });

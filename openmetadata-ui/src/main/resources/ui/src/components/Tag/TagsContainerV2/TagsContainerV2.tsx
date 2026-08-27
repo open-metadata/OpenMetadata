@@ -34,6 +34,10 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import {
+  activateOnEnterOrSpace,
+  stopPropagationIfInteractive,
+} from '../../../utils/InteractiveTargetUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -379,7 +383,11 @@ const TagsContainerV2 = ({
     return (
       <Space>
         {showAddTagButton ? (
-          <div onClick={handleAddClick}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={activateOnEnterOrSpace}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -428,7 +436,12 @@ const TagsContainerV2 = ({
     return (
       <Row data-testid="entity-tags">
         {showAddTagButton && (
-          <Col className="m-t-xss" onClick={handleAddClick}>
+          <Col
+            className="m-t-xss"
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={activateOnEnterOrSpace}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -507,7 +520,11 @@ const TagsContainerV2 = ({
     <div
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
-      onClick={(e) => e.stopPropagation()}>
+      // Narrowed from an unconditional stopPropagation: the tag links and the add/edit buttons
+      // still keep their clicks to themselves, but the padding and the gaps between chips no
+      // longer swallow them. On a clickable row or card those dead spots made the whole tags
+      // column look unclickable.
+      onClick={stopPropagationIfInteractive}>
       {suggestionDataRender ?? (
         <>
           {tagBody}

@@ -473,9 +473,9 @@ test('Classification Page', async ({ page }) => {
     await permanentDeleteModal(page, NEW_TAG.name);
     await deleteTag;
 
-    await expect(page.locator('[data-testid="table"]')).not.toContainText(
-      NEW_TAG.name
-    );
+    await expect(
+      page.locator('[data-testid="empty-placeholder"]')
+    ).toBeVisible();
 
     // Verify term count is now 0 after deleting the tag
     await page.reload();

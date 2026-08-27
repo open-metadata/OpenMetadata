@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
@@ -75,6 +76,28 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
 
+  // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
+  // the CORS preflight fail, and the user just sees a network error.
+  //   MCP-Protocol-Version - required since protocol 2025-06-18
+  //   Mcp-Method, Mcp-Name - required since protocol 2026-07-28, so gateways can route and meter
+  //                          requests without reading the JSON body
+  //   Mcp-Client-Name      - our own header, read by AuthEnrichedMcpContextExtractor
+  static final String CORS_ALLOWED_HEADERS =
+      String.join(
+          ", ",
+          List.of(
+              "Content-Type",
+              "Authorization",
+              "Accept",
+              "MCP-Protocol-Version",
+              "Mcp-Method",
+              "Mcp-Name",
+              AuthEnrichedMcpContextExtractor.CLIENT_NAME));
+
+  // After a 401 the client reads WWW-Authenticate to find this authorization server. Browsers hide
+  // response headers unless we expose them, so without this the client cannot start the OAuth flow.
+  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate";
+
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
   // For multi-node production deployments, consider database-backed rate limiting.
@@ -119,8 +142,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     List<String> supportedScopes = getSupportedScopesForProvider();
+    String issuer = baseUrl + mcpEndpoint;
     OAuthMetadata metadata = new OAuthMetadata();
-    metadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    metadata.setIssuer(URI.create(issuer));
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
@@ -145,6 +169,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.oauthMetadata = metadata;
     this.protectedResourceMetadata = protectedResourceMetadata;
+    // Same ordering as rebuildMetadata: the metadata is in place before the issuer is published.
+    authProvider.setIssuer(issuer);
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
     this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
@@ -191,9 +217,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private void rebuildMetadata(String baseUrl) {
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
     List<String> supportedScopes = getSupportedScopesForProvider();
+    String issuer = baseUrl + mcpEndpoint;
 
     OAuthMetadata newMetadata = new OAuthMetadata();
-    newMetadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    newMetadata.setIssuer(URI.create(issuer));
     newMetadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     newMetadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     newMetadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
@@ -217,6 +244,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
+
+    // Publish the response issuer last, once the new metadata is already being served. Setting it
+    // first would leave a gap where responses carry the new issuer while discovery still returns
+    // the old one, and a client comparing the two would reject a valid authorization response.
+    // Note this only closes the gap inside this method. A base URL change while a login is already
+    // in progress still moves the issuer under that client, which no ordering here can prevent.
+    authProvider.setIssuer(issuer);
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
   }
@@ -283,16 +317,26 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * Sets CORS headers with origin validation.
    * Only allows specific origins from the allowedOrigins list.
    * Rejects requests from origins not in the allowed list.
+   *
+   * <p>Must be called on every path that answers a browser, including the ones handled by the base
+   * transport - it writes the 401 challenge and the JSON-RPC response itself and never sets these.
    * @param request The HTTP request
    * @param response The HTTP response
    */
   private void setCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+    applyCorsHeaders(request, response, allowedOrigins);
+  }
+
+  /** Split out from {@link #setCorsHeaders} so the header emission can be unit tested. */
+  static void applyCorsHeaders(
+      HttpServletRequest request, HttpServletResponse response, List<String> allowedOrigins) {
     String origin = request.getHeader("Origin");
 
     if (origin != null && allowedOrigins.contains(origin)) {
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+      response.setHeader("Access-Control-Allow-Headers", CORS_ALLOWED_HEADERS);
+      response.setHeader("Access-Control-Expose-Headers", CORS_EXPOSED_HEADERS);
       response.setHeader("Access-Control-Max-Age", "3600");
       response.setHeader("Vary", "Origin");
       LOG.debug("CORS headers set for allowed origin: {}", origin);
@@ -324,6 +368,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       basicAuthLoginServlet.doGet(request, response);
     } else {
       // Unknown GET path: base class returns 404 for sub-paths, 405 for /mcp exactly
+      setCorsHeaders(request, response);
       super.doGet(request, response);
     }
   }
@@ -440,7 +485,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doPost(request, response);
     } else {
-      // Handle other POST requests using the parent class
+      // The MCP message endpoint. Everything below this line is written by the base transport,
+      // which knows nothing about CORS: the 401 challenge, the JSON-RPC response, the SSE stream.
+      // The headers have to go on here, before the response is committed, or a browser client
+      // gets a CORS failure instead of the response - including the 401 that carries the
+      // WWW-Authenticate challenge it needs to start the OAuth flow.
+      setCorsHeaders(request, response);
       super.doPost(request, response);
     }
   }

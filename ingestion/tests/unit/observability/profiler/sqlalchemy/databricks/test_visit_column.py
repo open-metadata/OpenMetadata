@@ -52,6 +52,10 @@ class TestDatabricksProfilerInterface(unittest.TestCase):
         mock_visit_column_super.return_value = "table"
         assert self.profiler.visit_column(MagicMock()) == "table"
 
+        # unquoted schema.table.column: nothing to repair, must pass through untouched
+        mock_visit_column_super.return_value = "my_schema.my_table.my_col"
+        assert self.profiler.visit_column(MagicMock()) == "my_schema.my_table.my_col"
+
     @patch("sqlalchemy.sql.compiler.SQLCompiler.visit_column")
     def test_visit_column_nesting(self, mock_visit_column_super):
         # Mock the response of the super class method

@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.2.2-python3.10
+FROM apache/airflow:3.3.1-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -53,8 +53,15 @@ RUN apt-get -qq update \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+  # docker-ce-cli comes from the airflow base and nothing in this image runs it:
+  # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
+  # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
+  # executable, so it reports the full go/stdlib CVE set (CVE-2026-39821 Critical
+  # among them) against every build. Docker's apt repo is not configured here, so
+  # --only-upgrade cannot reach a fixed build; removing it is the only remediation.
+  # Nothing installed depends on it -- verified with apt-get -s purge.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
@@ -89,6 +96,17 @@ COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflo
 COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
+
+# Refresh the interpreter-level pip before dropping privileges. The per-user
+# pip upgrade below only reaches ~/.local, leaving the base image's
+# own copy (/usr/python/lib/python3.12/site-packages, pip 25.0.1) on disk for image
+# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
+# The explicit interpreter path is required, not stylistic: as root, `pip` resolves to
+# airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
+# and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
+# copy this line exists to fix.
+RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
@@ -101,42 +119,11 @@ ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
-
-# Patch vulnerable Hive-metastore jars bundled inside PySpark 3.5.6 (the Deltalake
-# connector calls .enableHiveSupport()). SHA256-pinned to Maven Central.
-#   zookeeper 3.6.3 -> 3.7.2        CVE-2023-44981 (SASL quorum auth bypass); ZK 3.7 runs on Java 8+
-#   jackson-mapper/core-asl 1.9.13  CVE-2019-10202 (deserialization RCE) -- removed, no fix upstream
-# Derby (CVE-2022-46337) is deliberately left at the bundled 10.14.2.0. The only fixed
-# release on Maven Central is 10.17.1.0, which requires Java 21 — this image ships Java 17
-# (default-jre-headless), and the Java-8/11/17 backport jars (10.14.3.0 / 10.15.2.1 /
-# 10.16.1.2) were never published upstream, so no drop-in Java-17 fix exists. The CVE is
-# an LDAP-authenticator injection; OM's embedded Derby metastore uses no LDAP auth, so the
-# vulnerable path is unreachable. Revisit if PySpark bumps Derby or the image moves to Java 21.
-# Skips cleanly when pyspark is absent (e.g. an INGESTION_DEPENDENCY build without
-# the deltalake/pyspark deps); only patches jars when the pyspark jars dir exists.
-RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))' 2>/dev/null || true)" \
-  && if [ -z "${JARS_DIR}" ] || [ ! -d "${JARS_DIR}" ]; then \
-       echo "pyspark not installed; skipping Hive-metastore jar patch"; \
-     else \
-       fetch_jar() { \
-         wget -q "https://repo1.maven.org/maven2/$2" -O "$1" \
-         && echo "$3  $1" | sha256sum -c - || exit 1; \
-       }; \
-       cd "${JARS_DIR}" \
-       && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
-                jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
-       && fetch_jar zookeeper-3.7.2.jar \
-            org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar \
-            b12d6fb4afd7b3849d3a9a5a38b9260c23a12e1ea58ca8c8d775880249cb8eac \
-       && fetch_jar zookeeper-jute-3.7.2.jar \
-            org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar \
-            ad15d812b1f01f373638443adcda0e23fda549d65ced2be8c4f64bef33b5d774; \
-     fi
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
@@ -152,13 +139,41 @@ RUN pip install "py-spy>=0.3.14"
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# The removed Elasticsearch provider's canonical client is unused; ingestion uses elasticsearch8.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y \
+  && pip uninstall elasticsearch -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+
+# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
+# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
+# final pip install, or a later install restores the fixture.
+COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
+RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
+
+# Drop the teradatasql driver libraries this platform cannot load. The wheel ships
+# all ten platform builds (337 MB of Go shared objects); only the two this
+# architecture can load are kept, taking the package to 48 MB (arm64) / 70 MB (amd64);
+# see ingestion/scripts/strip_teradatasql_arch_libs.sh. Same placement rule as the
+# spaCy strip -- after the final pip install, or a later install restores them.
+COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
+RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
+
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+
+# Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
+# That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their
+# setup.py and 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x
+# on disk is what keeps scanners reporting CVE-2026-59890.
+# This must remain the final layer in the file -- after `airflow db migrate` as well as after
+# the last pip install. Anything that compiles a package needing pkg_resources, or that runs
+# an import chain still using it, would fail once it is gone, and the error would not look
+# like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"

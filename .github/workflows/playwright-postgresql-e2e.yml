@@ -425,6 +425,7 @@ jobs:
           npx playwright test --list --reporter=json \
             --project=chromium \
             --project=Basic \
+            --project="Data Insight" \
             --project=Ingestion \
             --project=DataAssetRulesEnabled \
             --project=DataAssetRulesDisabled \

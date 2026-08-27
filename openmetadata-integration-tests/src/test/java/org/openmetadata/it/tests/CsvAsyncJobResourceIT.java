@@ -14,41 +14,49 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.CsvJobClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.service.csv.CsvExportPayload;
+import org.openmetadata.service.csv.CsvExportSpool;
 
 /**
  * Integration tests for the CSV async job APIs that back the bulk import/export experience: job
- * creation via entity exportAsync/importAsync, the user-scoped job listing (which must not carry
- * export payloads), the spooled result download endpoint, payload caps, access control, and the
- * search-results export job.
+ * creation via entity exportAsync/importAsync, the user-scoped job listing and job status (neither
+ * of which may carry export payloads), the result download endpoint, payload caps, access control,
+ * and the search-results, lineage, and audit export jobs.
+ *
+ * <p>Export results live in the job row rather than on the local disk of whichever server ran the
+ * job, so that a download served by any server in the cluster finds them.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class CsvAsyncJobResourceIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final HttpClient HTTP = HttpClient.newHttpClient();
+  private static final CsvJobClient CLIENT = CsvJobClient.onDefaultServer();
   private static final Duration JOB_TIMEOUT = Duration.ofMinutes(2);
   private static final long TOKEN_TTL_SECONDS = 3600;
 
@@ -196,6 +204,188 @@ public class CsvAsyncJobResourceIT {
     assertEquals(404, response.statusCode());
   }
 
+  /**
+   * Job ids come straight off the request path. An id that cannot name a row — non-numeric, or
+   * numeric but wider than a long — has to read as "no such job", not as a server error.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"99999999999999999999", "not-a-job-id", "12x34"})
+  void test_unusableJobIdIsNotFoundRatherThanServerError(String jobId) throws Exception {
+    for (String path :
+        List.of(
+            "/v1/csvAsyncJobs/" + jobId,
+            "/v1/csvAsyncJobs/" + jobId + "/result",
+            "/v1/audit/logs/export/" + jobId + "/result")) {
+      HttpResponse<String> response = request("GET", path, null, adminToken());
+      assertEquals(404, response.statusCode(), path + " returned " + response.body());
+    }
+  }
+
+  /**
+   * The status endpoint is polled while a job runs, so it must not carry the export payload — only
+   * the download endpoint may. Without this the whole CSV is transferred on every poll.
+   */
+  @Test
+  void test_statusEndpointDoesNotCarryTheExportPayload(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "statuspayload");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+
+    JsonNode completedJob = awaitJobStatus(jobId, "COMPLETED");
+
+    assertTrue(
+        completedJob.path("result").isNull() || completedJob.path("result").isMissingNode(),
+        "Job status must omit the export payload; downloads go through /result");
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode(), "The payload must still be downloadable");
+    assertTrue(result.body().contains(metric.getName()));
+  }
+
+  /** Downloading twice must work: the result is not consumed by the first read. */
+  @Test
+  void test_exportResultDownloadsRepeatedly(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "repeatable");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    HttpResponse<String> first =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    HttpResponse<String> second =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+
+    assertEquals(200, first.statusCode());
+    assertEquals(200, second.statusCode(), "A second download must not 404");
+    assertEquals(first.body(), second.body(), "Repeat downloads must return identical CSV");
+  }
+
+  /**
+   * The regression test for the multi-node download failure. A single server cannot be split across
+   * hosts, but the property that broke is testable here: the completed export must leave nothing on
+   * this server's disk, and the payload must be in the shared job row where any server can read it.
+   *
+   * <p>Before results moved into the row, the assertions below fail — the CSV was written to
+   * {@code ${java.io.tmpdir}/openmetadata-csv-exports} and the row held only a pointer to it, so a
+   * download served by any other server 404'd.
+   */
+  @Test
+  void test_exportResultIsInTheJobRowAndNotOnLocalDisk(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "nodelocal");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    assertFalse(
+        CsvExportSpool.exists(jobId),
+        "A completed export must leave no node-local file; only the server that ran the job "
+            + "would be able to serve it");
+
+    String storedResult =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT result FROM background_jobs WHERE id = :id")
+                        .bind("id", Long.parseLong(jobId))
+                        .mapTo(String.class)
+                        .one());
+    assertTrue(
+        CsvExportPayload.isCompressed(storedResult),
+        "The job row must hold the compressed payload, not a pointer to local storage");
+
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode());
+    assertTrue(result.body().contains(metric.getName()));
+  }
+
+  /**
+   * Audit exports are typed AUDIT_EXPORT so they stay out of the CSV jobs tray, which means every
+   * lookup on their path has to include that type. Creating one used to read the row back through
+   * the CSV-only query and NPE on a null job, so this covers the whole round trip: create, poll,
+   * download.
+   */
+  @Test
+  void test_auditExportRunsAsBackgroundJob() throws Exception {
+    long endTs = System.currentTimeMillis();
+    long startTs = endTs - Duration.ofDays(1).toMillis();
+
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/audit/logs/export?startTs=" + startTs + "&endTs=" + endTs + "&limit=10",
+            null,
+            adminToken());
+
+    assertTrue(
+        jobId.chars().allMatch(Character::isDigit),
+        "Audit export must return a background job id: " + jobId);
+
+    // Polled through the status endpoint, which is what the UI falls back to: the
+    // completion event only reaches sockets held by the server that ran the job.
+    Awaitility.await()
+        .atMost(JOB_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> "COMPLETED".equals(auditExportStatus(jobId)));
+
+    HttpResponse<String> result =
+        request("GET", "/v1/audit/logs/export/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode());
+    assertTrue(
+        result.body().trim().startsWith("["),
+        "Audit export downloads as a JSON array: " + firstLine(result.body()));
+  }
+
+  private String auditExportStatus(String jobId) throws Exception {
+    HttpResponse<String> response =
+        request("GET", "/v1/audit/logs/export/" + jobId, null, adminToken());
+    assertEquals(200, response.statusCode(), "Audit job status failed: " + response.body());
+    return MAPPER.readTree(response.body()).path("status").asText();
+  }
+
+  /**
+   * Lineage exports used to run on a local executor under a random UUID job id, so the result was
+   * only ever pushed over the websocket of the server that ran it and was resolvable through no
+   * API. They are background jobs now: a numeric id, a pollable status, and a download.
+   */
+  @Test
+  void test_lineageExportRunsAsBackgroundJob(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "lineage");
+
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/lineage/exportAsync?fqn="
+                + metric.getFullyQualifiedName()
+                + "&entityType=metric&upstreamDepth=1&downstreamDepth=1",
+            null,
+            adminToken());
+
+    assertTrue(
+        jobId.chars().allMatch(Character::isDigit),
+        "Lineage export must return a background job id, not a local UUID: " + jobId);
+    JsonNode completedJob = awaitJobStatus(jobId, "COMPLETED");
+    assertEquals("EXPORT", completedJob.path("operation").asText());
+    assertEquals("lineage", completedJob.path("entityType").asText());
+
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode(), "Lineage export result must download: " + result.body());
+  }
+
   private Metric createMetric(TestNamespace ns, String suffix) {
     CreateMetric create =
         new CreateMetric()
@@ -218,32 +408,18 @@ public class CsvAsyncJobResourceIT {
     return result.body();
   }
 
-  private String startJob(String method, String path, String body, String token) throws Exception {
-    HttpResponse<String> response = request(method, path, body, token);
-    assertTrue(
-        response.statusCode() == 200 || response.statusCode() == 202,
-        "Job creation failed: " + response.statusCode() + " " + response.body());
-    JsonNode node = MAPPER.readTree(response.body());
-    String jobId = node.path("jobId").asText();
-    assertNotNull(jobId);
-    assertTrue(!jobId.isEmpty(), "Job creation must return a jobId: " + response.body());
-    return jobId;
+  private String startJob(String method, String path, String body, String token)
+      throws IOException, InterruptedException {
+    return CLIENT.startJob(method, path, body, token);
   }
 
   private JsonNode awaitJobStatus(String jobId, String expectedStatus) {
-    Awaitility.await()
-        .atMost(JOB_TIMEOUT)
-        .pollInterval(Duration.ofSeconds(2))
-        .until(() -> expectedStatus.equals(fetchJob(jobId).path("status").asText()));
-    return fetchJob(jobId);
+    return CLIENT.awaitJobStatus(jobId, expectedStatus);
   }
 
   private JsonNode findJobInList(String jobId) throws IOException, InterruptedException {
-    HttpResponse<String> response = request("GET", "/v1/csvAsyncJobs?limit=50", null, adminToken());
-    assertEquals(200, response.statusCode(), "Job listing failed: " + response.body());
-    JsonNode jobs = MAPPER.readTree(response.body());
     JsonNode match = null;
-    for (JsonNode job : jobs) {
+    for (JsonNode job : CLIENT.listJobs()) {
       if (jobId.equals(job.path("jobId").asText())) {
         match = job;
       }
@@ -251,31 +427,9 @@ public class CsvAsyncJobResourceIT {
     return match;
   }
 
-  private JsonNode fetchJob(String jobId) {
-    try {
-      HttpResponse<String> response =
-          request("GET", "/v1/csvAsyncJobs/" + jobId, null, adminToken());
-      assertEquals(200, response.statusCode(), "Job fetch failed: " + response.body());
-      return MAPPER.readTree(response.body());
-    } catch (IOException | InterruptedException e) {
-      throw new IllegalStateException("Failed to fetch CSV job " + jobId, e);
-    }
-  }
-
   private HttpResponse<String> request(String method, String path, String body, String token)
       throws IOException, InterruptedException {
-    HttpRequest.Builder builder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + path))
-            .header("Authorization", "Bearer " + token);
-    if ("PUT".equals(method)) {
-      builder
-          .header("Content-Type", "text/plain")
-          .PUT(HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
-    } else {
-      builder.GET();
-    }
-    return HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    return CLIENT.request(method, path, body, token);
   }
 
   private String adminToken() {
