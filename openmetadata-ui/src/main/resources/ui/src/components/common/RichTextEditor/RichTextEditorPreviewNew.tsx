@@ -66,21 +66,38 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   // instance's actual rendered content — see the effect below. Undefined only
   // for the first paint, before there is anything to measure yet.
   const [clampHeightPx, setClampHeightPx] = useState<number>();
+  // Whether the *next* clampHeightPx paint should snap instantly rather than
+  // animate. Computed and set together with clampHeightPx inside
+  // checkOverflow's layout effect below (see the comment there) — never
+  // computed or written inside clampStyle's memo, which must stay a pure
+  // read of state/props: useMemo isn't guaranteed to run exactly once per
+  // commit (e.g. under StrictMode's double-render), so a side effect (or a
+  // ref read used as if it were fresh state) inside it is unsafe.
+  const [isInstantTransition, setIsInstantTransition] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
-  // Tracks whether we've already applied a real measured clampHeightPx once
-  // *after* web fonts finished loading. `font-display: swap` (see
-  // src/styles/inter-variable.css) means a cold paint first renders with the
-  // system fallback font, then swaps to Inter once it loads — a different
-  // font has different metrics, so the ResizeObserver fires again with a
-  // corrected height right after the swap. If that correction were allowed
-  // to animate, it looks identical to the mount-time estimate->measured
-  // flash: content briefly grows/shrinks on its own. So no correction
-  // animates until fonts have actually settled.
+  // Tracks whether a real measurement has ever landed *after* web fonts
+  // finished loading. `font-display: swap` (see src/styles/inter-variable.css)
+  // means a cold paint first renders with the system fallback font, then
+  // swaps to Inter once it loads — a different font has different metrics,
+  // so the ResizeObserver fires again with a corrected height right after
+  // the swap. If that correction were allowed to animate, it looks identical
+  // to the mount-time estimate->measured flash: content briefly
+  // grows/shrinks on its own. So no correction animates until fonts have
+  // actually settled, and only the first one after they do is instant.
   const hasMeasuredOnceRef = useRef(false);
   const [fontsReady, setFontsReady] = useState<boolean>(
     () =>
       typeof document === 'undefined' || document.fonts?.status !== 'loading'
   );
+  // Mirrors `fontsReady` for checkOverflow's closure below: that closure is
+  // captured once per layout-effect run (tied to [content, maxLineLength]),
+  // but can go on to fire many times via the Resize/MutationObservers it
+  // sets up — reading the `fontsReady` state variable directly there would
+  // see a stale snapshot from whenever the effect last ran, not the latest
+  // value. A ref's `.current` is always current regardless of which closure
+  // reads it.
+  const fontsReadyRef = useRef(fontsReady);
+  fontsReadyRef.current = fontsReady;
 
   useEffect(() => {
     if (fontsReady || typeof document === 'undefined' || !document.fonts) {
@@ -105,18 +122,6 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         return undefined;
       }
 
-      // Any correction is provisional (and must snap instantly) until fonts
-      // are ready; once they are, only the first post-font-swap measurement
-      // is instant — everything after that (an explicit toggle, or a later
-      // genuine resize) still animates as before.
-      const isProvisionalOrInitial =
-        !fontsReady ||
-        (clampHeightPx !== undefined && !hasMeasuredOnceRef.current);
-
-      if (fontsReady && clampHeightPx !== undefined) {
-        hasMeasuredOnceRef.current = true;
-      }
-
       return {
         overflow: 'hidden',
         // Before the first real measurement lands, fall back to the
@@ -127,9 +132,9 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
           clampHeightPx !== undefined
             ? `${clampHeightPx}px`
             : `${Number(maxLineLength) * DEFAULT_LINE_HEIGHT_PX}px`,
-        transition: isProvisionalOrInitial ? 'none' : 'max-height 0.3s ease',
+        transition: isInstantTransition ? 'none' : 'max-height 0.3s ease',
       };
-    }, [readMore, maxLineLength, clampHeightPx, fontsReady]);
+    }, [readMore, maxLineLength, clampHeightPx, isInstantTransition]);
 
   const handleReadMoreToggle = () => {
     // When disableExpand is set, the button stays a pure "View more" affordance
@@ -189,9 +194,21 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         el.style.maxHeight = originalMaxHeight;
         el.style.overflow = originalOverflow;
 
+        // Computed here, from the ref's value *before* this measurement
+        // updates it below — this is "was a real measurement already taken
+        // after fonts were ready, prior to this one" — then stored as its
+        // own state (isInstantTransition) so clampStyle's memo only ever
+        // needs to read state, not decide anything or touch the ref itself.
+        const isInstant = !fontsReadyRef.current || !hasMeasuredOnceRef.current;
+
         setClampHeightPx(targetHeight);
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);
+        setIsInstantTransition(isInstant);
+
+        if (fontsReadyRef.current) {
+          hasMeasuredOnceRef.current = true;
+        }
       }
     };
 
@@ -203,8 +220,29 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       resizeObserver.observe(contentRef.current);
     }
 
+    // BlockEditor applies a changed `content` prop asynchronously: its own
+    // content-sync effect (BlockEditor.tsx) defers the actual
+    // editor.commands.setContent(...) call via setTimeout to avoid a tiptap
+    // flushSync warning. So when `content` changes here, this effect's own
+    // eager checkOverflow() call above can run *before* that DOM update has
+    // landed, measuring the still-old content and reporting stale overflow
+    // state (e.g. "View more" staying visible after an edit that made the
+    // content fit). A MutationObserver ties the re-measurement to the real
+    // DOM mutation itself, whenever it actually lands, instead of guessing
+    // at timing relative to React's render/effect cycle.
+    const mutationObserver = new MutationObserver(checkOverflow);
+
+    if (contentRef.current) {
+      mutationObserver.observe(contentRef.current, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }
+
     return () => {
       resizeObserver.disconnect();
+      mutationObserver.disconnect();
     };
   }, [content, maxLineLength]);
 

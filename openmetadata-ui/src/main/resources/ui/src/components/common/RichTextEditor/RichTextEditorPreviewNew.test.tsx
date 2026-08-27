@@ -194,51 +194,68 @@ describe('RichTextEditorPreviewNew', () => {
       value: { status: 'loading', ready: fontsReadyPromise },
     });
 
-    mockRealisticLineHeight();
-    render(<RichTextEditorPreviewNew {...mockProp} maxLineLength="3" />);
+    try {
+      mockRealisticLineHeight();
+      render(<RichTextEditorPreviewNew {...mockProp} maxLineLength="3" />);
 
-    const parser = screen.getByTestId('markdown-parser');
+      const parser = screen.getByTestId('markdown-parser');
 
-    expect(parser.style.transition).toBe('none');
+      expect(parser.style.transition).toBe('none');
 
-    // Font swap changes the rendered metrics -> ResizeObserver fires again
-    // with a different height, while document.fonts.status is still
-    // "loading".
-    jest.spyOn(window, 'getComputedStyle').mockReturnValue({
-      lineHeight: '24px',
-      fontSize: '16px',
-    } as CSSStyleDeclaration);
+      // Font swap changes the rendered metrics -> ResizeObserver fires again
+      // with a different height, while document.fonts.status is still
+      // "loading".
+      jest.spyOn(window, 'getComputedStyle').mockReturnValue({
+        lineHeight: '24px',
+        fontSize: '16px',
+      } as CSSStyleDeclaration);
 
-    act(() => {
-      resizeCallback([], mockResizeObserver.mock.results[0].value);
-    });
+      act(() => {
+        resizeCallback([], mockResizeObserver.mock.results[0].value);
+      });
 
-    expect(parser.style.maxHeight).toBe('72px');
-    expect(parser.style.transition).toBe('none');
+      expect(parser.style.maxHeight).toBe('72px');
+      expect(parser.style.transition).toBe('none');
 
-    // Fonts finish loading.
-    await act(async () => {
-      resolveFontsReady();
-      await fontsReadyPromise;
-    });
+      // Fonts finish loading. No new measurement has happened yet, so
+      // nothing about the clamp has changed at this exact point.
+      await act(async () => {
+        resolveFontsReady();
+        await fontsReadyPromise;
+      });
 
-    // The correction that lands right as fonts become ready is still instant.
-    expect(parser.style.transition).toBe('none');
+      expect(parser.style.transition).toBe('none');
 
-    // A further genuine change now animates normally.
-    jest.spyOn(window, 'getComputedStyle').mockReturnValue({
-      lineHeight: '21px',
-      fontSize: '14px',
-    } as CSSStyleDeclaration);
+      // The *first* measurement taken after fonts become ready is still
+      // instant (it's the one correcting for the font swap itself).
+      jest.spyOn(window, 'getComputedStyle').mockReturnValue({
+        lineHeight: '21px',
+        fontSize: '14px',
+      } as CSSStyleDeclaration);
 
-    act(() => {
-      resizeCallback([], mockResizeObserver.mock.results[0].value);
-    });
+      act(() => {
+        resizeCallback([], mockResizeObserver.mock.results[0].value);
+      });
 
-    expect(parser.style.maxHeight).toBe('63px');
-    expect(parser.style.transition).toBe('max-height 0.3s ease');
+      expect(parser.style.maxHeight).toBe('63px');
+      expect(parser.style.transition).toBe('none');
 
-    Reflect.deleteProperty(document, 'fonts');
+      // A *second* genuine change, after fonts were already ready for the
+      // prior measurement, finally animates normally.
+      jest.spyOn(window, 'getComputedStyle').mockReturnValue({
+        lineHeight: '18px',
+        fontSize: '14px',
+      } as CSSStyleDeclaration);
+
+      act(() => {
+        resizeCallback([], mockResizeObserver.mock.results[0].value);
+      });
+
+      expect(parser.style.maxHeight).toBe('54px');
+      expect(parser.style.transition).toBe('max-height 0.3s ease');
+    } finally {
+      Reflect.deleteProperty(document, 'fonts');
+    }
   });
 
   it('still animates a later, genuine max-height change (collapsing back after View more/View less) once the initial mount has settled', async () => {
@@ -300,6 +317,64 @@ describe('RichTextEditorPreviewNew', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    });
+  });
+
+  it('re-measures overflow once BlockEditor actually mutates the DOM, hiding View more when content no longer overflows even without a new React render', async () => {
+    // BlockEditor.tsx applies a changed `content` prop imperatively and
+    // asynchronously: its own content-sync effect defers the real
+    // editor.commands.setContent(...) call via setTimeout (to avoid a
+    // tiptap flushSync warning), which mutates the ProseMirror DOM directly
+    // -- not through this component's own React render cycle. The test
+    // mock below renders `content` synchronously as a child, which doesn't
+    // reproduce that asynchrony, so this test instead mutates the DOM
+    // directly (bypassing React entirely, like the real editor does) to
+    // exercise the actual mechanism that must catch it: the MutationObserver
+    // in the layout effect, not the eager checkOverflow() call tied to
+    // content changing.
+    render(<RichTextEditorPreviewNew {...mockProp} />);
+
+    const contentElement = screen.getByTestId('markdown-parser');
+    // BlockEditor is React.lazy-loaded, so even with the module mocked its
+    // dynamic import() still resolves on a microtask -- findByTestId (not
+    // getByTestId) waits for that Suspense boundary to settle.
+    const editorElement = await screen.findByTestId('block-editor');
+
+    Object.defineProperty(contentElement, 'scrollHeight', {
+      configurable: true,
+      value: 200,
+    });
+    Object.defineProperty(contentElement, 'clientHeight', {
+      configurable: true,
+      value: 100,
+    });
+
+    act(() => {
+      resizeCallback([], mockResizeObserver.mock.results[0].value);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    });
+
+    // The content now fits -- update the (mocked) measured size to reflect
+    // it, then mutate the DOM directly, outside of any React render, the
+    // same way BlockEditor's real deferred setContent call would.
+    Object.defineProperty(contentElement, 'scrollHeight', {
+      configurable: true,
+      value: 80,
+    });
+    Object.defineProperty(contentElement, 'clientHeight', {
+      configurable: true,
+      value: 100,
+    });
+
+    act(() => {
+      editorElement.textContent = 'Short content that fits.';
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
     });
   });
 
