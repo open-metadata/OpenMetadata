@@ -183,11 +183,25 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
                   .block();
 
-          String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
-          if (shouldEmitSse(acceptsJson, acceptsSse)) {
-            writeSseResponse(response, jsonResponseText);
+          writeResponse(
+              response, jsonMapper.writeValueAsString(jsonrpcResponse), acceptsJson, acceptsSse);
+        } catch (McpError e) {
+          McpSchema.JSONRPCResponse.JSONRPCError error = e.getJsonRpcError();
+          if (error != null && error.code() == McpSchema.ErrorCodes.METHOD_NOT_FOUND) {
+            McpSchema.JSONRPCResponse errorResponse =
+                new McpSchema.JSONRPCResponse(
+                    McpSchema.JSONRPC_VERSION, jsonrpcRequest.id(), null, error);
+            writeResponse(
+                response, jsonMapper.writeValueAsString(errorResponse), acceptsJson, acceptsSse);
           } else {
-            writeJsonResponse(response, jsonResponseText);
+            logger.error("Failed to handle request", e);
+            responseError(
+                response,
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                jsonrpcRequest.id(),
+                McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+                    .message("Failed to handle request")
+                    .build());
           }
         } catch (Exception e) {
           logger.error("Failed to handle request", e);
@@ -200,21 +214,25 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .build());
         }
       } else if (message instanceof McpSchema.JSONRPCNotification jsonrpcNotification) {
-        try {
-          this.mcpHandler
-              .handleNotification(transportContext, jsonrpcNotification)
-              .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
-              .block();
+        if (McpSchema.METHOD_NOTIFICATION_INITIALIZED.equals(jsonrpcNotification.method())) {
           response.setStatus(HttpServletResponse.SC_ACCEPTED);
-        } catch (Exception e) {
-          logger.error("Failed to handle notification", e);
-          responseError(
-              response,
-              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-              null,
-              McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-                  .message("Failed to handle notification")
-                  .build());
+        } else {
+          try {
+            this.mcpHandler
+                .handleNotification(transportContext, jsonrpcNotification)
+                .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
+                .block();
+            response.setStatus(HttpServletResponse.SC_ACCEPTED);
+          } catch (Exception e) {
+            logger.error("Failed to handle notification", e);
+            responseError(
+                response,
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                null,
+                McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+                    .message("Failed to handle notification")
+                    .build());
+          }
         }
       } else {
         responseError(
@@ -243,6 +261,19 @@ public class HttpServletStatelessServerTransport extends HttpServlet
           McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
               .message("Internal server error")
               .build());
+    }
+  }
+
+  static void writeResponse(
+      HttpServletResponse response,
+      String jsonResponseText,
+      boolean acceptsJson,
+      boolean acceptsSse)
+      throws IOException {
+    if (shouldEmitSse(acceptsJson, acceptsSse)) {
+      writeSseResponse(response, jsonResponseText);
+    } else {
+      writeJsonResponse(response, jsonResponseText);
     }
   }
 
