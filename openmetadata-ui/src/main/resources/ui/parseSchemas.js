@@ -31,6 +31,42 @@ const globalParserOptions = {
 
 const parser = new $RefParser(globalParserOptions);
 
+function writeJsonFile(filePath, data) {
+  const serializedData = JSON.stringify(data, null, 2);
+  const normalizedData = JSON.stringify(JSON.parse(serializedData));
+
+  try {
+    const currentData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    // Preserve checked-in Prettier formatting when the generated JSON is unchanged.
+    if (JSON.stringify(currentData) === normalizedData) {
+      return;
+    }
+  } catch {
+    // Missing or invalid generated output should be replaced below.
+  }
+
+  fs.writeFileSync(filePath, serializedData);
+}
+
+function removeStaleFiles(sourceDir, destDir) {
+  for (const entry of fs.readdirSync(destDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+
+    if (!fs.existsSync(sourcePath)) {
+      fs.rmSync(destPath, { recursive: true, force: true });
+      continue;
+    }
+
+    const sourceEntry = fs.statSync(sourcePath);
+    if (entry.isDirectory() !== sourceEntry.isDirectory()) {
+      fs.rmSync(destPath, { recursive: true, force: true });
+    } else if (entry.isDirectory()) {
+      removeStaleFiles(sourcePath, destPath);
+    }
+  }
+}
+
 // Function to recursively remove any object by key
 function removeObjectByKey(obj, keyToRemove) {
   if (typeof obj == 'object') {
@@ -68,10 +104,7 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
         console.log(err);
       }
     }
-    fs.writeFileSync(
-      `${cwd}/${destPath}`,
-      JSON.stringify(updatedAPIWithoutID, null, 2)
-    );
+    writeJsonFile(`${cwd}/${destPath}`, updatedAPIWithoutID);
   } catch (err) {
     console.log(err);
   } finally {
@@ -112,12 +145,12 @@ async function main(rootDir, srcDir, destDir, shouldDereference = false) {
   const playDir = `${rootDir}/${srcDir}`;
 
   try {
-    if (fs.existsSync(destDir)) {
-      fs.rmSync(destDir, { recursive: true });
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
     }
-    fs.mkdirSync(destDir, { recursive: true });
 
     copySourceFiles(rootDir);
+    removeStaleFiles(playDir, destDir);
 
     await traverseDirectory(playDir, playDir, destDir, shouldDereference);
   } catch (err) {

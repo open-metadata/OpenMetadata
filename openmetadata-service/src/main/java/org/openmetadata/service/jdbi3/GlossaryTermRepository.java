@@ -2281,8 +2281,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     for (EntityReference child : childTerms) {
       String childNewFqn = child.getFullyQualifiedName();
-      String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
-      conversations.updateEntityReference(child, childOldFqn);
+      oldFqnForRenamedDescendant(oldFqn, newFqn, childNewFqn)
+          .ifPresent(childOldFqn -> conversations.updateEntityReference(child, childOldFqn));
     }
 
     // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
@@ -2293,17 +2293,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
     for (GlossaryTerm descendant : getNestedTerms(updated)) {
       String descendantNewFqn = descendant.getFullyQualifiedName();
-      if (nullOrEmpty(descendantNewFqn) || !descendantNewFqn.startsWith(newFqn)) {
+      Optional<String> descendantOldFqn =
+          oldFqnForRenamedDescendant(oldFqn, newFqn, descendantNewFqn);
+      if (descendantOldFqn.isEmpty()) {
         continue;
       }
-      String descendantOldFqn = oldFqn + descendantNewFqn.substring(newFqn.length());
       taskFqnHashUpdates.put(
-          FullyQualifiedName.buildHash(descendantOldFqn),
+          FullyQualifiedName.buildHash(descendantOldFqn.get()),
           FullyQualifiedName.buildHash(descendantNewFqn));
     }
     updateTaskAboutFqnHashes(taskFqnHashUpdates);
 
     repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
+  }
+
+  static Optional<String> oldFqnForRenamedDescendant(
+      String oldFqn, String newFqn, String descendantNewFqn) {
+    if (nullOrEmpty(descendantNewFqn) || !descendantNewFqn.startsWith(newFqn)) {
+      return Optional.empty();
+    }
+    return Optional.of(oldFqn + descendantNewFqn.substring(newFqn.length()));
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
