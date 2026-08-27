@@ -524,6 +524,27 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertQueryNotSearchableInDomain(client, query.getId(), domain.getFullyQualifiedName());
   }
 
+  @Test
+  void readModifyWriteMultiDomainQueryNotBlockedByRule(TestNamespace ns) {
+    // A query inheriting 2 domains (from 2 tables in different domains) must stay updatable.
+    // Fetching it WITH its inherited domains and writing the full body back previously tripped the
+    // "Multiple Domains are not allowed" rule with a 400. Regression guard for the query exemption.
+    final Domain a = createDomain(ns, "rmw_a");
+    final Domain b = createDomain(ns, "rmw_b");
+    final Table ta = createTableInDomain(ns, "rmw_a", a);
+    final Table tb = createTableInDomain(ns, "rmw_b", b);
+    final Query query = createQueryUsedIn(ns, List.of(ta, tb));
+    assertInheritedQueryDomains(query.getId(), List.of(a, b));
+
+    final Query fetched = getEntityWithFields(query.getId().toString(), "domains,queryUsedIn");
+    assertEquals(2, fetched.getDomains().size());
+    fetched.setDescription("read-modify-write under multi-domain rule");
+    // Must NOT throw a RuleValidationException (400) for the 2 inherited domains.
+    patchEntity(fetched.getId().toString(), fetched);
+
+    assertInheritedQueryDomains(query.getId(), List.of(a, b));
+  }
+
   private Query createQueryUsedIn(TestNamespace ns, List<Table> tables) {
     final List<EntityReference> tableReferences =
         tables.stream().map(Table::getEntityReference).toList();
