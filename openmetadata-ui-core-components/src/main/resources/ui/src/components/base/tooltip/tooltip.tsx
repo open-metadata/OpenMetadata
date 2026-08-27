@@ -20,9 +20,11 @@ import { cx } from '@/utils/cx';
 // a <div> containing a <button>). Tooltip only inspects the top-level element type;
 // wrapping such a container would produce a button-in-button (invalid HTML / a11y).
 // The caller is responsible for ensuring the direct child has no interactive descendants.
+// 'button' is intentionally excluded: react-aria's hover system attaches via
+// cloneElement and does not reliably fire on native buttons. Wrapping in an
+// AriaButton ensures the tooltip trigger uses react-aria's own useHover/usePress.
 const NATIVELY_FOCUSABLE_HTML = new Set([
   'a',
-  'button',
   'details',
   'input',
   'select',
