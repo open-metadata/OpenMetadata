@@ -349,6 +349,14 @@ public class DefaultToolContext {
                       || meta.message().contains("permission denied"),
               McpToolCallUsage.ErrorCategory.AUTH,
               STATUS_FORBIDDEN),
+          // A disabled RDF triplestore is a deployment state, not an outage. Left unmatched it
+          // fell through to 500, and summarizeFailure then told the caller the backend was broken
+          // and that a narrower request might help - both wrong. Matched by name so the message
+          // text stays free to change.
+          new CategoryMatcher(
+              meta -> meta.name().contains("RdfNotEnabled"),
+              McpToolCallUsage.ErrorCategory.VALIDATION,
+              STATUS_BAD_REQUEST),
           // Validation by class name runs before the NotFound message heuristic below, so a
           // bad-argument exception whose message merely contains "not found" (e.g.
           // IllegalArgumentException("parameter not found")) stays a 400 rather than a 404.
