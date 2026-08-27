@@ -205,6 +205,14 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # -- it arrives transitively from the top-of-file apt layer -- and that layer's
 # frozen index is exactly why the image keeps shipping 2.8.2 and being reported
 # for CVE-2026-72522 while trixie-security has 2.8.3-1~deb13u1.
+# linux-libc-dev is the third, and the reason CVE-2026-68082 is reported against
+# this image: libc6-dev pulls the kernel headers in for build-essential, a
+# container runs the host kernel so they are a build artifact whose kernel CVEs
+# are not reachable at runtime, but scanners flag the installed version anyway.
+# trixie-security carries the fixed 6.12.105-1 (DSA-6466-1), so this clears the
+# finding on the next build rather than being a speculative no-op. Purging it
+# instead would cascade through libc6-dev to build-essential and break runtime
+# pip builds of C extensions.
 # The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
@@ -212,10 +220,11 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # binary it forgot, and liblastlog2-2 is exactly the one that is easy to forget.
 # Asking dpkg which installed packages came from the source cannot miss one, and
 # stays correct if Debian splits the source differently later.
-# util-linux is asserted non-empty and expat deliberately is not: util-linux is
-# Essential, so an empty query there means dpkg-query misbehaved and the build
-# must not continue, whereas expat is transitive and an empty query is a
-# legitimate image with nothing to patch. Asserting one of the two is what the
+# util-linux is asserted non-empty; expat and linux-libc-dev deliberately are
+# not. util-linux is Essential, so an empty query there means dpkg-query
+# misbehaved and the build must not continue, whereas the other two are
+# transitive and an empty query is a legitimate image with nothing to patch.
+# Asserting the one package that must always be present is what the
 # check is for -- `apt-get install --only-upgrade` with no package arguments
 # exits 0, so an all-empty query would give a green build that shipped the
 # vulnerable packages anyway. Fail closed.
@@ -228,8 +237,9 @@ RUN set -eu; \
     ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
     [ -n "$ul" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
     ex="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="expat"{print $2}')"; \
+    kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $ul $ex; \
+    apt-get -qq install -y --only-upgrade $ul $ex $kh; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \
