@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { DEFAULT_GLOSSARY_TERM_STATUS_FILTER } from '../../constants/Glossary.contant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -97,6 +98,15 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
+  // Bumped on a successful term add so the (otherwise fetch-on-mount-only) Terms
+  // tab count badge re-fetches immediately instead of waiting for a page reload.
+  // Kept as two independent counters — only one of the two views is ever mounted
+  // at a time, but each badge should only ever react to its own trigger.
+  const [glossaryTermsRefreshTrigger, setGlossaryTermsRefreshTrigger] =
+    useState(0);
+  const [childrenCountRefreshTrigger, setChildrenCountRefreshTrigger] =
+    useState(0);
+
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -104,6 +114,7 @@ const GlossaryV1 = ({
     insertNewGlossaryTermToChildTerms,
     termsLoading,
     setTermsLoading,
+    setTermsStatusFilter,
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
@@ -274,6 +285,10 @@ const GlossaryV1 = ({
       if (isGlossaryActive && refreshGlossaryList) {
         refreshGlossaryList();
       }
+      // Force the Terms tab count badge to re-fetch immediately, rather than
+      // waiting for a page reload.
+      setGlossaryTermsRefreshTrigger((prev) => prev + 1);
+      setChildrenCountRefreshTrigger((prev) => prev + 1);
     },
     [isGlossaryActive, tab, selectedData, refreshGlossaryList]
   );
@@ -387,12 +402,18 @@ const GlossaryV1 = ({
       setGlossaryChildTerms([]);
       setAfterCursor(undefined);
       setHasMore(true);
+      // Reset the live Terms-table status filter back to its default so a
+      // stale filter from a previously-viewed glossary/term can't flash on
+      // the new page's badge before its own GlossaryTermTab mounts and
+      // pushes a fresh value.
+      setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
       initializeGlossary();
     }
 
     // Cleanup on unmount
     return () => {
       setGlossaryChildTerms([]);
+      setTermsStatusFilter(DEFAULT_GLOSSARY_TERM_STATUS_FILTER.join(','));
     };
   }, [id, isGlossaryActive, isVersionsView, action]);
 
@@ -433,6 +454,7 @@ const GlossaryV1 = ({
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
         permissions={glossaryPermission}
+        termsRefreshTrigger={glossaryTermsRefreshTrigger}
         toggleTabExpanded={toggleTabExpanded}
         updateGlossary={handleGlossaryUpdate}
         updateVote={updateVote}
@@ -441,6 +463,7 @@ const GlossaryV1 = ({
   }, [
     glossaryPermission.ViewAll,
     glossaryPermission.ViewBasic,
+    glossaryTermsRefreshTrigger,
     isTabExpanded,
     isVersionsView,
     onGlossaryDelete,
@@ -470,6 +493,7 @@ const GlossaryV1 = ({
             glossaryContent
           ) : (
             <GlossaryTermsV1
+              childrenRefreshTrigger={childrenCountRefreshTrigger}
               glossaryTerm={selectedData as GlossaryTerm}
               handleGlossaryTermDelete={onGlossaryTermDelete}
               handleGlossaryTermUpdate={onGlossaryTermUpdate}
