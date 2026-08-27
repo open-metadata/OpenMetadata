@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,23 +13,29 @@
 
 package org.openmetadata.service.migration.postgres.v210;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.ConversationMigration;
+import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
-@Slf4j
 public class Migration extends MigrationProcessImpl {
-
-  public Migration(MigrationFile migrationFile) {
+  public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
   }
 
   @Override
-  @SneakyThrows
   public void runDataMigration() {
+    ConversationMigration.migrate(handle, POSTGRES);
+    ConversationReferenceMigration.migrate(handle, POSTGRES);
+    refreshConversationNotificationTemplates();
+    addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.

@@ -14,6 +14,7 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
@@ -75,16 +76,20 @@ async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('open-tasks').click();
   await tasksListResponse;
 }
-const waitForMentionedTaskResponse = (page: import('@playwright/test').Page) =>
+const waitForMentionedConversationResponse = (
+  page: import('@playwright/test').Page
+) =>
   page.waitForResponse((response) => {
     if (
       response.request().method() !== 'GET' ||
-      !response.url().includes('/api/v1/tasks')
+      !response.url().includes('/api/v1/conversations')
     ) {
       return false;
     }
 
-    return Boolean(new URL(response.url()).searchParams.get('mentionedUser'));
+    return (
+      new URL(response.url()).searchParams.get('filterType') === 'MENTIONS'
+    );
   });
 
 test.describe('ActivityFeedTab — task filter badge, placeholder and mentions', () => {
@@ -242,7 +247,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
     }
   });
 
-  test('Mentions sub-tab lists only the tasks the user is mentioned in', async ({
+  test('Mentions sub-tab lists only the conversations that mention the user', async ({
     browser,
   }) => {
     const { page, apiContext, afterAction } = await performAdminLogin(browser, {
@@ -260,53 +265,58 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       const fqn = mentionTable.entityResponseData?.fullyQualifiedName as string;
       const assignee = assigneeUser.responseData.name;
 
+      // A task about the entity: it must stay out of the Mentions list, which
+      // reads conversations, not tasks.
       await createOpenTask(apiContext, fqn, assignee);
-      const mentionedTask = await createOpenTask(apiContext, fqn, assignee);
-
-      // A mention relationship is only written from the comment path, so the
-      // comment is what makes this task match ?mentionedUser=admin.
-      const commentResponse = await apiContext.post(
-        `/api/v1/tasks/${mentionedTask.id}/comments`,
-        { data: { message: 'Please take a look <#E::user::admin>' } }
+      await createConversationThread(
+        apiContext,
+        mentionTable,
+        'A conversation nobody is mentioned in'
       );
-      expect(commentResponse.ok()).toBe(true);
+      await createConversationThread(
+        apiContext,
+        mentionTable,
+        'Please take a look <#E::user::admin>'
+      );
 
       await mentionTable.visitEntityPage(page);
       await navigateToTasksPanel(page);
 
-      // My Tasks lists every task about the entity.
-      await expect(page.getByTestId('task-feed-card')).toHaveCount(2);
+      // My Tasks lists the tasks about the entity.
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
 
-      const mentionsResponse = waitForMentionedTaskResponse(page);
+      const mentionsResponse = waitForMentionedConversationResponse(page);
       await page.getByTestId('mentions-toggle').click();
       await mentionsResponse;
 
-      // The list has to actually switch — it used to keep rendering My Tasks
-      // because the mentions fetch wrote to the conversation feed state instead.
-      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
-      await expect(
-        page.getByTestId('task-feed-card').getByTestId('entity-link')
-      ).toBeVisible();
+      // The list has to actually switch — only the conversation that mentions
+      // the logged-in user renders, and no task card survives the switch.
+      const mentionCards = page
+        .locator('#center-container')
+        .getByTestId('feed-card-v2-sidebar');
+
+      await expect(mentionCards).toHaveCount(1);
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(0);
       await expect(
         page.getByTestId('no-data-placeholder-container')
       ).toHaveCount(0);
 
-      // Switching back restores the full list — guards the paging-cursor reset.
+      // Switching back restores the task list — guards the paging-cursor reset.
       const myTasksResponse = waitForTaskListResponse(page);
       await page.getByTestId('my-tasks-toggle').click();
       await myTasksResponse;
 
-      await expect(page.getByTestId('task-feed-card')).toHaveCount(2);
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
 
       // Landing on the mentions URL directly used to show the empty placeholder.
-      const mentionsAgain = waitForMentionedTaskResponse(page);
+      const mentionsAgain = waitForMentionedConversationResponse(page);
       await page.getByTestId('mentions-toggle').click();
       await mentionsAgain;
 
       await page.reload();
       await waitForPageLoaded(page);
 
-      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+      await expect(mentionCards).toHaveCount(1);
     } finally {
       await mentionTable.delete(apiContext);
       await afterAction();

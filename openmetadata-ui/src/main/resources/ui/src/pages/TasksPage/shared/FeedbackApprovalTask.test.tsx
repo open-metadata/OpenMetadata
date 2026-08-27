@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { FeedbackType } from '../../../generated/entity/feed/thread';
+import { FeedbackType } from '../../../generated/type/recognizerFeedback';
 import { MOCK_TASK_RECOGNIZER_FEEDBACK } from '../../../mocks/Task.mock';
 import { Task } from '../../../rest/tasksAPI';
 import FeedbackApprovalTask from './FeedbackApprovalTask';
@@ -95,16 +95,8 @@ const Wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 );
 
-const baseTask = {
-  ...MOCK_TASK_RECOGNIZER_FEEDBACK,
-  payload: {
-    feedback: MOCK_TASK_RECOGNIZER_FEEDBACK.feedback,
-    recognizer: MOCK_TASK_RECOGNIZER_FEEDBACK.recognizer,
-  },
-} as unknown as Task;
-
 const mockProps = {
-  task: baseTask,
+  task: MOCK_TASK_RECOGNIZER_FEEDBACK,
 };
 
 describe('FeedbackApprovalTask', () => {
