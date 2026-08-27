@@ -1,0 +1,1 @@
+-- OpenMetadata 2.0.1 - no post-data-migration SQL. See v201 Java migration.

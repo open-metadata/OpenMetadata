@@ -1,0 +1,6 @@
+-- OpenMetadata 2.0.1
+-- No schema changes. This patch ships a Java-only data migration
+-- (org.openmetadata.service.migration.{mysql,postgres}.v201.Migration) that re-deploys every
+-- governance workflow definition so the Flowable BPMN is regenerated against the current delegate
+-- classes (fixes the AutoPilotWorkflow "non-existent field pipelineServiceClientExpr" injection
+-- failure after upgrade).
