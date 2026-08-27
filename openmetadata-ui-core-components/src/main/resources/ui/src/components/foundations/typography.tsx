@@ -81,6 +81,7 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   weight?: TypographyWeight;
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
+  tooltip?: ReactNode;
 }
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
@@ -130,6 +131,7 @@ export const Typography = (props: TypographyProps) => {
     weight,
     color,
     ellipsis,
+    tooltip,
     style,
     ...otherProps
   } = props;
@@ -167,29 +169,30 @@ export const Typography = (props: TypographyProps) => {
     ellipsisClassName
   );
 
-  if (ellipsisTooltip) {
-    return (
-      <Tooltip
-        title={ellipsisTooltip}
-        triggerClassName="tw:block tw:w-full tw:min-w-0"
-        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
-        <div
-          className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
-          <Component {...otherProps} className={innerClassName} style={style}>
-            {children}
-          </Component>
-        </div>
-      </Tooltip>
-    );
-  }
-
-  return (
+  const content = (
     <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
       <Component {...otherProps} className={innerClassName} style={style}>
         {children}
       </Component>
     </div>
   );
+
+  if (ellipsisTooltip) {
+    return (
+      <Tooltip
+        title={ellipsisTooltip}
+        triggerClassName="tw:block tw:w-full tw:min-w-0"
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
+  }
+
+  if (tooltip) {
+    return <Tooltip title={tooltip}>{content}</Tooltip>;
+  }
+
+  return content;
 };
 
 export type {
