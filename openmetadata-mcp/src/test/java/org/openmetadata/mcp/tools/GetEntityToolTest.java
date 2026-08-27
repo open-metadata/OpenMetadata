@@ -14,6 +14,8 @@
 package org.openmetadata.mcp.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -376,5 +378,32 @@ class GetEntityToolTest {
   @SuppressWarnings("unchecked")
   private static Map<String, Object> castMap(Object value) {
     return (Map<String, Object>) value;
+  }
+
+  @Test
+  void parseReferenceSplitsOnTheFirstColonOnly() {
+    // A testCase FQN embeds colons; splitting on all of them would truncate a valid entity.
+    GetEntityTool.EntityRef parsed =
+        GetEntityTool.parseReference("testCase:svc.db.schema.tbl.col::column_values_between");
+
+    assertEquals("testCase", parsed.entityType());
+    assertEquals("svc.db.schema.tbl.col::column_values_between", parsed.fqn());
+  }
+
+  @Test
+  void parseReferenceTrimsAndAcceptsTheOrdinaryForm() {
+    GetEntityTool.EntityRef parsed =
+        GetEntityTool.parseReference("  table : sample_data.ecommerce_db.shopify.dim_address ");
+
+    assertEquals("table", parsed.entityType());
+    assertEquals("sample_data.ecommerce_db.shopify.dim_address", parsed.fqn());
+  }
+
+  @Test
+  void parseReferenceRejectsWhatCannotBeAnEntity() {
+    assertNull(GetEntityTool.parseReference(null));
+    assertNull(GetEntityTool.parseReference("no-colon-at-all"), "a bare FQN has no entity type");
+    assertNull(GetEntityTool.parseReference(":svc.db.tbl"), "an empty type is not resolvable");
+    assertNull(GetEntityTool.parseReference("table:"), "an empty FQN is not resolvable");
   }
 }
