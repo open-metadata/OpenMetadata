@@ -13,7 +13,11 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button as CoreButton, EmptyPlaceholder, TableCard, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+  TableCard,
+} from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
   Button,
@@ -26,6 +30,7 @@ import {
   Popover,
   Row,
   Space,
+  Tooltip,
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -934,7 +939,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
               }
               overlayStyle={{ minWidth: '260px' }}
-              placement="topLeft">
+              placement="topLeft"
+              trigger="hover">
               <div>
                 <StatusBadge
                   dataTestId={termFQN + '-status'}

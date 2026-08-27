@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Typography } from 'antd';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -912,7 +912,7 @@ const DataProductsDetailsPage = ({
                         items: manageButtonContent,
                       }}
                       open={showActions}
-                      containerClassName="domain-manage-dropdown-list-container"
+                      overlayClassName="domain-manage-dropdown-list-container"
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
                       trigger={['click']}

@@ -12,8 +12,7 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Space } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, List, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';

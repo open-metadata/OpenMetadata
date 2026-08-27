@@ -15,8 +15,8 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Form, Input, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';

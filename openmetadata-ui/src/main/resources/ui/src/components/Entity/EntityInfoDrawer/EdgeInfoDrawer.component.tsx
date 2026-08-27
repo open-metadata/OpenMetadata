@@ -12,8 +12,7 @@
  */
 
 import { GitMerge, X } from '@untitledui/icons';
-import { Button, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Tooltip, Typography } from 'antd';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -398,7 +397,8 @@ const EdgeInfoDrawer = ({
                 <Tooltip
                   mouseEnterDelay={0.5}
                   placement="bottomLeft"
-                  title={t('label.edge-information')}>
+                  title={t('label.edge-information')}
+                  trigger="hover">
                   <div className="d-flex items-center gap-2">
                     <span className="d-flex">
                       <GitMerge height={16} width={16} />

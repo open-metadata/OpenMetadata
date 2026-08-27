@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tag } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Card, Space, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
 import { lazy, useMemo } from 'react';

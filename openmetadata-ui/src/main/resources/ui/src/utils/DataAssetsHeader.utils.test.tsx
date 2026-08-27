@@ -12,8 +12,7 @@
  */
 
 import { render } from '@testing-library/react';
-import { Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,7 +40,6 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import Table from '../../common/Table/Table';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
-import { Tooltip } from '@openmetadata/ui-core-components';
 
 function VersionTable<T extends Column | SearchIndexField>({
   columnName,

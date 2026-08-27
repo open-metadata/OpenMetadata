@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Skeleton, Table, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
-import { Button, Space, Switch, Typography } from 'antd';
+import { Button, Space, Switch, Tooltip, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';

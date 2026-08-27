@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Radio, Tag, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Radio, Tag, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -411,7 +410,7 @@ export const UserProfileIcon = () => {
         rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
       open={isDropdownOpen}
-      containerClassName="user-profile-dropdown-overlay"
+      overlayClassName="user-profile-dropdown-overlay"
       trigger={['click']}
       onOpenChange={setIsDropdownOpen}>
       <Button

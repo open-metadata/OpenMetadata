@@ -20,6 +20,7 @@ import {
   RadioChangeEvent,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
@@ -29,7 +30,6 @@ import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeS
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';
-import { Tooltip } from '@openmetadata/ui-core-components';
 
 function AddWidgetTabContent({
   getAddWidgetHandler,

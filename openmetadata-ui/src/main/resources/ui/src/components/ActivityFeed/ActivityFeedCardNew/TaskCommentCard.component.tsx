@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Space, Tooltip, Typography } from 'antd';
 import { FC, useMemo } from 'react';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { Task, TaskComment } from '../../../rest/tasksAPI';

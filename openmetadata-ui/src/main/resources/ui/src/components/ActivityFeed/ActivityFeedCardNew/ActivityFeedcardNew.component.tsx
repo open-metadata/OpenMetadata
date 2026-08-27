@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Skeleton, Space, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -229,7 +228,7 @@ const ActivityFeedCardNew = ({
   const timestamp = timestampValue ? (
     <Tooltip
       color="white"
-      containerClassName="timestamp-tooltip"
+      overlayClassName="timestamp-tooltip"
       title={formatDateTime(timestampValue)}>
       <Typography.Text
         className="feed-card-header-v2-timestamp"

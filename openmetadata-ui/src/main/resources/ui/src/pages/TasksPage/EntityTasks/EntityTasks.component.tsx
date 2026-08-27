@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,7 +84,7 @@ const EntityTasks = ({
     return (
       <Tooltip
         destroyTooltipOnHide
-        containerClassName="ant-popover-request-description"
+        overlayClassName="ant-popover-request-description"
         title={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)

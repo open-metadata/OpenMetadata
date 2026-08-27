@@ -18,6 +18,7 @@ import {
   Input,
   Modal,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -34,7 +35,6 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
-import { Tooltip } from '@openmetadata/ui-core-components';
 // Helper function to detect and format ISO 8601 duration
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {

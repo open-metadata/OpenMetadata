@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
 } from '@untitledui/icons';
-import { Card, Drawer, Space, Typography } from 'antd';
+import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -827,7 +827,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 <Tooltip
                   mouseEnterDelay={0.5}
                   placement="topLeft"
-                  title={getEntityName(activeColumn)}>
+                  title={getEntityName(activeColumn)}
+                  trigger="hover">
                   <Typography.Text
                     ellipsis
                     className="entity-title-link"
@@ -890,7 +891,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
             <Tooltip
               placement="bottom"
-              title={getDataTypeDisplay(activeColumn)}>
+              title={getDataTypeDisplay(activeColumn)}
+              trigger="hover">
               <div
                 className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
                   tw:text-ellipsis data-type-chip

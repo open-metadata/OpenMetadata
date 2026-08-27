@@ -12,8 +12,7 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Select, Space, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
 import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
 import { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -43,7 +42,7 @@ const renderInputField = (
         <Space size={0}>
           <p className="text-grey-muted m-0">{key || title}:</p>
           {description && (
-            <Tooltip placement="bottom" title={description}>
+            <Tooltip placement="bottom" title={description} trigger="hover">
               <InfoCircleOutlined
                 className="m-x-xss"
                 style={{ color: '#C4C4C4' }}
@@ -97,7 +96,7 @@ const renderFilterPattern = (
           <Space align="start" size={0}>
             <p className="text-grey-muted m-0">{key || title}:</p>
             {description && (
-              <Tooltip placement="bottom" title={description}>
+              <Tooltip placement="bottom" title={description} trigger="hover">
                 <InfoCircleOutlined
                   className="m-x-xss"
                   style={{ color: '#C4C4C4' }}

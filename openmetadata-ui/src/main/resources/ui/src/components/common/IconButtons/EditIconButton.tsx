@@ -12,8 +12,7 @@
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
 import type { ButtonProps } from 'antd';
-import { Button } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';

@@ -19,6 +19,7 @@ import {
   SelectProps,
   Space,
   TagProps,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -41,7 +42,6 @@ import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-import { Tooltip } from '@openmetadata/ui-core-components';
   AsyncSelectListProps,
   SelectOption,
 } from './AsyncSelectList.interface';
@@ -350,7 +350,8 @@ const AsyncSelectList: FC<
             destroyTooltipOnHide
             mouseEnterDelay={1.5}
             placement="leftTop"
-            title={label}>
+            title={label}
+            trigger="hover">
             {displayName}
           </Tooltip>
         </Select.Option>

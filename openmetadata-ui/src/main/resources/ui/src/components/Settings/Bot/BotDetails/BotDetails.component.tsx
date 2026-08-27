@@ -12,8 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Tag, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';

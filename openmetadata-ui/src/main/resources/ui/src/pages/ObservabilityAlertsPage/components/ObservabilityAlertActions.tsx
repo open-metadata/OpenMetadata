@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Skeleton, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Skeleton, Tooltip, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

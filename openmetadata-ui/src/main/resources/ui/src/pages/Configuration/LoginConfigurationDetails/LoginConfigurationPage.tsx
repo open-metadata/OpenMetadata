@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,7 +120,8 @@ const LoginConfigurationPage = () => {
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
-                  title={t('message.login-fail-attempt-message')}>
+                  title={t('message.login-fail-attempt-message')}
+                  trigger="hover">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="max-login-fail-attampts-url-info"
@@ -144,7 +144,8 @@ const LoginConfigurationPage = () => {
                 {t('label.access-block-time')}
                 <Tooltip
                   placement="top"
-                  title={t('message.access-block-time-message')}>
+                  title={t('message.access-block-time-message')}
+                  trigger="hover">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="access-block-time-info"
@@ -167,7 +168,8 @@ const LoginConfigurationPage = () => {
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
                   placement="top"
-                  title={t('message.jwt-token-expiry-time-message')}>
+                  title={t('message.jwt-token-expiry-time-message')}
+                  trigger="hover">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="jwt-token-expiry-time-info"

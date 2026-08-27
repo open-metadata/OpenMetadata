@@ -19,6 +19,7 @@ import {
   Row,
   Select,
   TimePicker,
+  Tooltip,
   Typography,
 } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
@@ -45,7 +46,6 @@ import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla-form-tab.less';
-import { Tooltip } from '@openmetadata/ui-core-components';
 
 export const ContractSLAFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;

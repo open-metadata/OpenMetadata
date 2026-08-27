@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
@@ -174,7 +173,7 @@ const FeedCardHeaderV2 = ({
       {timeStamp && (
         <Tooltip
           color="white"
-          containerClassName="timestamp-tooltip"
+          overlayClassName="timestamp-tooltip"
           title={formatDateTime(timeStamp)}>
           <span
             className="feed-card-header-v2-timestamp"

@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Tag, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';

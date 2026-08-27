@@ -12,8 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, InputNumber, Row, Slider } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { percentageFormatter } from '../../../utils/ChartUtils';
 import { SliderWithInputProps } from './SliderWithInput.interface';

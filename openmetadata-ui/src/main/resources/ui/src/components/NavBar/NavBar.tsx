@@ -17,6 +17,7 @@ import {
   Button,
   Dropdown,
   InputRef,
+  Tooltip,
   Typography,
 } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
@@ -86,7 +87,6 @@ import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
-import { Tooltip } from '@openmetadata/ui-core-components';
 const DomainSelectableList = withSuspenseFallback(
   lazy(
     () =>

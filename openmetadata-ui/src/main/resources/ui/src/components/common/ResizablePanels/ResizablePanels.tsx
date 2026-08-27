@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

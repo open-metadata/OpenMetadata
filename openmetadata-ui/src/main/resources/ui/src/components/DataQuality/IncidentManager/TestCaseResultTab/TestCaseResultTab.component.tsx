@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import chunk from 'lodash/chunk';
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
@@ -53,8 +54,9 @@ function ParameterTooltipText({
 }>) {
   return (
     <Tooltip
-      containerClassName="test-case-result-tooltip"
+      overlayClassName="test-case-result-tooltip"
       placement="bottomLeft"
+      showArrow={false}
       title={title}>
       <span className={className}>{title}</span>
     </Tooltip>

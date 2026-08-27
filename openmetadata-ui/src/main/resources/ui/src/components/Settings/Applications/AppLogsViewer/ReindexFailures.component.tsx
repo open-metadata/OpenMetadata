@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Table, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';

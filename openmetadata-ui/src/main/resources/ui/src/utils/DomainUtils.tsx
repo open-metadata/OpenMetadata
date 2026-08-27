@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
@@ -150,7 +149,7 @@ export const renderDomainLink = (
     : domainDisplayName;
 
   return (
-    <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+    <AntDTooltip title={domainDisplayName ?? getEntityName(domain)}>
       <Link
         className={classNames(
           'no-underline domain-link domain-link-text font-medium',
@@ -172,7 +171,7 @@ export const renderDomainLink = (
           <>{displayName}</>
         )}
       </Link>
-    </Tooltip>
+    </AntDTooltip>
   );
 };
 

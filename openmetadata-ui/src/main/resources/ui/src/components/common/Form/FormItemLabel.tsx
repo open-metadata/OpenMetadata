@@ -12,8 +12,7 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Badge } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Badge, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
@@ -50,7 +49,7 @@ const FormItemLabel = ({
           <Tooltip
             destroyTooltipOnHide
             align={align}
-            containerClassName={overlayClassName}
+            overlayClassName={overlayClassName}
             overlayInnerStyle={overlayInnerStyle}
             placement={placement}
             title={helperText}>

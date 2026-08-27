@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
 import 'codemirror/addon/display/placeholder';

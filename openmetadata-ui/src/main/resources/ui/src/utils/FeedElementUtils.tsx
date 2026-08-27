@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
-import { Tooltip } from '@openmetadata/ui-core-components';
 
 export const getFieldThreadElement = (
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
@@ -36,7 +36,7 @@ export const getFieldThreadElement = (
   return (
     <Tooltip
       destroyTooltipOnHide
-      containerClassName="ant-popover-request-description"
+      overlayClassName="ant-popover-request-description"
       title={t('label.list-entity', {
         entity: t('label.conversation'),
       })}>

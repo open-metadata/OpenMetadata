@@ -12,8 +12,7 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Space } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Col, Input, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -159,7 +158,8 @@ const ServiceConnectionDetails = ({
                     {extraInfo.description && (
                       <Tooltip
                         placement="bottom"
-                        title={extraInfo.description}>
+                        title={extraInfo.description}
+                        trigger="hover">
                         <InfoCircleOutlined
                           className="m-x-xss"
                           style={{ color: '#C4C4C4' }}

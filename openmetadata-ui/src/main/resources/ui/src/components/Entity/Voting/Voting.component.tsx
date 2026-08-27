@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Segmented, Tag, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';

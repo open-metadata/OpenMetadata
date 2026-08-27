@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
@@ -34,7 +35,6 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
 import './feed-card-header-v1.style.less';
-import { Tooltip } from '@openmetadata/ui-core-components';
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
   createdBy,

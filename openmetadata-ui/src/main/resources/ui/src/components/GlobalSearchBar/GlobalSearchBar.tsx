@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Input, Popover, Select } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -254,9 +253,10 @@ export const GlobalSearchBar = () => {
         }
         getPopupContainer={() => searchContainerRef.current || document.body}
         open={isSearchBoxOpen}
-        containerClassName="global-search-overlay"
+        overlayClassName="global-search-overlay"
         overlayStyle={{ paddingTop: 0, width: '100%' }}
         placement="bottom"
+        showArrow={false}
         trigger={['click']}
         onOpenChange={setIsSearchBoxOpen}>
         <Input

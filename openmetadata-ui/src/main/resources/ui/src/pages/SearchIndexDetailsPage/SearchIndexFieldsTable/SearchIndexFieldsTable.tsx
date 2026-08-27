@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {

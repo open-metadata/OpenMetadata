@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Modal, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -310,7 +309,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             dropdownRender={renderDropdownContainer}
             menu={{ items }}
             open={isDropdownOpen}
-            containerClassName="manage-dropdown-list-container"
+            overlayClassName="manage-dropdown-list-container"
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
             trigger={['click']}
@@ -331,7 +330,7 @@ const ManageButton: FC<ManageButtonProps> = ({
           align={{ targetOffset: [-12, 0] }}
           dropdownRender={renderDropdownContainer}
           menu={{ items }}
-          containerClassName="manage-dropdown-list-container"
+          overlayClassName="manage-dropdown-list-container"
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
           trigger={['click']}>

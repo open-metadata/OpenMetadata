@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -336,7 +335,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
             items: manageButtonContent,
           }}
           open={showActions}
-          containerClassName="manage-dropdown-list-container"
+          overlayClassName="manage-dropdown-list-container"
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
           onOpenChange={setShowActions}>

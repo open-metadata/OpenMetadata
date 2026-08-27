@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
-import { Tree, TreeProps, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

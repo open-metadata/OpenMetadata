@@ -12,8 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Space, Tag as AntdTag, Typography } from 'antd';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -169,7 +168,8 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         className="cursor-pointer"
         mouseEnterDelay={1.5}
         placement="topLeft"
-        title={getTagTooltip(label as string)}>
+        title={getTagTooltip(label as string)}
+        trigger="hover">
         <Typography.Paragraph className="m-0 d-inline-block break-all whitespace-normal">
           {tagLabel}
         </Typography.Paragraph>
