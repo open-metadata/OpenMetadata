@@ -51,7 +51,7 @@
   },
   "playwright/e2e/Features/ActivityAPI.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 4
     }
   },
   "playwright/e2e/Features/ActivityFeed.spec.ts": {
@@ -129,7 +129,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 13
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -1118,7 +1118,7 @@
       "count": 11
     },
     "playwright/no-wait-for-selector": {
-      "count": 9
+      "count": 8
     },
     "playwright/no-wait-for-timeout": {
       "count": 5
