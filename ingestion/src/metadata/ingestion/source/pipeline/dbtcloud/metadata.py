@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from cachetools import LRUCache
+from pydantic import AnyUrl
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -49,7 +50,10 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.pipelineObservability import PipelineObservability
+from metadata.generated.schema.type.pipelineObservability import (
+    LastRunStatus,
+    PipelineObservability,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
@@ -484,7 +488,7 @@ class DbtcloudSource(PipelineServiceSource):
                 fromEntity=EntityReference(id=from_entity.id, type="table"),
                 toEntity=EntityReference(id=to_entity.id, type="table"),
                 lineageDetails=LineageDetails(
-                    pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
+                    pipeline=EntityReference(id=pipeline_entity.id, type="pipeline"),
                     source=LineageSource.PipelineLineage,
                 ),
             )
@@ -596,10 +600,10 @@ class DbtcloudSource(PipelineServiceSource):
         return [
             TaskStatus(
                 name=DEFAULT_TASK_NAME,
-                executionStatus=self._map_run_status(run.state or run.status),
+                executionStatus=StatusType(self._map_run_status(run.state or run.status)),
                 startTime=self._parse_timestamp(run.started_at) if run.started_at else None,
                 endTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
-                logLink=run.href,
+                logLink=AnyUrl(run.href) if run.href else None,
             )
         ]
 
@@ -612,7 +616,7 @@ class DbtcloudSource(PipelineServiceSource):
         """Build PipelineObservability object from run data."""
         return PipelineObservability(
             pipeline=EntityReference(
-                id=pipeline_entity.id.root if hasattr(pipeline_entity.id, "root") else pipeline_entity.id,
+                id=pipeline_entity.id,
                 type="pipeline",
                 fullyQualifiedName=pipeline_entity.fullyQualifiedName.root
                 if hasattr(pipeline_entity.fullyQualifiedName, "root")
@@ -622,7 +626,7 @@ class DbtcloudSource(PipelineServiceSource):
             startTime=self._parse_timestamp(run.started_at) if run.started_at else None,
             endTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
             lastRunTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
-            lastRunStatus=self._map_run_status(run.state or run.status),
+            lastRunStatus=LastRunStatus(self._map_run_status(run.state or run.status)),
         )
 
     def get_table_pipeline_observability(
@@ -734,7 +738,7 @@ class DbtcloudSource(PipelineServiceSource):
                     continue
 
                 pipeline_status = PipelineStatus(
-                    executionStatus=self._map_run_status(run.state or run.status),
+                    executionStatus=StatusType(self._map_run_status(run.state or run.status)),
                     taskStatus=self._build_task_statuses(run),
                     timestamp=status_timestamp,
                 )

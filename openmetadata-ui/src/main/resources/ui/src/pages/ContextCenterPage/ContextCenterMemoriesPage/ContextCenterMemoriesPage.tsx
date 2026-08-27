@@ -470,7 +470,7 @@ const ContextCenterMemoriesPage: FC = () => {
           return prev;
         });
       });
-  }, [isViewModalOpen, searchParams, handleViewMemory, setSearchParams]);
+  }, [searchParams, handleViewMemory, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();

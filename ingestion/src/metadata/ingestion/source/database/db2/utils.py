@@ -298,7 +298,7 @@ def patch_ibmi_dialect() -> bool:
     if _IBMI_PATCHED:
         return True
     try:
-        import sqlalchemy_ibmi.base as ibmi_base
+        import sqlalchemy_ibmi.base as ibmi_base  # noqa: PLC0415
     except ImportError:
         logger.debug("sqlalchemy-ibmi not installed - ibmi scheme unavailable")
         return False
