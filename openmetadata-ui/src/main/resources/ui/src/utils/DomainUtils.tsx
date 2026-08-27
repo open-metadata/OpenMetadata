@@ -449,9 +449,9 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const getDomainIcon = (iconURL?: string) => (
   <Icon
-    className="tw:h-6 tw:w-6 tw:text-quaternary"
     fallback={<DomainIcon className="tw:text-quaternary" />}
     iconValue={iconURL}
+    imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
     size={24}
   />
 );
