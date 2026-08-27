@@ -13,7 +13,7 @@
 
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import rule from '../no-awaited-wait-for-response.ts';
+import rule from '../no-awaited-wait-for-response.mjs';
 
 const ruleTester = new RuleTester({
   languageOptions: {

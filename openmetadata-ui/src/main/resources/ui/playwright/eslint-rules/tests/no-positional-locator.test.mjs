@@ -13,7 +13,7 @@
 
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import rule from '../no-positional-locator.ts';
+import rule from '../no-positional-locator.mjs';
 
 const ruleTester = new RuleTester({
   languageOptions: {

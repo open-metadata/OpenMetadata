@@ -16,8 +16,8 @@
  * eslint.config.mjs, so the docs cannot list a rule the linter doesn't enforce
  * (or omit one it does) — the two sources of truth used to drift silently.
  *
- *   node scripts/generate-playwright-rule-table.ts            # write the table
- *   node scripts/generate-playwright-rule-table.ts --check    # CI: fail if stale
+ *   node scripts/generate-playwright-rule-table.mjs            # write the table
+ *   node scripts/generate-playwright-rule-table.mjs --check    # CI: fail if stale
  */
 
 'use strict';
@@ -46,7 +46,7 @@ const buildTable = async () => {
   // prevent, in the other direction.
   const { default: upstream } = await import('eslint-plugin-playwright');
   const { default: local } = await import(
-    '../playwright/eslint-rules/index.ts'
+    '../playwright/eslint-rules/index.mjs'
   );
   const { default: shared } = await import(
     '../eslint-rules/openmetadata-playwright.mjs'

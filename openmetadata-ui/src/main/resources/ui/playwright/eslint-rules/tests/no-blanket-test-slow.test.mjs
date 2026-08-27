@@ -13,7 +13,7 @@
 
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import rule from '../no-blanket-test-slow.ts';
+import rule from '../no-blanket-test-slow.mjs';
 
 const ruleTester = new RuleTester({
   languageOptions: {

@@ -10,18 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Rule } from 'eslint';
-import type { CallExpression, Node, VariableDeclarator } from 'estree';
-
-interface CalleeInfo {
-  root: string;
-  path: string[];
-}
-
-interface TestObjectSignal {
-  type: 'describeUsage' | 'directCall';
-  name: string;
-}
 
 // Hooks/modifiers Playwright recognizes as a single member-expression suffix
 // on a test object, e.g. `test.beforeEach`, `test.only`, `test.step`.
@@ -42,8 +30,8 @@ const PER_TEST_MODIFIER_NAMES = new Set([
  * plain-identifier member accesses (computed access, etc.), since those
  * can't be classified.
  */
-const getCalleeInfo = (callee: Node): CalleeInfo | null => {
-  const path: string[] = [];
+const getCalleeInfo = (callee) => {
+  const path = [];
   let node = callee;
 
   while (node?.type === 'MemberExpression') {
@@ -62,7 +50,7 @@ const getCalleeInfo = (callee: Node): CalleeInfo | null => {
   return { root: node.name, path };
 };
 
-const isSlowMethodCall = (node: CallExpression): boolean => {
+const isSlowMethodCall = (node) => {
   if (node.callee?.type !== 'MemberExpression') {
     return false;
   }
@@ -78,10 +66,7 @@ const isSlowMethodCall = (node: CallExpression): boolean => {
 // is calling `describe`, structurally indistinguishable from a direct test
 // invocation (`X('name', fn)`). Tracked separately so the direct-call signal
 // below never mistakes such an alias for a per-test callback.
-const collectDescribeAlias = (
-  node: VariableDeclarator,
-  describeAliasNames: Set<string>
-): void => {
+const collectDescribeAlias = (node, describeAliasNames) => {
   if (node.id.type !== 'Identifier' || !node.init) {
     return;
   }
@@ -102,10 +87,7 @@ const collectDescribeAlias = (
 // call in scope, e.g. an isolated snippet) still resolves. Signals are
 // collected here and resolved into `testObjectIdentifiers` in `Program:exit`
 // (see below), once `describeAliasNames` has been fully populated too.
-const collectTestObjectSignal = (
-  node: CallExpression,
-  signals: TestObjectSignal[]
-): void => {
+const collectTestObjectSignal = (node, signals) => {
   const info = getCalleeInfo(node.callee);
 
   if (info?.path[0] === 'describe') {
@@ -152,10 +134,7 @@ const collectTestObjectSignal = (
  * blast radius as a describe-scope call — and any unknown wrapper, which we
  * can't prove is per-test scoped.
  */
-const classifyEnclosingCall = (
-  node: Rule.Node,
-  testObjectIdentifiers: Set<string>
-): string => {
+const classifyEnclosingCall = (node, testObjectIdentifiers) => {
   for (let current = node.parent; current; current = current.parent) {
     const isFunction =
       current.type === 'ArrowFunctionExpression' ||
@@ -205,7 +184,7 @@ const classifyEnclosingCall = (
   return 'blanket';
 };
 
-const rule: Rule.RuleModule = {
+const rule = {
   meta: {
     type: 'problem',
     docs: {
@@ -225,10 +204,9 @@ const rule: Rule.RuleModule = {
     // `describe`/test-invocation alias and describe-function alias in the
     // file has been seen (declaration order shouldn't matter).
     const testObjectIdentifiers = new Set(['test']);
-    const describeAliasNames = new Set<string>();
-    const testObjectSignals: TestObjectSignal[] = [];
-    const slowCallCandidates: (CallExpression & Rule.NodeParentExtension)[] =
-      [];
+    const describeAliasNames = new Set();
+    const testObjectSignals = [];
+    const slowCallCandidates = [];
 
     return {
       VariableDeclarator(node) {

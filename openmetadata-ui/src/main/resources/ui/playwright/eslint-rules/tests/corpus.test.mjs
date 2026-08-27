@@ -24,11 +24,8 @@ const SUPPRESSIONS = path.join(
 test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
-  const actual: Record<string, number> = {};
-  for (const file of Object.values(suppressions) as Record<
-    string,
-    { count: number }
-  >[]) {
+  const actual = {};
+  for (const file of Object.values(suppressions)) {
     for (const [ruleId, entry] of Object.entries(file)) {
       actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }
@@ -47,7 +44,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   //
   // Known gap: counts are per file+rule, so swapping one violation for another
   // of the same rule in the same file stays invisible to this check.
-  const EXPECTED: Record<string, number> = {
+  const EXPECTED = {
     'om-playwright/justified-rule-disable': 12,
     'om-playwright/no-blanket-test-slow': 83,
     'om-playwright/no-positional-locator': 1339,
@@ -70,8 +67,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
 
 test('the playwright corpus stays TypeScript-only', () => {
   const ROOT = path.join(import.meta.dirname, '../..');
-  // eslint-rules/ is the CommonJS plugin itself; doc-generator/ is lint-ignored
-  // tooling. Neither is a test, and neither is collected by Playwright.
+  // eslint-rules/ is the linter plugin itself — plain ESM .mjs, matching the
+  // repo's other rule plugins; doc-generator/ is lint-ignored tooling. Neither
+  // is a test, and neither is collected by Playwright.
   const EXEMPT = new Set([
     'eslint-rules',
     'doc-generator',

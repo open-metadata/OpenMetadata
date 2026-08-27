@@ -10,17 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Rule } from 'eslint';
-import type {
-  ArrowFunctionExpression,
-  CallExpression,
-  FunctionExpression,
-  Node,
-} from 'estree';
 
-type TestBody = ArrowFunctionExpression | FunctionExpression;
-
-const isTestCall = (node: CallExpression): boolean =>
+const isTestCall = (node) =>
   (node.callee?.type === 'Identifier' && node.callee.name === 'test') ||
   (node.callee?.type === 'MemberExpression' &&
     node.callee.object.type === 'Identifier' &&
@@ -32,9 +23,7 @@ const isTestCall = (node: CallExpression): boolean =>
 // — e.g. `page.getByTestId('x').click()` -> the `page` Identifier — by
 // alternating between "step out of a member access" and "step out of a
 // call" until neither applies.
-const unwindToRoot = (
-  node: Node | null | undefined
-): Node | null | undefined => {
+const unwindToRoot = (node) => {
   let current = node;
 
   while (current) {
@@ -54,7 +43,7 @@ const unwindToRoot = (
 // "provably does nothing but interact" status: the Playwright fixtures it
 // destructures (`page`, `adminPage`, `context`, ...), plus the conventional
 // `page` name as a safety net for callbacks that don't destructure at all.
-const getFixtureNames = (body: TestBody): Set<string> => {
+const getFixtureNames = (body) => {
   const names = new Set(['page']);
   const [param] = body.params;
 
@@ -69,7 +58,7 @@ const getFixtureNames = (body: TestBody): Set<string> => {
   return names;
 };
 
-const rule: Rule.RuleModule = {
+const rule = {
   meta: {
     type: 'problem',
     docs: {
@@ -87,18 +76,18 @@ const rule: Rule.RuleModule = {
     // Every CallExpression in the file, collected during the single
     // traversal below, so `Program:exit` can ask "which calls fall inside
     // this test's body?" by range instead of re-walking each body by hand.
-    const allCalls: (CallExpression & Rule.NodeParentExtension)[] = [];
-    const testCalls: (CallExpression & Rule.NodeParentExtension)[] = [];
+    const allCalls = [];
+    const testCalls = [];
     // Ranges of every real `expect` identifier in the file. An AST walk, not a
     // source-text scan: `\bexpect\b` also matched the word inside comments and
     // string literals, so `// we expect the click to work` or a URL containing
     // "expect" silently exempted an assertion-free test.
-    const expectRanges: [number, number][] = [];
+    const expectRanges = [];
 
     return {
       Identifier(node) {
         if (node.name === 'expect' && node.range) {
-          expectRanges.push(node.range as [number, number]);
+          expectRanges.push(node.range);
         }
       },
 
@@ -113,7 +102,7 @@ const rule: Rule.RuleModule = {
       'Program:exit'() {
         for (const node of testCalls) {
           const body = node.arguments.find(
-            (arg): arg is TestBody =>
+            (arg) =>
               arg.type === 'ArrowFunctionExpression' ||
               arg.type === 'FunctionExpression'
           );
@@ -122,7 +111,7 @@ const rule: Rule.RuleModule = {
             continue;
           }
 
-          const [bodyStart, bodyEnd] = body.range as [number, number];
+          const [bodyStart, bodyEnd] = body.range;
 
           // Any `expect` *identifier* inside the body counts, not just a
           // call: `await verifyRow(page, expect)` delegates the assertion by
@@ -150,7 +139,7 @@ const rule: Rule.RuleModule = {
           // developer's time proving a false alarm.
           const fixtureNames = getFixtureNames(body);
           const nestedCalls = allCalls.filter((call) => {
-            const [callStart, callEnd] = call.range as [number, number];
+            const [callStart, callEnd] = call.range;
 
             return (
               call !== node && callStart >= bodyStart && callEnd <= bodyEnd
@@ -165,7 +154,7 @@ const rule: Rule.RuleModule = {
           // collected above and checked on their own merits; treating the
           // `test.step(...)` call itself as transparent doesn't lose that
           // coverage.
-          const isTestNamespaceCall = (call: CallExpression): boolean => {
+          const isTestNamespaceCall = (call) => {
             const root = unwindToRoot(call.callee);
 
             return root?.type === 'Identifier' && root.name === 'test';

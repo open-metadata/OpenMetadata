@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Rule } from 'eslint';
-import type { CallExpression } from 'estree';
 
 const POSITIONAL = new Set(['first', 'last', 'nth']);
 const ZERO_ARG_METHODS = new Set(['first', 'last']);
@@ -33,18 +31,6 @@ const LOCATOR_RECEIVER_TYPES = new Set([
 // call with a node in between. TypeScript-only wrappers matter especially
 // here — the rule ships under @typescript-eslint/parser, so without unwrapping
 // them a single `!` silently erases a violation.
-interface WrapperNode {
-  type: string;
-  expression?: WrapperNode;
-  argument?: WrapperNode;
-}
-
-interface PropertyNode {
-  type: string;
-  name?: string;
-  value?: unknown;
-}
-
 const TRANSPARENT_WRAPPERS = new Set([
   'TSNonNullExpression',
   'TSAsExpression',
@@ -54,8 +40,8 @@ const TRANSPARENT_WRAPPERS = new Set([
   'AwaitExpression',
 ]);
 
-const unwrapReceiver = (node: WrapperNode): WrapperNode | undefined => {
-  let current: WrapperNode | undefined = node;
+const unwrapReceiver = (node) => {
+  let current = node;
 
   while (current && TRANSPARENT_WRAPPERS.has(current.type)) {
     current = current.expression ?? current.argument;
@@ -66,11 +52,8 @@ const unwrapReceiver = (node: WrapperNode): WrapperNode | undefined => {
 
 // `.first()` and `page.locator('x')['first']()` are the same call. A property
 // read that is not a plain identifier is not automatically safe.
-const getMethodName = (
-  property: PropertyNode,
-  computed: boolean
-): string | null => {
-  let name: string | null = null;
+const getMethodName = (property, computed) => {
+  let name = null;
 
   if (!computed && property.type === 'Identifier') {
     name = property.name ?? null;
@@ -79,7 +62,7 @@ const getMethodName = (
     property.type === 'Literal' &&
     typeof property.value === 'string'
   ) {
-    name = property.value as string;
+    name = property.value;
   }
 
   return name;
@@ -91,23 +74,20 @@ const getMethodName = (
  * `_.first(arr)`, which always passes the collection explicitly. Playwright's
  * `.first()` / `.last()` take zero arguments; `.nth(index)` takes exactly one.
  */
-const hasPositionalArity = (node: CallExpression, methodName: string) =>
+const hasPositionalArity = (node, methodName) =>
   ZERO_ARG_METHODS.has(methodName)
     ? node.arguments.length === 0
     : node.arguments.length === 1;
 
-const isPositionalLocatorCall = (node: CallExpression): boolean => {
+const isPositionalLocatorCall = (node) => {
   const { callee } = node;
 
   if (callee?.type !== 'MemberExpression') {
     return false;
   }
 
-  const methodName = getMethodName(
-    callee.property as unknown as PropertyNode,
-    callee.computed
-  );
-  const receiver = unwrapReceiver(callee.object as unknown as WrapperNode);
+  const methodName = getMethodName(callee.property, callee.computed);
+  const receiver = unwrapReceiver(callee.object);
 
   return (
     methodName !== null &&
@@ -118,7 +98,7 @@ const isPositionalLocatorCall = (node: CallExpression): boolean => {
   );
 };
 
-const rule: Rule.RuleModule = {
+const rule = {
   meta: {
     type: 'problem',
     docs: {

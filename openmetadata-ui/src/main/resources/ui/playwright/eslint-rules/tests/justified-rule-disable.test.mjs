@@ -15,7 +15,7 @@ import tsParser from '@typescript-eslint/parser';
 import { Linter, RuleTester } from 'eslint';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import rule from '../justified-rule-disable.ts';
+import rule from '../justified-rule-disable.mjs';
 
 // ESLint 9's own linter validates that every rule id referenced in an
 // eslint-disable comment is a rule known to *this* config, independent of

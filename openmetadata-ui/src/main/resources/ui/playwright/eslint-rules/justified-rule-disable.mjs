@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Rule } from 'eslint';
 
 // Anchored to the full (trimmed) comment body, mirroring how ESLint itself
 // recognizes a directive comment: the comment must consist of nothing but
@@ -24,7 +23,7 @@ const DISABLE_DIRECTIVE =
   /^eslint-disable(?:-next-line|-line)?(?:\s+([^\n]*))?$/;
 const TARGET_RULE = /\b(?:om-)?playwright\//;
 
-const rule: Rule.RuleModule = {
+const rule = {
   meta: {
     type: 'problem',
     docs: {

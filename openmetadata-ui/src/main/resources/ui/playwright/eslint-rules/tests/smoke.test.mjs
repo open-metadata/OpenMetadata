@@ -13,7 +13,7 @@
 
 import assert from 'node:assert';
 import test from 'node:test';
-import plugin from '../index.ts';
+import plugin from '../index.mjs';
 
 test('plugin exports a rules object', () => {
   assert.ok(plugin.rules, 'plugin must export `rules`');

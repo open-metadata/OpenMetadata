@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import justifiedRuleDisable from './justified-rule-disable.ts';
-import noAwaitedWaitForResponse from './no-awaited-wait-for-response.ts';
-import noBlanketTestSlow from './no-blanket-test-slow.ts';
-import noPositionalLocator from './no-positional-locator.ts';
-import requireAssertionPerTest from './require-assertion-per-test.ts';
+import justifiedRuleDisable from './justified-rule-disable.mjs';
+import noAwaitedWaitForResponse from './no-awaited-wait-for-response.mjs';
+import noBlanketTestSlow from './no-blanket-test-slow.mjs';
+import noPositionalLocator from './no-positional-locator.mjs';
+import requireAssertionPerTest from './require-assertion-per-test.mjs';
 
 export default {
   rules: {

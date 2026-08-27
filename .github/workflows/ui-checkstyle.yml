@@ -289,7 +289,7 @@ jobs:
             eslint.config.mjs
             eslint-suppressions.json
             eslint-rules/**
-            scripts/generate-playwright-rule-table.ts
+            scripts/generate-playwright-rule-table.mjs
             package.json
 
       - name: ESLint + Prettier + Organise Imports (playwright)
@@ -355,7 +355,7 @@ jobs:
           # ratchet down instead of just never growing.
           if { yarn test:eslint-rules && \
                yarn lint:playwright && \
-               node scripts/generate-playwright-rule-table.ts --check; } > /tmp/pw-guardrails.out 2>&1; then
+               node scripts/generate-playwright-rule-table.mjs --check; } > /tmp/pw-guardrails.out 2>&1; then
             RESULT=0
           else
             RESULT=$?
@@ -548,7 +548,7 @@ jobs:
               },
               {
                 name:    'Playwright - Guardrails + ESLint + Prettier + Organise Imports',
-                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.ts --check`.',
+                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.mjs --check`.',
                 result:  '${{ needs.checkstyle.outputs.lint_playwright_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_changed_files) }} || '',
               },

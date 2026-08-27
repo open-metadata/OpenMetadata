@@ -13,7 +13,7 @@
 
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import rule from '../require-assertion-per-test.ts';
+import rule from '../require-assertion-per-test.mjs';
 
 const ruleTester = new RuleTester({
   languageOptions: {

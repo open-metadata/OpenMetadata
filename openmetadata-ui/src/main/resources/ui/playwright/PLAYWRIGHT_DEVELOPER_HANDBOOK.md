@@ -811,7 +811,7 @@ The severity column is authoritative, not decorative: read it rather than assumi
 legitimately sit at `warn` while its call sites are migrated — `openmetadata-playwright/*` rules come
 from the repo-wide plugin in `eslint-rules/` and set their own severity on that basis.
 
-This table is generated from `eslint.config.mjs` by `scripts/generate-playwright-rule-table.ts` — do
+This table is generated from `eslint.config.mjs` by `scripts/generate-playwright-rule-table.mjs` — do
 not hand-edit it, run `yarn generate:playwright-rules` instead.
 
 <!-- BEGIN GENERATED RULE TABLE -->
