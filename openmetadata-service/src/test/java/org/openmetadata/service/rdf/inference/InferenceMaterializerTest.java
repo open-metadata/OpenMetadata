@@ -14,12 +14,14 @@
 package org.openmetadata.service.rdf.inference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -200,7 +202,7 @@ class InferenceMaterializerTest {
   }
 
   @Test
-  void oneRuleFailureDoesNotAbortRemainingRules() {
+  void oneRuleFailureDoesNotClearOrAbortRemainingRules() {
     final RdfRepository rdfRepository = mock(RdfRepository.class);
     final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
     final InferenceRuleStatus good = namedStatus("good-rule", true);
@@ -208,8 +210,16 @@ class InferenceMaterializerTest {
     when(rdfRepository.isEnabled()).thenReturn(true);
     when(rdfRepository.getConfig()).thenReturn(configuration());
     when(ruleRepository.listForMaterialization(false, null)).thenReturn(List.of(bad, good));
-    when(rdfRepository.getGraphTripleCount(bad.getGraphUri().toString()))
-        .thenThrow(new RuntimeException("bad boom"));
+    doAnswer(
+            invocation -> {
+              final String update = invocation.getArgument(0);
+              if (update.contains("bad-rule")) {
+                throw new RuntimeException("bad boom");
+              }
+              return null;
+            })
+        .when(rdfRepository)
+        .executeInferenceMaterializationUpdate(anyString());
     when(rdfRepository.getGraphTripleCount(good.getGraphUri().toString())).thenReturn(7L);
     when(ruleRepository.recordMaterialized("good-rule", CLOCK.millis(), 7L))
         .thenReturn(namedStatus("good-rule", false));
@@ -224,6 +234,12 @@ class InferenceMaterializerTest {
     assertEquals(2, result.getProcessedRules().size());
     verify(ruleRepository, times(1)).recordMaterialized("good-rule", CLOCK.millis(), 7L);
     verify(ruleRepository, times(1)).recordFailure(eq("bad-rule"), anyString());
+    final ArgumentCaptor<String> updates = ArgumentCaptor.forClass(String.class);
+    verify(rdfRepository, times(2)).executeInferenceMaterializationUpdate(updates.capture());
+    assertTrue(updates.getAllValues().getFirst().contains("bad-rule"));
+    assertFalse(updates.getAllValues().getFirst().contains("good-rule"));
+    assertTrue(updates.getAllValues().getLast().contains("good-rule"));
+    assertFalse(updates.getAllValues().getLast().contains("bad-rule"));
   }
 
   @Test

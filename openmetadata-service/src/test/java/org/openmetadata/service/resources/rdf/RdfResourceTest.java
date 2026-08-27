@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
 import org.openmetadata.service.security.Authorizer;
 
@@ -249,6 +251,7 @@ class RdfResourceTest {
 
   @Test
   void customOntologyEndpointsPersistAndDeleteExtensions() {
+    CustomOntologyRepository ontologyRepository = Mockito.mock(CustomOntologyRepository.class);
     String suffix = UUID.randomUUID().toString();
     String name = "review-" + suffix;
     CustomOntology extension =
@@ -259,6 +262,10 @@ class RdfResourceTest {
                     new CustomOntologyClass()
                         .withUri("https://open-metadata.org/ontology-extension/Review-" + suffix)
                         .withSubClassOf(List.of("om:Entity"))));
+    when(ontologyRepository.upsert(extension)).thenReturn(true);
+    when(ontologyRepository.get(name)).thenReturn(Optional.of(extension), Optional.empty());
+    when(ontologyRepository.delete(name)).thenReturn(true);
+    rdfResource = new RdfResource(authorizer, () -> null, null, null, ontologyRepository);
 
     Response created = rdfResource.upsertCustomOntologyExtension(securityContext, name, extension);
     Response fetched = rdfResource.getCustomOntologyExtension(securityContext, name);
@@ -270,6 +277,9 @@ class RdfResourceTest {
     assertEquals(extension, fetched.getEntity());
     assertEquals(Response.Status.NO_CONTENT.getStatusCode(), deleted.getStatus());
     assertEquals(Response.Status.NOT_FOUND.getStatusCode(), missing.getStatus());
+    verify(ontologyRepository).upsert(extension);
+    verify(ontologyRepository, Mockito.times(2)).get(name);
+    verify(ontologyRepository).delete(name);
     verify(authorizer, Mockito.times(4)).authorizeAdmin(securityContext);
   }
 }

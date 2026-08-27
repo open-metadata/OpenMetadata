@@ -241,3 +241,10 @@ UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracledb"')
 WHERE serviceType = 'Oracle'
   AND json #>> '{connection,config,scheme}' = 'oracle+cx_oracle';
+
+CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
+  name VARCHAR(64) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT NOT NULL,
+  PRIMARY KEY (name)
+);

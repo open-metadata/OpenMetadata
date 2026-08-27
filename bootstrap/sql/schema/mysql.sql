@@ -565,6 +565,14 @@ CREATE TABLE `rdf_inference_rule` (
   KEY `rdf_inference_rule_dirty_index` (`dirty`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+DROP TABLE IF EXISTS `rdf_custom_ontology`;
+CREATE TABLE `rdf_custom_ontology` (
+  `name` varchar(64) NOT NULL,
+  `json` json NOT NULL,
+  `updatedAt` bigint unsigned NOT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 --
 -- Table structure for table `ingestion_pipeline_entity`
 --

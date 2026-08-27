@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.rdf.inference;
 
-import java.util.List;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.Query;
@@ -37,17 +36,6 @@ final class InferenceMaterializationQueryBuilder {
     final UpdateRequest request = requestWithPrologue(query);
     request.add(new UpdateClear(graph, true));
     request.add(buildInsert(query, graph));
-    return request.toString();
-  }
-
-  static String clear(final List<InferenceRuleStatus> statuses) {
-    final UpdateRequest request = new UpdateRequest();
-    statuses.stream()
-        .map(InferenceRuleStatus::getGraphUri)
-        .map(Object::toString)
-        .map(NodeFactory::createURI)
-        .map(graph -> new UpdateClear(graph, true))
-        .forEach(request::add);
     return request.toString();
   }
 

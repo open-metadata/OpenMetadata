@@ -247,3 +247,10 @@ UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
 WHERE serviceType = 'Oracle'
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';
+
+CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
+  name varchar(64) NOT NULL,
+  json json NOT NULL,
+  updatedAt bigint unsigned NOT NULL,
+  PRIMARY KEY (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

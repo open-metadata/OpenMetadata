@@ -110,7 +110,18 @@ class GlossaryRelationsFluentAPITest {
             .withCount(3);
     when(glossaryTerms.relationTypeUsage()).thenReturn(List.of(usage));
 
-    RelationshipTypeUsage result = GlossaryRelationTypes.usage().getFirst();
+    assertEquals(3, GlossaryRelationTypes.usage().get(PRESCRIBES));
+  }
+
+  @Test
+  void detailedUsageReturnsTypedRelationReferences() {
+    RelationshipTypeUsage usage =
+        new RelationshipTypeUsage()
+            .withRelationshipType(new EntityReference().withName(PRESCRIBES))
+            .withCount(3);
+    when(glossaryTerms.relationTypeUsage()).thenReturn(List.of(usage));
+
+    RelationshipTypeUsage result = GlossaryRelationTypes.usageDetailed().getFirst();
     assertEquals(PRESCRIBES, result.getRelationshipType().getName());
     assertEquals(3, result.getCount());
   }

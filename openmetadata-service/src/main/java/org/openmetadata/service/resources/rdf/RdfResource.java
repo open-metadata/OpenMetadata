@@ -73,7 +73,7 @@ import org.openmetadata.service.rdf.RdfValidationService;
 import org.openmetadata.service.rdf.SavedSparqlQueryService;
 import org.openmetadata.service.rdf.SavedSparqlQueryStore;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
-import org.openmetadata.service.rdf.extension.CustomOntologyRegistry;
+import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.rdf.inference.InferenceMaterializer;
@@ -101,6 +101,7 @@ public class RdfResource {
       SparqlQueryExecutionGuard.shared();
   private volatile SavedSparqlQueryStore savedSparqlQueryStore;
   private volatile InferenceRuleService inferenceRuleService;
+  private volatile CustomOntologyRepository customOntologyRepository;
   private final Authorizer authorizer;
   private final Supplier<RdfRepository> repositorySupplier;
   private final Supplier<RdfProjectionState> projectionStateSupplier;
@@ -151,6 +152,21 @@ public class RdfResource {
         entityDiffService,
         inferenceRuleService,
         () -> RdfProjectionState.READY);
+  }
+
+  RdfResource(
+      final Authorizer authorizer,
+      final Supplier<RdfRepository> repositorySupplier,
+      final RdfEntityDiffService entityDiffService,
+      final InferenceRuleService inferenceRuleService,
+      final CustomOntologyRepository customOntologyRepository) {
+    this(
+        authorizer,
+        repositorySupplier,
+        entityDiffService,
+        inferenceRuleService,
+        () -> RdfProjectionState.READY);
+    this.customOntologyRepository = Objects.requireNonNull(customOntologyRepository);
   }
 
   RdfResource(
@@ -231,6 +247,22 @@ public class RdfResource {
             Entity.getCollectionDAO().rdfInferenceRuleDAO(), clock, repository.getBaseUri());
     return new InferenceRuleService(
         ruleRepository, new InferenceMaterializer(repository, ruleRepository, clock));
+  }
+
+  private CustomOntologyRepository customOntologyRepository() {
+    CustomOntologyRepository local = customOntologyRepository;
+    if (local == null) {
+      synchronized (this) {
+        local = customOntologyRepository;
+        if (local == null) {
+          local =
+              new CustomOntologyRepository(
+                  Entity.getCollectionDAO().rdfCustomOntologyDAO(), Clock.systemUTC());
+          customOntologyRepository = local;
+        }
+      }
+    }
+    return local;
   }
 
   private SemanticSearchEngine getSemanticSearchEngine() {
@@ -720,11 +752,11 @@ public class RdfResource {
       operationId = "listCustomOntologyExtensions",
       summary = "List user-authored ontology extensions",
       description =
-          "Returns every ontology extension registered with this server. Each extension is a bundle of custom OWL classes and properties under the om-extension namespace.",
+          "Returns every persisted ontology extension. Each extension is a bundle of custom OWL classes and properties under the om-extension namespace.",
       responses = {@ApiResponse(responseCode = "200", description = "Extension list")})
   public Response listCustomOntologyExtensions(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return Response.ok(new CustomOntologyList(CustomOntologyRegistry.getInstance().list())).build();
+    return Response.ok(new CustomOntologyList(customOntologyRepository().list())).build();
   }
 
   @GET
@@ -740,7 +772,7 @@ public class RdfResource {
   public Response getCustomOntologyExtension(
       @Context SecurityContext securityContext, @PathParam("name") String name) {
     authorizer.authorizeAdmin(securityContext);
-    return CustomOntologyRegistry.getInstance()
+    return customOntologyRepository()
         .get(name)
         .map(extension -> Response.ok(extension).build())
         .orElse(
@@ -768,7 +800,7 @@ public class RdfResource {
       @Valid CustomOntology extension) {
     authorizer.authorizeAdmin(securityContext);
     requireMatchingCustomOntologyName(name, extension);
-    boolean created = CustomOntologyRegistry.getInstance().upsert(extension).isEmpty();
+    boolean created = customOntologyRepository().upsert(extension);
     return Response.status(created ? Response.Status.CREATED : Response.Status.OK)
         .entity(extension)
         .build();
@@ -787,7 +819,7 @@ public class RdfResource {
   public Response deleteCustomOntologyExtension(
       @Context SecurityContext securityContext, @PathParam("name") String name) {
     authorizer.authorizeAdmin(securityContext);
-    if (!CustomOntologyRegistry.getInstance().delete(name)) {
+    if (!customOntologyRepository().delete(name)) {
       return Response.status(Response.Status.NOT_FOUND)
           .entity(buildErrorResponse("Custom ontology extension not found: " + name))
           .type(MediaType.APPLICATION_JSON)

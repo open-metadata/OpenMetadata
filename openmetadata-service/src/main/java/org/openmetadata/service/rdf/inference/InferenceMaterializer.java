@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.rdf.inference;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import jakarta.ws.rs.ServiceUnavailableException;
 import java.time.Clock;
 import java.util.List;
@@ -48,7 +46,6 @@ public final class InferenceMaterializer {
     final long startedAt = clock.millis();
     final List<InferenceRuleStatus> targets =
         ruleRepository.listForMaterialization(force, requestedRule);
-    clearTargets(targets);
     final List<RuleOutcome> outcomes = targets.stream().map(this::materializeRule).toList();
     final InferenceMaterializationResult result = toResult(startedAt, outcomes);
     OntologyMetrics.recordInferenceRun(result.getFailedRules() == 0);
@@ -61,19 +58,12 @@ public final class InferenceMaterializer {
         InferenceMaterializationQueryBuilder.clear(graphUri));
   }
 
-  private void clearTargets(final List<InferenceRuleStatus> targets) {
-    if (!nullOrEmpty(targets)) {
-      rdfRepository.executeInferenceMaterializationUpdate(
-          InferenceMaterializationQueryBuilder.clear(targets));
-    }
-  }
-
   private RuleOutcome materializeRule(final InferenceRuleStatus target) {
     RuleOutcome outcome;
     try {
       final InferenceRuleStatus status =
           Boolean.FALSE.equals(target.getRule().getEnabled())
-              ? ruleRepository.recordMaterialized(target.getRule().getName(), clock.millis(), 0)
+              ? clearDisabledRule(target)
               : materializeSuccessfully(target);
       outcome = new RuleOutcome(status, true);
     } catch (RuntimeException exception) {
@@ -82,6 +72,12 @@ public final class InferenceMaterializer {
       outcome = new RuleOutcome(recordFailure(target, exception), false);
     }
     return outcome;
+  }
+
+  private InferenceRuleStatus clearDisabledRule(final InferenceRuleStatus target) {
+    rdfRepository.executeInferenceMaterializationUpdate(
+        InferenceMaterializationQueryBuilder.clear(target.getGraphUri().toString()));
+    return ruleRepository.recordMaterialized(target.getRule().getName(), clock.millis(), 0);
   }
 
   private InferenceRuleStatus materializeSuccessfully(final InferenceRuleStatus target) {

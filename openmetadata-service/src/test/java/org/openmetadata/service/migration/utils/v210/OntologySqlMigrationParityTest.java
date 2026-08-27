@@ -65,6 +65,15 @@ class OntologySqlMigrationParityTest {
     assertRelationshipColumns(upgrade, dialect);
   }
 
+  @ParameterizedTest(name = "{0} custom ontology storage exists in clean and upgrade schemas")
+  @MethodSource("dialects")
+  void customOntologyStorageStaysAligned(final DialectSql dialect) throws IOException {
+    assertContains(
+        read(dialect.cleanSchema()), "rdf_custom_ontology", dialect.name() + " clean schema");
+    assertContains(
+        read(dialect.schemaChanges()), "rdf_custom_ontology", dialect.name() + " 2.1.0 migration");
+  }
+
   @ParameterizedTest(name = "{0} upgrade backfills typed relationships and RDF rebuild")
   @MethodSource("dialects")
   void upgradeBackfillsRelationshipIdentityAndInvalidatesProjectionStatus(final DialectSql dialect)

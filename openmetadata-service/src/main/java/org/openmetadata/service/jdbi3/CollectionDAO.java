@@ -350,6 +350,9 @@ public interface CollectionDAO extends Transactional<CollectionDAO> {
   RdfInferenceRuleDAO rdfInferenceRuleDAO();
 
   @CreateSqlObject
+  RdfCustomOntologyDAO rdfCustomOntologyDAO();
+
+  @CreateSqlObject
   BotDAO botDAO();
 
   @CreateSqlObject
@@ -14503,6 +14506,43 @@ public interface CollectionDAO extends Transactional<CollectionDAO> {
         Long lastMaterializedAt,
         long lastTripleCount,
         String lastError) {}
+  }
+
+  interface RdfCustomOntologyDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_custom_ontology (name, json, updatedAt) "
+                + "VALUES (:name, :json, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE name = VALUES(name)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_custom_ontology (name, json, updatedAt) "
+                + "VALUES (:name, :json::jsonb, :updatedAt) ON CONFLICT (name) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertIfAbsent(
+        @Bind("name") String name, @Bind("json") String json, @Bind("updatedAt") long updatedAt);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE rdf_custom_ontology SET json = :json, updatedAt = :updatedAt WHERE name = :name",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE rdf_custom_ontology SET json = :json::jsonb, updatedAt = :updatedAt "
+                + "WHERE name = :name",
+        connectionType = POSTGRES)
+    int update(
+        @Bind("name") String name, @Bind("json") String json, @Bind("updatedAt") long updatedAt);
+
+    @SqlQuery("SELECT json FROM rdf_custom_ontology ORDER BY name")
+    List<String> list();
+
+    @SqlQuery("SELECT json FROM rdf_custom_ontology WHERE name = :name")
+    String findByName(@Bind("name") String name);
+
+    @SqlUpdate("DELETE FROM rdf_custom_ontology WHERE name = :name")
+    int delete(@Bind("name") String name);
   }
 
   /** DAO for distributed RDF index jobs. */

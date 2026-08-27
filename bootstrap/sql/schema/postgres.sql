@@ -533,6 +533,15 @@ ALTER TABLE public.rdf_inference_rule OWNER TO openmetadata_user;
 
 CREATE INDEX rdf_inference_rule_dirty_index ON public.rdf_inference_rule USING btree (dirty, deleted);
 
+CREATE TABLE public.rdf_custom_ontology (
+    name character varying(64) NOT NULL,
+    json jsonb NOT NULL,
+    updatedat bigint NOT NULL,
+    CONSTRAINT rdf_custom_ontology_pkey PRIMARY KEY (name)
+);
+
+ALTER TABLE public.rdf_custom_ontology OWNER TO openmetadata_user;
+
 --
 -- Name: ingestion_pipeline_entity; Type: TABLE; Schema: public; Owner: openmetadata_user
 --
