@@ -29,6 +29,7 @@ import {
 import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getApiContext,
   redirectToHomePage,
   uuid,
   visitOwnProfilePage,
@@ -61,10 +62,9 @@ const waitForConversationMaterialization = async ({
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/feed', {
+        const response = await apiContext.get('/api/v1/conversations', {
           params: {
             entityLink,
-            type: 'Conversation',
           },
         });
 
@@ -439,9 +439,10 @@ test.describe('FeedWidget on landing page', () => {
     await expect(reactionContainer).toBeVisible();
   });
 
-  test('activity cards expose no thread affordances on the landing widget', async ({
+  test('activity cards open a reply drawer on the landing widget', async ({
     page,
   }) => {
+    const replyText = `Widget activity reply ${uuid()}`;
     const widget = await waitForLandingPageWidget(
       page,
       ACTIVITY_FEED_WIDGET_KEY
@@ -460,16 +461,38 @@ test.describe('FeedWidget on landing page', () => {
       .first();
 
     await expect(seededCard).toBeVisible();
-
-    // The widget renders activity events, not conversation threads: there is no
-    // reply count, and it passes no onActivityClick, so no drawer opens. Thread
-    // drawer behaviour is covered on the entity feed in ActivityAPI.spec.ts.
-    await expect(seededCard.getByTestId('reply-count')).toHaveCount(0);
-
     await seededCard.click();
 
-    await expect(page.locator('.ant-drawer-content')).toHaveCount(0);
-    expect(page.url()).toContain('/my-data');
+    const drawer = page.locator('.activity-feed-drawer');
+
+    await expect(drawer).toBeVisible();
+
+    const commentInput = drawer.locator('[data-testid="comments-input-field"]');
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
+
+    const editorField = drawer.locator(
+      '[data-testid="editor-wrapper"] [contenteditable="true"]'
+    );
+    await editorField.fill(replyText);
+
+    const sendButton = drawer.getByTestId('send-button');
+    await expect(sendButton).toBeEnabled();
+
+    const sendReply = page.waitForResponse('/api/v1/activity/*/replies');
+    await sendButton.click();
+    await sendReply;
+
+    await expect(drawer.getByTestId('feed-replies')).toContainText(replyText);
+
+    const closeBtn = drawer.locator('[data-testid="closeDrawer"]');
+    if (await closeBtn.count()) {
+      await closeBtn.click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+
+    await expect(drawer).not.toBeVisible();
   });
 });
 
@@ -508,17 +531,16 @@ test.describe('Mention notifications in Notification Box', () => {
     await user1.create(apiContext);
     await entity.create(apiContext);
 
-    await apiContext.post('/api/v1/feed', {
+    await apiContext.post('/api/v1/conversations', {
       data: {
         message: 'Initial conversation thread for mention test',
         about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
-        type: 'Conversation',
       },
     });
 
-    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+    const feedUrl = `/api/v1/conversations?entityLink=${encodeURIComponent(
       `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
-    )}&type=Conversation&limit=25`;
+    )}&limit=25`;
 
     await expect
       .poll(
@@ -543,11 +565,17 @@ test.describe('Mention notifications in Notification Box', () => {
     adminPage,
     user1Page,
   }) => {
+    const mentionReplyMarker = `mention-reply-${uuid()}`;
+
     await test.step('User1 mentions admin user in a reply', async () => {
       await entity.visitEntityPage(user1Page);
-
+      const conversationsResponse = user1Page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/conversations' &&
+          response.request().method() === 'GET'
+      );
       await user1Page.getByTestId('activity_feed').click();
-
+      await conversationsResponse;
       await waitForAllLoadersToDisappear(user1Page);
 
       const seededThread = user1Page
@@ -565,7 +593,6 @@ test.describe('Mention notifications in Notification Box', () => {
       const editorLocator = user1Page.locator(
         '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
       );
-
       await editorLocator.fill('Hey ');
 
       await editorLocator.click();
@@ -587,7 +614,7 @@ test.describe('Mention notifications in Notification Box', () => {
         .first()
         .click();
 
-      await editorLocator.pressSequentially(', can you check this?');
+      await editorLocator.pressSequentially(`, ${mentionReplyMarker}`);
 
       await expect(
         user1Page.locator('[data-testid="send-button"]')
@@ -597,10 +624,39 @@ test.describe('Mention notifications in Notification Box', () => {
       ).not.toBeDisabled();
 
       const postMentionResponse = user1Page.waitForResponse(
-        '/api/v1/feed/*/posts'
+        '/api/v1/conversations/*/replies'
       );
       await user1Page.locator('[data-testid="send-button"]').click();
       await postMentionResponse;
+
+      const { apiContext, afterAction } = await getApiContext(adminPage);
+
+      try {
+        await expect
+          .poll(
+            async () => {
+              const response = await apiContext.get('/api/v1/conversations', {
+                params: {
+                  filterType: 'MENTIONS',
+                  limit: 25,
+                  userId: adminUser.responseData.id,
+                },
+              });
+              const payload = await response.json();
+
+              return (payload.data ?? []).some(
+                (conversation: { replies?: Array<{ message?: string }> }) =>
+                  (conversation.replies ?? []).some((reply) =>
+                    reply.message?.includes(mentionReplyMarker)
+                  )
+              );
+            },
+            { timeout: 30_000, intervals: [1_000, 2_000] }
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
     });
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
@@ -626,7 +682,7 @@ test.describe('Mention notifications in Notification Box', () => {
 
       const mentionsFeedResponse = adminPage.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.url().includes('filterType=MENTIONS')
       );
 
@@ -679,35 +735,32 @@ test.describe('Mention notifications in Notification Box', () => {
       await user1Page.getByTestId('activity_feed').click();
       await waitForAllLoadersToDisappear(user1Page);
 
-      // Find a message to react to.
       const message = user1Page
         .locator('[data-testid="message-container"]')
+        .filter({ hasText: 'Initial conversation thread for mention test' })
         .first();
       await expect(message).toBeVisible();
 
-      // Add reaction
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.request().method() === 'PATCH'
+          /\/api\/v1\/conversations\/[^/]+\/reaction\/rocket$/.test(
+            new URL(response.url()).pathname
+          ) && response.request().method() === 'PUT'
       );
       await message.locator('[data-testid="add-reactions"]').click();
       await user1Page.locator('[title="rocket"]').click();
       await reactionResponse;
 
-      // Hover over the emoji button to see the popover
       const emojiButton = message
         .locator('[data-testid="emoji-button"]')
         .last();
       await emojiButton.hover();
 
-      // Verify tooltip using the data-testid from Emoji.tsx popoverContent
       const tooltip = user1Page.getByTestId('popover-content');
       await expect(tooltip).toBeVisible();
       await expect(tooltip).toContainText(newDisplayName);
       await expect(tooltip).toContainText('reacted with');
 
-      // Ensure username is not displayed if it's different
       if (newDisplayName !== user1.responseData.name) {
         await expect(tooltip).not.toContainText(user1.responseData.name);
       }
@@ -742,14 +795,16 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       schemaFqn = database.schemaResponseData.fullyQualifiedName;
       await chineseMentionUser.create(apiContext);
 
-      // Create a conversation thread via API so we can post replies in the tests
-      const conversationResponse = await apiContext.post('/api/v1/feed', {
-        data: {
-          message: CHINESE_MENTION_THREAD_MESSAGE,
-          about: `<#E::databaseSchema::${schemaFqn}>`,
-          type: 'Conversation',
-        },
-      });
+      const adminMention = `<#E::user::${adminUser.responseData.fullyQualifiedName}>`;
+      const conversationResponse = await apiContext.post(
+        '/api/v1/conversations',
+        {
+          data: {
+            message: `${CHINESE_MENTION_THREAD_MESSAGE} ${adminMention}`,
+            about: `<#E::databaseSchema::${schemaFqn}>`,
+          },
+        }
+      );
       const conversation = await conversationResponse.json();
       await waitForConversationMaterialization({
         apiContext,
@@ -784,14 +839,13 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
       return (
-        url.includes('/api/v1/feed') &&
+        url.includes('/api/v1/conversations') &&
         url.includes('entityLink=') &&
-        url.includes('type=Conversation') &&
         response.request().method() === 'GET'
       );
     });
 
-    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/all`);
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`);
     await feedPromise;
     await waitForAllLoadersToDisappear(page);
 
@@ -880,7 +934,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       page.locator('[data-testid="send-button"]')
     ).not.toBeDisabled();
 
-    const postMentionResponse = page.waitForResponse('/api/v1/feed/*/posts');
+    const postMentionResponse = page.waitForResponse(
+      '/api/v1/conversations/*/replies'
+    );
     await page.locator('[data-testid="send-button"]').click();
     await postMentionResponse;
 
@@ -929,7 +985,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     return page.locator('#feedData [data-testid="message-container"]');
   };
 
-  // The list is merged from two independent fetches (/api/v1/feed and
+  // The list is merged from two independent fetches (/api/v1/conversations and
   // /api/v1/activity) and re-sorts — moving the auto-selection with it — as each
   // one lands. Anything asserting on order, counts or the active item has to
   // wait for BOTH kinds to be on screen first, or it races the slower response.
@@ -972,20 +1028,19 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
       );
 
       for (const message of [conversationMessage, conversationMessage2]) {
-        await apiContext.post('/api/v1/feed', {
+        await apiContext.post('/api/v1/conversations', {
           data: {
             message,
             about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
-            type: 'Conversation',
           },
         });
       }
 
-      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+      const feedUrl = `/api/v1/conversations?entityLink=${encodeURIComponent(
         `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
-      )}&type=Conversation&limit=25`;
+      )}&limit=25`;
 
-      // /api/v1/feed writes synchronously, so this only covers read-your-write
+      // Conversation writes synchronously, so this only covers read-your-write
       // lag on a loaded server — nothing here waits on an async pipeline.
       await expect
         .poll(
@@ -1021,7 +1076,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   }) => {
     const feedList = await openActivityFeedTab(adminPage);
 
-    // Conversation thread (from /api/v1/feed) must be visible...
+    // Conversation thread must be visible...
     await expect(
       feedList.filter({ hasText: conversationMessage }).first()
     ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
@@ -1033,7 +1088,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
   });
 
-  test('A change-event activity is read-only (no comment editor)', async ({
+  test('A change-event activity exposes its reply editor', async ({
     adminPage,
   }) => {
     const feedList = await openActivityFeedTab(adminPage);
@@ -1045,13 +1100,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 
-    // Activities are read-only notifications — no comment box, no send button.
     await expect(
       adminPage.locator('#activity-panel [data-testid="comments-input-field"]')
-    ).toHaveCount(0);
-    await expect(
-      adminPage.locator('#activity-panel [data-testid="send-button"]')
-    ).toHaveCount(0);
+    ).toBeVisible();
   });
 
   test('Replying to a conversation stays isolated to that thread', async ({
@@ -1066,9 +1117,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
         return;
       }
       const url = request.url().split('?')[0];
-      if (/\/api\/v1\/feed\/[^/]+\/posts$/.test(url)) {
+      if (/\/api\/v1\/conversations\/[^/]+\/replies$/.test(url)) {
         replyPostCalls.push(url);
-      } else if (/\/api\/v1\/feed$/.test(url)) {
+      } else if (/\/api\/v1\/conversations$/.test(url)) {
         newThreadCalls.push(url);
       }
     });
@@ -1102,7 +1153,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     const replyResponse = adminPage.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        /\/api\/v1\/feed\/[^/]+\/posts$/.test(response.url().split('?')[0])
+        /\/api\/v1\/conversations\/[^/]+\/replies$/.test(
+          response.url().split('?')[0]
+        )
     );
     await adminPage.locator('[data-testid="send-button"]').click();
     await replyResponse;
