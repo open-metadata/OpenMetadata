@@ -401,7 +401,7 @@ jobs:
         id: restore-distribution
         # Actions cache isolates PR writes to the PR merge ref. PRs may read a
         # default-branch entry, but cannot replace the cache used by main/nightly.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.DISTRIBUTION_CACHE_DIR }}
           key: playwright-distribution-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.distribution }}
@@ -431,7 +431,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -484,7 +484,7 @@ jobs:
       - name: Save OpenMetadata distribution cache
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.DISTRIBUTION_CACHE_DIR }}
           key: playwright-distribution-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.distribution }}
@@ -610,7 +610,7 @@ jobs:
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -641,7 +641,7 @@ jobs:
       # failure must not fail planning — shards self-install as a fallback.
       - name: Seed Playwright browser cache
         continue-on-error: true
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -757,7 +757,7 @@ jobs:
         id: restore-fixture
         # The content hash excludes the commit SHA so compatible main/nightly
         # fixtures can be reused across commits. Cache ref scoping keeps PR saves isolated.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
@@ -780,7 +780,7 @@ jobs:
       - name: Restore ingestion image cache
         id: restore-ingestion
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
@@ -910,7 +910,7 @@ jobs:
       # plan-playwright job's yarn cache step.
       - name: Restore yarn package cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -937,7 +937,7 @@ jobs:
       # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1114,7 +1114,7 @@ jobs:
       - name: Save golden fixture cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
@@ -1122,7 +1122,7 @@ jobs:
       - name: Save ingestion image cache
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
@@ -1155,11 +1155,11 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # Budget breakdown: 20 min planner shard target + up to 25 min playwright
-    # timeout wrapper (line ~1090) + ~5-8 min for setup (env, node, browser,
-    # bundle verify) and teardown/artifact upload. 30 min was tight enough
-    # that slow shards were being cancelled by the job clock while playwright
-    # itself still had time on the inner wrapper; 35 gives real headroom.
+    # Budget breakdown: up to 30 min playwright hang-protection wrapper on
+    # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
+    # and teardown/artifact upload. The job clock must clear the inner
+    # wrapper plus setup/teardown so a slow-but-finishing shard is never
+    # cancelled here while playwright still has wrapper time left.
     #
     # This ceiling only works when the sub-budgets it composes actually hold.
     # `Install Playwright Browsers` carries its own `timeout 5m` for exactly
@@ -1167,7 +1167,7 @@ jobs:
     # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
     # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
     # sync when adjusting this outer ceiling.
-    timeout-minutes: 35
+    timeout-minutes: 40
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -1298,7 +1298,7 @@ jobs:
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1323,7 +1323,7 @@ jobs:
       # Restore-only — same churn rationale as the yarn cache above.
       - name: Restore Playwright browser cache
         id: restore-browser
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1456,8 +1456,17 @@ jobs:
           fi
           jq '{shardId, lane, workers, predictedWorkerMs, predictedExecutionMs, testCount, projects, files: (.files | length)}' "$plan_file"
           started_at=$(date +%s)
+          # HANG PROTECTION ONLY — not a budget. The planner packs shards to
+          # ~19 min predicted; the 1500 s execution BUDGET is evaluated (and
+          # signalled, never enforced) by evaluate_playwright_performance.py.
+          # This wrapper exists solely so a truly wedged playwright process
+          # cannot hold the job until the 40-min job clock. It must stay well
+          # above the budget: at the old 25m it killed chromium-12 five
+          # seconds after its last test PASSED (run 32500973433 — one wedged
+          # retry teardown ate 9 min), destroying the results artifact and
+          # ejecting a green PR.
           set +e
-          timeout --signal=TERM --kill-after=30s 25m \
+          timeout --signal=TERM --kill-after=30s 30m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
@@ -1772,7 +1781,7 @@ jobs:
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}

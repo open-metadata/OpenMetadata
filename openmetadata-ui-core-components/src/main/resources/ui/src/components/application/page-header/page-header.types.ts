@@ -1,0 +1,71 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import type { ComponentProps, FC, HTMLAttributes, ReactNode } from 'react';
+import type { Input } from '../../base/input/input';
+import type { BreadcrumbItemType } from '../breadcrumbs/breadcrumbs';
+
+export type PageHeaderVariant = 'flat' | 'gradient';
+
+export interface PageHeaderTab {
+  /** Unique id; also the tab's selection key. */
+  id: string | number;
+  /** Tab label. */
+  label: ReactNode;
+  /** Optional count rendered as a badge next to the label. */
+  count?: number;
+}
+
+export interface PageHeaderProps
+  extends Omit<HTMLAttributes<HTMLElement>, 'title' | 'color'> {
+  /**
+   * Leading visual. Pass an icon component to render the default `FeaturedIcon`
+   * tile for you, or any node (avatar, service logo, custom element) to take
+   * full control.
+   */
+  icon?: ReactNode | FC<{ className?: string }>;
+  /**
+   * Breadcrumb row rendered above the title. Pass a `BreadcrumbItemType[]` to
+   * render the default `Breadcrumbs` for you, or a custom node (e.g. your own
+   * `<Breadcrumbs>` with specific props) to take full control.
+   */
+  breadcrumb?: ReactNode | BreadcrumbItemType[];
+  /** Title text or node. Strings are wrapped in a heading Typography. */
+  title: ReactNode;
+  /** Subtitle / description under the title. Strings are styled automatically. */
+  subtitle?: ReactNode;
+  /** Inline badge rendered next to the title (e.g. BETA). */
+  badge?: ReactNode;
+  /** Meta row under the title (owner·domain·tier). */
+  meta?: ReactNode;
+  /**
+   * Set when `meta` holds a stats row. Uses an 8px title-block gap instead of
+   * the default 2px. For stats-style headers with no subtitle.
+   */
+  hasStats?: boolean;
+  /**
+   * Built-in search box, rendered in the right cluster before `actions`. Accepts
+   * the core `Input` props (a search icon and `sm` size are applied by default).
+   */
+  search?: ComponentProps<typeof Input>;
+  /** Right-aligned actions (buttons, view toggle). */
+  actions?: ReactNode;
+  /**
+   * Footer row rendered full-width under the header, typically the tab strip.
+   * Pass a `PageHeaderTab[]` to render the default underline `Tabs` (with an
+   * optional per-tab `count` badge), or a custom node for full control.
+   */
+  footer?: ReactNode | PageHeaderTab[];
+  /** Visual treatment. 'gradient' applies the brand-tinted card per Figma. */
+  variant?: PageHeaderVariant;
+  'data-testid'?: string;
+}

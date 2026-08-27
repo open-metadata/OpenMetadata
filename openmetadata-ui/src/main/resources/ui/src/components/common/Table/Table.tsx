@@ -19,7 +19,6 @@ import {
   Table as AntdTable,
   Typography,
 } from 'antd';
-import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -47,6 +46,8 @@ import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
+  ColumnsType,
+  ColumnType,
   TableColumnDropdownList,
   TableComponentProps,
 } from './Table.interface';

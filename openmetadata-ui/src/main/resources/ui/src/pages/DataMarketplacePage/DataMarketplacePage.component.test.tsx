@@ -29,6 +29,10 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
@@ -149,6 +153,26 @@ describe('DataMarketplacePage component', () => {
 
     expect(
       await screen.findByTestId('marketplace-domains')
+    ).toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('renders the default layout when a legacy persona document contains a null page', async () => {
+    (getDocumentByFQN as jest.Mock).mockResolvedValue({
+      data: {
+        pages: [
+          {
+            pageType: PageType.LandingPage,
+          },
+          null,
+        ],
+      },
+    });
+
+    renderDataMarketplacePage();
+
+    expect(
+      await screen.findByTestId(defaultLayoutWidgetId)
     ).toBeInTheDocument();
     expect(showErrorToast).not.toHaveBeenCalled();
   });

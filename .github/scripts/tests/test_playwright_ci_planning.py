@@ -1778,9 +1778,12 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
     assert performance["targets"]["atMostOneAppBootPerUIScenario"] is True
     assert performance["targets"]["appBootMeasurementIntegrity"] is True
     assert "atMostOneAppBootPerAttempt" not in performance["targets"]
-    assert performance["blockingTargetsMet"] is False
+    # Flaky-rate/retry-share breaches are budget signals, not blockers — a
+    # green run stays green (run 32500973433).
+    assert performance["blockingTargetsMet"] is True
+    assert performance["budgetTargetsMet"] is False
     assert performance["convergenceTargetsMet"] is True
-    assert "appBootMeasurementIntegrity" in performance["blockingTargets"]
+    assert "appBootMeasurementIntegrity" in performance["budgetTargets"]
     assert "atMostOneAppBootPerUIScenario" in performance["convergenceTargets"]
     assert metrics["lifecycleFlakyTests"] == 1
     assert metrics["productFlakyRatePercent"] == 0
@@ -1876,7 +1879,13 @@ def test_performance_enforcement_reports_convergence_without_failing(
     }
 
 
-def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypatch):
+def test_environment_overrun_is_budget_breach_not_enforcement_failure(
+    tmp_path, monkeypatch, capsys
+):
+    # Formerly this fixture (481 s > the 480 s env ceiling) raised SystemExit
+    # under --enforce and failed the merge-group check. Environment time is a
+    # BUDGET target now: main() completes, the breach lands in the payload
+    # and stdout for the workflow's budget-signal step.
     evaluator = load_script("evaluate_playwright_performance")
     timing_file = tmp_path / "timing.json"
     request_file = tmp_path / "requests.json"
@@ -1937,12 +1946,18 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
         ],
     )
 
-    with pytest.raises(
-        SystemExit,
-        match="Blocking Playwright performance targets not met: "
-        "environmentAtMostFiveMinutes",
-    ):
-        evaluator.main()
+    evaluator.main()
+
+    captured = capsys.readouterr()
+    assert "BUDGET BREACH" in captured.out
+    assert "environmentAtMostFiveMinutes" in captured.out
+    performance = json.loads(output.read_text())
+    assert performance["blockingTargetsMet"] is True
+    assert performance["budgetTargets"]["environmentAtMostFiveMinutes"] is False
+    assert (
+        "environmentAtMostFiveMinutes"
+        in performance["failedBudgetTargetDetails"]
+    )
 
 
 def test_outcome_classifier_reads_include_matrix():
@@ -2119,6 +2134,34 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
     assert "Ingestion" in mapping["projects"]
     assert "tag: '@ingestion'" in schema_search
+
+
+@pytest.mark.parametrize(
+    ("source_pattern", "spec_path"),
+    [
+        (
+            "openmetadata-service/src/main/java/org/openmetadata/service/search/**",
+            "playwright/e2e/Features/SearchExport.spec.ts",
+        ),
+        (
+            "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**",
+            "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
+        ),
+    ],
+)
+def test_import_export_impacts_use_the_dedicated_project(source_pattern, spec_path):
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry for entry in impact_map["mappings"] if source_pattern in entry["sources"]
+    )
+    source = (
+        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec_path
+    ).read_text()
+
+    assert "ImportExport" in mapping["projects"]
+    assert "@import-export" in source
 
 
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
@@ -2332,6 +2375,75 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
     assert selection["unmappedFiles"] == []
 
 
+def test_impact_mapping_cannot_reselect_a_delegated_spec(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    spec_path = spec_dir / "Delegated.spec.ts"
+    spec_path.write_text("test('delegated', () => undefined);\n")
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": ["playwright/e2e/Features/Delegated.spec.ts"],
+                "sharedInfrastructure": [],
+                "mappings": [
+                    {
+                        "sources": ["src/rdf/**"],
+                        "projects": ["chromium"],
+                        "specs": ["playwright/e2e/Features/Delegated.spec.ts"],
+                    }
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text("src/rdf/Processor.java\n")
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == []
+
+
+def test_security_impact_mapping_includes_ingestion_permission_specs():
+    selector = load_script("select_playwright_tests")
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
+        in entry["sources"]
+    )
+
+    assert "Ingestion" in mapping["projects"]
+    assert selector.matches(
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts", mapping["specs"]
+    )
+
+
 def test_summary_reconciles_results_and_evaluates_performance_independently():
     # The playwright-summary job lives in the postgres PR caller (not the
     # reusable) so branch protection can require its unprefixed check name.
@@ -2372,11 +2484,12 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "specFile.endsWith('.setup.ts')" in summary_helper
     assert "lifecycleFailures" in summary_helper
     assert "lifecycleFlaky" in summary_helper
-    assert ".blockingTargets.reportingAtMostTwoMinutes" in workflow
-    assert ".blockingTargetsMet = ([.blockingTargets[]] | all)" in workflow
+    assert ".budgetTargets.reportingAtMostTwoMinutes" in workflow
+    assert ".budgetTargetsMet = ([.budgetTargets[]] | all)" in workflow
+    assert "Signal Playwright budget breaches" in workflow
     assert "### Performance targets" in summary_helper
-    assert "### Performance convergence warnings" in summary_helper
-    assert "Blocking targets enforce CI" in summary_helper
+    assert "### Performance budget and convergence warnings" in summary_helper
+    assert "Budget targets signal capacity problems" in summary_helper
     assert "convergenceWarnings" in summary_helper
     assert "workflowWallSeconds" in summary_helper
     assert "Full workflow signal wall (to summary)" in summary_helper

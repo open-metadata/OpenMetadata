@@ -13,7 +13,6 @@
 
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Dropdown, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -45,6 +44,7 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
