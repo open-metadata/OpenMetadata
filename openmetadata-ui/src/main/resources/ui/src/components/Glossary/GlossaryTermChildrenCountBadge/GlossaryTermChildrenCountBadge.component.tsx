@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect, useState } from 'react';
-import { getFirstLevelGlossaryTermsPaginated } from '../../../rest/glossaryAPI';
+import { useGlossaryTermChildrenCount } from '../../../hooks/useGlossaryTermChildrenCount';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
-import { useGlossaryStore } from '../useGlossary.store';
 
 interface GlossaryTermChildrenCountBadgeProps {
   fqn?: string;
@@ -24,53 +22,21 @@ interface GlossaryTermChildrenCountBadgeProps {
   refreshTrigger?: number;
 }
 
-// Fetches the direct-children count with the same entityStatus filter the Terms table
-// applies (`directChildrenOf` + `limit=0`), so the tab badge always matches what the
-// table actually lists instead of the unfiltered, all-descendants `childrenCount` field.
-// The filter itself comes from useGlossaryStore's termsStatusFilter, kept live by
-// GlossaryTermTab (see its getEntityStatusParamFromSelection effect) — a genuinely
-// undefined value there means the user explicitly selected All statuses (no filter),
-// so it is passed straight through here, not defaulted.
+// Renders the direct-children count with the same entityStatus filter the Terms table
+// applies, so the tab badge always matches what the table actually lists instead of
+// the unfiltered, all-descendants `childrenCount` field. The fetch/filter/cleanup
+// logic itself lives in useGlossaryTermChildrenCount, shared with GlossaryDetails.
 const GlossaryTermChildrenCountBadge = ({
   fqn,
   initialCount,
   isActive,
   refreshTrigger,
 }: GlossaryTermChildrenCountBadgeProps) => {
-  const [childrenCount, setChildrenCount] = useState(initialCount ?? 0);
-  const { termsStatusFilter } = useGlossaryStore();
-
-  useEffect(() => {
-    if (!fqn) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchChildrenCount = async () => {
-      try {
-        const { paging } = await getFirstLevelGlossaryTermsPaginated(
-          fqn,
-          0,
-          undefined,
-          termsStatusFilter
-        );
-        if (isMounted) {
-          setChildrenCount(paging.total ?? 0);
-        }
-      } catch {
-        if (isMounted) {
-          setChildrenCount(0);
-        }
-      }
-    };
-
-    fetchChildrenCount();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [fqn, refreshTrigger, termsStatusFilter]);
+  const childrenCount = useGlossaryTermChildrenCount(
+    fqn,
+    refreshTrigger,
+    initialCount ?? 0
+  );
 
   return <>{getCountBadge(childrenCount, '', isActive)}</>;
 };
