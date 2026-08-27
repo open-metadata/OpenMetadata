@@ -836,6 +836,13 @@ export const runTableParitySuite = (
       expect(adapter.queryPageSizeControl()).not.toBeNull();
     });
 
+    it('hides the page-size control unless showSizeChanger is set', () => {
+      // AntD's default. A picker with nothing wired to it is dead UI.
+      renderTable({ dataSource: many, pagination: { pageSize: 5 } });
+
+      expect(adapter.queryPageSizeControl()).toBeNull();
+    });
+
     it('falls back to page 1 when the data shrinks below the current page', () => {
       const { rerender } = renderTable({
         dataSource: many,
