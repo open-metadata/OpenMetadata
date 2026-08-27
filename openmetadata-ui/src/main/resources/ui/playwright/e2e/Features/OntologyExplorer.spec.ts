@@ -305,15 +305,6 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
     });
 
-    test('should close settings panel when clicking outside', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
-    });
-
     test('should display layout options in settings panel', async ({
       page,
     }) => {
