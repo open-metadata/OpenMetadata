@@ -17,7 +17,7 @@ import { DISABLED } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
-import { ingestionProps } from '../../../../mocks/Ingestion.mock';
+import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import Ingestion from './Ingestion.component';
 
@@ -251,5 +251,45 @@ describe('Ingestion', () => {
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  // Every agent action refetches the list — killing a run included. Treating that refetch as a
+  // first load swapped the cards for skeletons, so the agents dropped off the list until the
+  // request came back.
+  describe('refetching an already loaded list', () => {
+    const loadedProps = {
+      ...ingestionProps,
+      agents: [mockAgent],
+      isLoading: true,
+    };
+
+    it('should keep the agent cards while the list refetches', async () => {
+      await act(async () => {
+        render(<Ingestion {...loadedProps} />, { wrapper: MemoryRouter });
+      });
+
+      expect(
+        screen.getByTestId(`agent-card-${mockAgent.fqn}`)
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('agent-group-skeleton')).toBeNull();
+    });
+
+    it('should keep the deployment summary card while the list refetches', async () => {
+      await act(async () => {
+        render(<Ingestion {...loadedProps} />, { wrapper: MemoryRouter });
+      });
+
+      expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
+    });
+
+    it('should still show skeletons on the first load, before any agent is known', async () => {
+      await act(async () => {
+        render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+    });
   });
 });

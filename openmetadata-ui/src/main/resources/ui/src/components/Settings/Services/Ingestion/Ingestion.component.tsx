@@ -12,7 +12,7 @@
  */
 
 import { Tabs } from '@openmetadata/ui-core-components';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { ComponentType, Key, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -90,7 +90,13 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   // Only the pipeline fetch. The airflow status is deliberately not folded in — it gates the
   // actions on the agents, not whether the agents can be listed.
-  const isAgentsLoading = Boolean(isLoading);
+  //
+  // `isLoading` is true for *every* pipeline fetch, but the group's skeletons stand in for "we do
+  // not know yet whether this service has any agents", which stops being true once the first
+  // response lands. Feeding a refetch into it blanks a list that is already on screen: killing a
+  // run refetches, so every agent disappeared until the request came back. `isRefreshing` is the
+  // prop that reports a refetch, and it leaves the cards alone.
+  const isAgentsLoading = Boolean(isLoading) && isEmpty(agents);
 
   const showAddAgent = useMemo(
     () =>

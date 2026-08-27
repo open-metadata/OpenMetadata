@@ -280,7 +280,7 @@ const ServiceInsightsTab = ({
             getFormattedAgentsListFromAgentsLiveInfo(
               data.ingestionPipelineStatus,
               data.appStatus,
-              prev.filter((agent) => agent.isCollateAgent)
+              prev
             )
           );
 

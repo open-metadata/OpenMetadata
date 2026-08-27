@@ -16,7 +16,12 @@ import {
   AppRunRecord,
   Status,
 } from '../generated/entity/applications/appRunRecord';
-import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineState,
+  PipelineType,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   WorkflowInstance,
   WorkflowStatus,
@@ -245,5 +250,87 @@ describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
     );
 
     expect(result.map((a) => a.agentType)).toEqual(['DescriptionAutomation']);
+  });
+
+  // Killing a run ends the stream, and the server's COMPLETED/FAILED frames carry empty lists for
+  // both halves. Dropping the metadata agents there took them off the widget until the page was
+  // reloaded.
+  it('keeps the metadata agents when a frame carries no pipeline status', () => {
+    const preserved = getFormattedAgentsList({}, [
+      {
+        pipelineType: PipelineType.Metadata,
+        provider: ProviderType.Automation,
+      },
+    ] as IngestionPipeline[]);
+
+    const result = getFormattedAgentsListFromAgentsLiveInfo([], [], preserved);
+
+    expect(result.map((a) => a.agentType)).toEqual([PipelineType.Metadata]);
+  });
+
+  it('prefers live pipeline status over the preserved metadata agents', () => {
+    const preserved = getFormattedAgentsList({}, [
+      {
+        pipelineType: PipelineType.Metadata,
+        provider: ProviderType.Automation,
+      },
+    ] as IngestionPipeline[]);
+
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [
+        {
+          pipelineType: PipelineType.Usage,
+          provider: ProviderType.Automation,
+        },
+      ] as never,
+      [],
+      preserved
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual([PipelineType.Usage]);
+  });
+
+  it('keeps the metadata agents when only the Collate half of a frame carries payload', () => {
+    const preserved = getFormattedAgentsList(
+      {},
+      [
+        {
+          pipelineType: PipelineType.Metadata,
+          provider: ProviderType.Automation,
+        },
+      ] as IngestionPipeline[],
+      [{ id: 'a1', name: 'svc_TierAutomation' }]
+    );
+
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [],
+      [{ appName: 'svc_TierAutomation' } as never],
+      preserved
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual([
+      PipelineType.Metadata,
+      'TierAutomation',
+    ]);
+  });
+
+  it('keeps both halves when an empty frame arrives for a mixed list', () => {
+    const preserved = getFormattedAgentsList(
+      {},
+      [
+        {
+          pipelineType: PipelineType.Metadata,
+          provider: ProviderType.Automation,
+        },
+      ] as IngestionPipeline[],
+      [{ id: 'a1', name: 'svc_TierAutomation' }]
+    );
+
+    const result = getFormattedAgentsListFromAgentsLiveInfo([], [], preserved);
+
+    expect(result.map((a) => a.agentType)).toEqual([
+      PipelineType.Metadata,
+      'TierAutomation',
+    ]);
   });
 });

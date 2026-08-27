@@ -163,8 +163,10 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
   collateAIagentsLiveInfo: CollateAgentLiveInfo[],
   // Terminal frames (stream completed, or an error fetching chart data) carry no
   // payload, so keep the agents already on screen instead of blanking them as the
-  // run finishes.
-  preservedCollateAgents: AgentsInfo[] = []
+  // run finishes. This holds for both halves: the server sends empty lists for
+  // `ingestionPipelineStatus` too, and killing a run ends the stream, so the
+  // metadata agents would otherwise stay gone until the page was reloaded.
+  preservedAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -191,14 +193,15 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     };
   });
 
+  const metadataAgents = isEmpty(formattedAgentsList)
+    ? preservedAgents.filter((agent) => !agent.isCollateAgent)
+    : formattedAgentsList;
+
   const collateAIagents = isEmpty(liveCollateAgents)
-    ? preservedCollateAgents
+    ? preservedAgents.filter((agent) => agent.isCollateAgent)
     : liveCollateAgents;
 
-  const allAgentsList: AgentsInfo[] = [
-    ...formattedAgentsList,
-    ...collateAIagents,
-  ];
+  const allAgentsList: AgentsInfo[] = [...metadataAgents, ...collateAIagents];
 
   const orderedAgentsList = reduce(
     AUTOPILOT_AGENTS_ORDERED_LIST,
