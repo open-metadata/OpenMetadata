@@ -23,7 +23,13 @@
 @callout-border: var(--om-legacy-color-afafc1);
 
 .block-editor-wrapper {
-  .om-block-editor > p:last-child {
+  // Scoped to editable instances only: TrailingNode (Extensions/trailing-node.ts)
+  // unconditionally appends an empty paragraph after any non-paragraph last node
+  // (e.g. a list) in both editable and read-only mode. Read-only previewers
+  // (RichTextEditorPreviewNew/V1) render with contenteditable="false" and have
+  // no use for click-to-continue-typing space below the content, so leaving
+  // this unscoped left a huge blank gap after any description ending in a list.
+  .om-block-editor[contenteditable='true'] > p:last-child {
     // this is to have enough space after last node, referred from the reference editor
     padding-bottom: 30vh;
   }
