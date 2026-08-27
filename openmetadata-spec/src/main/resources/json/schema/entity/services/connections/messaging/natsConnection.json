@@ -64,6 +64,11 @@
     }
   },
   "properties": {
+    "clientName": {
+      "title": "Client Name",
+      "description": "Client name reported to the NATS server. Probe field for verifying schema auto-update; not for merge.",
+      "type": "string"
+    },
     "type": {
       "title": "Service Type",
       "description": "Service Type",
