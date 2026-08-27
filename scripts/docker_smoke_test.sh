@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+# Smoke test for the server image. Deliberately needs no database and no search
+# cluster: everything asserted here is a property of the *image* -- the jlink
+# module set, the glibc C++ runtime the JNI natives link against, the writable
+# log directory, the non-root uid, the shell the launch scripts need, and the
+# absence of a package manager. A stack-level test belongs in the integration
+# workflows, not here.
+#
+#   ./scripts/docker_smoke_test.sh [image-tag]
+#
+# Requires openmetadata-dist/target/openmetadata-*.tar.gz (mvn -DskipTests package).
+
+set -euo pipefail
+
+IMAGE="${1:-openmetadata-server:smoke}"
+CONTAINER="om-smoke-$$"
+WORKDIR_TMP="$(mktemp -d)"
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+failures=0
+pass() { echo "  PASS  $1"; }
+fail() { echo "  FAIL  $1"; failures=$((failures + 1)); }
+
+cleanup() {
+  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  rm -rf "$WORKDIR_TMP"
+}
+trap cleanup EXIT
+
+echo "==> Preflight"
+if ! compgen -G "openmetadata-dist/target/openmetadata-*.tar.gz" >/dev/null; then
+  echo "missing openmetadata-dist/target/openmetadata-*.tar.gz -- run 'mvn -DskipTests package' first"
+  exit 1
+fi
+
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "==> Building $IMAGE"
+  docker build -f docker/development/Dockerfile -t "$IMAGE" .
+else
+  echo "==> Using pre-built $IMAGE"
+fi
+
+echo
+echo "==> Assertions"
+
+user="$(docker image inspect "$IMAGE" --format '{{.Config.User}}')"
+if [ "$user" = "65532:65532" ]; then
+  pass "image runs as the numeric non-root uid ($user)"
+else
+  # A name here is not cosmetic: the kubelet rejects a non-numeric user under
+  # `runAsNonRoot: true` with no explicit `runAsUser`.
+  fail "expected USER 65532:65532, got '${user:-<unset>}'"
+fi
+
+if docker image inspect "$IMAGE" --format '{{.Config.Healthcheck.Test}}' | grep -q Health; then
+  pass "image declares the java HEALTHCHECK probe"
+else
+  fail "image has no HEALTHCHECK, or it does not run the Health class"
+fi
+
+# The launch scripts, bootstrap/openmetadata-ops.sh, the compose healthchecks and
+# the helm chart all name these paths. The debug base ships busybox on PATH but
+# leaves /bin empty, so the Dockerfile links them in and this is the guard.
+for shell in /bin/sh /bin/bash; do
+  if docker run --rm --entrypoint "$shell" "$IMAGE" -c 'exit 0' >/dev/null 2>&1; then
+    pass "$shell works"
+  else
+    fail "$shell is missing or broken -- the entrypoint and openmetadata-ops.sh both need it"
+  fi
+done
+
+# Losing apt/apk is most of what distroless buys once the shell stays: no
+# in-place upgrade path means OS CVEs get fixed by bumping the base tag rather
+# than by an upgrade layer. A hit under /busybox does not count -- busybox ships
+# `dpkg` and `dpkg-deb` applets that cannot reach a repository.
+package_managers=""
+for pm in apt apt-get dpkg apk yum microdnf rpm; do
+  found="$(docker run --rm --entrypoint /bin/sh "$IMAGE" -c "command -v $pm" 2>/dev/null || true)"
+  case "$found" in
+    ""|/busybox/*) ;;
+    *) package_managers="$package_managers $pm($found)" ;;
+  esac
+done
+if [ -n "$package_managers" ]; then
+  fail "image ships a real package manager --$package_managers -- the base is no longer distroless"
+else
+  pass "image ships no package manager outside busybox's applets"
+fi
+
+version="$(docker run --rm --entrypoint /opt/java/openjdk/bin/java "$IMAGE" -version 2>&1 || true)"
+if echo "$version" | grep -q 'version "21'; then
+  pass "the jlink runtime starts and reports Java 21"
+else
+  fail "the jlink runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
+fi
+
+# The reason this image is distroless *cc* and not distroless *base*, and the
+# reason it is not alpine: DJL's libtokenizers.so and onnxruntime are both
+# glibc-linked and both need the GNU C++ runtime.
+docker create --name "$CONTAINER" "$IMAGE" >/dev/null
+found_cxx=0
+for triplet in x86_64-linux-gnu aarch64-linux-gnu; do
+  if docker cp "$CONTAINER:/usr/lib/$triplet/libstdc++.so.6" "$WORKDIR_TMP/" >/dev/null 2>&1 &&
+     docker cp "$CONTAINER:/lib/$triplet/libgcc_s.so.1" "$WORKDIR_TMP/" >/dev/null 2>&1; then
+    found_cxx=1
+    pass "libstdc++.so.6 and libgcc_s.so.1 are present ($triplet)"
+    break
+  fi
+done
+[ "$found_cxx" = "1" ] || fail "libstdc++.so.6 / libgcc_s.so.1 missing -- JNI natives will not load"
+docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+# Runs bootstrap/openmetadata-ops.sh exactly the way compose and the helm chart
+# do -- through the shell entrypoint -- so this covers the launch script, the
+# classpath it assembles from libs/, and the jlink module set in one shot. It
+# cannot reach a database and is expected to fail on that; what matters is that
+# it does not fail on a missing module or an unresolvable class.
+ops="$(docker run --rm "$IMAGE" \
+  /opt/openmetadata/bootstrap/openmetadata-ops.sh --help 2>&1 || true)"
+if echo "$ops" | grep -qE 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found'; then
+  echo "$ops" | grep -E 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found' | head -5
+  fail "openmetadata-ops.sh hit a class-loading or module error -- the jlink module set is short"
+else
+  pass "openmetadata-ops.sh runs through the shell and resolves every class it needs"
+fi
+
+# -Xlog:gc writes here on every startup, and so do the logback file appenders in
+# conf/openmetadata.yaml. There is no mkdir in the image, so the directory has to
+# arrive already created and already owned by 65532.
+docker run --name "$CONTAINER" --entrypoint /opt/java/openjdk/bin/java "$IMAGE" \
+  -Xlog:gc:file=/opt/openmetadata/logs/smoke-gc.log -version >/dev/null 2>&1 || true
+if docker cp "$CONTAINER:/opt/openmetadata/logs/smoke-gc.log" "$WORKDIR_TMP/gc.log" >/dev/null 2>&1 &&
+   [ -s "$WORKDIR_TMP/gc.log" ]; then
+  pass "/opt/openmetadata/logs is writable by uid 65532"
+else
+  fail "/opt/openmetadata/logs is not writable by uid 65532 -- logging will fail at startup"
+fi
+docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+# Runs the declared HEALTHCHECK verbatim rather than an approximation of it. The
+# probe inherits JDK_JAVA_OPTIONS, so a probe flag that contradicts the server
+# tuning -- two garbage collectors selected, a heap floor above its ceiling --
+# stops the probe JVM before main() and the container never leaves "starting",
+# while the server behind it is perfectly healthy.
+hc=()
+while IFS= read -r arg; do
+  [ -n "$arg" ] && hc+=("$arg")
+done < <(docker image inspect "$IMAGE" --format '{{range .Config.Healthcheck.Test}}{{.}}{{"\n"}}{{end}}')
+# hc[0] is the CMD / CMD-SHELL keyword; the executable and its arguments follow.
+probe="$(docker run --rm --entrypoint "${hc[1]}" "$IMAGE" "${hc[@]:2}" 2>&1 || true)"
+# Exit 1 with no stack trace is the probe's healthy-path answer for "nothing is
+# listening yet"; anything the JVM calls an error means the probe itself is broken.
+if echo "$probe" | grep -qE 'Exception|Error occurred|Error:'; then
+  fail "the declared HEALTHCHECK cannot run: $(echo "$probe" | grep -E 'Exception|Error occurred|Error:' | head -1)"
+else
+  pass "the declared HEALTHCHECK runs and reports unhealthy with no server behind it"
+fi
+
+echo
+if [ "$failures" -ne 0 ]; then
+  echo "==> $failures assertion(s) failed for $IMAGE"
+  exit 1
+fi
+
+echo "==> All smoke assertions passed for $IMAGE"
