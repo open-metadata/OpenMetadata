@@ -25,17 +25,13 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import WorksheetDetails from '../../components/DriveService/Worksheet/WorksheetDetails';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Worksheet } from '../../generated/entity/data/worksheet';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDriveAssetFollower,
@@ -47,10 +43,6 @@ import {
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -61,21 +53,43 @@ const WorksheetDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: decodedWorksheetFQN } = useFqn();
   const [worksheetDetails, setWorksheetDetails] = useState<Worksheet>(
     {} as Worksheet
   );
-  const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
+  // {@code resolvedEntityFqn} is the FQN we've committed to fetching permissions and entity
+  // data against. When a deep link points at a column (service.worksheet.column), the
+  // initial lookup 404s and we walk up to the parent worksheet; this stores the parent we
+  // ultimately landed on — mirrors ContainerPage.tsx's identically-named, identically-used
+  // state.
   const [resolvedEntityFqn, setResolvedEntityFqn] = useState<string>('');
   const [activeColumnFqn, setActiveColumnFqn] = useState<string | undefined>(
     undefined
   );
+  // Entity-fetch loading only — permission-fetch loading comes from the hook below. Combined
+  // at the render gate as `!resolvedEntityFqn || isPermissionsLoading || (canViewBasic &&
+  // isEntityLoading)`; see SpreadsheetDetailsPage.tsx's analogous comment for why the
+  // `canViewBasic` guard matters. The extra `!resolvedEntityFqn` clause covers the one frame
+  // before the seeding effect below has run (this page has no independent loading source
+  // like useCustomPages to cover that gap, unlike ContainerPage.tsx).
+  const [isEntityLoading, setEntityLoading] = useState<boolean>(true);
 
-  const [worksheetPermissions, setWorksheetPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // Single useEntityPermissions call, keyed on resolvedEntityFqn (not the raw URL
+  // decodedWorksheetFQN) — mirrors ContainerPage.tsx's identifier choice: a column deep-link
+  // resolves to its parent worksheet's FQN via the fallback effects below, and permissions
+  // must be re-derived for that resolved FQN, not the original URL segment. No `deleted`
+  // option: this page never derives a `deleted`-gated canEdit* flag of its own —
+  // WorksheetDetails (the child) owns the raw worksheetPermissions prop and derives its own
+  // edit-tier flags against its own `deleted` (sourced from worksheetDetails.deleted).
+  const {
+    permissions: worksheetPermissions, // WorksheetDetails consumes the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.WORKSHEET, resolvedEntityFqn);
 
   const { id: worksheetId, version: currentVersion } = worksheetDetails;
 
@@ -109,7 +123,7 @@ const WorksheetDetailsPage = () => {
   };
 
   const fetchWorksheetDetails = async (worksheetFQN: string) => {
-    setLoading(true);
+    setEntityLoading(true);
     try {
       const res = await getDriveAssetByFqn<Worksheet>(
         worksheetFQN,
@@ -129,11 +143,31 @@ const WorksheetDetailsPage = () => {
         id: id,
       });
     } catch (error) {
-      // Re-throw 404 to be handled by the caller (permission fetcher fallback)
-      if ((error as AxiosError).response?.status === 404) {
-        throw error;
-      }
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+      const status = (error as AxiosError)?.response?.status;
+      if (status === ClientErrors.NOT_FOUND) {
+        // Column-deep-link fallback: `worksheetFQN` (== resolvedEntityFqn at call time) did
+        // not resolve to an actual worksheet — likely a column FQN, since the drive-asset
+        // endpoint doesn't resolve columns. Walk up to the parent worksheet and re-resolve;
+        // setting resolvedEntityFqn also re-triggers permission fetching for the new
+        // identifier via useEntityPermissions (a different query key). Mirrors
+        // ContainerPage.tsx's analogous containerError-driven fallback. Old code reached
+        // this same walk-up by re-throwing to fetchResourcePermission's catch (now removed
+        // — permission fetching is decoupled, so the walk-up lives here instead).
+        const parentParts = Fqn.split(worksheetFQN).slice(0, -1);
+        if (parentParts.length > 0) {
+          setActiveColumnFqn(worksheetFQN);
+          setResolvedEntityFqn(Fqn.build(...parentParts));
+        } else {
+          // No parent to fall back to — genuinely not found. Old code's terminal branch
+          // (shared between permission-fetch and entity-fetch 404s, via the re-throw) showed
+          // this exact permission-fetch-error toast regardless of which fetch actually
+          // failed; preserved verbatim rather than switching to the entity-fetch toast text.
+          showErrorToast(
+            t('server.fetch-entity-permissions-error', { entity: worksheetFQN })
+          );
+          setIsError(true);
+        }
+      } else if (status === ClientErrors.FORBIDDEN) {
         navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
@@ -143,65 +177,50 @@ const WorksheetDetailsPage = () => {
             entityName: worksheetFQN,
           })
         );
+        setIsError(true);
       }
-      setIsError(true);
     } finally {
-      setLoading(false);
+      setEntityLoading(false);
     }
   };
 
-  const fetchResourcePermission = async (
-    entityFqn: string,
-    isFallback = false
-  ) => {
-    setLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.WORKSHEET,
-        entityFqn
-      );
-
-      setWorksheetPermissions(permissions);
-
-      const viewBasicPermission = getPrioritizedViewPermission(
-        permissions,
-        PermissionOperation.ViewBasic
-      );
-
-      if (viewBasicPermission) {
-        await fetchWorksheetDetails(entityFqn);
-      } else {
-        setLoading(false);
-      }
-
-      setResolvedEntityFqn(entityFqn);
-
-      // If we successfully resolved using fallback, the remainder is the column
-      if (isFallback) {
-        setActiveColumnFqn(decodedWorksheetFQN);
-      } else {
-        setActiveColumnFqn(undefined);
-      }
-    } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
-        const parentParts = Fqn.split(entityFqn).slice(0, -1);
-        if (parentParts.length > 0) {
-          const parentFqn = Fqn.build(...parentParts);
-          await fetchResourcePermission(parentFqn, true);
-
-          return;
-        }
-      }
-
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-      setIsError(true);
-      setLoading(false);
+  // Counterpart to fetchWorksheetDetails's 404 fallback above, for the case where the
+  // permission lookup itself 404s rather than silently returning an empty permission object.
+  // Same walk-up-to-parent shape, driven by the hook's `error` instead of the entity fetch's
+  // own catch. Mirrors ContainerPage.tsx's analogous permissionsError effect.
+  useEffect(() => {
+    if (!permissionsError) {
+      return;
     }
-  };
+    const status = (permissionsError as AxiosError | undefined)?.response
+      ?.status;
+    if (
+      status === ClientErrors.NOT_FOUND &&
+      !activeColumnFqn &&
+      resolvedEntityFqn === decodedWorksheetFQN
+    ) {
+      const parentParts = Fqn.split(resolvedEntityFqn).slice(0, -1);
+      if (parentParts.length > 0) {
+        setActiveColumnFqn(resolvedEntityFqn);
+        setResolvedEntityFqn(Fqn.build(...parentParts));
+
+        return;
+      }
+    }
+    showErrorToast(
+      t('server.fetch-entity-permissions-error', { entity: resolvedEntityFqn })
+    );
+    setIsError(true);
+  }, [permissionsError, activeColumnFqn, resolvedEntityFqn, decodedWorksheetFQN]);
+
+  // Entity-fetch trigger — the counterpart to fetchWorksheetDetails above. Only fetches once
+  // view permission for resolvedEntityFqn is confirmed granted; see
+  // SpreadsheetDetailsPage.tsx's analogous effect.
+  useEffect(() => {
+    if (canViewBasic) {
+      fetchWorksheetDetails(resolvedEntityFqn);
+    }
+  }, [canViewBasic, resolvedEntityFqn]);
 
   const followWorksheet = async () => {
     try {
@@ -305,6 +324,12 @@ const WorksheetDetailsPage = () => {
     []
   );
 
+  // Seeds resolvedEntityFqn on mount / URL FQN change (and, via the fallback effects above,
+  // is walked up to a parent on a column deep-link's 404). Permission fetching itself now
+  // lives in useEntityPermissions — this effect's only job is to commit the FQN that hook
+  // and fetchWorksheetDetails both key off. Mirrors ContainerPage.tsx's analogous top-level
+  // effect (unchanged in shape from the old fetchResourcePermission(decodedWorksheetFQN)
+  // call this replaces).
   useEffect(() => {
     if (
       resolvedEntityFqn &&
@@ -320,10 +345,15 @@ const WorksheetDetailsPage = () => {
       return;
     }
 
-    fetchResourcePermission(decodedWorksheetFQN);
+    setActiveColumnFqn(undefined);
+    setResolvedEntityFqn(decodedWorksheetFQN);
   }, [decodedWorksheetFQN, resolvedEntityFqn]);
 
-  if (isLoading) {
+  if (
+    !resolvedEntityFqn ||
+    isPermissionsLoading ||
+    (canViewBasic && isEntityLoading)
+  ) {
     return <PageLoader />;
   }
   if (isError) {
@@ -333,7 +363,7 @@ const WorksheetDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!worksheetPermissions.ViewAll && !worksheetPermissions.ViewBasic) {
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
