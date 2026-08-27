@@ -1,0 +1,2531 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenMetadataApplicationConfig",
+  "description": "OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we require.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.OpenMetadataAppConfig",
+  "type": "object",
+  "properties": {
+    "workflowConfig": {
+      "description": "General Workflow configuration, such as the OpenMetadata server connection and logging level",
+      "type": "object",
+      "properties": {
+        "loggerLevel": {
+          "default": "INFO",
+          "description": "Supported logging levels",
+          "javaType": "org.openmetadata.schema.metadataIngestion.LogLevels",
+          "type": "string",
+          "enum": [
+            "DEBUG",
+            "INFO",
+            "WARN",
+            "ERROR"
+          ]
+        },
+        "raiseOnError": {
+          "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+          "type": "boolean",
+          "default": true
+        },
+        "successThreshold": {
+          "title": "Success Threshold",
+          "description": "The percentage of successfully processed records that must be achieved for the pipeline to be considered successful. Otherwise, the pipeline will be marked as failed.",
+          "type": "integer",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 100
+        },
+        "openMetadataServerConfig": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "OpenMetadataConnection",
+          "description": "OpenMetadata Connection Config",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection",
+          "definitions": {
+            "openmetadataType": {
+              "description": "OpenMetadata service type",
+              "type": "string",
+              "enum": [
+                "OpenMetadata"
+              ],
+              "default": "OpenMetadata"
+            },
+            "extraHeaders": {
+              "description": "Additional headers to be sent to the API endpoint.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "authProvider": {
+              "javaType": "org.openmetadata.schema.services.connections.metadata.AuthProvider",
+              "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
+              "type": "string",
+              "enum": [
+                "basic",
+                "azure",
+                "google",
+                "okta",
+                "auth0",
+                "aws-cognito",
+                "custom-oidc",
+                "ldap",
+                "saml",
+                "openmetadata"
+              ],
+              "default": "basic"
+            }
+          },
+          "properties": {
+            "clusterName": {
+              "description": "Cluster name to differentiate OpenMetadata Server instance",
+              "type": "string",
+              "default": "openmetadata"
+            },
+            "type": {
+              "description": "Service Type",
+              "$ref": "#/properties/workflowConfig/properties/openMetadataServerConfig/definitions/openmetadataType",
+              "default": "OpenMetadata"
+            },
+            "hostPort": {
+              "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
+              "type": "string",
+              "default": "http://localhost:8585/api"
+            },
+            "authProvider": {
+              "description": "OpenMetadata Server Authentication Provider.",
+              "$ref": "#/properties/workflowConfig/properties/openMetadataServerConfig/definitions/authProvider"
+            },
+            "verifySSL": {
+              "description": "Flag to verify SSL Certificate for OpenMetadata Server.",
+              "default": "no-ssl",
+              "title": "Verify SSL",
+              "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+              "type": "string",
+              "enum": [
+                "no-ssl",
+                "ignore",
+                "validate"
+              ]
+            },
+            "sslConfig": {
+              "description": "SSL Configuration for OpenMetadata Server",
+              "title": "SSL Config",
+              "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+              "mask": true,
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Validate SSL Client Config",
+                  "description": "OpenMetadata Client configured to validate SSL certificates.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                  "additionalProperties": false,
+                  "properties": {
+                    "caCertificate": {
+                      "title": "CA Certificate",
+                      "description": "The CA certificate used for SSL validation.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslCertificate": {
+                      "title": "SSL Certificate",
+                      "description": "The SSL certificate used for client authentication.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslKey": {
+                      "title": "SSL Key",
+                      "description": "The private key associated with the SSL certificate.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    }
+                  }
+                }
+              ]
+            },
+            "securityConfig": {
+              "mask": true,
+              "description": "OpenMetadata Client security configuration.",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "openMetadataJWTClientConfig",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
+              "properties": {
+                "jwtToken": {
+                  "description": "OpenMetadata generated JWT token.",
+                  "type": "string",
+                  "format": "password"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "jwtToken"
+              ]
+            },
+            "secretsManagerProvider": {
+              "description": "Secrets Manager Provider for OpenMetadata Server.",
+              "default": "db",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "Secrets Manager Provider",
+              "type": "string",
+              "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
+              "enum": [
+                "db",
+                "managed-aws",
+                "aws",
+                "managed-aws-ssm",
+                "aws-ssm",
+                "managed-azure-kv",
+                "azure-kv",
+                "in-memory",
+                "gcp",
+                "kubernetes"
+              ],
+              "additionalProperties": false
+            },
+            "secretsManagerLoader": {
+              "description": "Secrets Manager Loader for the Pipeline Service Client.",
+              "default": "noop",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "Secrets Manager Client Loader",
+              "type": "string",
+              "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",
+              "enum": [
+                "noop",
+                "airflow",
+                "env"
+              ],
+              "additionalProperties": false
+            },
+            "apiVersion": {
+              "description": "OpenMetadata server API version to use.",
+              "type": "string",
+              "default": "v1"
+            },
+            "includeTopics": {
+              "description": "Include Topics for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeTables": {
+              "description": "Include Tables for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeDashboards": {
+              "description": "Include Dashboards for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includePipelines": {
+              "description": "Include Pipelines for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeMlModels": {
+              "description": "Include MlModels for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeUsers": {
+              "description": "Include Users for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeTeams": {
+              "description": "Include Teams for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeGlossaryTerms": {
+              "description": "Include Glossary Terms for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includeTags": {
+              "description": "Include Tags for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includePolicy": {
+              "description": "Include Tags for Policy",
+              "type": "boolean",
+              "default": true
+            },
+            "includeMessagingServices": {
+              "description": "Include Messaging Services for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "enableVersionValidation": {
+              "description": "Validate Openmetadata Server & Client Version.",
+              "type": "boolean",
+              "default": true
+            },
+            "includeDatabaseServices": {
+              "description": "Include Database Services for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "includePipelineServices": {
+              "description": "Include Pipeline Services for Indexing",
+              "type": "boolean",
+              "default": true
+            },
+            "limitRecords": {
+              "description": "Limit the number of records for Indexing.",
+              "type": "integer",
+              "default": 1000
+            },
+            "forceEntityOverwriting": {
+              "description": "Force the overwriting of any entity during the ingestion.",
+              "type": "boolean",
+              "default": false
+            },
+            "storeServiceConnection": {
+              "description": "If set to true, when creating a service during the ingestion we will store its Service Connection. Otherwise, the ingestion will create a bare service without connection details.",
+              "type": "boolean",
+              "default": true
+            },
+            "elasticsSearch": {
+              "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "description": "Type of sink component ex: metadata",
+                  "type": "string"
+                },
+                "config": {
+                  "$ref": "#/properties/workflowConfig/properties/config"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ]
+            },
+            "schemaFilterPattern": {
+              "title": "Default Schema Filter Pattern",
+              "description": "Regex to only include/exclude schemas that matches the pattern.",
+              "$ref": "#/properties/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+            },
+            "tableFilterPattern": {
+              "title": "Default Table Filter Pattern",
+              "description": "Regex to only include/exclude tables that matches the pattern.",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+              "properties": {
+                "includes": {
+                  "description": "List of strings/regex patterns to match and include only database entities that match.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "excludes": {
+                  "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "databaseFilterPattern": {
+              "title": "Default Database Filter Pattern",
+              "description": "Regex to only include/exclude databases that matches the pattern.",
+              "$ref": "#/properties/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+            },
+            "supportsDataInsightExtraction": {
+              "description": "Flag to enable Data Insight Extraction",
+              "type": "boolean",
+              "default": true
+            },
+            "supportsElasticSearchReindexingExtraction": {
+              "description": "Flag to enable ElasticSearch Reindexing Extraction",
+              "type": "boolean",
+              "default": true
+            },
+            "extraHeaders": {
+              "title": "Extra Headers",
+              "$ref": "#/properties/workflowConfig/properties/openMetadataServerConfig/definitions/extraHeaders"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "hostPort"
+          ]
+        },
+        "config": {
+          "description": "key/value pairs to pass to workflow component.",
+          "type": "object",
+          "additionalProperties": {
+            ".{1,}": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "openMetadataServerConfig"
+      ]
+    },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
+    "appConfig": {
+      "description": "External Application configuration",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "CollateAIAppConfig",
+          "description": "Configuration for the CollateAI External Application.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.entity.app.external.CollateAIAppConfig",
+          "definitions": {
+            "collateAIAppType": {
+              "description": "Application type.",
+              "type": "string",
+              "enum": [
+                "CollateAI"
+              ],
+              "default": "CollateAI"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/0/definitions/collateAIAppType",
+              "default": "CollateAI"
+            },
+            "filter": {
+              "title": "Filter",
+              "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domains.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+              "type": "string"
+            },
+            "patchIfEmpty": {
+              "title": "Patch Description If Empty",
+              "description": "Patch the description if it is empty, instead of raising a suggestion",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "filter"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "AutomatorAppConfig",
+          "description": "Configuration for the Automator External Application.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.entity.app.external.AutomatorAppConfig",
+          "definitions": {
+            "automatorAppType": {
+              "description": "Application type.",
+              "type": "string",
+              "enum": [
+                "Automator"
+              ],
+              "default": "Automator"
+            },
+            "resource": {
+              "description": "Entities selected to run the automation.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "description": "Type of the entity. E.g., 'table', 'chart',...",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "queryFilter": {
+                  "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domains.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+                  "type": "string"
+                },
+                "filterJsonTree": {
+                  "description": "Filter JSON tree to be used for rendering the filters in the UI. This comes from Immutable Tree type of react-awesome-query-builder.",
+                  "type": "string"
+                }
+              }
+            },
+            "action": {
+              "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddTagsAction",
+                  "description": "Apply Classification Tags to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addTagsActionType": {
+                      "description": "Add Tags action type.",
+                      "type": "string",
+                      "enum": [
+                        "AddTagsAction"
+                      ],
+                      "default": "AddTagsAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/definitions/addTagsActionType",
+                      "default": "AddTagsAction"
+                    },
+                    "tags": {
+                      "description": "Classification Tags to apply (source must be 'Classification')",
+                      "type": "array",
+                      "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "title": "TagLabel",
+                        "description": "This schema defines the type for labeling an entity with a Tag.",
+                        "type": "object",
+                        "javaType": "org.openmetadata.schema.type.TagLabel",
+                        "definitions": {
+                          "tagFQN": {
+                            "type": "string"
+                          },
+                          "TagSource": {
+                            "type": "string",
+                            "default": "Classification",
+                            "enum": [
+                              "Classification",
+                              "Glossary"
+                            ]
+                          }
+                        },
+                        "properties": {
+                          "tagFQN": {
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/definitions/tagFQN"
+                          },
+                          "name": {
+                            "description": "Name of the tag or glossary term.",
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "description": "Display Name that identifies this tag.",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Description for the tag label.",
+                            "$comment": "@om-field-type",
+                            "type": "string"
+                          },
+                          "style": {
+                            "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
+                            "type": "object",
+                            "javaType": "org.openmetadata.schema.entity.type.Style",
+                            "properties": {
+                              "color": {
+                                "description": "Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.",
+                                "type": "string"
+                              },
+                              "iconURL": {
+                                "description": "An icon to associate with GlossaryTerm, Tag, Domain or Data Product.",
+                                "type": "string",
+                                "format": "url"
+                              },
+                              "coverImage": {
+                                "description": "Cover image configuration for the entity.",
+                                "type": "object",
+                                "javaType": "org.openmetadata.schema.entity.type.CoverImage",
+                                "properties": {
+                                  "url": {
+                                    "description": "URL of the cover image.",
+                                    "type": "string",
+                                    "format": "url"
+                                  },
+                                  "position": {
+                                    "description": "Position of the cover image in CSS background-position format. Supports keywords (top, center, bottom) or pixel values (e.g., '20px 30px').",
+                                    "type": "string"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "source": {
+                            "description": "Label is from Tags or Glossary.",
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/definitions/TagSource"
+                          },
+                          "labelType": {
+                            "description": "Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see Classification.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.",
+                            "type": "string",
+                            "enum": [
+                              "Manual",
+                              "Propagated",
+                              "Automated",
+                              "Derived",
+                              "Generated"
+                            ],
+                            "default": "Manual"
+                          },
+                          "state": {
+                            "description": "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.",
+                            "type": "string",
+                            "enum": [
+                              "Suggested",
+                              "Confirmed"
+                            ],
+                            "default": "Confirmed"
+                          },
+                          "href": {
+                            "description": "Link to the tag resource.",
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "description": "An explanation of why this tag was proposed, specially for autoclassification tags"
+                          },
+                          "appliedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Timestamp when this tag was applied in ISO 8601 format"
+                          },
+                          "appliedBy": {
+                            "type": "string",
+                            "description": "Who it is that applied this tag (e.g: a bot, AI or a human)"
+                          },
+                          "metadata": {
+                            "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "title": "TagLabelMetadata",
+                            "type": "object",
+                            "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
+                            "properties": {
+                              "recognizer": {
+                                "description": "Metadata about the recognizer that automatically applied this tag",
+                                "$schema": "http://json-schema.org/draft-07/schema#",
+                                "title": "TagLabelRecognizerMetadata",
+                                "type": "object",
+                                "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
+                                "properties": {
+                                  "recognizerId": {
+                                    "description": "Unique identifier of the recognizer that applied this tag",
+                                    "$ref": "#/properties/pipelineRunId"
+                                  },
+                                  "recognizerName": {
+                                    "description": "Human-readable name of the recognizer",
+                                    "type": "string"
+                                  },
+                                  "score": {
+                                    "description": "Confidence score assigned by the recognizer (0.0 to 1.0)",
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "target": {
+                                    "description": "What the recognizer analyzed to apply this tag",
+                                    "type": "string",
+                                    "enum": [
+                                      "content",
+                                      "column_name"
+                                    ]
+                                  },
+                                  "patterns": {
+                                    "description": "Details of patterns that matched during recognition",
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/properties/metadata/properties/recognizer/definitions/patternMatch"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "recognizerId",
+                                  "recognizerName",
+                                  "score"
+                                ],
+                                "additionalProperties": false,
+                                "definitions": {
+                                  "patternMatch": {
+                                    "type": "object",
+                                    "description": "Information about a pattern that matched during recognition",
+                                    "properties": {
+                                      "name": {
+                                        "description": "Name of the pattern that matched",
+                                        "type": "string"
+                                      },
+                                      "regex": {
+                                        "description": "Regular expression or pattern definition",
+                                        "type": "string"
+                                      },
+                                      "score": {
+                                        "description": "Confidence score for this specific pattern match",
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "score"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "expiryDate": {
+                                "description": "Epoch time in milliseconds when the certification tag expires",
+                                "type": "integer",
+                                "format": "utc-millisec"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "tagFQN",
+                          "source",
+                          "labelType",
+                          "state"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Apply tags to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
+                      "type": "array",
+                      "items": {
+                        "description": "Name that identifies an entity.",
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
+                      },
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update tags even if they are already defined in the asset. By default, incoming tags are merged with the existing ones.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "tags"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveTagsAction",
+                  "description": "Remove Classification Tags Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeTagsActionType": {
+                      "description": "Remove Classification Tags Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "RemoveTagsAction"
+                      ],
+                      "default": "RemoveTagsAction"
+                    },
+                    "labelType": {
+                      "description": "Remove tags by its label type",
+                      "type": "string",
+                      "enum": [
+                        "Manual",
+                        "Propagated",
+                        "Automated"
+                      ]
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/1/definitions/removeTagsActionType",
+                      "default": "AddTagsAction"
+                    },
+                    "tags": {
+                      "description": "Classification Tags to remove (source must be 'Classification')",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items"
+                      }
+                    },
+                    "labels": {
+                      "description": "Remove tags by its label type",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/1/definitions/labelType"
+                      },
+                      "default": null
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Remove tags from the children of the selected assets. E.g., columns, tasks, topic fields,...",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "applyToAll": {
+                      "title": "Apply to All",
+                      "description": "Remove tags from all the children and parent of the selected assets.",
+                      "type": "boolean",
+                      "default": null
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddTermsAction",
+                  "description": "Apply Glossary Terms to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addTermsActionType": {
+                      "description": "Add Terms action type.",
+                      "type": "string",
+                      "enum": [
+                        "AddTermsAction"
+                      ],
+                      "default": "AddTermsAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/2/definitions/addTermsActionType",
+                      "default": "AddTermsAction"
+                    },
+                    "terms": {
+                      "description": "Glossary Terms to apply",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items"
+                      }
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Apply terms to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update terms even if they are already defined in the asset. By default, incoming terms are merged with the existing ones.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "terms"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveTermsAction",
+                  "description": "Remove Glossary Terms Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeTermsActionType": {
+                      "description": "Remove Terms Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "RemoveTermsAction"
+                      ],
+                      "default": "RemoveTermsAction"
+                    },
+                    "labelType": {
+                      "description": "Remove terms by its label type",
+                      "type": "string",
+                      "enum": [
+                        "Manual",
+                        "Propagated",
+                        "Automated"
+                      ]
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/3/definitions/removeTermsActionType",
+                      "default": "RemoveTermsAction"
+                    },
+                    "terms": {
+                      "description": "Glossary Terms to remove",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items"
+                      }
+                    },
+                    "labels": {
+                      "description": "Remove terms by its label type",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/3/definitions/labelType"
+                      },
+                      "default": null
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Remove terms from the children of the selected assets. E.g., columns, tasks, topic fields,...",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "applyToAll": {
+                      "title": "Apply to All",
+                      "description": "Remove terms from all the children and parent of the selected assets.",
+                      "type": "boolean",
+                      "default": null
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddDomainAction",
+                  "description": "Add domains to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addDomainActionType": {
+                      "description": "Add Domain Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddDomainAction"
+                      ],
+                      "default": "AddDomainAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/4/definitions/addDomainActionType",
+                      "default": "AddDomainAction"
+                    },
+                    "domains": {
+                      "description": "Domains to apply",
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "Entity Reference List",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/16/properties/dataProducts/items"
+                      },
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the domains even if they are defined in the asset. By default, we will only apply the domains to assets without domains.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "domains"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveDomainAction",
+                  "description": "Remove domains from the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "removeDomainActionType": {
+                      "description": "Remove Domain Action Type",
+                      "type": "string",
+                      "enum": [
+                        "RemoveDomainAction"
+                      ],
+                      "default": "RemoveDomainAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/5/definitions/removeDomainActionType",
+                      "default": "RemoveDomainAction"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddDescriptionAction",
+                  "description": "Apply Tags to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addDescriptionActionType": {
+                      "description": "Add Description Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddDescriptionAction"
+                      ],
+                      "default": "AddDescriptionAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/6/definitions/addDescriptionActionType",
+                      "default": "AddDescriptionAction"
+                    },
+                    "description": {
+                      "description": "Description to apply",
+                      "type": "string"
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Apply the description to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the description even if they are already defined in the asset. By default, we'll only add the descriptions to assets without the description set.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "description"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddCustomPropertiesAction",
+                  "description": "Add a Custom Property to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "AddCustomPropertiesActionType": {
+                      "description": "Add Custom Properties Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddCustomPropertiesAction"
+                      ],
+                      "default": "AddCustomPropertiesAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/7/definitions/AddCustomPropertiesActionType",
+                      "default": "AddCustomPropertiesAction"
+                    },
+                    "customProperties": {
+                      "description": "Owners to apply",
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the Custom Property even if it is defined in the asset. By default, we will only apply the owners to assets without the given Custom Property informed.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "customProperties"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveDescriptionAction",
+                  "description": "Remove Owner Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeDescriptionActionType": {
+                      "description": "Remove Description Action Type",
+                      "type": "string",
+                      "enum": [
+                        "RemoveDescriptionAction"
+                      ],
+                      "default": "RemoveDescriptionAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/8/definitions/removeDescriptionActionType",
+                      "default": "RemoveDescriptionAction"
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic fields,...",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "applyToAll": {
+                      "title": "Apply to All",
+                      "description": "Remove descriptions from all the children and parent of the selected assets.",
+                      "type": "boolean",
+                      "default": null
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddTierAction",
+                  "description": "Add an owner to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addTierActionType": {
+                      "description": "Add Tier Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddTierAction"
+                      ],
+                      "default": "AddTierAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/definitions/addTierActionType",
+                      "default": "AddTierAction"
+                    },
+                    "tier": {
+                      "description": "tier to apply",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items"
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the tier even if it is defined in the asset. By default, we will only apply the tier to assets without tier.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "tier"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveTierAction",
+                  "description": "Remove Owner Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeTierActionType": {
+                      "description": "Remove Tier Action Type",
+                      "type": "string",
+                      "enum": [
+                        "RemoveTierAction"
+                      ],
+                      "default": "RemoveTierAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/10/definitions/removeTierActionType",
+                      "default": "RemoveTierAction"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddTestCaseAction",
+                  "description": "Add Test Cases to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addTestCaseActionType": {
+                      "description": "Add Test Case Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddTestCaseAction"
+                      ],
+                      "default": "AddTestCaseAction"
+                    },
+                    "testCaseDefinitions": {
+                      "description": "Minimum set of requirements to get a Test Case request ready",
+                      "type": "object",
+                      "properties": {
+                        "testDefinition": {
+                          "description": "Fully qualified name of the test definition.",
+                          "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/12/properties/testCaseDefinitions/items"
+                        },
+                        "parameterValues": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "javaType": "org.openmetadata.schema.tests.TestCaseParameterValue",
+                            "description": "This schema defines the parameter values that can be passed for a Test Case.",
+                            "properties": {
+                              "name": {
+                                "description": "name of the parameter. Must match the parameter names in testCaseParameterDefinition",
+                                "type": "string"
+                              },
+                              "value": {
+                                "description": "value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.",
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "computePassedFailedRowCount": {
+                          "description": "Compute the passed and failed row count for the test case.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "useDynamicAssertion": {
+                          "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "tags": {
+                          "description": "Tags to apply",
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items"
+                          },
+                          "default": []
+                        }
+                      }
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/11/definitions/addTestCaseActionType",
+                      "default": "AddTestCaseAction"
+                    },
+                    "testCases": {
+                      "description": "Test Cases to apply",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/11/definitions/testCaseDefinitions"
+                      }
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Add tests to the selected table columns",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the test even if it is defined in the asset. By default, we will only apply the test to assets without the existing test already existing.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "testCases"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveTestCaseAction",
+                  "description": "Remove Test Cases Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeTestCaseActionType": {
+                      "description": "Remove Test Case Action Type",
+                      "type": "string",
+                      "enum": [
+                        "RemoveTestCaseAction"
+                      ],
+                      "default": "RemoveTestCaseAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/12/definitions/removeTestCaseActionType",
+                      "default": "RemoveTestCaseAction"
+                    },
+                    "testCaseDefinitions": {
+                      "description": "Test Cases to remove",
+                      "type": "array",
+                      "items": {
+                        "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 3072
+                      }
+                    },
+                    "applyToChildren": {
+                      "title": "Apply to Children",
+                      "description": "Remove tests to the selected table columns",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/applyToChildren/items"
+                      },
+                      "default": null
+                    },
+                    "removeAll": {
+                      "title": "Remove All",
+                      "description": "Remove all test cases",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddOwnerAction",
+                  "description": "Add owners to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "addOwnerActionType": {
+                      "description": "Add Owner Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddOwnerAction"
+                      ],
+                      "default": "AddOwnerAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/13/definitions/addOwnerActionType",
+                      "default": "AddOwnerAction"
+                    },
+                    "owners": {
+                      "description": "Owners to apply",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/4/properties/domains",
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the owners even if it is defined in the asset. By default, we will only apply the owners to assets without owner.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "owners"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveOwnerAction",
+                  "description": "Remove Owner Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeOwnerActionType": {
+                      "description": "Remove Owner Action Type",
+                      "type": "string",
+                      "enum": [
+                        "RemoveOwnerAction"
+                      ],
+                      "default": "RemoveOwnerAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/14/definitions/removeOwnerActionType",
+                      "default": "RemoveOwnerAction"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveCustomPropertiesAction",
+                  "description": "Remove Custom Properties Action Type",
+                  "type": "object",
+                  "definitions": {
+                    "removeCustomPropertiesActionType": {
+                      "description": "Remove Custom Properties Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "RemoveCustomPropertiesAction"
+                      ],
+                      "default": "RemoveCustomPropertiesAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/15/definitions/removeCustomPropertiesActionType",
+                      "default": "removeCustomPropertiesActionType"
+                    },
+                    "customProperties": {
+                      "description": "Custom Properties keys to remove",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "customProperties"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "AddDataProductAction",
+                  "description": "Add a Data Product to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "AddDataProductActionType": {
+                      "description": "Add Data Products Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "AddDataProductAction"
+                      ],
+                      "default": "AddDataProductAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/16/definitions/AddDataProductActionType",
+                      "default": "AddDataProductAction"
+                    },
+                    "dataProducts": {
+                      "description": "Data Products to apply",
+                      "type": "array",
+                      "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "title": "Entity Reference",
+                        "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
+                        "type": "object",
+                        "javaType": "org.openmetadata.schema.type.EntityReference",
+                        "properties": {
+                          "id": {
+                            "description": "Unique identifier that identifies an entity instance.",
+                            "$ref": "#/properties/pipelineRunId"
+                          },
+                          "type": {
+                            "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "Name of the entity instance.",
+                            "type": "string"
+                          },
+                          "fullyQualifiedName": {
+                            "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Optional description of entity.",
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/description"
+                          },
+                          "displayName": {
+                            "description": "Display Name that identifies this entity.",
+                            "type": "string"
+                          },
+                          "deleted": {
+                            "description": "If true the entity referred to has been soft-deleted.",
+                            "type": "boolean"
+                          },
+                          "inherited": {
+                            "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+                            "type": "boolean"
+                          },
+                          "href": {
+                            "description": "Link to the entity resource.",
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/href"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "default": null
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update the Data Product even if the asset belongs to a different Domain. By default, we will only add the Data Product if the asset has no Domain, or it belongs to the same domain as the Data Product.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "dataProducts"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "RemoveDataProductAction",
+                  "description": "Remove a Data Product to the selected assets.",
+                  "type": "object",
+                  "definitions": {
+                    "RemoveDataProductActionType": {
+                      "description": "Remove Data Products Action Type.",
+                      "type": "string",
+                      "enum": [
+                        "RemoveDataProductAction"
+                      ],
+                      "default": "RemoveDataProductAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/17/definitions/RemoveDataProductActionType",
+                      "default": "RemoveDataProductAction"
+                    },
+                    "dataProducts": {
+                      "description": "Data Products to remove",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/16/properties/dataProducts/items"
+                      },
+                      "default": null
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "dataProducts"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "LineagePropagationAction",
+                  "description": "Propagate description, tags and glossary terms via lineage",
+                  "type": "object",
+                  "definitions": {
+                    "lineagePropagationActionType": {
+                      "description": "Lineage propagation action type.",
+                      "type": "string",
+                      "enum": [
+                        "LineagePropagationAction"
+                      ],
+                      "default": "LineagePropagationAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/18/definitions/lineagePropagationActionType",
+                      "default": "LineagePropagationAction"
+                    },
+                    "propagationFilterMode": {
+                      "title": "Propagation Filter Mode",
+                      "description": "Determines how the filter selects entities. 'SOURCE' (default): filtered entities push their metadata downstream to all discovered entities via lineage. 'TARGET': filtered entities receive metadata from upstream lineage.",
+                      "type": "string",
+                      "enum": [
+                        "TARGET",
+                        "SOURCE"
+                      ],
+                      "default": "SOURCE"
+                    },
+                    "propagateDescription": {
+                      "title": "Propagate Description",
+                      "description": "Propagate description through lineage",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "propagateTags": {
+                      "title": "Propagate Tags",
+                      "description": "Propagate tags through lineage",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "propagateGlossaryTerms": {
+                      "title": "Propagate Glossary Terms",
+                      "description": "Propagate glossary terms through lineage",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "propagateTier": {
+                      "title": "Propagate Tier",
+                      "description": "Propagate tier from the parent",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "propagateDomains": {
+                      "title": "Propagate Domains",
+                      "description": "Propagate domains from the parent through lineage",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "propagateOwner": {
+                      "title": "Propagate Owner",
+                      "description": "Propagate owner from the parent",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "propagateColumnLevel": {
+                      "title": "Propagate Column Level",
+                      "description": "Propagate the metadata to columns via column-level lineage.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "propagateParent": {
+                      "title": "Propagate Parent",
+                      "description": "Propagate the metadata to the parents (e.g., tables) via lineage.",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "overwriteMetadata": {
+                      "title": "Overwrite Metadata",
+                      "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "propagationDepth": {
+                      "title": "Propagation Depth",
+                      "description": "Number of levels to propagate lineage. If not set, it will propagate to all levels.",
+                      "type": "integer",
+                      "default": null
+                    },
+                    "propagationDepthMode": {
+                      "title": "Propagation Depth Mode",
+                      "description": "Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources with no parents). 'DATA_ASSET' calculates depth relative to each data asset being processed, ensuring each asset only receives metadata from nodes within the specified number of hops upstream.",
+                      "type": "string",
+                      "enum": [
+                        "ROOT",
+                        "DATA_ASSET"
+                      ],
+                      "default": "ROOT"
+                    },
+                    "propagationStopConfigs": {
+                      "title": "Propagation Stop Configurations",
+                      "description": "List of configurations to stop propagation based on conditions",
+                      "type": "array",
+                      "default": null,
+                      "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "title": "PropagationStopConfig",
+                        "description": "Configuration to stop lineage propagation based on conditions",
+                        "type": "object",
+                        "properties": {
+                          "metadataAttribute": {
+                            "title": "Metadata Attribute",
+                            "description": "The metadata attribute to check for stopping propagation",
+                            "type": "string",
+                            "enum": [
+                              "description",
+                              "tags",
+                              "glossaryTerms",
+                              "owner",
+                              "tier",
+                              "domains"
+                            ]
+                          },
+                          "value": {
+                            "title": "Stop Values",
+                            "description": "List of attribute values that will stop propagation when any of them is matched",
+                            "type": "array",
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items"
+                                },
+                                {
+                                  "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/16/properties/dataProducts/items"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "metadataAttribute",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "useOptimizedPropagation": {
+                      "title": "Use Optimized Propagation",
+                      "description": "Use the optimized propagation algorithm that reduces memory usage and API calls. Recommended for large lineage graphs. If set to false, uses the original propagation algorithm. Default is true.",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "MLTaggingAction",
+                  "description": "ML Tagging action configuration for external automator.",
+                  "type": "object",
+                  "definitions": {
+                    "mlTaggingActionType": {
+                      "description": "ML PII Tagging action type.",
+                      "type": "string",
+                      "enum": [
+                        "MLTaggingAction"
+                      ],
+                      "default": "MLTaggingAction"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Application Type",
+                      "description": "Application Type",
+                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/19/definitions/mlTaggingActionType",
+                      "default": "MLTaggingAction"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/1/definitions/automatorAppType",
+              "default": "Automator"
+            },
+            "resources": {
+              "description": "Entities selected to run the automation.",
+              "$ref": "#/properties/appConfig/oneOf/1/definitions/resource"
+            },
+            "actions": {
+              "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
+              "type": "array",
+              "items": {
+                "$ref": "#/properties/appConfig/oneOf/1/definitions/action"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "resources",
+            "actions"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "SlackAppConfiguration",
+          "description": "This schema defines the Slack App Information",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration",
+          "properties": {
+            "clientId": {
+              "description": "Client Id of the Application",
+              "type": "string"
+            },
+            "clientSecret": {
+              "description": "Client Secret of the Application.",
+              "type": "string"
+            },
+            "signingSecret": {
+              "description": "Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.",
+              "type": "string"
+            },
+            "userToken": {
+              "title": "User Token",
+              "description": "User Token",
+              "type": "string",
+              "format": "password"
+            },
+            "botToken": {
+              "title": "Bot Token",
+              "description": "Bot Token",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "clientId",
+            "clientSecret",
+            "signingSecret"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "DataInsightsAppConfig",
+          "description": "No configuration needed to instantiate the Data Insights Pipeline. The logic is handled in the backend.",
+          "type": "object",
+          "definitions": {
+            "dataInsightsAppType": {
+              "description": "Application Type",
+              "type": "string",
+              "enum": [
+                "DataInsights"
+              ],
+              "default": "DataInsights"
+            },
+            "backfillConfiguration": {
+              "description": "Backfill Configuration",
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "Enable Backfill for the configured dates",
+                  "type": "boolean"
+                },
+                "startDate": {
+                  "title": "Start Date",
+                  "description": "Date from which to start the backfill",
+                  "type": "string",
+                  "format": "date"
+                },
+                "endDate": {
+                  "title": "End Date",
+                  "description": "Date for which the backfill will end",
+                  "type": "string",
+                  "format": "date"
+                }
+              }
+            },
+            "dataAssetsConfig": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "If Enabled, Data Asset insights will be populated when the App runs.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "entities": {
+                  "description": "List of Entities to Reindex",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": [
+                    "all"
+                  ],
+                  "uniqueItems": true
+                },
+                "retention": {
+                  "title": "Data Retention (Days)",
+                  "description": "Defines the number of days the Data Assets Insights information will be kept. After it they will be deleted.",
+                  "type": "integer",
+                  "default": 90,
+                  "minimum": 0
+                },
+                "serviceFilter": {
+                  "type": "object",
+                  "properties": {
+                    "serviceType": {
+                      "type": "string"
+                    },
+                    "serviceName": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "default": null
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "enabled"
+              ]
+            },
+            "appAnalyticsConfig": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "If Enabled, App Analytics insights will be populated when the App runs.",
+                  "type": "boolean",
+                  "default": true
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "enabled"
+              ]
+            },
+            "costAnalysisConfig": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "title": "Enabled",
+                  "description": "If Enabled, Cost Analysis insights will be populated when the App runs.",
+                  "type": "boolean",
+                  "default": true
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "enabled"
+              ]
+            },
+            "moduleConfiguration": {
+              "description": "Different Module Configurations",
+              "title": "Module Configuration",
+              "type": "object",
+              "properties": {
+                "dataAssets": {
+                  "title": "Data Assets Module",
+                  "description": "Data Assets Insights Module configuration",
+                  "$ref": "#/properties/appConfig/oneOf/3/definitions/dataAssetsConfig"
+                },
+                "appAnalytics": {
+                  "title": "App Analytics Module",
+                  "description": "App Analytics Module configuration",
+                  "$ref": "#/properties/appConfig/oneOf/3/definitions/appAnalyticsConfig"
+                },
+                "costAnalysis": {
+                  "title": "Cost Analysis Insights Module",
+                  "description": "Cost Analysis Insights Module configuration",
+                  "$ref": "#/properties/appConfig/oneOf/3/definitions/costAnalysisConfig"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "dataAssets",
+                "appAnalytics",
+                "costAnalysis"
+              ]
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/3/definitions/dataInsightsAppType",
+              "default": "DataInsights"
+            },
+            "batchSize": {
+              "description": "Maximum number of events processed at a time (Default 100).",
+              "type": "integer",
+              "default": 100,
+              "minimum": 0
+            },
+            "recreateDataAssetsIndex": {
+              "title": "Recreate DataInsights DataAssets Index",
+              "description": "Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property Type and are facing errors. Bear in mind that recreating the index will delete your DataAssets and a backfill will be needed.",
+              "type": "boolean",
+              "default": false
+            },
+            "backfillConfiguration": {
+              "$ref": "#/properties/appConfig/oneOf/3/definitions/backfillConfiguration"
+            },
+            "moduleConfiguration": {
+              "$ref": "#/properties/appConfig/oneOf/3/definitions/moduleConfiguration"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "DataInsightsReportAppConfig",
+          "description": "This schema defines configuration for Data Insights Report Application.",
+          "definitions": {
+            "dataInsightsReportAppType": {
+              "description": "Application type.",
+              "type": "string",
+              "enum": [
+                "DataInsightsReport"
+              ],
+              "default": "DataInsightsReport"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/4/definitions/dataInsightsReportAppType",
+              "default": "DataInsightsReport"
+            },
+            "sendToAdmins": {
+              "title": "Send To Admins",
+              "type": "boolean",
+              "default": true
+            },
+            "sendToTeams": {
+              "title": "Send To Teams",
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "SearchIndexingApp",
+          "type": "object",
+          "description": "Search Indexing App.",
+          "definitions": {
+            "searchIndexingType": {
+              "description": "Application type.",
+              "type": "string",
+              "enum": [
+                "SearchIndexing"
+              ],
+              "default": "SearchIndexing"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/5/definitions/searchIndexingType",
+              "default": "SearchIndexing"
+            },
+            "entities": {
+              "description": "List of Entities to Reindex",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "all"
+              ],
+              "uniqueItems": true
+            },
+            "batchSize": {
+              "description": "Maximum number of events sent in a batch (Default 100).",
+              "type": "integer",
+              "default": 100
+            },
+            "payLoadSize": {
+              "description": "Maximum number of events sent in a batch (Default 100).",
+              "type": "integer",
+              "existingJavaType": "java.lang.Long",
+              "default": 9437184
+            },
+            "producerThreads": {
+              "title": "Number of Producer Threads",
+              "description": "Number of threads to use for reindexing",
+              "type": "integer",
+              "default": 10
+            },
+            "consumerThreads": {
+              "title": "Number of Consumer Threads",
+              "description": "Number of threads to use for reindexing",
+              "type": "integer",
+              "default": 10
+            },
+            "maxConcurrentRequests": {
+              "title": "Max Concurrent Requests",
+              "description": "Maximum number of concurrent requests to the search index",
+              "type": "integer",
+              "default": 100
+            },
+            "maxRetries": {
+              "title": "Max Retries",
+              "description": "Maximum number of retries for a failed request",
+              "type": "integer",
+              "default": 3
+            },
+            "initialBackoff": {
+              "title": "Initial Backoff Millis",
+              "description": "Initial backoff time in milliseconds",
+              "type": "integer",
+              "default": 1000
+            },
+            "maxBackoff": {
+              "title": "Max Backoff Millis",
+              "description": "Maximum backoff time in milliseconds",
+              "type": "integer",
+              "default": 10000
+            },
+            "queueSize": {
+              "title": "Queue Size to use.",
+              "description": "Queue Size to user internally for reindexing.",
+              "type": "integer",
+              "default": 100
+            },
+            "searchIndexMappingLanguage": {
+              "description": "Search index mapping language.",
+              "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+              "type": "string",
+              "enum": [
+                "EN",
+                "JP",
+                "ZH",
+                "RU"
+              ],
+              "default": "EN"
+            },
+            "autoTune": {
+              "title": "Auto Tune",
+              "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+              "type": "boolean",
+              "default": false
+            },
+            "partitionSize": {
+              "title": "Partition Size",
+              "description": "Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.",
+              "type": "integer",
+              "default": 10000,
+              "minimum": 1000,
+              "maximum": 50000
+            },
+            "timeSeriesMaxDays": {
+              "title": "Time Series Max Days",
+              "description": "Maximum age in days for time series data during reindexing. Default 0 (index all data). Set to a positive value like 15 to limit to recent data only.",
+              "type": "integer",
+              "default": 0,
+              "minimum": -1
+            },
+            "timeSeriesEntityDays": {
+              "title": "Time Series Entity Days Override",
+              "description": "Per-entity-type override for time series max days. Keys are entity type names (e.g. testCaseResult, queryCostRecord), values are number of days. Entities not listed here use the default Time Series Max Days value.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "liveIndexSettings": {
+              "title": "Live Index Settings",
+              "description": "Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents read-after-write), replicas=1, shards=1, durability=request.",
+              "$ref": "#/properties/appConfig/oneOf/5/properties/liveIndexSettingsByEntity/additionalProperties"
+            },
+            "bulkIndexSettings": {
+              "title": "Bulk Index Settings (during reindex)",
+              "description": "Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s, forceMergeOnPromote=false.",
+              "javaType": "org.openmetadata.schema.system.BulkIndexOverrides",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "numberOfReplicas": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "refreshInterval": {
+                  "type": "string"
+                },
+                "translogDurability": {
+                  "type": "string",
+                  "enum": [
+                    "request",
+                    "async"
+                  ]
+                },
+                "translogSyncInterval": {
+                  "type": "string"
+                },
+                "forceMergeOnPromote": {
+                  "title": "Force-merge before alias swap",
+                  "description": "Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query performance at the cost of build time.",
+                  "type": "boolean"
+                }
+              }
+            },
+            "liveIndexSettingsByEntity": {
+              "title": "Per-Entity Live Index Settings",
+              "description": "Override liveIndexSettings for specific entity types. Useful for large or specialized entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for high-cardinality time series). Keys are entity type names; values override the global liveIndexSettings.",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Index settings applied to live (post-promote) search indexes. Tune for read freshness, durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides controls that. number_of_shards is intentionally omitted — it can only be set at index creation time and the staged-index reindex flow uses the static mapping JSON for creation.",
+                "javaType": "org.openmetadata.schema.system.IndexSettings",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "numberOfReplicas": {
+                    "title": "Number of Replicas",
+                    "description": "Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "refreshInterval": {
+                    "title": "Refresh Interval",
+                    "description": "How often new writes become searchable. '1s' = near-real-time (default; required if users/agents read-after-write). Higher values reduce CPU/segment churn but delay search visibility.",
+                    "type": "string"
+                  },
+                  "translogDurability": {
+                    "title": "Translog Durability",
+                    "description": "'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose <syncInterval seconds on crash).",
+                    "type": "string",
+                    "enum": [
+                      "request",
+                      "async"
+                    ]
+                  },
+                  "translogSyncInterval": {
+                    "title": "Translog Sync Interval",
+                    "description": "Translog fsync cadence when durability=async. Ignored when durability=request.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "CacheWarmupApp",
+          "type": "object",
+          "description": "Cache Warmup Application Configuration.",
+          "definitions": {
+            "cacheWarmupType": {
+              "description": "Application type.",
+              "type": "string",
+              "enum": [
+                "CacheWarmup"
+              ],
+              "default": "CacheWarmup"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/6/definitions/cacheWarmupType",
+              "default": "CacheWarmup"
+            },
+            "entities": {
+              "title": "Entities",
+              "description": "List of entity types to warm up in cache. Use 'all' to warm up all entity types.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "all"
+              ],
+              "uniqueItems": true
+            },
+            "batchSize": {
+              "title": "Batch Size",
+              "description": "Number of entities to process in each batch.",
+              "type": "integer",
+              "default": 1000,
+              "minimum": 10,
+              "maximum": 1000
+            },
+            "warmBundles": {
+              "title": "Warm Read Bundles",
+              "description": "Pre-warm the per-entity bundle cache (tags + certification) so the first read after deploy doesn't fan out to the DB. Disable for very large installs.",
+              "type": "boolean",
+              "default": true
+            },
+            "warmRelationships": {
+              "title": "Warm Relationships",
+              "description": "Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles. This adds extra relationship-table and entity-reference reads during warmup, so enable it only when first-read relationship latency matters.",
+              "type": "boolean",
+              "default": false
+            },
+            "enableDistributedClaim": {
+              "title": "Enable Distributed Claim",
+              "description": "In multi-instance deployments, claim each entity type via Redis SETNX so only one instance warms it. Disable to let every instance warm independently (idempotent but redundant).",
+              "type": "boolean",
+              "default": false
+            },
+            "force": {
+              "title": "Force Warmup",
+              "description": "Force cache warmup even if another instance is detected (use with caution).",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Retention Configuration",
+          "description": "Configure retention policies for each entity.",
+          "properties": {
+            "changeEventRetentionPeriod": {
+              "title": "Change Event Retention Period (days)",
+              "description": "Enter the retention period for change event records in days (e.g., 7 for one week, 30 for one month).",
+              "type": "integer",
+              "default": 7,
+              "minimum": 1
+            },
+            "activityThreadsRetentionPeriod": {
+              "title": "Activity Threads Retention Period (days)",
+              "description": "Enter the retention period for Activity Threads of type = 'Conversation' records in days (e.g., 30 for one month, 60 for two months).",
+              "type": "integer",
+              "default": 60,
+              "minimum": 0
+            },
+            "activityCommentsRetentionPeriod": {
+              "title": "Activity Comments Retention Period (days)",
+              "description": "Enter the retention period for comments on Activity Events in days. Use 0 to retain activity comments forever.",
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            },
+            "testCaseResultsRetentionPeriod": {
+              "title": "Test Case Results Retention Period (days)",
+              "description": "Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for two months).",
+              "type": "integer",
+              "default": 1440
+            },
+            "profileDataRetentionPeriod": {
+              "title": "Profile Data Retention Period (days)",
+              "description": "Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).",
+              "type": "integer",
+              "default": 1440
+            },
+            "auditLogRetentionPeriod": {
+              "title": "Audit Log Retention Period (days)",
+              "description": "Enter the retention period for Audit Log entries in days (e.g., 90 for three months).",
+              "type": "integer",
+              "default": 90,
+              "minimum": 1
+            },
+            "extensions": {
+              "title": "Extension Retention Periods (days)",
+              "description": "Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. OpenMetadata never reads these values; it hands them to the registered DataRetentionExtension, which decides what a missing key means.",
+              "existingJavaType": "java.util.Map<String, Integer>",
+              "default": {}
+            }
+          },
+          "required": [
+            "changeEventRetentionPeriod",
+            "activityThreadsRetentionPeriod",
+            "activityCommentsRetentionPeriod",
+            "testCaseResultsRetentionPeriod",
+            "profileDataRetentionPeriod",
+            "auditLogRetentionPeriod"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "AutoPilotAppConfig",
+          "description": "Configuration for the AutoPilot Application.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig",
+          "definitions": {
+            "autoPilotAppType": {
+              "description": "Application type.",
+              "type": "string",
+              "enum": [
+                "AutoPilotApplication"
+              ],
+              "default": "AutoPilotApplication"
+            }
+          },
+          "properties": {
+            "type": {
+              "title": "Application Type",
+              "description": "Application Type",
+              "$ref": "#/properties/appConfig/oneOf/8/definitions/autoPilotAppType",
+              "default": "AutoPilotApplication"
+            },
+            "active": {
+              "title": "Active",
+              "description": "Whether the AutoPilot Workflow should be active or not.",
+              "type": "boolean",
+              "default": true
+            },
+            "entityLink": {
+              "title": "Service Entity Link",
+              "description": "Service Entity Link for which to trigger the application.",
+              "type": "string",
+              "pattern": "(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "active"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "appPrivateConfig": {
+      "description": "External Application Private configuration",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "CollateAIAppPrivateConfig",
+          "description": "Private Configuration for the CollateAI External Application.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.entity.app.external.CollateAIAppPrivateConfig",
+          "properties": {
+            "waiiInstance": {
+              "title": "WAII Instance",
+              "description": "WAII API host URL",
+              "type": "string",
+              "format": "URI",
+              "default": "https://tweakit.waii.ai/api/"
+            },
+            "collateURL": {
+              "title": "Collate URL",
+              "description": "Collate Server public URL. WAII will use this information to interact with the server. E.g., https://sandbox.getcollate.io",
+              "type": "string",
+              "format": "URI"
+            },
+            "token": {
+              "title": "WAII API Token",
+              "description": "WAII API Token",
+              "type": "string",
+              "format": "password"
+            },
+            "limits": {
+              "title": "Limits",
+              "description": "Limits for the CollateAI Application.",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "javaType": "io.collate.schema.entity.app.Limits",
+              "definitions": {
+                "actions": {
+                  "title": "Actions",
+                  "javaType": "io.collate.schema.entity.app.LimitActions",
+                  "description": "The action and its limit.",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number",
+                    "existingJavaType": "java.math.BigDecimal",
+                    "description": "Limit for the named action."
+                  }
+                }
+              },
+              "properties": {
+                "actions": {
+                  "title": "Actions",
+                  "description": "The records of the limits.",
+                  "$ref": "#/properties/appPrivateConfig/oneOf/0/properties/limits/definitions/actions"
+                },
+                "billingCycleStart": {
+                  "title": "Cycle Start",
+                  "description": "The start of this limit cycle. DEPRECATED: Use central billingCycleStart from LimitsConfiguration in openmetadata.yaml",
+                  "type": "string",
+                  "format": "date"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "actions"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "waiiInstance",
+            "collateURL",
+            "token",
+            "limits"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "ingestionPipelineFQN": {
+      "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",
+      "type": "string"
+    },
+    "pipelineRunId": {
+      "description": "Unique identifier of pipeline run, used to identify the current pipeline run",
+      "type": "string",
+      "format": "uuid"
+    },
+    "enableStreamableLogs": {
+      "description": "Enable streaming logs to a remote log storage via the OpenMetadata Server",
+      "type": "boolean",
+      "default": false
+    },
+    "ingestionRunnerName": {
+      "description": "Name of the ingestion runner executing this workflow. Set at dispatch time by the execution environment.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "workflowConfig"
+  ],
+  "additionalProperties": false
+}

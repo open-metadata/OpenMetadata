@@ -861,6 +861,30 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT DISTINCT toId FROM entity_relationship "
+            + "WHERE fromId = :tableId AND fromEntity = 'table' AND toEntity = 'query' "
+            + "AND relation = :relation AND deleted = FALSE AND toId > :afterId "
+            + "ORDER BY toId LIMIT :limit")
+    List<String> findQueryIdsForTableAfter(
+        @BindUUID("tableId") UUID tableId,
+        @Bind("relation") int relation,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT DISTINCT er.toId FROM entity_relationship er "
+            + "INNER JOIN table_entity t ON t.id = er.fromId "
+            + "WHERE t.fqnHash LIKE :prefix AND (t.deleted IS NULL OR t.deleted = FALSE) "
+            + "AND er.fromEntity = 'table' AND er.toEntity = 'query' "
+            + "AND er.relation = :relation AND er.deleted = FALSE AND er.toId > :afterId "
+            + "ORDER BY er.toId LIMIT :limit")
+    List<String> findQueryIdsForTableFqnPrefixAfter(
+        @Bind("prefix") String prefix,
+        @Bind("relation") int relation,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
         "SELECT COUNT(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND toId = :toId AND fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation")
     int existsRelationship(

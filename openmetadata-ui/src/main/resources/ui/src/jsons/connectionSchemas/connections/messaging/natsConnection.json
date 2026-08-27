@@ -8,7 +8,9 @@
     "natsType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Nats"],
+      "enum": [
+        "Nats"
+      ],
       "default": "Nats"
     },
     "basicAuth": {
@@ -28,7 +30,10 @@
           "format": "password"
         }
       },
-      "required": ["username", "password"],
+      "required": [
+        "username",
+        "password"
+      ],
       "additionalProperties": false
     },
     "tokenAuth": {
@@ -43,7 +48,9 @@
           "format": "password"
         }
       },
-      "required": ["token"],
+      "required": [
+        "token"
+      ],
       "additionalProperties": false
     },
     "nkeyAuth": {
@@ -58,7 +65,9 @@
           "format": "password"
         }
       },
-      "required": ["nkeySeed"],
+      "required": [
+        "nkeySeed"
+      ],
       "additionalProperties": false
     }
   },
@@ -68,7 +77,9 @@
       "description": "Service Type",
       "default": "Nats",
       "type": "string",
-      "enum": ["Nats"]
+      "enum": [
+        "Nats"
+      ]
     },
     "natsServers": {
       "title": "NATS Servers",
@@ -96,7 +107,10 @@
               "format": "password"
             }
           },
-          "required": ["username", "password"],
+          "required": [
+            "username",
+            "password"
+          ],
           "additionalProperties": false
         },
         {
@@ -111,7 +125,9 @@
               "format": "password"
             }
           },
-          "required": ["token"],
+          "required": [
+            "token"
+          ],
           "additionalProperties": false
         },
         {
@@ -126,7 +142,9 @@
               "format": "password"
             }
           },
-          "required": ["nkeySeed"],
+          "required": [
+            "nkeySeed"
+          ],
           "additionalProperties": false
         }
       ]
@@ -150,7 +168,13 @@
               "description": "The CA certificate used for SSL validation.",
               "type": "string",
               "format": "password",
-              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
               "uiFieldType": "fileOrInput"
             },
             "sslCertificate": {
@@ -158,7 +182,13 @@
               "description": "The SSL certificate used for client authentication.",
               "type": "string",
               "format": "password",
-              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
               "uiFieldType": "fileOrInput"
             },
             "sslKey": {
@@ -166,7 +196,13 @@
               "description": "The private key associated with the SSL certificate.",
               "type": "string",
               "format": "password",
-              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
               "uiFieldType": "fileOrInput"
             }
           }
@@ -232,5 +268,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["natsServers"]
+  "required": [
+    "natsServers"
+  ]
 }
