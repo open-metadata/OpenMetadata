@@ -85,8 +85,9 @@ const expectQueryVisibleForDomain = async (
     return mustClauses.some((mustClause) =>
       get(mustClause, 'bool.should', []).some(
         (domainClause: unknown) =>
-          get(domainClause, 'term.domains.fullyQualifiedName') === domainFqn ||
-          get(domainClause, 'prefix.domains.fullyQualifiedName') ===
+          get(domainClause, ['term', 'domains.fullyQualifiedName']) ===
+            domainFqn ||
+          get(domainClause, ['prefix', 'domains.fullyQualifiedName']) ===
             `${domainFqn}.`
       )
     );
