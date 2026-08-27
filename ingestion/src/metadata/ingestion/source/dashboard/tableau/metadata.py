@@ -1219,6 +1219,10 @@ class TableauSource(DashboardServiceSource):
         """
         Get the proxy url for the tableau server
         """
-        if self.config.serviceConnection.root.config.proxyURL:  # pyright: ignore[reportAttributeAccessIssue]
-            return str(self.config.serviceConnection.root.config.proxyURL)  # pyright: ignore[reportAttributeAccessIssue]
-        return str(self.config.serviceConnection.root.config.hostPort)
+        service_connection = getattr(self.config, "serviceConnection", None)
+        service_config = getattr(getattr(service_connection, "root", None), "config", None)
+        host_port_field = "hostPort"
+        proxy_url = getattr(service_config, "proxyURL", None)
+        if proxy_url:
+            return str(proxy_url)
+        return str(getattr(service_config, host_port_field))

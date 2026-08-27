@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
@@ -28,7 +28,12 @@ import {
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  getAuthContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -48,6 +53,19 @@ const SERVICE_NAMES = {
 };
 
 const adminUser = new UserClass();
+
+const getIngestionBotToken = async (apiContext: APIRequestContext) => {
+  const botResponse = await apiContext.get('/api/v1/bots/name/ingestion-bot');
+  expect(botResponse.status()).toBe(200);
+  const bot = await botResponse.json();
+  const tokenResponse = await apiContext.get(
+    `/api/v1/users/auth-mechanism/${bot.botUser.id}`
+  );
+  expect(tokenResponse.status()).toBe(200);
+  const token = await tokenResponse.json();
+
+  return token.config.JWTToken as string;
+};
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -480,6 +498,63 @@ test.describe(
         await expect(
           page.locator(String.raw`#root\/schemaRegistryTopicSuffixName`)
         ).toHaveValue('');
+      });
+
+      test('should preserve the masked SASL password when the connection is edited', async ({
+        browser,
+        page,
+      }) => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: kafkaService.entity.name,
+            type: SERVICE_TYPE.Messaging,
+          },
+          false,
+          false
+        );
+
+        await page.getByRole('tab', { name: 'Connection' }).click();
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+        await waitForServiceConnectionForm(page);
+
+        const bootstrapServers = page.locator(
+          String.raw`#root\/bootstrapServers`
+        );
+        await bootstrapServers.fill('updated-bootstrap:9092');
+        await expect(bootstrapServers).toHaveValue('updated-bootstrap:9092');
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/services/messagingServices') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('next-button').click();
+        await page.getByRole('button', { name: 'Save' }).click();
+        expect((await patchResponse).status()).toBe(200);
+
+        const { apiContext, afterAction } = await createNewPage(browser);
+        try {
+          const token = await getIngestionBotToken(apiContext);
+          const ingestionBotContext = await getAuthContext(token);
+          try {
+            const serviceResponse = await ingestionBotContext.get(
+              `/api/v1/services/messagingServices/${kafkaService.entityResponseData['id']}`
+            );
+            expect(serviceResponse.status()).toBe(200);
+            const service = await serviceResponse.json();
+
+            expect(service.connection.config.bootstrapServers).toBe(
+              'updated-bootstrap:9092'
+            );
+            expect(service.connection.config.saslPassword).toBe('admin');
+          } finally {
+            await ingestionBotContext.dispose();
+          }
+        } finally {
+          await afterAction();
+        }
       });
     });
 

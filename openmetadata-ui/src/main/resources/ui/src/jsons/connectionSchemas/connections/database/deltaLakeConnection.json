@@ -1,0 +1,391 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeltaLakeConnection",
+  "description": "DeltaLake Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
+  "definitions": {
+    "deltaLakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "DeltaLake"
+      ],
+      "default": "DeltaLake"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "DeltaLake",
+      "type": "string",
+      "enum": [
+        "DeltaLake"
+      ]
+    },
+    "configSource": {
+      "title": "DeltaLake Configuration Source",
+      "description": "Available sources to fetch the metadata.",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "MetastoreConfig",
+          "description": "Deltalake Metastore configuration.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig",
+          "definitions": {
+            "metastoreHostPortConnection": {
+              "title": "Hive Metastore Service",
+              "type": "object",
+              "properties": {
+                "metastoreHostPort": {
+                  "title": "Hive Metastore Service",
+                  "description": "Thrift connection to the metastore service. E.g., localhost:9083",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "metastoreDbConnection": {
+              "title": "Hive Metastore Database",
+              "type": "object",
+              "properties": {
+                "metastoreDb": {
+                  "title": "Hive Metastore Database",
+                  "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
+                  "type": "string"
+                },
+                "username": {
+                  "title": "Connection UserName",
+                  "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
+                  "type": "string"
+                },
+                "password": {
+                  "title": "Connection Password",
+                  "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
+                  "type": "string",
+                  "format": "password"
+                },
+                "driverName": {
+                  "title": "Connection Driver Name",
+                  "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
+                  "type": "string"
+                },
+                "jdbcDriverClassPath": {
+                  "title": "JDBC Driver Class Path",
+                  "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "metastoreFilePathConnection": {
+              "title": "Hive Metastore File Path",
+              "type": "object",
+              "properties": {
+                "metastoreFilePath": {
+                  "title": "Hive Metastore File Path",
+                  "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "properties": {
+            "connection": {
+              "title": "Connection",
+              "description": "Metastore connection configuration, depending on your metastore type.",
+              "oneOf": [
+                {
+                  "title": "Hive Metastore Service",
+                  "type": "object",
+                  "properties": {
+                    "metastoreHostPort": {
+                      "title": "Hive Metastore Service",
+                      "description": "Thrift connection to the metastore service. E.g., localhost:9083",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "title": "Hive Metastore Database",
+                  "type": "object",
+                  "properties": {
+                    "metastoreDb": {
+                      "title": "Hive Metastore Database",
+                      "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
+                      "type": "string"
+                    },
+                    "username": {
+                      "title": "Connection UserName",
+                      "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Connection Password",
+                      "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "driverName": {
+                      "title": "Connection Driver Name",
+                      "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
+                      "type": "string"
+                    },
+                    "jdbcDriverClassPath": {
+                      "title": "JDBC Driver Class Path",
+                      "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "title": "Hive Metastore File Path",
+                  "type": "object",
+                  "properties": {
+                    "metastoreFilePath": {
+                      "title": "Hive Metastore File Path",
+                      "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "appName": {
+              "title": "Application Name",
+              "description": "pySpark App Name.",
+              "type": "string",
+              "default": "OpenMetadata"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "connection"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "StorageConfig",
+          "description": "DeltaLake Storage Connection Config",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.database.deltalake.StorageConfig",
+          "definitions": {
+            "localConfig": {
+              "title": "Local Config",
+              "description": "Local config source where no extra information needs to be sent.",
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "properties": {
+            "connection": {
+              "title": "DeltaLake Storage Configuration Source",
+              "description": "Available sources to fetch files.",
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "S3Config",
+                  "description": "DataLake S3 bucket will ingest metadata of files in bucket",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.datalake.S3Config",
+                  "properties": {
+                    "securityConfig": {
+                      "title": "DataLake S3 Security Config",
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "AWS credentials configs.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+                      "properties": {
+                        "enabled": {
+                          "title": "Enable IAM Auth",
+                          "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "awsAccessKeyId": {
+                          "title": "AWS Access Key ID",
+                          "description": "AWS Access key ID.",
+                          "type": "string"
+                        },
+                        "awsSecretAccessKey": {
+                          "title": "AWS Secret Access Key",
+                          "description": "AWS Secret Access Key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "awsRegion": {
+                          "title": "AWS Region",
+                          "description": "AWS Region",
+                          "type": "string"
+                        },
+                        "awsSessionToken": {
+                          "title": "AWS Session Token",
+                          "description": "AWS Session Token.",
+                          "type": "string"
+                        },
+                        "endPointURL": {
+                          "title": "Endpoint URL",
+                          "description": "EndPoint URL for the AWS",
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "profileName": {
+                          "title": "Profile Name",
+                          "description": "The name of a profile to use with the boto session.",
+                          "type": "string"
+                        },
+                        "assumeRoleArn": {
+                          "title": "Role Arn for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                          "type": "string"
+                        },
+                        "assumeRoleSessionName": {
+                          "title": "Role Session Name for Assume Role",
+                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                          "type": "string",
+                          "default": "OpenMetadataSession"
+                        },
+                        "assumeRoleSourceIdentity": {
+                          "title": "Source Identity for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "awsRegion"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "bucketName": {
+              "title": "Bucket Name",
+              "description": "Bucket Name of the data source.",
+              "type": "string",
+              "default": ""
+            },
+            "prefix": {
+              "title": "Prefix",
+              "description": "Prefix of the data source.",
+              "type": "string",
+              "default": ""
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "connection"
+          ]
+        }
+      ]
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDBTExtraction": {
+      "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "configSource"
+  ]
+}

@@ -33,7 +33,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.util.relationshipcleanup.BatchEntityExistenceResolver;
 import org.openmetadata.service.util.relationshipcleanup.DefaultRelationshipValidator;
 import org.openmetadata.service.util.relationshipcleanup.LineageRelationshipValidator;
@@ -53,13 +52,11 @@ public class EntityRelationshipCleanup {
   private final Map<String, EntityRepository<?>> entityRepositories = new HashMap<>();
   private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositoy =
       new HashMap<>();
-  private final FeedRepository feedRepository;
   private final boolean dryRun;
 
   public EntityRelationshipCleanup(CollectionDAO collectionDAO, boolean dryRun) {
     this.collectionDAO = collectionDAO;
     this.dryRun = dryRun;
-    this.feedRepository = new FeedRepository();
     initializeEntityRepositories();
     initializeTimeSeriesRepositories();
   }
@@ -165,8 +162,7 @@ public class EntityRelationshipCleanup {
 
   private void scanAndClean(int batchSize, EntityCleanupResult result) {
     BatchEntityExistenceResolver resolver =
-        new BatchEntityExistenceResolver(
-            entityRepositories, entityTimeSeriesRepositoy, feedRepository);
+        new BatchEntityExistenceResolver(entityRepositories, entityTimeSeriesRepositoy);
     long totalRelationships = collectionDAO.relationshipDAO().getTotalRelationshipCount();
     LOG.info(
         "Found {} total relationships to scan. Processing in batches of {}",

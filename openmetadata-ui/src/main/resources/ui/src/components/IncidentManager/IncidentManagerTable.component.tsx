@@ -15,6 +15,8 @@ import {
   EmptyPlaceholder,
   Skeleton,
   Table,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@untitledui/icons';
 import { useMemo } from 'react';
@@ -180,19 +182,22 @@ const IncidentManagerTable = ({
         </Table.Cell>
         {isIncidentPage && (
           <Table.Cell>
-            <Link
-              className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
-              data-testid="table-link"
-              title={getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}
-              onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
-            </Link>
+            <Tooltip placement="top" title={tableFqn}>
+              <TooltipTrigger>
+                <Link
+                  className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
+                  data-testid="table-link"
+                  to={getEntityDetailsPath(
+                    EntityType.TABLE,
+                    tableFqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.DATA_QUALITY
+                  )}
+                  onClick={(e) => e.stopPropagation()}>
+                  {getNameFromFQN(tableFqn) || ref?.fullyQualifiedName}
+                </Link>
+              </TooltipTrigger>
+            </Tooltip>
           </Table.Cell>
         )}
         <Table.Cell className="tw:whitespace-nowrap">

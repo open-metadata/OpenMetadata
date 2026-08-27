@@ -4,7 +4,6 @@ import java.util.Optional;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.TestCaseResultFeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -17,6 +16,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -25,7 +25,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s added results to test Case %s";
 
   public TestCaseResultFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     super(messageDecorator, thread, fieldChange);
   }
 
@@ -38,7 +38,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
       message = super.formatAddedField();
     }
     // Update the thread with the required information
-    populateTestResultFeedInfo(Thread.FieldOperation.UPDATED, message);
+    populateTestResultFeedInfo(FormattedMessage.FieldOperation.UPDATED, message);
     return message;
   }
 
@@ -51,11 +51,12 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
       message = super.formatUpdatedField();
     }
     // Update the thread with the required information
-    populateTestResultFeedInfo(Thread.FieldOperation.UPDATED, message);
+    populateTestResultFeedInfo(FormattedMessage.FieldOperation.UPDATED, message);
     return message;
   }
 
-  private void populateTestResultFeedInfo(Thread.FieldOperation operation, String threadMessage) {
+  private void populateTestResultFeedInfo(
+      FormattedMessage.FieldOperation operation, String threadMessage) {
     long currentTime = System.currentTimeMillis();
     long lastWeekTime = currentTime - 7 * 24 * 60 * 60 * 1000;
     TestCaseResultRepository testCaseResultRepository =
@@ -81,7 +82,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
             .withFieldName(TEST_RESULT_FIELD)
             .withEntitySpecificInfo(testCaseResultFeedInfo);
     populateThreadFeedInfo(
-        thread, threadMessage, Thread.CardStyle.TEST_CASE_RESULT, operation, feedInfo);
+        thread, threadMessage, FormattedMessage.CardStyle.TEST_CASE_RESULT, operation, feedInfo);
   }
 
   private String getHeaderForTestResultUpdate() {
@@ -89,7 +90,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
   }
 
   private String transformTestCaseResult(
-      MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
     TestCase testCaseEntity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
