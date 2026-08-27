@@ -27,6 +27,12 @@ import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+// Imported as .ts: Node strips the types on load, unflagged from v22.18 and
+// behind --experimental-strip-types from v22.6. `engines` deliberately stays
+// at >=22.0.0 — collate-ui runs `yarn install` against this package on Node
+// 22.17, and a higher floor blocks that install even though it never loads
+// this config. Contributors below 22.18 need the flag for `yarn lint`; the
+// repo's own .nvmrc is well above it.
 import omPlaywright from './playwright/eslint-rules/index.ts';
 
 export default [
