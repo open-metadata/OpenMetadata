@@ -340,12 +340,7 @@ export const useTestCaseIncidentHeader = ({
               Operation.EditOwners
             ),
         };
-  }, [
-    testCasePermission,
-    isVersionPage,
-    isDeleted,
-    getPrioritizedEditPermission,
-  ]);
+  }, [testCasePermission, isVersionPage, isDeleted]);
 
   const taskLinkInfo = useMemo(
     () =>

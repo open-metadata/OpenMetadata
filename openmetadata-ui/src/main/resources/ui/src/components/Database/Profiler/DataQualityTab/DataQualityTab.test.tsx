@@ -22,6 +22,7 @@ import {
 } from '@testing-library/react';
 import React, { act } from 'react';
 import { Link } from 'react-router-dom';
+import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
@@ -1426,7 +1427,7 @@ describe('DataQualityTab test', () => {
       render(
         <DataQualityTab
           {...mockProps}
-          deletionMode="soft"
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           testCases={[firstRowData]}
         />
       );
@@ -1445,7 +1446,7 @@ describe('DataQualityTab test', () => {
       render(
         <DataQualityTab
           {...mockProps}
-          deletionMode="soft"
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           testCases={[deletedTestCase]}
         />
       );
@@ -1471,7 +1472,7 @@ describe('DataQualityTab test', () => {
         <DataQualityTab
           {...mockProps}
           afterDeleteAction={afterDeleteAction}
-          deletionMode="soft"
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           testCases={[deletedTestCase]}
         />
       );
@@ -1497,7 +1498,7 @@ describe('DataQualityTab test', () => {
       render(
         <DataQualityTab
           {...mockProps}
-          deletionMode="soft"
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           testCases={[deletedTestCase]}
         />
       );
@@ -1526,7 +1527,7 @@ describe('DataQualityTab test', () => {
       render(
         <DataQualityTab
           {...mockProps}
-          deletionMode="soft"
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           testCases={[deletedWithIncident]}
         />
       );

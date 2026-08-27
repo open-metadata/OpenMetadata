@@ -31,6 +31,7 @@ import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
+import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -113,11 +114,11 @@ const getColumnLayoutStyle = (
 };
 
 interface TestCaseDeleteModalProps {
-  afterDeleteAction?: DataQualityTabProps['afterDeleteAction'];
+  afterDeleteAction: DataQualityTabProps['afterDeleteAction'];
   deletionMode: NonNullable<DataQualityTabProps['deletionMode']>;
   isDeleting: boolean;
   isRemovalLoading: boolean;
-  removeFromTestSuite?: DataQualityTabProps['removeFromTestSuite'];
+  removeFromTestSuite: DataQualityTabProps['removeFromTestSuite'];
   selectedTestCase?: TestCaseAction;
   onCancel: () => void;
   onDeleteHard: () => void;
@@ -158,7 +159,7 @@ const TestCaseDeleteModal = ({
     );
   }
 
-  if (deletionMode === 'soft') {
+  if (deletionMode === TEST_CASE_DELETION_MODE.SOFT) {
     return (
       <DeleteEntityModal
         allowSoftDelete
@@ -204,7 +205,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   editVariant = getDefaultTestCaseFormVariant(),
   hasActiveFilters = false,
   emptyStateAction,
-  deletionMode = 'hard',
+  deletionMode = TEST_CASE_DELETION_MODE.HARD,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -636,7 +637,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     const testCaseDeletePermission =
       removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
     const testCaseRestorePermission = Boolean(testCasePermission?.EditAll);
-    const isRestoreMode = deletionMode === 'soft' && record.deleted;
+    const isRestoreMode =
+      deletionMode === TEST_CASE_DELETION_MODE.SOFT && record.deleted;
 
     const deleteBtnLabel = removeFromTestSuite
       ? t('label.remove')

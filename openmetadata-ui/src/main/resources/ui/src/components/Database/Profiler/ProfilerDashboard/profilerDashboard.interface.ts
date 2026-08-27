@@ -14,6 +14,7 @@
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
+import type { TestCaseDeletionMode } from '../../../../constants/DataQuality.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { Task } from '../../../../generated/entity/tasks/task';
@@ -80,7 +81,7 @@ export interface DataQualityTabProps {
   editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
-  deletionMode?: 'hard' | 'soft';
+  deletionMode?: TestCaseDeletionMode;
 }
 
 export interface TestSummaryProps {

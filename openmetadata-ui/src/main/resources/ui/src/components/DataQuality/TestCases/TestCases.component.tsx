@@ -16,6 +16,7 @@ import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
@@ -312,7 +313,7 @@ export const TestCases = () => {
               ),
             },
           ]}
-          deletionMode="soft"
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           emptyStateAction={displayedEmptyStateAction}
           enableBulkActions={enableBulkActions}
           fetchTestCases={sortTestCase}

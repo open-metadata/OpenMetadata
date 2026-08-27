@@ -61,122 +61,137 @@ test.describe(
       test.slow();
       await redirectToHomePage(page);
 
-      const initialListResponse = waitForTestCaseListResponse(page);
-      await page.goto('/data-quality/test-cases');
-      await initialListResponse;
+      await test.step('Open and find the active test case', async () => {
+        const initialListResponse = waitForTestCaseListResponse(page);
+        await page.goto('/data-quality/test-cases');
+        await initialListResponse;
 
-      const searchResponse = waitForTestCaseListResponse(page);
-      await page.getByTestId('searchbar').fill(testCaseName);
-      await searchResponse;
-      await expect(page.getByTestId(testCaseName)).toBeVisible();
+        const searchResponse = waitForTestCaseListResponse(page);
+        await page.getByTestId('searchbar').fill(testCaseName);
+        await searchResponse;
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      });
 
-      await page.getByTestId(`action-dropdown-${testCaseName}`).click();
-      await page.getByTestId(`delete-${testCaseName}`).click();
-      await expect(page.getByTestId('delete-modal')).toBeVisible();
-      await expect(page.getByTestId('soft-delete')).toBeVisible();
+      await test.step('Soft delete the test case', async () => {
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.getByTestId(`delete-${testCaseName}`).click();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
+        await expect(page.getByTestId('soft-delete')).toBeVisible();
 
-      const deleteResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/dataQuality/testCases/${testCaseId}`) &&
-          response.url().includes('hardDelete=false') &&
-          response.request().method() === 'DELETE'
-      );
-      const activeListRefresh = waitForTestCaseListResponse(page);
-      await page.getByTestId('confirm-button').click();
-      expect((await deleteResponse).status()).toBe(200);
-      await activeListRefresh;
-      await toastNotification(page, /deleted successfully!/);
-      await expect(page.getByTestId(testCaseName)).not.toBeVisible();
+        const deleteResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(`/api/v1/dataQuality/testCases/${testCaseId}`) &&
+            response.url().includes('hardDelete=false') &&
+            response.request().method() === 'DELETE'
+        );
+        const activeListRefresh = waitForTestCaseListResponse(page);
+        await page.getByTestId('confirm-button').click();
+        expect((await deleteResponse).status()).toBe(200);
+        await activeListRefresh;
+        await toastNotification(page, /deleted successfully!/);
+        await expect(page.getByTestId(testCaseName)).not.toBeVisible();
+      });
 
-      const deletedListResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/dataQuality/testCases/search/list') &&
-          new URL(response.url()).searchParams.get('include') === 'deleted' &&
-          response.status() === 200
-      );
-      await page.getByTestId('show-deleted').click();
-      await deletedListResponse;
-      await waitForAllLoadersToDisappear(page);
-      await expect(page.getByTestId(testCaseName)).toBeVisible();
+      await test.step('Find the test case in the deleted list', async () => {
+        const deletedListResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/search/list') &&
+            new URL(response.url()).searchParams.get('include') === 'deleted' &&
+            response.status() === 200
+        );
+        await page.getByTestId('show-deleted').click();
+        await deletedListResponse;
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      });
 
-      const detailResponse = waitForTestCaseDetailsResponse(page);
-      await page.getByTestId(testCaseName).getByRole('link').click();
-      await detailResponse;
-      await expect(page.getByTestId('edit-description')).toHaveCount(0);
-      await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
+      await test.step('Verify the deleted test case detail is read-only', async () => {
+        const detailResponse = waitForTestCaseDetailsResponse(page);
+        await page.getByTestId(testCaseName).getByRole('link').click();
+        await detailResponse;
+        await expect(page.getByTestId('edit-description')).toHaveCount(0);
+        await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
 
-      for (const widgetTestId of [
-        'tags-container',
-        'glossary-container',
-        'data-products-container',
-      ]) {
-        const widget = page.getByTestId(widgetTestId);
+        for (const widgetTestId of [
+          'tags-container',
+          'glossary-container',
+          'data-products-container',
+        ]) {
+          const widget = page.getByTestId(widgetTestId);
 
-        await expect(widget).toBeVisible();
-        await expect(widget.getByTestId('edit-button')).toHaveCount(0);
-        await expect(widget.getByTestId('add-tag')).toHaveCount(0);
-      }
+          await expect(widget).toBeVisible();
+          await expect(widget.getByTestId('edit-button')).toHaveCount(0);
+          await expect(widget.getByTestId('add-tag')).toHaveCount(0);
+        }
 
-      await page.getByTestId('manage-button').click();
-      await waitForAntdPopupToSettle(page);
-      await expect(page.getByTestId('restore-button')).toBeVisible();
-      await expect(page.getByTestId('delete-button')).not.toBeVisible();
-      await expect(page.getByTestId('rename-button')).not.toBeVisible();
+        await page.getByTestId('manage-button').click();
+        await waitForAntdPopupToSettle(page);
+        await expect(page.getByTestId('restore-button')).toBeVisible();
+        await expect(page.getByTestId('delete-button')).not.toBeVisible();
+        await expect(page.getByTestId('rename-button')).not.toBeVisible();
+      });
 
-      const returnListResponse = waitForTestCaseListResponse(page);
-      await page.goto('/data-quality/test-cases');
-      await returnListResponse;
-      const returnSearchResponse = waitForTestCaseListResponse(page);
-      await page.getByTestId('searchbar').fill(testCaseName);
-      await returnSearchResponse;
-      const returnDeletedListResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/dataQuality/testCases/search/list') &&
-          new URL(response.url()).searchParams.get('include') === 'deleted'
-      );
-      await page.getByTestId('show-deleted').click();
-      await returnDeletedListResponse;
-      await expect(page.getByTestId(testCaseName)).toBeVisible();
+      await test.step('Restore the deleted test case', async () => {
+        const returnListResponse = waitForTestCaseListResponse(page);
+        await page.goto('/data-quality/test-cases');
+        await returnListResponse;
 
-      await page.getByTestId(`action-dropdown-${testCaseName}`).click();
-      await page.getByTestId(`restore-${testCaseName}`).click();
-      const confirmationModal = page.getByTestId('confirmation-modal');
-      const restoreButton = confirmationModal.getByTestId('save-button');
+        const returnSearchResponse = waitForTestCaseListResponse(page);
+        await page.getByTestId('searchbar').fill(testCaseName);
+        await returnSearchResponse;
 
-      // Ant Design's modal root is a zero-size portal wrapper, so the visible
-      // action inside the dialog is the reliable signal that it is interactive.
-      await expect(restoreButton).toBeVisible();
-      await expect(confirmationModal.getByTestId('body-text')).toContainText(
-        testCaseName
-      );
+        const returnDeletedListResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/search/list') &&
+            new URL(response.url()).searchParams.get('include') === 'deleted'
+        );
+        await page.getByTestId('show-deleted').click();
+        await returnDeletedListResponse;
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
 
-      const restoreResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/v1/dataQuality/testCases/restore') &&
-          response.request().method() === 'PUT'
-      );
-      const deletedListRefresh = waitForTestCaseListResponse(page);
-      await restoreButton.click();
-      expect((await restoreResponse).status()).toBe(200);
-      await deletedListRefresh;
-      await expect(page.getByTestId(testCaseName)).not.toBeVisible();
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.getByTestId(`restore-${testCaseName}`).click();
+        const confirmationModal = page.getByTestId('confirmation-modal');
+        const restoreButton = confirmationModal.getByTestId('save-button');
 
-      const activeListResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/dataQuality/testCases/search/list') &&
-          new URL(response.url()).searchParams.get('include') === 'non-deleted'
-      );
-      await page.getByTestId('show-deleted').click();
-      await activeListResponse;
-      await expect(page.getByTestId(testCaseName)).toBeVisible();
+        // Ant Design's modal root is a zero-size portal wrapper, so the visible
+        // action inside the dialog is the reliable signal that it is interactive.
+        await expect(restoreButton).toBeVisible();
+        await expect(confirmationModal.getByTestId('body-text')).toContainText(
+          testCaseName
+        );
+
+        const restoreResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/dataQuality/testCases/restore') &&
+            response.request().method() === 'PUT'
+        );
+        const deletedListRefresh = waitForTestCaseListResponse(page);
+        await restoreButton.click();
+        expect((await restoreResponse).status()).toBe(200);
+        await deletedListRefresh;
+        await expect(page.getByTestId(testCaseName)).not.toBeVisible();
+      });
+
+      await test.step('Verify the restored test case is active', async () => {
+        const activeListResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/search/list') &&
+            new URL(response.url()).searchParams.get('include') ===
+              'non-deleted'
+        );
+        await page.getByTestId('show-deleted').click();
+        await activeListResponse;
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      });
     });
   }
 );
