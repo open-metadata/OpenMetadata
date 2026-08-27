@@ -51,7 +51,8 @@
     "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh",
     "ui-checkstyle:playwright": "yarn organize-imports:playwright && yarn lint:playwright --fix && yarn pretty:playwright",
     "ui-checkstyle:playwright:changed": "bash scripts/ui-checkstyle-playwright-changed.sh",
-    "tw-guard": "node scripts/tw-deprecation-guard.js"
+    "tw-guard": "node scripts/tw-deprecation-guard.js",
+    "check-i18n-all": "yarn check-i18n && yarn check-i18n-keys && yarn check-locale-parity && yarn check-translations-not-english"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
