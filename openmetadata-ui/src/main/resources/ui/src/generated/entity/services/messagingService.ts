@@ -290,6 +290,11 @@ export interface Connection {
      */
     authType?: AuthenticationType;
     /**
+     * Client name reported to the NATS server. Probe field for verifying schema auto-update;
+     * not for merge.
+     */
+    clientName?: string;
+    /**
      * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
      */
     natsServers?: string;
