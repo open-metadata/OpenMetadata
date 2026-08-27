@@ -284,7 +284,6 @@ export const getSematicRuleFields = () => {
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
           useAsyncSearch: true,
-          listValues: jsonLogicSearchClassBase.autoCompleteTier,
         },
       },
     },

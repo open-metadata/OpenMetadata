@@ -31,40 +31,16 @@ const globalParserOptions = {
 
 const parser = new $RefParser(globalParserOptions);
 
-function writeJsonFile(filePath, data) {
-  const serializedData = JSON.stringify(data, null, 2);
-  const normalizedData = JSON.stringify(JSON.parse(serializedData));
+// Every failure below is collected rather than thrown, so that one bad schema
+// does not hide the rest. The process still exits non-zero if this is non-empty:
+// the generated output under src/jsons is committed, and main() clears each
+// destination directory before regenerating it, so a silently swallowed error
+// would surface as a *deleted* schema that CI would happily commit.
+const failures = [];
 
-  try {
-    const currentData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    // Preserve checked-in Prettier formatting when the generated JSON is unchanged.
-    if (JSON.stringify(currentData) === normalizedData) {
-      return;
-    }
-  } catch {
-    // Missing or invalid generated output should be replaced below.
-  }
-
-  fs.writeFileSync(filePath, serializedData);
-}
-
-function removeStaleFiles(sourceDir, destDir) {
-  for (const entry of fs.readdirSync(destDir, { withFileTypes: true })) {
-    const sourcePath = path.join(sourceDir, entry.name);
-    const destPath = path.join(destDir, entry.name);
-
-    if (!fs.existsSync(sourcePath)) {
-      fs.rmSync(destPath, { recursive: true, force: true });
-      continue;
-    }
-
-    const sourceEntry = fs.statSync(sourcePath);
-    if (entry.isDirectory() !== sourceEntry.isDirectory()) {
-      fs.rmSync(destPath, { recursive: true, force: true });
-    } else if (entry.isDirectory()) {
-      removeStaleFiles(sourcePath, destPath);
-    }
-  }
+function recordFailure(context, err) {
+  failures.push(`${context}: ${err.message ?? err}`);
+  console.error(`[parse-schema] ${context}`, err);
 }
 
 // Function to recursively remove any object by key
@@ -101,12 +77,15 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
       try {
         fs.mkdirSync(dirname, { recursive: true });
       } catch (err) {
-        console.log(err);
+        recordFailure(`mkdir ${dirname}`, err);
       }
     }
-    writeJsonFile(`${cwd}/${destPath}`, updatedAPIWithoutID);
+    fs.writeFileSync(
+      `${cwd}/${destPath}`,
+      JSON.stringify(updatedAPIWithoutID, null, 2)
+    );
   } catch (err) {
-    console.log(err);
+    recordFailure(`parse ${filePath}`, err);
   } finally {
     process.chdir(cwd);
   }
@@ -136,7 +115,7 @@ function copySourceFiles(rootDir) {
   try {
     fse.copySync(schemaDir, `${rootDir}/schema`);
   } catch (err) {
-    console.error(err);
+    recordFailure(`copy ${schemaDir} -> ${rootDir}/schema`, err);
   }
 }
 
@@ -145,16 +124,16 @@ async function main(rootDir, srcDir, destDir, shouldDereference = false) {
   const playDir = `${rootDir}/${srcDir}`;
 
   try {
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
+    if (fs.existsSync(destDir)) {
+      fs.rmSync(destDir, { recursive: true });
     }
+    fs.mkdirSync(destDir, { recursive: true });
 
     copySourceFiles(rootDir);
-    removeStaleFiles(playDir, destDir);
 
     await traverseDirectory(playDir, playDir, destDir, shouldDereference);
   } catch (err) {
-    console.log(err);
+    recordFailure(`generate ${destDir}`, err);
   } finally {
     // Cleanup: Remove the temporary directory
     if (fs.existsSync(rootDir)) {
@@ -207,12 +186,12 @@ async function parseApplicationSchemas() {
         fs.writeFileSync(destPath, JSON.stringify(updatedSchema, null, 2));
         console.log(`Processed ApplicationSchema: ${file}`);
       } catch (err) {
-        console.error(`Error processing ${file}:`, err.message);
+        recordFailure(`parse ApplicationSchema ${file}`, err);
         process.chdir(cwd);
       }
     }
   } catch (err) {
-    console.error('Error parsing Application schemas:', err);
+    recordFailure('generate src/jsons/applicationSchemas', err);
   }
 }
 
@@ -263,4 +242,18 @@ async function runParsers() {
   }
 }
 
-runParsers();
+runParsers()
+  .catch((err) => {
+    recordFailure('runParsers', err);
+  })
+  .finally(() => {
+    if (failures.length > 0) {
+      console.error(
+        `\n[parse-schema] failed to generate ${failures.length} schema(s):`
+      );
+      failures.forEach((failure) => console.error(`  - ${failure}`));
+      // Non-zero exit: the caller must not treat a partially generated
+      // src/jsons as an intentional change set.
+      process.exitCode = 1;
+    }
+  });

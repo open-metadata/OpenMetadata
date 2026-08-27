@@ -56,7 +56,7 @@ const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
-  [ROUTES.CONTEXT_CENTER_DASHBOARD]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_OVERVIEW]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
@@ -227,11 +227,11 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: SidebarItem.CONTEXT_CENTER,
     children: [
       {
-        key: ROUTES.CONTEXT_CENTER_DASHBOARD,
-        title: 'label.dashboard',
-        redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
+        key: ROUTES.CONTEXT_CENTER_OVERVIEW,
+        title: 'label.overview',
+        redirect_url: ROUTES.CONTEXT_CENTER_OVERVIEW,
         icon: DashboardIcon,
-        dataTestId: `app-bar-item-${SidebarItem.DASHBOARD}`,
+        dataTestId: `app-bar-item-${SidebarItem.OVERVIEW}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
