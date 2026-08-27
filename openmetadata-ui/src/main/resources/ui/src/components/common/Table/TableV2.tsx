@@ -459,19 +459,6 @@ const TableV2 = <T extends object>(
     [rest.pagination, pageSizeOverride, hasParentPagination, rest.dataSource]
   );
 
-  /**
-   * Changing the page size invalidates the current page — AntD resets to the
-   * first page, and so must we, or a reader on page 6 of 12 lands past the end
-   * of a now-shorter list.
-   */
-  const handlePageSizeChange = useCallback(
-    (size: number) => {
-      setPageSizeOverride(size);
-      setInternalCurrentPage(1);
-      clientPagination?.onShowSizeChange?.(1, size);
-    },
-    [clientPagination]
-  );
 
   const isCustomizeColumnEnable = useMemo(
     () =>
@@ -611,6 +598,36 @@ const TableV2 = <T extends object>(
       );
     },
     [rest.onChange, clientPagination, filteredDataSource]
+  );
+
+  /**
+   * Changing the page size invalidates the current page — AntD resets to the
+   * first page, and so must we, or a reader on page 6 of 12 lands past the end
+   * of a now-shorter list.
+   */
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSizeOverride(size);
+      setInternalCurrentPage(1);
+      clientPagination?.onShowSizeChange?.(1, size);
+      // AntD reports a page-size change through `onChange` as well, which is
+      // the only callback a server-paged table has to refetch on. Without it
+      // the picker moves and nothing else happens.
+      rest.onChange?.(
+        {
+          current: 1,
+          pageSize: size,
+          total: clientPagination?.serverTotal ?? filteredDataSource.length,
+        } as TablePaginationConfig,
+        {} as Record<string, FilterValue | null>,
+        {} as SorterResult<T>,
+        {
+          currentDataSource: filteredDataSource,
+          action: 'paginate',
+        } as TableCurrentDataSource<T>
+      );
+    },
+    [clientPagination, rest.onChange, filteredDataSource]
   );
 
   const pagedDataSource = useMemo((): T[] => {
