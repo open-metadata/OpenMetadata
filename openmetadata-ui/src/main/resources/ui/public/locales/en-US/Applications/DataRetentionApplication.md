@@ -17,6 +17,13 @@ Enter the retention period for Activity Threads of type = 'Conversation' records
 $$
 
 $$section
+### Activity Comments Retention Period (days) $(id="activityCommentsRetentionPeriod")
+
+Enter the retention period for comments on Activity Events in days. Use 0 to retain activity comments forever.
+
+$$
+
+$$section
 ### Test Case Results Retention Period (days) $(id="testCaseResultsRetentionPeriod")
 
 Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for two months).
