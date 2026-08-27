@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-# Gates the ingestion-base image on (a) absence of the five Debian 12 OS CVEs
+# Gates the ingestion-base image on (a) absence of the tracked Debian OS CVEs
 # that failed the Collate Snyk gate, and (b) the native driver stack still
 # working after the OS rebase. A clean CVE result with a broken ODBC or Oracle
 # driver is not a pass.
@@ -31,7 +31,7 @@ UNFILTERED_SCAN_OUT=""
 # CVE-2026-66032 / CVE-2026-66034 and reports zero hits for them even on the
 # bookworm image that demonstrably carries the vulnerable libssh2-1 1.10.0-3+b1.
 # Those two are covered by the package-version assertion further down instead.
-TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186"
+TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186 CVE-2026-14457"
 
 fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 pass() { echo "PASS: $1"; }
