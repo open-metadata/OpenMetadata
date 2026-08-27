@@ -23,6 +23,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.SearchIndexingLimits;
 import org.openmetadata.schema.type.Column;
@@ -138,6 +139,38 @@ class ColumnIndexLimitTest {
     new TestColumnIndex().parseColumns(siblings, flattened, null);
 
     assertEquals(4, flattened.size(), "must stop once max columns reached");
+  }
+
+  @Test
+  void columnDescriptionStatus_incomplete_when_nested_child_undocumented() {
+    Column undocumentedChild = new Column().withName("field1");
+    Column documentedStruct =
+        new Column()
+            .withName("struct")
+            .withDescription("documented")
+            .withChildren(List.of(undocumentedChild));
+    Table table = new Table().withColumns(List.of(documentedStruct));
+
+    assertEquals(
+        "INCOMPLETE",
+        new TestColumnIndex().getColumnDescriptionStatus(table),
+        "table with an undocumented nested/struct child must be INCOMPLETE");
+  }
+
+  @Test
+  void columnDescriptionStatus_complete_when_all_nested_documented() {
+    Column documentedChild = new Column().withName("field1").withDescription("child doc");
+    Column documentedStruct =
+        new Column()
+            .withName("struct")
+            .withDescription("documented")
+            .withChildren(List.of(documentedChild));
+    Table table = new Table().withColumns(List.of(documentedStruct));
+
+    assertEquals(
+        "COMPLETE",
+        new TestColumnIndex().getColumnDescriptionStatus(table),
+        "table with every column and nested child documented must be COMPLETE");
   }
 
   @Test

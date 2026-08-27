@@ -84,14 +84,26 @@ public interface ColumnIndex extends SearchIndex {
   }
 
   default String getColumnDescriptionStatus(EntityInterface entity) {
+    String status = "COMPLETE";
     List<Class<?>> interfaces = Arrays.asList(entity.getClass().getInterfaces());
-    if (interfaces.contains(ColumnsEntityInterface.class)) {
-      for (Column col : ((ColumnsEntityInterface) entity).getColumns()) {
-        if (CommonUtil.nullOrEmpty(col.getDescription())) {
-          return "INCOMPLETE";
+    if (interfaces.contains(ColumnsEntityInterface.class)
+        && hasUndocumentedColumn(((ColumnsEntityInterface) entity).getColumns())) {
+      status = "INCOMPLETE";
+    }
+    return status;
+  }
+
+  private boolean hasUndocumentedColumn(List<Column> columns) {
+    boolean undocumented = false;
+    if (columns != null) {
+      for (Column col : columns) {
+        if (CommonUtil.nullOrEmpty(col.getDescription())
+            || hasUndocumentedColumn(col.getChildren())) {
+          undocumented = true;
+          break;
         }
       }
     }
-    return "COMPLETE";
+    return undocumented;
   }
 }
