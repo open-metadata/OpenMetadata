@@ -12,6 +12,7 @@ import static org.openmetadata.service.governance.workflows.elements.TriggerFact
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -165,6 +166,16 @@ public class WorkflowHandler {
 
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
+      // MySQL defaults to REPEATABLE_READ, whose gap / next-key locks deadlock Flowable's
+      // concurrent ACT_RU_* runtime writes — insert-intention locks (timer/variable inserts on a
+      // workflow advance) against range locks from PROC_INST_ID_ cleanup deletes and timer-job
+      // sweeps. READ_COMMITTED drops those gap locks (record locks on non-matching rows are
+      // released after the WHERE), removing the cycle. It is Flowable's recommended level for
+      // MySQL and Postgres's default (which this stack already runs deadlock-free); Flowable's
+      // concurrency control is optimistic (REV_ version columns), so it is correct at RC. Scoped
+      // to the engine's own pooled datasource — the OpenMetadata JDBI datasource is unchanged.
+      processEngineConfiguration.setJdbcDefaultTransactionIsolationLevel(
+          Connection.TRANSACTION_READ_COMMITTED);
     } else {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
     }
