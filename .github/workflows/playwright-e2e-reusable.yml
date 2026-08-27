@@ -695,6 +695,7 @@ jobs:
             --project=GlobalSettings \
             --project=SystemCertificationTags \
             --project=IntakeForm \
+            --project=AdvancedSearch \
             --project=search-nightly \
             > "$RUNNER_TEMP/playwright-test-list.json"
 

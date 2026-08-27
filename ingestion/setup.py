@@ -73,7 +73,7 @@ VERSIONS = {
     "starrocks": "pymysql~=1.0",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
-    "pyathena": "pyathena~=3.25.0",
+    "pyathena": "pyathena~=3.35.4",  # <3.35.4 routes DELETE/CTAS to the Hive escaper -> SQL injection (CVE-2026-65321)
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     # <1.0: 1.0.0 is a SQLAlchemy-2.0 rewrite (first release since 0.0.5 in 2020) that drops
@@ -350,6 +350,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
+    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],

@@ -48,6 +48,10 @@ src/antlr/generated
 # Generated TS
 src/generated/
 
+# Generated (dereferenced) JSON schemas - committed as written verbatim by
+# parseSchemas.js. Reformatting them here would drift the tree from what
+# `yarn parse-schema` regenerates.
+src/jsons/
 
 # Assets
 *.gif

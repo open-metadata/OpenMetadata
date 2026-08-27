@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataESConnection",
+  "description": "Metadata to ElasticSearch Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.MetadataESConnection",
+  "definitions": {
+    "metadataESType": {
+      "description": "Metadata to Elastic Search type",
+      "type": "string",
+      "enum": [
+        "MetadataES"
+      ],
+      "default": "MetadataES"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "default": "MetadataES",
+      "type": "string",
+      "enum": [
+        "MetadataES"
+      ]
+    },
+    "entities": {
+      "title": "Entities",
+      "description": "List of entities that you need to reindex",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "table",
+        "topic",
+        "dashboard",
+        "pipeline",
+        "mlmodel",
+        "user",
+        "team",
+        "glossaryTerm",
+        "tag",
+        "entityReportData",
+        "webAnalyticEntityViewReportData",
+        "webAnalyticUserActivityReportData",
+        "container",
+        "query"
+      ],
+      "uniqueItems": true
+    },
+    "recreateIndex": {
+      "title": "Recreate Indexes",
+      "type": "boolean",
+      "default": true
+    },
+    "runMode": {
+      "description": "This schema publisher run modes.",
+      "type": "string",
+      "enum": [
+        "stream",
+        "batch"
+      ]
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+      "type": "string",
+      "enum": [
+        "EN",
+        "JP",
+        "ZH",
+        "RU"
+      ],
+      "default": "EN"
+    },
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of events sent in a batch (Default 100).",
+      "type": "integer",
+      "default": 100
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -22,7 +22,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
-import jsoncParser from 'jsonc-eslint-parser';
+import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
@@ -44,7 +44,7 @@ export default [
       'mock-api/**',
       'src/antlr/generated/**',
       'src/generated/antlr/**',
-      'src/jsons/connectionSchemas/**',
+      'src/jsons/**',
       'src/generated/**',
       'coverage/**',
       'playwright/doc-generator/**',

@@ -133,24 +133,34 @@ test.describe(
 
         // Select entity type (react-aria Select: click the field, pick option)
         await page.locator('[id="root/entityType"]').click();
-        await page.getByRole('option', { name: 'TABLE', exact: true }).click();
+        const entityTypeOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
+        });
+        await entityTypeOption.click();
 
-        // Supported data types (multi-select combobox: type to populate the
-        // options, then pick — required while the OpenMetadata platform is set).
+        // Supported data types (core MultiSelect: type into its combobox input to
+        // populate the options, then pick — required while the OpenMetadata
+        // platform is set). Post antd->core migration the RJSF field id sits on
+        // the field wrapper, not the input, so scope to the combobox input.
         // The combobox closes on selection, so no Escape (Escape closes the drawer).
-        await page.locator('[id="root/supportedDataTypes"]').fill('NUMBER');
+        const supportedDataTypes = page.getByTestId('supported-data-types');
+        await supportedDataTypes
+          .locator('input[role="combobox"]')
+          .fill('NUMBER');
         await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
         await expect(
-          page.getByTestId('supported-data-types').getByText('NUMBER', {
+          supportedDataTypes.getByText('NUMBER', {
             exact: true,
           })
         ).toBeVisible();
 
-        // Add a test platform (multi-select combobox)
-        await page.locator('[id="root/testPlatforms"]').fill('dbt');
+        // Add a test platform (core MultiSelect)
+        const testPlatforms = page.getByTestId('test-platforms');
+        await testPlatforms.locator('input[role="combobox"]').fill('dbt');
         await page.getByRole('option', { name: 'dbt', exact: true }).click();
         await expect(
-          page.getByTestId('test-platforms').getByText('dbt', { exact: true })
+          testPlatforms.getByText('dbt', { exact: true })
         ).toBeVisible();
 
         // Wait for POST response when creating test definition
@@ -342,9 +352,11 @@ test.describe(
             .locator('input')
             .fill(`validation-test-${uuid()}`);
           await page.getByTestId('entity-type').click();
-          await page
-            .getByRole('option', { name: 'TABLE', exact: true })
-            .click();
+          const entityTypeOption = page.getByRole('option', {
+            name: 'TABLE',
+            exact: true,
+          });
+          await entityTypeOption.click();
 
           // Submit the form
           await page.getByTestId('save-test-definition').click();
@@ -615,9 +627,7 @@ test.describe(
         // OpenMetadata is selected by default. Remove its chip (the chip is a
         // span with the label and an unlabeled remove button) and add dbt so the
         // definition is external (no OpenMetadata platform => read-only on edit).
-        const platformsField = page
-          .locator('[role="group"]')
-          .filter({ has: page.locator('[id="root/testPlatforms"]') });
+        const platformsField = page.getByTestId('test-platforms');
         await platformsField
           .locator('span')
           .filter({ hasText: 'OpenMetadata' })
@@ -627,7 +637,7 @@ test.describe(
           platformsField.getByText('OpenMetadata', { exact: true })
         ).toBeHidden();
 
-        await page.locator('[id="root/testPlatforms"]').fill('dbt');
+        await platformsField.locator('input[role="combobox"]').fill('dbt');
         const dbtOption = page.getByRole('option', {
           name: 'dbt',
           exact: true,
@@ -1154,7 +1164,11 @@ test.describe(
           .fill('Test definition for pagination behavior testing');
 
         await page.getByTestId('entity-type').click();
-        await page.getByRole('option', { name: 'TABLE', exact: true }).click();
+        const entityTypeOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
+        });
+        await entityTypeOption.click();
 
         // Select supported data types (required when OpenMetadata platform is selected)
         await page.getByTestId('supported-data-types').click();
