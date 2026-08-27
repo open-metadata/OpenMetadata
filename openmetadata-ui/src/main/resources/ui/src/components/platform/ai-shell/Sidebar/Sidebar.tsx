@@ -12,11 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Intent, SubNavConfig } from '../AppModule.types';
@@ -31,6 +27,11 @@ import './sidebar.less';
 import SubPanel from './SubPanel';
 import SubRail from './SubRail';
 import { useCustomizedMainNav } from './useCustomizedMainNav';
+import {
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
+  SUB_COLLAPSED_STORAGE_KEY,
+  usePersistedCollapse,
+} from './useSidebarState';
 
 // Sub-nav config key for the Context Center module — its sub-panel carries
 // the dynamic Quick Actions / Recently Viewed / Bookmarks sections below the
@@ -43,10 +44,17 @@ const Sidebar: React.FC = () => {
   const { pathname, state } = useLocation();
   const modules = useAllAppModules();
 
-  const [collapsed, setCollapsed] = useState(false);
-  // Submenus start collapsed (sub-rail) and open only when the user explicitly
-  // expands them — navigating into a sub-mode module must not pop the panel.
-  const [subCollapsed, setSubCollapsed] = useState(true);
+  // Both collapse states are persisted in localStorage so an explicit
+  // expand/collapse choice survives a full reload (matching the pre-migration
+  // AskCollate sidebar). Main defaults expanded; submenus default collapsed
+  // (sub-rail) and open only when the user explicitly expands them —
+  // navigating into a sub-mode module must not pop the panel.
+  const [collapsed, toggleCollapsed, setCollapsed] = usePersistedCollapse(
+    SIDEBAR_COLLAPSED_STORAGE_KEY,
+    false
+  );
+  const [subCollapsed, toggleSubCollapsed, setSubCollapsed] =
+    usePersistedCollapse(SUB_COLLAPSED_STORAGE_KEY, true);
 
   const mainNavItems = useMemo(() => buildMainNavItems(modules), [modules]);
 
@@ -102,26 +110,20 @@ const Sidebar: React.FC = () => {
   const showSubRail = inSubMode && subCollapsed;
 
   const handleToggleMain = useCallback(() => {
-    setCollapsed((prev) => {
-      if (prev) {
-        // Expanding main → collapse sub so only one panel is open.
-        setSubCollapsed(true);
-      }
-
-      return !prev;
-    });
-  }, []);
+    if (collapsed) {
+      // Expanding main → collapse sub so only one panel is open.
+      setSubCollapsed(true);
+    }
+    toggleCollapsed();
+  }, [collapsed, toggleCollapsed, setSubCollapsed]);
 
   const handleToggleSub = useCallback(() => {
-    setSubCollapsed((prev) => {
-      if (prev) {
-        // Expanding sub → collapse main so only one panel is open.
-        setCollapsed(true);
-      }
-
-      return !prev;
-    });
-  }, []);
+    if (subCollapsed) {
+      // Expanding sub → collapse main so only one panel is open.
+      setCollapsed(true);
+    }
+    toggleSubCollapsed();
+  }, [subCollapsed, toggleSubCollapsed, setCollapsed]);
 
   const subRailItems: RailItem[] = useMemo(() => {
     if (!activeSubNav) {
