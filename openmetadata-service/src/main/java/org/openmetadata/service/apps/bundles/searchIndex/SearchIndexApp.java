@@ -134,7 +134,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     List<CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord> activeJobs =
         collectionDAO
             .searchIndexJobDAO()
-            .findByStatuses(List.of("RUNNING", "READY", "INITIALIZING"));
+            .findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING"));
     if (!activeJobs.isEmpty()) {
       LOG.warn(
           "Uninstalling SearchIndexApp while {} distributed job(s) are still active. "
