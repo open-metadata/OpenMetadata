@@ -284,27 +284,37 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   // Replies are their own resource in Conversation V2 rather than a field on
   // the root, so refreshing the list is a reply read, not a re-read of the
   // conversation.
-  const loadReplies = useCallback(async () => {
-    if (!feed?.id) {
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await listConversationReplies(feed.id);
-      setReplies(res.data ?? []);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [feed?.id]);
+  // Skeleton on the first read only: swapping the mounted list for it on a
+  // refresh unmounts every CommentRow, dropping the hover state its edit and
+  // delete actions live behind.
+  const loadReplies = useCallback(
+    async (showSkeleton = false) => {
+      if (!feed?.id) {
+        return;
+      }
+      if (showSkeleton) {
+        setIsLoading(true);
+      }
+      try {
+        const res = await listConversationReplies(feed.id);
+        setReplies(res.data ?? []);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        if (showSkeleton) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [feed?.id]
+  );
 
   // Only conversations carry replies; change-event activities are read-only
   // (open-metadata/OpenMetadata#30879).
   useEffect(() => {
     setReplies([]);
     if (open && feed?.id) {
-      loadReplies();
+      loadReplies(true);
     }
   }, [open, feed?.id, loadReplies]);
 
