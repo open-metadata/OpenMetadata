@@ -12,13 +12,43 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getTopicByFqn } from '../../rest/topicsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
 jest.mock('../../components/Topic/TopicDetails/TopicDetails.component', () => {
   return jest.fn().mockReturnValue(<div>TopicDetails.component</div>);
 });
+
+// The page now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for
+// the full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce,
+// the `deleted`-gating blind spot), mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('../../rest/topicsAPI', () => ({
   addFollower: jest.fn(),
@@ -45,10 +75,10 @@ jest.mock('../../hooks/useFqn', () => ({
   }),
 }));
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    permissions: {},
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+describe('Test TopicDetailsPage component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
       Create: true,
       Delete: true,
       EditAll: true,
@@ -69,40 +99,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       ViewSampleData: true,
       ViewTests: true,
       ViewUsage: true,
-    }),
-  })),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {
-    Create: true,
-    Delete: true,
-    EditAll: true,
-    EditCustomFields: true,
-    EditDataProfile: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditLineage: true,
-    EditOwners: true,
-    EditQueries: true,
-    EditSampleData: true,
-    EditTags: true,
-    EditTests: true,
-    EditTier: true,
-    ViewAll: true,
-    ViewDataProfile: true,
-    ViewQueries: true,
-    ViewSampleData: true,
-    ViewTests: true,
-    ViewUsage: true,
-  },
-  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
-}));
-
-describe('Test TopicDetailsPage component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+    });
   });
 
   it('TopicDetailsPage component should render properly', async () => {
