@@ -26,6 +26,7 @@ import Rail, { RailItem } from './Rail';
 import './sidebar.less';
 import SubPanel from './SubPanel';
 import SubRail from './SubRail';
+import { useContextCenterBadges } from './useContextCenterBadges';
 import { useCustomizedMainNav } from './useCustomizedMainNav';
 import {
   SIDEBAR_COLLAPSED_STORAGE_KEY,
@@ -78,6 +79,12 @@ const Sidebar: React.FC = () => {
 
   const inSubMode = activeSubNav !== null;
   const isContextCenter = activeSubNav?.key === CONTEXT_CENTER_SUBNAV_KEY;
+
+  // Live sub-nav counts for the Context Center items (Articles / Documents /
+  // Memories / Archive). Gated on the active sub-nav so other routes don't pay
+  // for the count queries. Consumed by `SubPanel` via its `badges` prop, keyed
+  // by sub-nav item key.
+  const contextCenterBadges = useContextCenterBadges(isContextCenter);
 
   const handleUploadFile = useCallback(() => emitIntent(Intent.UploadFile), []);
   const handleCreateArticle = useCallback(
@@ -171,6 +178,7 @@ const Sidebar: React.FC = () => {
       ) : null}
       {showSubPanel && activeSubNav ? (
         <SubPanel
+          badges={contextCenterBadges}
           config={activeSubNav}
           dynamicSections={dynamicSections}
           onCollapse={handleToggleSub}
