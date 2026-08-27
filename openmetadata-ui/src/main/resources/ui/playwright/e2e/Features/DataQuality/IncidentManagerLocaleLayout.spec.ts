@@ -13,9 +13,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Issue #30522 — Russian composes the "No Severity" placeholder as
- * "Критичность инцидента отсутствует" (218px of rendered text against 67px in
- * English). The chip is nowrap, so its intrinsic width was the Severity column's
+ * Issue #30522 — Russian renders a much longer "No Severity" placeholder than
+ * English. The chip is nowrap, so its intrinsic width was the Severity column's
  * floor: the chip reached 258px, the column 306px, and the Assignee column was
  * pushed off screen.
  *
@@ -31,7 +30,6 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const RU_LOCALE = 'ru-RU';
 const EN_LOCALE = 'en-US';
-const RU_NO_SEVERITY = 'Критичность инцидента отсутствует';
 const VIEWPORT = { width: 1440, height: 900 };
 const INCIDENT_LIST_URL =
   '**/api/v1/dataQuality/testCases/testCaseIncidentStatus**';
@@ -190,6 +188,31 @@ const pinNav = async (page: Page, navExpanded: boolean) => {
 const getSeverityChip = (page: Page) =>
   getIncidentRow(page, NO_SEVERITY_ROW).getByTestId(SEVERITY_CHIP_TEST_ID);
 
+/**
+ * Branded builds can override the OSS translation while preserving the long
+ * Russian placeholder that reproduces the layout bug. Prove the rendered copy
+ * exceeds its visible budget instead of coupling geometry checks to one bundle's
+ * wording, and return it for the tooltip/accessibility assertions below.
+ */
+const expectLongSeverityPlaceholder = async (page: Page) => {
+  const severityLabel = getSeverityChip(page).getByTestId(
+    SEVERITY_CHIP_LABEL_TEST_ID
+  );
+
+  await expect(severityLabel).toBeVisible();
+
+  const dimensions = await severityLabel.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    text: element.textContent?.trim() ?? '',
+  }));
+
+  expect(dimensions.text).not.toBe('');
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+
+  return dimensions.text;
+};
+
 const getTableContainerWidth = (page: Page) =>
   page
     .getByTestId(INCIDENT_TABLE_TEST_ID)
@@ -215,8 +238,7 @@ test.describe('Incident Manager table in a long-string locale', () => {
   }) => {
     await pinNav(page, true);
 
-    // Guard: the page really is rendering the long Russian placeholder.
-    await expect(getSeverityChip(page)).toContainText(RU_NO_SEVERITY);
+    await expectLongSeverityPlaceholder(page);
 
     // Precondition, not the bug: fixes the width this assertion is measured at.
     expect(await getTableContainerWidth(page)).toBe(
@@ -247,7 +269,7 @@ test.describe('Incident Manager table in a long-string locale', () => {
 
       const severityChip = getSeverityChip(page);
 
-      await expect(severityChip).toContainText(RU_NO_SEVERITY);
+      await expectLongSeverityPlaceholder(page);
 
       const severityChipBox = await severityChip.boundingBox();
 
@@ -265,21 +287,13 @@ test.describe('Incident Manager table in a long-string locale', () => {
     const severityChip = getSeverityChip(page);
     const severityLabel = severityChip.getByTestId(SEVERITY_CHIP_LABEL_TEST_ID);
 
-    // Assert presence before measuring: `.evaluate()` on a missing locator hangs
-    // until the test timeout instead of failing on the real assertion.
-    await expect(severityLabel).toBeVisible();
+    const localizedPlaceholder = await expectLongSeverityPlaceholder(page);
 
-    // The label is genuinely clipped, so the hover affordance is load-bearing.
-    const labelOverflow = await severityLabel.evaluate(
-      (element) => element.scrollWidth - element.clientWidth
-    );
-
-    expect(labelOverflow).toBeGreaterThan(0);
-    await expect(severityLabel).toHaveAttribute('title', RU_NO_SEVERITY);
+    await expect(severityLabel).toHaveAttribute('title', localizedPlaceholder);
 
     // Truncation is visual only — the button's accessible name still carries
     // the whole string.
-    await expect(severityChip).toContainText(RU_NO_SEVERITY);
+    await expect(severityChip).toHaveAccessibleName(localizedPlaceholder);
   });
 });
 
