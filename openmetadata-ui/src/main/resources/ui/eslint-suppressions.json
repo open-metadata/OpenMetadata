@@ -489,7 +489,7 @@
   },
   "playwright/e2e/Features/PersonaAIContext.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 17
+      "count": 13
     }
   },
   "playwright/e2e/Features/PersonaAIContextRules.spec.ts": {
@@ -787,7 +787,7 @@
       "count": 2
     },
     "om-playwright/no-positional-locator": {
-      "count": 54
+      "count": 53
     }
   },
   "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts": {
@@ -1144,7 +1144,7 @@
   },
   "playwright/utils/advancedSearch.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 10
     }
   },
   "playwright/utils/alert.ts": {
