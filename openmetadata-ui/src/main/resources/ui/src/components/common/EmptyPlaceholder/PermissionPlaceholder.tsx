@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Lock01 } from '@untitledui/icons';
+import { ReasonForAccess } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { PermissionPlaceholderProps } from './EmptyPlaceholder.interface';
@@ -45,7 +45,7 @@ const PermissionPlaceholder = ({
           />
         )
       }
-      icon={icon ?? <Lock01 className="tw:text-secondary" />}
+      icon={icon ?? <ReasonForAccess className="tw:text-secondary" />}
       title={title ?? t('label.access-denied')}
       variant="blank"
       {...props}

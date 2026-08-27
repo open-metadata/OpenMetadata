@@ -15,7 +15,8 @@ import {
   Breadcrumbs,
   Button,
   Typography,
-} from '@openmetadata/ui-core-components';
+  EmptyPlaceholder} from '@openmetadata/ui-core-components';
+import { SecurityService } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -31,7 +32,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -250,9 +250,13 @@ function EditConnectionFormPage() {
 
   if (isError && !isLoading) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(serviceCategory, serviceFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          description={getEntityMissingError(serviceCategory, serviceFQN)}
+          icon={<SecurityService className="tw:text-secondary" />}
+          title={t('message.something-went-wrong')}
+        />
+      </div>
     );
   }
 

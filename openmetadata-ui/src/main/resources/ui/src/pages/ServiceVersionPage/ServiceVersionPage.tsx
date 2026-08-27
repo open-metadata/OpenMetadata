@@ -18,7 +18,8 @@ import { PagingWithoutTotal, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { ReasonForAccess } from '@openmetadata/ui-core-components/icons';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -28,7 +29,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Directory } from '../../generated/entity/data/directory';
@@ -56,6 +56,7 @@ import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
@@ -510,15 +511,23 @@ function ServiceVersionPage() {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: `${getEntityName(currentVersionData)} ${t(
-              'label.service'
-            )}`,
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:flex-1 tw:min-h-0">
+          <EmptyPlaceholder
+            description={
+              <Transi18next
+                i18nKey="message.no-access-placeholder"
+                renderElement={<b />}
+                values={{
+                  entity: t('label.view-entity', {
+                    entity: `${getEntityName(currentVersionData)} ${t('label.service')}`,
+                  }),
+                }}
+              />
+            }
+            icon={<ReasonForAccess className="tw:text-secondary" />}
+            title={t('label.access-denied')}
+          />
+        </div>
       );
     }
 

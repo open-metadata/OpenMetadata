@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button , EmptyPlaceholder} from '@openmetadata/ui-core-components';
+import { Pipeline } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -19,7 +20,6 @@ import { ServicesUpdateRequest } from 'Models';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -355,7 +355,15 @@ const EditIngestionPage = () => {
     return <Loader />;
   }
   if (errorMsg) {
-    return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
+    return (
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          description={errorMsg}
+          icon={<Pipeline className="tw:text-secondary" />}
+          title={t('message.something-went-wrong')}
+        />
+      </div>
+    );
   }
 
   return (

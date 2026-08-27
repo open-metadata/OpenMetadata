@@ -20,6 +20,7 @@ import {
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { SearchIndex } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -58,7 +59,6 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
-import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
@@ -294,11 +294,19 @@ const DataProductListPage = ({
       if (isSearchOrFilterActive()) {
         return (
           <div className="tw:relative tw:min-h-70">
-            <NoFilteredResultsPlaceholder
-              onClearFilters={() => {
-                dataProductListing.handleSearchChange('');
-                dataProductListing.handleFilterChange([]);
-              }}
+            <EmptyPlaceholder
+              actions={[{
+                color: 'primary',
+                key: 'clear-filters',
+                label: t('label.clear-filter-plural'),
+                onPress: () => {
+                  dataProductListing.handleSearchChange('');
+                  dataProductListing.handleFilterChange([]);
+                },
+              }]}
+              description={t('message.nothing-matches-current-filter')}
+              icon={<SearchIndex className="tw:text-secondary" />}
+              title={t('label.no-result-for-these-filter-plural')}
             />
           </div>
         );
