@@ -29,7 +29,7 @@ import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { restoreTestCase } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
@@ -1490,6 +1490,45 @@ describe('DataQualityTab test', () => {
       );
 
       expect(afterDeleteAction).toHaveBeenCalled();
+    });
+
+    it('should finish restoring after the modal is cancelled while the request is pending', async () => {
+      let resolveRestore: (() => void) | undefined;
+      const afterDeleteAction = jest.fn();
+      (restoreTestCase as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveRestore = () => resolve();
+          })
+      );
+      render(
+        <DataQualityTab
+          {...mockProps}
+          afterDeleteAction={afterDeleteAction}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[deletedTestCase]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${deletedTestCase.name}`)
+      );
+      fireEvent.click(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      );
+      fireEvent.click(await screen.findByText('submit'));
+
+      await waitFor(() =>
+        expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id)
+      );
+      fireEvent.click(await screen.findByText('cancel'));
+
+      await act(async () => resolveRestore?.());
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalled());
+
+      expect(showSuccessToast).toHaveBeenCalled();
+      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
     it('should keep the restore modal open and report restore failures', async () => {

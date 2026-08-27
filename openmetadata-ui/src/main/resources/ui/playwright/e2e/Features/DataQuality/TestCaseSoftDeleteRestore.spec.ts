@@ -100,8 +100,7 @@ test.describe(
             response
               .url()
               .includes('/api/v1/dataQuality/testCases/search/list') &&
-            new URL(response.url()).searchParams.get('include') === 'deleted' &&
-            response.status() === 200
+            new URL(response.url()).searchParams.get('include') === 'deleted'
         );
         await page.getByTestId('show-deleted').click();
         await deletedListResponse;

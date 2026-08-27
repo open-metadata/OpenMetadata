@@ -358,17 +358,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleRestoreTestCase = async () => {
-    const entityId = selectedTestCase?.data.id;
-    if (!entityId) {
+    // Preserve the record when a user dismisses the modal while the restore
+    // request is pending; cancelling clears selectedTestCase immediately.
+    const testCase = selectedTestCase?.data;
+    if (!testCase?.id) {
       return;
     }
 
     setIsRestoringTestCase(true);
     try {
-      await restoreTestCase(entityId);
+      await restoreTestCase(testCase.id);
       showSuccessToast(
         t('server.restore-entity-success', {
-          entity: getEntityName(selectedTestCase.data),
+          entity: getEntityName(testCase),
         })
       );
       afterDeleteAction?.();
