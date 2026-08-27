@@ -719,13 +719,19 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(firstResult.has("text")).isTrue();
     String responseText = firstResult.get("text").asText();
 
-    JsonNode entityData = OBJECT_MAPPER.readTree(responseText).get("entity");
+    // The patched entity is returned flat, the same shape the create_* tools return. It used to be
+    // wrapped in an "entity" key because the raw PatchResponse was serialized as-is.
+    JsonNode entityData = OBJECT_MAPPER.readTree(responseText);
     assertThat(entityData.has("id")).isTrue();
     assertThat(entityData.has("description")).isTrue();
     assertThat(entityData.get("description").asText())
         .contains("Updated description via MCP patch tool");
     assertThat(entityData.has("fullyQualifiedName")).isTrue();
     assertThat(entityData.get("fullyQualifiedName").asText()).isEqualTo(patchedEntity);
+    assertThat(entityData.path("_operation").asText())
+        .withFailMessage("Patch response payload: %s", responseText)
+        .isEqualTo("updated");
+    assertThat(entityData.has("version")).isTrue();
   }
 
   private void validateLineageResponse(JsonNode result, String expectedEntityFqn) throws Exception {
