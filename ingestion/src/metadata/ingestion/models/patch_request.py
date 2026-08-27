@@ -600,6 +600,13 @@ def _should_update_restricted_field(
     return override_metadata
 
 
+def _attribute_has_structured_children(attribute) -> bool:
+    return any(
+        model_str(getattr(attribute, field, None)) == "STRUCT"
+        for field in ("dataType", "arrayDataType")
+    )
+
+
 def _merge_array_attributes(
     destination_attributes,
     source_attributes,
@@ -638,6 +645,13 @@ def _merge_array_attributes(
                 ):
                     continue
             update_dict[k] = field_value
+
+        if (
+            "children" not in dest_attr.model_fields_set
+            and getattr(source_attr, "children", None)
+            and not _attribute_has_structured_children(dest_attr)
+        ):
+            update_dict["children"] = None
 
         updated_attributes.append(source_attr.model_copy(update=update_dict))
 
