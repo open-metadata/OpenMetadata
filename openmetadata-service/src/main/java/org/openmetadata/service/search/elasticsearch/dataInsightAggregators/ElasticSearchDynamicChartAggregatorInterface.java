@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.jena.atlas.logging.Log;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -203,9 +202,17 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
   }
 
   /**
-   * Engine query for a filter's extracted query text, or null when there is none. Unlike the
-   * OpenSearch wrapper this parses client side, so a filter the typed client cannot map is dropped
-   * here rather than rejected by the cluster.
+   * Engine query for a filter's extracted query text, or null only when the metric declares none.
+   *
+   * <p>A filter that was declared but cannot be mapped is an error, not an absent filter. Returning
+   * null for both would leave {@link #populateDateHistogram} building the metric as an unfiltered
+   * leaf, so the chart reports a plausible number counted over every document instead of the subset
+   * the filter asked for. That is the failure the whole filter path exists to prevent, and it is
+   * silent: the request still returns 200.
+   *
+   * <p>This parses client side where the OpenSearch wrapper sends the query verbatim and lets the
+   * cluster reject it. Failing here keeps the two engines answering the same way rather than one
+   * erroring and the other quietly widening the aggregation.
    */
   static Query queryFromJson(String queryJson) {
     if (queryJson == null) {
@@ -214,8 +221,9 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     try {
       return Query.of(q -> q.withJson(new StringReader(queryJson)));
     } catch (RuntimeException e) {
-      Log.error("Ignoring a Data Insight metric filter the client cannot map: {}", e.getMessage());
-      return null;
+      throw new IllegalArgumentException(
+          "Data Insight metric filter cannot be mapped by the Elasticsearch client: " + queryJson,
+          e);
     }
   }
 

@@ -318,19 +318,31 @@ class ElasticSearchLineChartAggregatorTest {
   }
 
   @Test
-  void aFilterTheClientCannotMapLeavesTheAxisUnranked() throws Exception {
-    // Jackson reads this, the typed client rejects it, and queryFromJson drops it. Deciding the
-    // order from the chart definition rather than from the aggregations actually built would name a
-    // wrapper that is not in the request, and the engine rejects the whole search with a 400.
-    JsonNode terms = serviceTermsAggregation(prepare(functionChart(Function.COUNT, UNMAPPABLE)));
+  void aFilterTheClientCannotMapFailsRatherThanCountingEveryDocument() {
+    // Jackson reads this, the typed client refuses to map it. Dropping it would leave the metric an
+    // unfiltered leaf, so the chart answers with a plausible number counted over the whole index
+    // instead of the subset the filter asked for, and still returns 200. The OpenSearch wrapper
+    // sends the query verbatim and lets the cluster reject it; this fails the same way.
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> prepare(functionChart(Function.COUNT, UNMAPPABLE)));
 
     assertTrue(
-        terms.path("terms").path("order").isMissingNode(),
-        "the filter was dropped, so there is no wrapper to rank by: " + terms);
+        thrown.getMessage().contains("cannot be mapped"),
+        "the failure must name the unmappable filter: " + thrown.getMessage());
+  }
+
+  @Test
+  void aMetricWithNoFilterStillBuildsAnUnfilteredLeaf() throws Exception {
+    // The other half of the contract: null from queryFromJson must keep meaning "none declared".
+    // Failing here too would break every chart that legitimately aggregates over everything.
+    JsonNode terms = serviceTermsAggregation(prepare(functionChart(Function.COUNT, null)));
+
     assertEquals(
         Set.of("columns.dataLength0"),
         subAggregationKeys(terms),
-        "and the metric falls back to an unfiltered leaf");
+        "a metric that declares no filter aggregates unfiltered");
   }
 
   /** Order paths of a terms aggregation, in the order the request declares them. */
