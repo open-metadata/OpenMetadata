@@ -134,7 +134,14 @@ def druid_network():
 
 @pytest.fixture(scope="module")
 def zookeeper_container(druid_network):
-    container = DockerContainer(ZOOKEEPER_IMAGE).with_network(druid_network).with_network_aliases("zookeeper")
+    container = (
+        DockerContainer(ZOOKEEPER_IMAGE)
+        .with_network(druid_network)
+        .with_network_aliases("zookeeper")
+        # The image defaults to a 1 GB heap; a single-node ensemble holding one
+        # broker's announcements needs a fraction of that, and shard-3 is shared.
+        .with_env("ZK_SERVER_HEAP", "256")
+    )
     with container:
         wait_for_logs(container, "binding to port", timeout=180)
         yield container
@@ -163,6 +170,14 @@ def druid_container(druid_network, zookeeper_container, druid_tls):
         .with_env("druid_server_https_keyStoreType", "PKCS12")
         .with_env("druid_server_https_certAlias", KEYSTORE_ALIAS)
         .with_env("druid_server_https_keyStorePassword", KEYSTORE_PASSWORD)
+        # nano-quickstart sizes the broker for a real workload (512m heap, 400m direct)
+        # and derives numThreads from the core count. This suite queries INFORMATION_SCHEMA
+        # and sys, so one processing thread is plenty; direct memory only has to cover
+        # buffer.sizeBytes (50MiB) * (numThreads + numMergeBuffers + 1).
+        .with_env("druid_processing_numThreads", "1")
+        .with_env("DRUID_XMS", "256m")
+        .with_env("DRUID_XMX", "384m")
+        .with_env("DRUID_MAXDIRECTMEMORYSIZE", "320m")
     )
 
     with container:
