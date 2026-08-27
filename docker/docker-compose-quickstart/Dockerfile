@@ -55,11 +55,6 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-# Compiled with the builder's own javac, which is outside /javaruntime and so
-# survives the prune above.
-COPY docker/Health.java /health/Health.java
-RUN javac -d /health /health/Health.java
-
 # `cc`, not `base`: the JNI natives the server loads link the GNU C++ runtime.
 # DJL's libtokenizers.so (and onnxruntime, for the local embedding provider) both
 # need libstdc++.so.6 and libgcc_s.so.1, which only the cc variant carries -- on
@@ -97,7 +92,6 @@ ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
-COPY --from=jre-builder /health/Health.class /opt/openmetadata/health/Health.class
 # The one glibc library distroless cc leaves out. libtorch pulls libgfortran,
 # which links libz.so.1, so without this the djl provider downloads its natives
 # and then dies with "libz.so.1: cannot open shared object file" (issue #26700).
@@ -115,12 +109,6 @@ USER 65532:65532
 
 WORKDIR /opt/openmetadata
 EXPOSE 8585 8586
-
-# Checks that Dropwizard's admin endpoint returns 200 *and* that no registered
-# check is failing, which `wget --spider` cannot see.
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
-  CMD ["/opt/java/openjdk/bin/java", "-XX:TieredStopAtLevel=1", \
-       "-Xms32m", "-Xmx32m", "-cp", "/opt/openmetadata/health", "Health"]
 
 ENTRYPOINT [ "/bin/bash" ]
 CMD ["/openmetadata-start.sh"]

@@ -12,10 +12,10 @@
 #
 # Smoke test for the server image. Deliberately needs no database and no search
 # cluster: everything asserted here is a property of the *image* -- the jlink
-# module set, the glibc C++ runtime the JNI natives link against, the writable
-# log directory, the non-root uid, the shell the launch scripts need, and the
-# absence of a package manager. A stack-level test belongs in the integration
-# workflows, not here.
+# module set, the glibc libraries the JNI natives link against, the writable log
+# directory, the non-root uid, the shell the launch scripts need, the absence of
+# a package manager, and the JVM owning PID 1. A stack-level test belongs in the
+# integration workflows, not here.
 #
 #   ./scripts/docker_smoke_test.sh [image-tag]
 #
@@ -63,12 +63,6 @@ else
   # A name here is not cosmetic: the kubelet rejects a non-numeric user under
   # `runAsNonRoot: true` with no explicit `runAsUser`.
   fail "expected USER 65532:65532, got '${user:-<unset>}'"
-fi
-
-if docker image inspect "$IMAGE" --format '{{.Config.Healthcheck.Test}}' | grep -q Health; then
-  pass "image declares the java HEALTHCHECK probe"
-else
-  fail "image has no HEALTHCHECK, or it does not run the Health class"
 fi
 
 # The launch scripts, bootstrap/openmetadata-ops.sh, the compose healthchecks and
@@ -157,25 +151,6 @@ else
   fail "/opt/openmetadata/logs is not writable by uid 65532 -- logging will fail at startup"
 fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-
-# Runs the declared HEALTHCHECK verbatim rather than an approximation of it. The
-# probe inherits JDK_JAVA_OPTIONS, so a probe flag that contradicts the server
-# tuning -- two garbage collectors selected, a heap floor above its ceiling --
-# stops the probe JVM before main() and the container never leaves "starting",
-# while the server behind it is perfectly healthy.
-hc=()
-while IFS= read -r arg; do
-  [ -n "$arg" ] && hc+=("$arg")
-done < <(docker image inspect "$IMAGE" --format '{{range .Config.Healthcheck.Test}}{{.}}{{"\n"}}{{end}}')
-# hc[0] is the CMD / CMD-SHELL keyword; the executable and its arguments follow.
-probe="$(docker run --rm --entrypoint "${hc[1]}" "$IMAGE" "${hc[@]:2}" 2>&1 || true)"
-# Exit 1 with no stack trace is the probe's healthy-path answer for "nothing is
-# listening yet"; anything the JVM calls an error means the probe itself is broken.
-if echo "$probe" | grep -qE 'Exception|Error occurred|Error:'; then
-  fail "the declared HEALTHCHECK cannot run: $(echo "$probe" | grep -E 'Exception|Error occurred|Error:' | head -1)"
-else
-  pass "the declared HEALTHCHECK runs and reports unhealthy with no server behind it"
-fi
 
 # The JVM has to be PID 1 or `docker stop` and pod termination never reach
 # Dropwizard's shutdown hooks: the shell that would otherwise be PID 1 does not

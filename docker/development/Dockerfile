@@ -42,16 +42,12 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-COPY docker/Health.java /health/Health.java
-RUN javac -d /health /health/Health.java
-
 FROM gcr.io/distroless/cc-debian12:debug-nonroot
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
-COPY --from=jre-builder /health/Health.class /opt/openmetadata/health/Health.class
 # The one glibc library distroless cc leaves out. libtorch pulls libgfortran,
 # which links libz.so.1, so without this the djl provider downloads its natives
 # and then dies with "libz.so.1: cannot open shared object file" (issue #26700).
@@ -66,10 +62,6 @@ USER 65532:65532
 
 WORKDIR /opt/openmetadata
 EXPOSE 8585 8586
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
-  CMD ["/opt/java/openjdk/bin/java", "-XX:TieredStopAtLevel=1", \
-       "-Xms32m", "-Xmx32m", "-cp", "/opt/openmetadata/health", "Health"]
 
 ENTRYPOINT [ "/bin/bash" ]
 CMD ["/openmetadata-start.sh"]

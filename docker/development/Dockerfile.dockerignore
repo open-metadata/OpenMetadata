@@ -14,9 +14,6 @@
 !openmetadata-dist/target/
 !openmetadata-dist/target/openmetadata-*.tar.gz
 
-# The HEALTHCHECK probe compiled in the builder stage.
-!docker/
-!docker/Health.java
-
 # The entrypoint script.
+!docker/
 !docker/openmetadata-start.sh
