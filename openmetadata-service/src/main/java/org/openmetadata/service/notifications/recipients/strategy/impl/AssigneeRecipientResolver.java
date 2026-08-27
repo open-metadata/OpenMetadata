@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -58,10 +57,6 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
         Task task = AlertsRuleEvaluator.getTask(event);
         return resolveAssignees(task.getAssignees(), destination);
       }
-      if (Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
-        Thread thread = AlertsRuleEvaluator.getThread(event);
-        return resolveAssigneesFromThread(thread, destination);
-      }
       LOG.warn(
           "AssigneeRecipientResolver called with unsupported entity: {}", event.getEntityType());
       return Collections.emptySet();
@@ -84,10 +79,6 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
         Task task = Entity.getEntity(Entity.TASK, entityId, "assignees", Include.NON_DELETED);
         return resolveAssignees(task.getAssignees(), destination);
       }
-      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
-        Thread thread = Entity.getFeedRepository().get(entityId);
-        return resolveAssigneesFromThread(thread, destination);
-      }
       LOG.warn("AssigneeRecipientResolver called with unsupported entity: {}", entityType);
       return Collections.emptySet();
 
@@ -95,14 +86,6 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       LOG.error("Failed to resolve assignees for {}", entityId, e);
       return Collections.emptySet();
     }
-  }
-
-  private Set<Recipient> resolveAssigneesFromThread(
-      Thread thread, SubscriptionDestination destination) {
-    if (thread == null || thread.getTask() == null) {
-      return Collections.emptySet();
-    }
-    return resolveAssignees(thread.getTask().getAssignees(), destination);
   }
 
   private Set<Recipient> resolveAssignees(

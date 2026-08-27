@@ -34,3 +34,18 @@ SET json = JSON_SET(json, '$.entityStatus', 'Approved')
 WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
    OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL'
    OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = 'Unprocessed';
+
+-- Activity comments are retained indefinitely unless an administrator explicitly configures a
+-- positive retention period. Preserve any value already chosen by an administrator.
+UPDATE installed_apps
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE entity_extension
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataRetentionApplication';

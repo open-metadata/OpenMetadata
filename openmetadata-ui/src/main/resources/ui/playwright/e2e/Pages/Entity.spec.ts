@@ -2347,8 +2347,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           // Wait for activity feed API call (all tab is selected by default)
           const activityFeedResponse = page.waitForResponse(
             (response) =>
-              response.url().includes('/api/v1/feed') &&
-              response.url().includes('entityLink')
+              response.url().includes('/api/v1/activity/') &&
+              response.url().includes('/name/')
           );
 
           await activityFeedTab.click();

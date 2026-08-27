@@ -88,7 +88,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
  *
  * <p>Key differences from the legacy CreateApprovalTaskImpl:
  * - Creates Task entity instead of Thread entity
- * - Uses TaskRepository instead of FeedRepository
+ * - Persists through TaskRepository
  * - Links task to WorkflowInstance via workflowInstanceId
  * - Cleaner separation from Feed/Thread complexity
  */

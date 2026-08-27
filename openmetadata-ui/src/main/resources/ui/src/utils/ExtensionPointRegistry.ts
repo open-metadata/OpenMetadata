@@ -21,7 +21,7 @@
 /**
  * A contribution from a plugin to an extension point
  */
-export interface ExtensionContribution<T = any> {
+export interface ExtensionContribution<T = unknown> {
   /** The extension point this contribution is for */
   extensionPointId: string;
   /** The actual contribution data */
@@ -74,6 +74,6 @@ export class ExtensionPointRegistry {
   public getContributions<T>(extensionPointId: string): T[] {
     const contributions = this.contributions.get(extensionPointId) ?? [];
 
-    return contributions.map((contribution) => contribution.data);
+    return contributions.map((contribution) => contribution.data) as T[];
   }
 }

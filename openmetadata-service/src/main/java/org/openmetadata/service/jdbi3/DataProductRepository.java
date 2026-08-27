@@ -66,10 +66,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -1181,9 +1178,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     private void updateEntityLinks(String oldFqn, String newFqn) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
-      EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getConversationRepository()
+          .updateEntityReference(updated.getEntityReference(), oldFqn);
     }
   }
 
@@ -1219,12 +1215,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
   }
 
   @Override

@@ -199,6 +199,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
+  MessagingServiceType.Nats,
   DashboardServiceType.SapS4Hana,
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,

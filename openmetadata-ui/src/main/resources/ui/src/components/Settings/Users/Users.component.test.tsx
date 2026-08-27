@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -83,7 +84,7 @@ jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
     React.useEffect(() => {
       if (props.queryFilter === 'my-data') {
         searchQuery({
-          searchIndex: ['all'] as any,
+          searchIndex: ['all'] as unknown as SearchIndex[],
           query: '*',
           filters: props.queryFilter,
         });

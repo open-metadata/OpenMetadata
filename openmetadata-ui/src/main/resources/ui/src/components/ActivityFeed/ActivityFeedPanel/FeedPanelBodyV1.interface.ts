@@ -12,16 +12,16 @@
  */
 
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 
 export interface FeedPanelBodyPropV1 {
-  feed?: Thread;
+  feed?: Conversation;
   activity?: ActivityEvent;
   className?: string;
   FeedContainerClassName?: string;
   showThread?: boolean;
   isOpenInDrawer?: boolean;
-  onFeedClick?: (feed: Thread) => void;
+  onFeedClick?: (feed: Conversation) => void;
   onActivityClick?: (activity: ActivityEvent) => void;
   isActive?: boolean;
   isForFeedTab?: boolean;
