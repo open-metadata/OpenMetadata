@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Typography , EmptyPlaceholder} from '@openmetadata/ui-core-components';
+import { Link } from '@openmetadata/ui-core-components/icons';
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
@@ -18,7 +19,6 @@ import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -27,7 +27,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -170,18 +170,22 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
 
   if (!isLoading && isEmpty(quickLinksByTag) && !refreshTagsCategory) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-quick-link"
-        className="border-none"
-        heading={t('label.quick-link-plural')}
-        permission={permissions.Create}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.quick-link'),
-        })}
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={onAdd}
-      />
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          actions={
+            permissions.Create
+              ? [{
+                  color: 'primary',
+                  key: 'add-quick-link',
+                  label: t('label.create-entity', { entity: t('label.quick-link') }),
+                  onPress: onAdd,
+                }]
+              : []
+          }
+          icon={<Link className="tw:text-secondary" />}
+          title={t('label.quick-link-plural')}
+        />
+      </div>
     );
   }
 

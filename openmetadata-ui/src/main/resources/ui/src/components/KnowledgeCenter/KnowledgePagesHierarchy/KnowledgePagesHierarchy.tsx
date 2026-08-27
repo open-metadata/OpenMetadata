@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
+import { Articles } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button,
@@ -21,7 +22,8 @@ import {
   ModalOverlay,
   Tree,
   Typography,
-} from '@openmetadata/ui-core-components';
+, EmptyPlaceholder} from '@openmetadata/ui-core-components';
+import { Articles } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -46,7 +48,6 @@ import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg'
 import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
@@ -916,12 +917,13 @@ const KnowledgePagesHierarchy = forwardRef<
             )}
 
             {isHierarchyEmpty && (
-              <CreateErrorPlaceHolder
-                className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
-                permission={permissions.Create}
-                placeholderText={t('message.no-articles-listed')}
-                size={SIZE.MEDIUM}
-              />
+              <div className="tw:relative tw:flex-1 tw:min-h-0 tw:border-0 tw:px-4">
+                <EmptyPlaceholder
+                  description={t('message.no-articles-listed')}
+                  icon={<Articles className="tw:text-secondary" />}
+                  title={t('label.no-entity', { entity: t('label.article-plural') })}
+                />
+              </div>
             )}
 
             {!isLoading && !isHierarchyEmpty && (

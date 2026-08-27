@@ -30,7 +30,6 @@ import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThread
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
@@ -53,7 +52,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -970,18 +968,31 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.article'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{ entity: t('label.view-entity', { entity: t('label.article') }) }}
+            />
+          }
+          icon={<ReasonForAccess className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 
   if (!knowledgePage) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return (
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          icon={<Articles className="tw:text-secondary" />}
+          title={t('label.no-entity', { entity: t('label.article') })}
+        />
+      </div>
+    );
   }
 
   return (
