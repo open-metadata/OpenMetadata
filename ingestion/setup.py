@@ -63,6 +63,7 @@ VERSIONS = {
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
     "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
+    "elasticsearch": "elasticsearch>=8.10,<9",  # Airflow must share transport 8 with elasticsearch8
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -206,6 +207,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
+        VERSIONS["elasticsearch"],
         "tornado>=6.5.7",  # CVE-2026-49853/49854/49855 header leak + OOB read + gzip bomb + GHSA-pw6j-qg29-8w7f curl credential leak
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap

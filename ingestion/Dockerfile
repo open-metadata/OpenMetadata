@@ -139,7 +139,9 @@ RUN pip install "py-spy>=0.3.14"
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# The removed Elasticsearch provider's canonical client is unused; ingestion uses elasticsearch8.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y \
+  && pip uninstall elasticsearch -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
