@@ -71,6 +71,7 @@ jobs:
             docker:
               - '.github/workflows/openmetadata-service-unit-tests.yml'
               - 'docker/Health.java'
+              - 'docker/openmetadata-start.sh'
               - 'docker/development/Dockerfile'
               - 'docker/docker-compose-quickstart/Dockerfile'
               - 'scripts/docker_smoke_test.sh'
