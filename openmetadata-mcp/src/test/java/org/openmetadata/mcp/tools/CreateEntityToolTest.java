@@ -455,6 +455,29 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void aReferenceAttributeSaysItTakesAFullyQualifiedName() {
+    // The eight tools this one replaced took references as plain FQN strings. The generic path
+    // still resolves a name-only reference, but callers were told to send ids and given the
+    // EntityReference schema blurb, so they spent a lookup they did not need.
+    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+
+    Map<String, Object> described =
+        withRepository(
+            Entity.PAGE,
+            repository,
+            () ->
+                new DescribeEntityTypeTool()
+                    .execute(null, null, Map.of("entityType", Entity.PAGE)));
+
+    String parent = String.valueOf(attribute(described, "parent").get("description"));
+    assertTrue(parent.contains("fullyQualifiedName"), parent);
+    assertFalse(parent.contains("This schema defines"), parent);
+    assertTrue(
+        String.valueOf(attribute(described, "relatedEntities").get("description"))
+            .contains("fullyQualifiedName"));
+  }
+
+  @Test
   void anUpdateThatOmitsThePageBodyKeepsTheStoredOne() {
     // An update replaces the entity, so defaulting an empty Article here would drop the publication
     // date and delete every related-article relationship the updater compares against.

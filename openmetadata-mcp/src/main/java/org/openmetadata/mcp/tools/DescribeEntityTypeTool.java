@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -44,6 +45,11 @@ public class DescribeEntityTypeTool implements McpTool {
           "extension");
 
   private static final Set<String> SHARED = Set.copyOf(SHARED_FIELDS);
+
+  /** How a reference is written, in place of the EntityReference schema's own description. */
+  private static final String REFERENCE_FORM =
+      "Another entity, as {\"type\": \"<entityType>\", \"fullyQualifiedName\": \"<fqn>\"}."
+          + " An id may be given instead of the name.";
 
   /** Entity fields decided by the persistence lifecycle rather than the caller. */
   private static final Set<String> SERVER_OWNED =
@@ -117,11 +123,27 @@ public class DescribeEntityTypeTool implements McpTool {
     if (!allowed.isEmpty()) {
       attribute.put("allowedValues", allowed);
     }
-    String description = property.getMetadata().getDescription();
+    String description = describeValue(property);
     if (description != null && !description.isBlank()) {
       attribute.put("description", description);
     }
     return attribute;
+  }
+
+  /**
+   * A reference attribute is described by the shape it takes, not by the EntityReference schema's
+   * own blurb: the blurb explains what a reference is to a reader who already knows, while what a
+   * caller needs is that the target can be named rather than looked up for its id first.
+   */
+  private static String describeValue(BeanPropertyDefinition property) {
+    return isReference(property.getPrimaryType())
+        ? REFERENCE_FORM
+        : property.getMetadata().getDescription();
+  }
+
+  private static boolean isReference(JavaType type) {
+    JavaType candidate = type.isCollectionLikeType() ? type.getContentType() : type;
+    return candidate != null && EntityReference.class.equals(candidate.getRawClass());
   }
 
   /**

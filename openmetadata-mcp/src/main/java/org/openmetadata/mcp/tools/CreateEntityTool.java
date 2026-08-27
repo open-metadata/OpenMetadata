@@ -12,16 +12,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.domains.CreateDomain;
-import org.openmetadata.schema.entity.classification.Classification;
-import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.data.Article;
-import org.openmetadata.schema.entity.data.Metric;
-import org.openmetadata.schema.entity.data.Page;
-import org.openmetadata.schema.entity.data.PageType;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -40,7 +30,6 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -76,23 +65,21 @@ public class CreateEntityTool implements McpTool {
     EntityCreationSpec type = EntityCreationSpec.resolve(entityType);
     String userName = CommonUtils.principal(securityContext);
     EntityInterface entity = buildEntity(type, params, userName);
-    Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
+    Boolean requestedMutuallyExclusive = EntityTypeRules.requestedMutuallyExclusive(entity);
 
-    applyRepositoryDefaults(entity);
     EntityRepository<EntityInterface> repository = type.typedRepository();
     repository.prepareInternal(entity, false);
     boolean updatesExisting = updatesExisting(entityType, entity);
     authorizeCreateOrUpdate(
         authorizer, limits, securityContext, entityType, entity, updatesExisting);
-    carryForwardOmittedPageBody(entity, params, updatesExisting);
-    requirePageBody(entity, updatesExisting);
+    EntityTypeRules.applyBeforeWrite(entity, asMap(params.get(ATTRIBUTES)), updatesExisting);
     RuleEngine.getInstance().evaluate(entity);
     RestUtil.PutResponse<EntityInterface> response =
         persist(repository, entity, userName, updatesExisting);
 
     Map<String, Object> result =
         McpResponseUtils.compact(response.getEntity(), response.getChangeType());
-    addClassificationWarning(
+    EntityTypeRules.addWarnings(
         requestedMutuallyExclusive, response.getEntity(), response.getChangeType(), result);
     return result;
   }
@@ -170,39 +157,6 @@ public class CreateEntityTool implements McpTool {
     return response;
   }
 
-  /**
-   * Keeps the stored page body when an update leaves {@code page} out.
-   *
-   * <p>An update replaces the entity, so the empty Article defaulted for a create would drop the
-   * publication date and delete every related-article relationship. The stored body is read with
-   * the related articles the updater compares against, so leaving the attribute out changes
-   * nothing.
-   */
-  private static void carryForwardOmittedPageBody(
-      EntityInterface entity, Map<String, Object> params, boolean updatesExisting) {
-    boolean bodyOmitted = !asMap(params.get(ATTRIBUTES)).containsKey(PAGE);
-    if (updatesExisting && bodyOmitted && entity instanceof Page page) {
-      Page stored =
-          Entity.getEntityByName(
-              Entity.PAGE, page.getFullyQualifiedName(), RELATED_ENTITIES, Include.ALL);
-      page.setPage(stored.getPage());
-    }
-  }
-
-  /**
-   * A quick link's body is its destination, which cannot be defaulted the way an article's can. It
-   * is required on a create only - an update that leaves it out has already kept the stored one.
-   */
-  private static void requirePageBody(EntityInterface entity, boolean updatesExisting) {
-    if (entity instanceof Page page && page.getPage() == null) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Attribute 'page' is required for a '%s' page and must carry its url, as"
-                  + " {\"url\": \"https://...\"}. Nothing was %s.",
-              page.getPageType(), updatesExisting ? "changed" : "created"));
-    }
-  }
-
   /** Shared parameters plus attributes bound to the entity class owned by the repository. */
   private static EntityInterface buildEntity(
       EntityCreationSpec type, Map<String, Object> params, String userName) {
@@ -216,53 +170,8 @@ public class CreateEntityTool implements McpTool {
     requireFields(type, params, attributes);
     EntityInterface entity = convert(type, attributes);
     applySharedFields(entity, params, userName);
-    applyMcpDefaults(entity);
+    EntityTypeRules.applyDefaults(entity);
     return entity;
-  }
-
-  private static void applyRepositoryDefaults(EntityInterface entity) {
-    if (entity instanceof Tag tag) {
-      deriveTagClassification(tag);
-    }
-  }
-
-  private static void deriveTagClassification(Tag tag) {
-    EntityReference parent = tag.getParent();
-    EntityReference classification = tag.getClassification();
-    if (parent == null) {
-      if (classification == null) {
-        throw new IllegalArgumentException(
-            "Attribute 'classification' is required for a tag unless 'parent' identifies a parent"
-                + " tag. Nothing was created.");
-      }
-      tag.setClassification(Entity.getEntityReference(classification, Include.NON_DELETED));
-      return;
-    }
-
-    EntityReference resolvedParent = Entity.getEntityReference(parent, Include.NON_DELETED);
-    tag.setParent(resolvedParent);
-    String derivedClassification =
-        FullyQualifiedName.split(resolvedParent.getFullyQualifiedName())[0];
-    if (classification == null) {
-      classification =
-          new EntityReference()
-              .withType(Entity.CLASSIFICATION)
-              .withFullyQualifiedName(derivedClassification);
-    }
-
-    EntityReference resolvedClassification =
-        Entity.getEntityReference(classification, Include.NON_DELETED);
-    if (!derivedClassification.equals(resolvedClassification.getFullyQualifiedName())) {
-      throw new IllegalArgumentException(
-          "Tag classification '"
-              + resolvedClassification.getFullyQualifiedName()
-              + "' must match the root classification of parent '"
-              + resolvedParent.getFullyQualifiedName()
-              + "' (expected '"
-              + derivedClassification
-              + "'). Nothing was created.");
-    }
-    tag.setClassification(resolvedClassification);
   }
 
   private static void applySharedFields(
@@ -279,68 +188,6 @@ public class CreateEntityTool implements McpTool {
     entity.setExtension(CommonUtils.extension(params));
     entity.setUpdatedBy(userName);
     entity.setUpdatedAt(System.currentTimeMillis());
-  }
-
-  private static void applyMcpDefaults(EntityInterface entity) {
-    if (entity instanceof Domain domain && domain.getDomainType() == null) {
-      domain.setDomainType(CreateDomain.DomainType.AGGREGATE);
-    }
-    if (entity instanceof ContextMemory memory) {
-      memory.setSourceType(ContextMemorySourceType.REMEMBER_REQUEST);
-    }
-    if (entity instanceof Metric metric) {
-      validateMetric(metric);
-    }
-    if (entity instanceof Page page) {
-      applyPageBody(page);
-    }
-  }
-
-  /**
-   * An article's body carries nothing the caller has to supply - its markdown lives in {@code
-   * description} - so requiring the bare {@code page} object would fail every article creation on
-   * a field with no value to give it.
-   */
-  private static void applyPageBody(Page page) {
-    if (page.getPage() == null && PageType.ARTICLE.equals(page.getPageType())) {
-      page.setPage(new Article());
-    }
-  }
-
-  private static void validateMetric(Metric metric) {
-    boolean incomplete =
-        metric.getMetricExpression() == null
-            || metric.getMetricExpression().getLanguage() == null
-            || metric.getMetricExpression().getCode() == null
-            || metric.getMetricExpression().getCode().isBlank();
-    if (incomplete) {
-      throw new IllegalArgumentException(
-          "Attribute 'metricExpression' needs both 'language' and a non-empty 'code'. Nothing was"
-              + " created.");
-    }
-  }
-
-  private static Boolean requestedMutuallyExclusive(EntityInterface entity) {
-    return entity instanceof Classification classification
-        ? classification.getMutuallyExclusive()
-        : null;
-  }
-
-  private static void addClassificationWarning(
-      Boolean requested, EntityInterface saved, EventType changeType, Map<String, Object> result) {
-    if (requested != null
-        && saved instanceof Classification classification
-        && !EventType.ENTITY_CREATED.equals(changeType)
-        && !Objects.equals(requested, classification.getMutuallyExclusive())) {
-      result.put(
-          "_warning",
-          "mutuallyExclusive cannot be changed on an existing classification. Retained existing"
-              + " value: "
-              + classification.getMutuallyExclusive()
-              + ". Supplied value "
-              + requested
-              + " was ignored.");
-    }
   }
 
   /**
