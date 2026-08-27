@@ -308,6 +308,9 @@ public interface ActivityAuditDAOs {
     @SqlQuery("SELECT json FROM activity_stream WHERE id = :id")
     String findById(@Bind("id") String id);
 
+    @SqlQuery("SELECT json FROM activity_stream WHERE id = :id FOR UPDATE")
+    String findByIdForUpdate(@Bind("id") String id);
+
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream SET json = :json WHERE id = :id",
         connectionType = MYSQL)
