@@ -241,7 +241,7 @@ public class SystemResource {
       for (Settings setting : allConfigs.getData()) {
         if (setting.getConfigType() != AUTHENTICATION_CONFIGURATION
             && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
-          filteredSettings.add(setting);
+          filteredSettings.add(forResponse(setting));
         }
       }
     }
@@ -280,11 +280,17 @@ public class SystemResource {
     if (!isUserReadableSetting(name)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    Settings settings = systemRepository.getConfigWithKey(name);
-    if (SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
-      settings = withHighlightFlags(settings);
+    return forResponse(systemRepository.getConfigWithKey(name));
+  }
+
+  /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
+  private SearchSettings storedSearchSettings() {
+    SearchSettings result = null;
+    Settings stored = systemRepository.getConfigWithKey(SettingsType.SEARCH_SETTINGS.value());
+    if (stored != null && stored.getConfigValue() != null) {
+      result = JsonUtils.convertValue(stored.getConfigValue(), SearchSettings.class);
     }
-    return settings;
+    return result;
   }
 
   /**
@@ -296,26 +302,46 @@ public class SystemResource {
    * being annotated is one new write path away from serving {@code false} for every field, which
    * would disable every highlight toggle in the UI. Derived here, the served flag is correct
    * regardless of what is in the database.
+   *
+   * <p>Which makes this a response-boundary concern, not a read-path one, and it must be applied at
+   * <em>every</em> boundary that hands back searchSettings — the same way {@code EntityResource}
+   * stamps {@code href} on create/update/patch/delete and not just on GET. Annotating only the
+   * single-setting GET is what shipped first, and it left the save path serving {@code false} for
+   * every field: the UI writes the PUT response straight into app state, so one Save greyed out
+   * every highlight toggle on the page until the next reload.
+   *
+   * <p>Always annotates a copy. In-place would be a live hazard rather than a stylistic one:
+   * {@code mergeSearchSettings} hands the merged settings the default's own {@code allowedFields}
+   * list, so mutating it would write the derived flag onto {@code defaultSearchSettingsCache} and
+   * leak it into every later read.
    */
-  /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
-  private SearchSettings storedSearchSettings() {
-    SearchSettings result = null;
-    Settings stored = systemRepository.getConfigWithKey(SettingsType.SEARCH_SETTINGS.value());
-    if (stored != null && stored.getConfigValue() != null) {
-      result = JsonUtils.convertValue(stored.getConfigValue(), SearchSettings.class);
-    }
-    return result;
-  }
-
-  private Settings withHighlightFlags(Settings settings) {
+  private Settings forResponse(Settings settings) {
     Settings result = settings;
-    if (settings != null && settings.getConfigValue() != null) {
+    if (settings != null
+        && settings.getConfigType() == SettingsType.SEARCH_SETTINGS
+        && settings.getConfigValue() != null) {
       SearchSettings searchSettings =
           JsonUtils.convertValue(settings.getConfigValue(), SearchSettings.class);
       searchSettingsHandler.annotateHighlightableFields(searchSettings);
       result =
           new Settings().withConfigType(settings.getConfigType()).withConfigValue(searchSettings);
     }
+    return result;
+  }
+
+  /** {@link #forResponse(Settings)} for the write paths, which return an already-built response. */
+  private Response forResponse(Response response) {
+    Response result = response;
+    if (response.getEntity() instanceof Settings settings) {
+      result = Response.fromResponse(response).entity(forResponse(settings)).build();
+    }
+    return result;
+  }
+
+  /** {@link #forResponse(Settings)} for the reset path, which returns a bare {@link SearchSettings}. */
+  private SearchSettings forResponse(SearchSettings searchSettings) {
+    SearchSettings result = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
+    searchSettingsHandler.annotateHighlightableFields(result);
     return result;
   }
 
@@ -690,7 +716,7 @@ public class SystemResource {
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
 
-    return response;
+    return forResponse(response);
   }
 
   @PUT
@@ -727,7 +753,7 @@ public class SystemResource {
       throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
     SearchSettings settings = loadDefaultSearchSettings(true);
-    return Response.ok(settings).build();
+    return Response.ok(forResponse(settings)).build();
   }
 
   @PUT
@@ -800,7 +826,7 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.patchSetting(settingName, patch);
+    return forResponse(systemRepository.patchSetting(settingName, patch));
   }
 
   @GET

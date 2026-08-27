@@ -287,6 +287,24 @@ test.describe('Search Settings', () => {
 
       await expect(highlightFieldToggle).toBeVisible();
       await expect(highlightFieldToggle).toBeEnabled();
+
+      // Saving must not disable it. The page takes the PUT response straight into app state, so an
+      // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
+      // moment you hit Save, while the server goes on highlighting the field. Checking after a
+      // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
+      await setSliderValue(page, 'field-weight-slider', 7);
+
+      const saveSettings = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/system/settings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-btn').click();
+      await saveSettings;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(highlightFieldToggle).toBeEnabled();
     });
 
     test('Restore default search settings', async ({ page }) => {

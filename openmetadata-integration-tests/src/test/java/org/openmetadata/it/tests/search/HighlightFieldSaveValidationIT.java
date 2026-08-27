@@ -29,8 +29,9 @@ import org.openmetadata.schema.utils.JsonUtils;
  * still protects a cluster whose settings already carry such a value; this asserts the value can no
  * longer be introduced through the API in the first place.
  *
- * <p>Mutates nothing on success — every case here is expected to be rejected, so the stored settings
- * are unchanged and no restore is needed.
+ * <p>Every rejection case here mutates nothing on success. {@link
+ * #everyEndpointServingSearchSettingsCarriesTheHighlightFlag} does write, and restores the settings
+ * it captured before it started.
  */
 @Isolated
 class HighlightFieldSaveValidationIT {
@@ -41,34 +42,85 @@ class HighlightFieldSaveValidationIT {
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
   /**
-   * Guards the wiring, not the computation. The unit tests call {@code
-   * annotateHighlightableFields} directly, so they pass even if nothing in production calls it —
-   * which is exactly what happened: the annotation was hooked to {@code readDefaultSearchSettings},
-   * while the served payload comes from the store that {@code SettingsCache.initialize} writes
-   * without annotating. Every field then serialized as the POJO default {@code false}, disabling
-   * every highlight toggle in the UI. This asserts the flag on the response the UI actually reads.
+   * Guards the wiring, not the computation, across every endpoint that hands back searchSettings.
+   *
+   * <p>The unit tests call {@code annotateHighlightableFields} directly, so they pass even if
+   * nothing in production calls it — which is exactly what happened twice. First the annotation was
+   * hooked to {@code readDefaultSearchSettings} while the served payload came from the store that
+   * {@code SettingsCache.initialize} writes unannotated. Then it was hooked to the single-setting
+   * GET only, leaving the other four endpoints serving the POJO default {@code false}. The one that
+   * bit was the save: {@code mergeSearchSettings} swaps in the seed's {@code allowedFields}, which
+   * carry no flag, and the UI writes the PUT response straight into app state — so one Save greyed
+   * out every highlight toggle on the page while the server still had the field highlighted.
+   *
+   * <p>Asserting on one endpoint is what let that through, so this asserts on all of them. Anything
+   * that serves these settings has to serve the flag with them.
    */
   @Test
-  void servedAllowedFieldsCarryTheHighlightFlag() throws Exception {
-    final JsonNode tableFields = allowedFieldsFor(TABLE_ASSET_TYPE);
+  void everyEndpointServingSearchSettingsCarriesTheHighlightFlag() throws Exception {
+    final String original = currentSettingsJson();
+    try {
+      assertServesHighlightFlag("GET /settings/searchSettings", original);
+      assertServesHighlightFlag("GET /settings", searchSettingsFromList());
+      assertServesHighlightFlag("PUT /settings", put("/v1/system/settings", original).body());
+      assertServesHighlightFlag("PATCH /settings/searchSettings", patchWithoutChange().body());
+      // Last: it discards whatever this cluster had stored, which the restore below then puts back.
+      assertServesHighlightFlag("PUT /settings/reset/searchSettings", resetToDefault().body());
+    } finally {
+      put("/v1/system/settings", original);
+    }
+  }
 
-    assertTrue(tableFields.size() > 0, "table allowedFields must not be empty");
+  /**
+   * A response may not claim a field is highlighted and unhighlightable at the same time. That
+   * contradiction is the user-visible bug: the toggle reads disabled off {@code highlight} while the
+   * server goes on highlighting the field.
+   */
+  private void assertServesHighlightFlag(final String endpoint, final String body) {
+    final JsonNode tableFields = allowedFieldsFor(body, TABLE_ASSET_TYPE);
+
+    assertTrue(tableFields.size() > 0, endpoint + ": table allowedFields must not be empty");
     assertEquals(
         Boolean.TRUE,
         highlightOf(tableFields, "description"),
-        "an analyzed text field must be served highlight=true");
+        endpoint + ": an analyzed text field must be served highlight=true");
     assertEquals(
         Boolean.TRUE,
         highlightOf(tableFields, "name"),
-        "an analyzed text field must be served highlight=true");
+        endpoint + ": an analyzed text field must be served highlight=true");
+    for (final JsonNode assetConfig : searchSettingsIn(body).path("assetTypeConfigurations")) {
+      final String assetType = assetConfig.path("assetType").asText();
+      final JsonNode fields = allowedFieldsFor(body, assetType);
+      for (final JsonNode highlighted : assetConfig.path("highlightFields")) {
+        // Only a field with an allowedFields entry reaches the UI as a row, so only those can show
+        // the contradiction. One with no entry at all — worksheet.columns.name and friends, which
+        // are highlighted but never offered as search fields — is a separate gap, not this one.
+        final Boolean served = servedHighlightOf(fields, highlighted.asText());
+        if (served != null) {
+          assertEquals(
+              Boolean.TRUE,
+              served,
+              endpoint
+                  + ": '"
+                  + highlighted.asText()
+                  + "' is in "
+                  + assetType
+                  + ".highlightFields, so it cannot also be served as unhighlightable");
+        }
+      }
+    }
   }
 
-  private JsonNode allowedFieldsFor(final String entityType) throws Exception {
+  /** Handles both served shapes: a wrapped {@code Settings} and the bare {@code SearchSettings} reset returns. */
+  private JsonNode searchSettingsIn(final String body) {
+    final JsonNode root = JsonUtils.readTree(body);
+    return root.has("config_value") ? root.path("config_value") : root;
+  }
+
+  private JsonNode allowedFieldsFor(final String body, final String entityType) {
     JsonNode result = null;
-    final JsonNode allowedFields =
-        JsonUtils.readTree(currentSettingsJson()).path("config_value").path("allowedFields");
-    for (final JsonNode entry : allowedFields) {
-      if (entityType.equals(entry.path("entityType").asText())) {
+    for (final JsonNode entry : searchSettingsIn(body).path("allowedFields")) {
+      if (entityType.equalsIgnoreCase(entry.path("entityType").asText())) {
         result = entry.path("fields");
       }
     }
@@ -79,14 +131,20 @@ class HighlightFieldSaveValidationIT {
   }
 
   private Boolean highlightOf(final JsonNode fields, final String fieldName) {
+    final Boolean result = servedHighlightOf(fields, fieldName);
+    if (result == null) {
+      throw new AssertionError("no allowedFields entry named " + fieldName);
+    }
+    return result;
+  }
+
+  /** The served flag, or {@code null} when the field has no {@code allowedFields} entry to carry one. */
+  private Boolean servedHighlightOf(final JsonNode fields, final String fieldName) {
     Boolean result = null;
     for (final JsonNode field : fields) {
       if (fieldName.equals(field.path("name").asText())) {
         result = field.path("highlight").asBoolean();
       }
-    }
-    if (result == null) {
-      throw new AssertionError("no allowedFields entry named " + fieldName);
     }
     return result;
   }
@@ -158,6 +216,41 @@ class HighlightFieldSaveValidationIT {
     final HttpRequest request =
         baseRequest("/v1/system/settings/" + SettingsType.SEARCH_SETTINGS.value()).GET().build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString()).body();
+  }
+
+  /** The searchSettings entry of the list endpoint, re-serialized so it reads like the other bodies. */
+  private String searchSettingsFromList() throws Exception {
+    final HttpRequest request = baseRequest("/v1/system/settings").GET().build();
+    final String body = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString()).body();
+    for (final JsonNode entry : JsonUtils.readTree(body).path("data")) {
+      if (SettingsType.SEARCH_SETTINGS.value().equals(entry.path("config_type").asText())) {
+        return entry.toString();
+      }
+    }
+    throw new AssertionError("no searchSettings entry in the settings list. body=" + body);
+  }
+
+  /** Rewrites {@code maxAggregateSize} to the value it already holds, so only the response shape is under test. */
+  private HttpResponse<String> patchWithoutChange() throws Exception {
+    final int maxAggregateSize =
+        searchSettingsIn(currentSettingsJson())
+            .path("globalSettings")
+            .path("maxAggregateSize")
+            .asInt();
+    final String patch =
+        "[{\"op\":\"replace\",\"path\":\"/globalSettings/maxAggregateSize\",\"value\":"
+            + maxAggregateSize
+            + "}]";
+    final HttpRequest request =
+        baseRequest("/v1/system/settings/" + SettingsType.SEARCH_SETTINGS.value())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> resetToDefault() throws Exception {
+    return put("/v1/system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value(), "");
   }
 
   private HttpResponse<String> put(final String path, final String body) throws Exception {
