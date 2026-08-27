@@ -94,7 +94,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.EntityBuilderConstant;
@@ -105,6 +104,7 @@ import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -347,15 +347,16 @@ public class TeamRepository extends EntityRepository<Team> {
       return;
     }
 
+    Map<UUID, List<EntityRelationshipRecord>> recordsByTeam = new HashMap<>();
+    List<EntityRelationshipRecord> allRecords = new ArrayList<>();
     for (Team team : teams) {
-      List<String> userIds = new ArrayList<>();
-      List<EntityRelationshipRecord> userRecordList = getUsersRelationshipRecords(team.getId());
-      for (EntityRelationshipRecord userRecord : userRecordList) {
-        userIds.add(userRecord.getId().toString());
-      }
-      Set<String> userIdsSet = new HashSet<>(userIds);
-      team.setUserCount(userIdsSet.size());
+      List<EntityRelationshipRecord> records = getUsersRelationshipRecords(team.getId());
+      recordsByTeam.put(team.getId(), records);
+      allRecords.addAll(records);
     }
+    Set<UUID> activeUserIds = resolveActiveUserIds(allRecords);
+    teams.forEach(
+        team -> team.setUserCount(countDistinct(recordsByTeam.get(team.getId()), activeUserIds)));
   }
 
   private void fetchAndSetOwns(List<Team> teams, Fields fields) {
@@ -692,7 +693,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   protected void entitySpecificCleanup(User entityInterface) {
-    FeedUtil.cleanUpTaskForAssignees(entityInterface.getId(), TEAM);
+    TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), TEAM);
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {
@@ -790,15 +791,32 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getUserCount(UUID teamId) {
-    List<String> userIds = new ArrayList<>();
-    List<EntityRelationshipRecord> userRecordList = getUsersRelationshipRecords(teamId);
-    for (EntityRelationshipRecord userRecord : userRecordList) {
-      userIds.add(userRecord.getId().toString());
-    }
-    Set<String> userIdsSet = new HashSet<>(userIds);
-    userIds.clear();
-    userIds.addAll(userIdsSet);
-    return userIds.size();
+    List<EntityRelationshipRecord> records = getUsersRelationshipRecords(teamId);
+    return countDistinct(records, resolveActiveUserIds(records));
+  }
+
+  /**
+   * Resolves the ids of the non-deleted members among the given relationship records, using the
+   * same {@code NON_DELETED} resolution {@link #getUsers(Team)} uses. Counting the raw records
+   * instead would keep counting a member whose user was soft-deleted/deactivated (its HAS row
+   * survives), inflating the count above the visible list. Batched so listing many teams stays a
+   * single resolution rather than one per team.
+   */
+  private Set<UUID> resolveActiveUserIds(List<EntityRelationshipRecord> userRecords) {
+    return Entity.getEntityRelationshipRepository()
+        .getEntityReferences(userRecords, NON_DELETED)
+        .stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private int countDistinct(List<EntityRelationshipRecord> records, Set<UUID> activeUserIds) {
+    return (int)
+        records.stream()
+            .map(EntityRelationshipRecord::getId)
+            .distinct()
+            .filter(activeUserIds::contains)
+            .count();
   }
 
   private List<EntityReference> getOwns(Team team) {

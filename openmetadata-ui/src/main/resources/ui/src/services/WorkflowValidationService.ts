@@ -167,10 +167,6 @@ const buildTriggerConfig = (
           scheduleTimeline: 'Custom',
           cronExpression: startNodeConfig.cronExpression,
         };
-      } else if (scheduleType === 'OnDemand') {
-        finalTriggerConfig.schedule = {
-          scheduleTimeline: 'None',
-        };
       } else {
         finalTriggerConfig.schedule = {
           scheduleTimeline: 'None',

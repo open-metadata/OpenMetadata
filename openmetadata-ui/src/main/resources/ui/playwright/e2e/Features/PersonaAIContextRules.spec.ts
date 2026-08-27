@@ -29,7 +29,7 @@
  *  - Always in context and Fully rendered toggles
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, Locator, Page, test as base } from '@playwright/test';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -60,6 +60,16 @@ const test = base.extend<{ adminPage: Page }>({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// Post antd->core migration each rule field/operator renders a core
+// Select.ComboBox (OMFieldSelect). The default "owners" rule leaves an empty,
+// hidden `<div class="rule--field">` first in the DOM, so scope to the
+// container that actually holds a combobox — the pre-migration
+// `.rule--field .ant-select` selector filtered these out implicitly.
+const comboboxField = (scope: Page | Locator, className: string): Locator =>
+  scope
+    .locator(className)
+    .filter({ has: scope.locator('input[role="combobox"]') });
 
 const navigateToAIContextTab = async (page: Page) => {
   await navigateToPersonaSettings(page);
@@ -222,10 +232,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await page
-          .locator('.rule--field .ant-select')
-          .first()
-          .waitFor({ state: 'visible' });
+        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
       });
 
       await test.step('click Save Rule — must be blocked', async () => {
@@ -269,17 +276,15 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add a condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await page
-          .locator('.rule--field .ant-select')
-          .first()
-          .waitFor({ state: 'visible' });
+        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
       });
 
       await test.step('select the Description field (text type, no async fetch)', async () => {
-        // Use the field selector directly — the .rule GROUP wrapper can be hidden
+        // Scope to the container that actually holds a combobox — the default
+        // "owners" rule leaves an empty hidden .rule--field first in the DOM.
         await selectOption(
           page,
-          page.locator('.rule--field .ant-select').first(),
+          comboboxField(page, '.rule--field').first(),
           'Description',
           true
         );
@@ -288,10 +293,8 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('select Contains operator (required before text widget appears)', async () => {
         // Description field uses match_phrase operators; text widget only renders
         // after an operator is chosen — select "Contains" (match_phrase)
-        const operatorLocator = page
-          .locator('.rule--operator .ant-select')
-          .first();
-        await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
+        const operatorLocator = comboboxField(page, '.rule--operator').first();
+        await expect(operatorLocator).toBeVisible({ timeout: 5000 });
         await selectOption(page, operatorLocator, 'Contains', false);
       });
 
@@ -330,10 +333,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition — save must be blocked', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await page
-          .locator('.rule--field .ant-select')
-          .first()
-          .waitFor({ state: 'visible' });
+        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
         await page.getByRole('button', { name: 'Save Rule' }).click();
         await expect(
           page.getByTestId('context-rule-filter-error')

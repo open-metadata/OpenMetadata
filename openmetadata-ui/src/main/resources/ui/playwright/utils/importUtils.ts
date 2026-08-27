@@ -507,9 +507,12 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   ).toBeVisible();
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=user&*'
+    (response) =>
+      response.url().includes('/api/v1/search/query?q=') &&
+      response.url().includes('index=user')
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;

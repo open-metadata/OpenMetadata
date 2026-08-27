@@ -13,7 +13,7 @@
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
-import { ThreadType } from '../../../generated/entity/feed/thread';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -33,6 +33,10 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   customizedPage?: Page | null;
   newTagsUI?: boolean;
   columnFqn?: string;
+  // The tab the page is actually rendering. Pages whose landing URL carries no `:tab`
+  // segment, and the domain tree view (which never writes the tab to the URL at all),
+  // must pass this so the widget layout matches the tab on screen.
+  activeTab?: EntityTabs;
 }
 
 export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -42,7 +46,7 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
+  onThreadLinkSelect: (link: string) => void;
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
   updateWidgetHeight: (widgetId: string, height: number) => void;

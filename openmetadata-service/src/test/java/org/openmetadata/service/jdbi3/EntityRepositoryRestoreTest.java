@@ -269,8 +269,8 @@ class EntityRepositoryRestoreTest {
   void remoteInvalidationEvictsLocalEntriesAndAdvancesLoaderEpochs() {
     UUID id = UUID.randomUUID();
     String fqn = "service.pipeline";
-    long idEpoch = EntityRepository.writeEpochById(Entity.PIPELINE, id);
-    long nameEpoch = EntityRepository.writeEpochByName(Entity.PIPELINE, fqn);
+    long idEpoch = EntityRepository.readEpochById(Entity.PIPELINE, id);
+    long nameEpoch = EntityRepository.readEpochByName(Entity.PIPELINE, fqn);
     EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.PIPELINE, id), "stale");
     EntityRepository.CACHE_WITH_NAME.put(
         EntityRepository.cacheNameKey(Entity.PIPELINE, fqn), "stale");
@@ -282,8 +282,8 @@ class EntityRepositoryRestoreTest {
     assertNull(
         EntityRepository.CACHE_WITH_NAME.getIfPresent(
             EntityRepository.cacheNameKey(Entity.PIPELINE, fqn)));
-    assertTrue(EntityRepository.writeEpochById(Entity.PIPELINE, id) > idEpoch);
-    assertTrue(EntityRepository.writeEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
+    assertTrue(EntityRepository.readEpochById(Entity.PIPELINE, id) > idEpoch);
+    assertTrue(EntityRepository.readEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
   }
 
   @Test
@@ -509,9 +509,9 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
 
-    FeedRepository feedRepository = mock(FeedRepository.class);
+    ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 
@@ -571,9 +571,9 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
 
-    FeedRepository feedRepository = mock(FeedRepository.class);
+    ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
       repo.bulkHardDeleteSubtree(ids, "user");
     }
 
@@ -625,9 +625,9 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
 
-    FeedRepository feedRepository = mock(FeedRepository.class);
+    ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 

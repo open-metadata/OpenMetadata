@@ -32,6 +32,9 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
@@ -80,7 +83,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
@@ -108,7 +110,6 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -118,17 +119,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -148,10 +147,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
-  public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
-  public static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
-  public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
-
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_PIPELINE_OBSERVABILITY_EXTENSION = "table.pipelineObservability";
@@ -1721,6 +1716,59 @@ public class TableRepository extends EntityRepository<Table> {
     return entity.getDatabaseSchema();
   }
 
+  /** Only reached on hard delete, so soft-deleted tables keep serving their satellite data. */
+  @Override
+  protected void entitySpecificCleanup(String deletedBy, Table table) {
+    deleteResidualTestCases(table, deletedBy);
+    deleteResidualExecutableTestSuite(table, deletedBy);
+  }
+
+  /**
+   * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
+   * inside the delete transaction: a table with a long profiling history can own millions of
+   * profiler rows, and draining them inline holds every row lock for the life of the request. Two
+   * ordering properties keep that safe, and they cover different failures. Running after the delete
+   * has committed means a rolled-back delete can never purge a live table's history, since those
+   * rows legitimately predate the attempt. Bounding the purge to profiles recorded at or before the
+   * delete means it cannot touch a successor table created at the same FQN, whose profiles are all
+   * recorded later -- see {@link CollectionDAO.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
+   */
+  @Override
+  protected void postDelete(Table table, boolean hardDelete) {
+    super.postDelete(table, hardDelete);
+    if (hardDelete) {
+      long deletedAt = System.currentTimeMillis();
+      AsyncService.getInstance()
+          .executeDatabaseTask(
+              DatabaseOperation.PROFILER_CLEANUP,
+              "profiler-purge:" + table.getFullyQualifiedName(),
+              () -> deleteProfilerData(table, deletedAt));
+    }
+  }
+
+  /**
+   * profiler_data_time_series is keyed by FQN hash rather than by table id, so rows left behind by
+   * a hard delete are silently adopted by the next table created with the same FQN. Table and
+   * system profiles are stored under the table FQN; column profiles under each (possibly nested)
+   * column FQN, which is why those need a descendant purge.
+   */
+  private void deleteProfilerData(Table table, long deletedAt) {
+    String tableFqn = table.getFullyQualifiedName();
+    try {
+      int deleted =
+          daoCollection.profilerDataTimeSeriesDao().deleteTableProfilerData(tableFqn, deletedAt);
+      if (deleted > 0) {
+        LOG.info("Purged {} profiler row(s) for hard-deleted table {}", deleted, tableFqn);
+      }
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Failed to purge profiler data for hard-deleted table {}. "
+              + "The orphaned time-series cleanup will reclaim it unless the FQN is reused.",
+          tableFqn,
+          exception);
+    }
+  }
+
   /**
    * Safety net for the table hard-delete cascade. The normal flow goes
    * {@code table -> executable test suite -> test cases} via CONTAINS relationships, but if that
@@ -1730,12 +1778,6 @@ public class TableRepository extends EntityRepository<Table> {
    * whose {@code entityFQN} resolves under the table being deleted, going through the standard
    * delete path so test case results, resolution status, and search docs are also cleaned up.
    */
-  @Override
-  protected void entitySpecificCleanup(String deletedBy, Table table) {
-    deleteResidualTestCases(table, deletedBy);
-    deleteResidualExecutableTestSuite(table, deletedBy);
-  }
-
   private void deleteResidualTestCases(Table table, String deletedBy) {
     String tableFqn = table.getFullyQualifiedName();
     String likePrefix = LikeEscape.escape(tableFqn) + Entity.SEPARATOR + "%";
@@ -1822,23 +1864,6 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return allTags;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(COLUMN_FIELD)) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new ColumnDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new ColumnTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
   }
 
   @Override
@@ -1949,87 +1974,6 @@ public class TableRepository extends EntityRepository<Table> {
             new Fields(
                 allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun, callback);
-  }
-
-  static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Column column;
-
-    ColumnDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Table table =
-          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), COLUMN_FIELD, ALL);
-      threadContext.setAboutEntity(table);
-      column =
-          getColumn(
-              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      column.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class ColumnTagWorkflow extends TagTaskWorkflow {
-    private final Column column;
-
-    ColumnTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Table table =
-          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
-      threadContext.setAboutEntity(table);
-      column =
-          getColumn(
-              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      column.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  private static Column getColumn(Table table, String columnName) {
-    String childrenName = "";
-    if (columnName.contains(".")) {
-      String fieldNameWithoutQuotes = columnName.substring(1, columnName.length() - 1);
-      columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
-    }
-
-    Column column = EntityUtil.findColumn(table.getColumns(), columnName);
-    if (!childrenName.isEmpty() && column != null) {
-      column = getChildColumn(column.getChildren(), childrenName);
-    }
-    if (column == null) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldName("column", columnName));
-    }
-    return column;
-  }
-
-  private static Column getChildColumn(List<Column> column, String childrenName) {
-    Column childrenColumn = null;
-    for (Column col : column) {
-      if (col.getName().equals(childrenName)) {
-        childrenColumn = col;
-        break;
-      }
-    }
-    if (childrenColumn == null) {
-      for (Column value : column) {
-        if (value.getChildren() != null) {
-          childrenColumn = getChildColumn(value.getChildren(), childrenName);
-          if (childrenColumn != null) {
-            break;
-          }
-        }
-      }
-    }
-    return childrenColumn;
   }
 
   private void validateTableFQN(String fqn) {

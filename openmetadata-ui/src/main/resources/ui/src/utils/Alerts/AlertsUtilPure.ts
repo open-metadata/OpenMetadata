@@ -123,6 +123,13 @@ export const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
     value,
   }));
 
+// Same shape as getSelectOptionsFromEnum, for values a resource declares at runtime
+export const getSelectOptionsFromValues = (values: string[]) =>
+  values.map((value) => ({
+    label: startCase(value),
+    value,
+  }));
+
 // Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
 // Since there is no provision for webhook subscription for users
 export const getSubscriptionTypeOptions = (destinationType: string) => {
@@ -202,6 +209,21 @@ export const getConfigQueryParamsArrayFromObject = (
       }));
 
 /**
+ * @description Pairs each tested destination with the status returned for it. The API redacts
+ * destination configs from its response, since they carry credentials, so the config has to come
+ * from the destinations that were submitted. Results are matched positionally: the API returns one
+ * entry per requested destination, in request order.
+ */
+export const getDestinationsWithTestStatus = <T extends Destination>(
+  testedDestinations: T[],
+  testResults: Destination[]
+): T[] =>
+  testedDestinations.map((destination, index) => ({
+    ...destination,
+    statusDetails: testResults[index]?.statusDetails,
+  }));
+
+/**
  * @description Normalizes destination config for comparison by converting headers and queryParams to array format
  */
 export const normalizeDestinationConfig = (config?: Destination['config']) =>
@@ -247,9 +269,8 @@ export const getFormattedDestinations = (
 
 // Destination category exclusions by entity type
 const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Default: exclude Assignees and Mentions for all non-thread entities
+  // Most entity events have neither participants nor mention recipients.
   __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  // Thread-specific exclusions
   task: [
     SubscriptionCategory.Followers,
     SubscriptionCategory.Admins,

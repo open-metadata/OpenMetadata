@@ -52,6 +52,7 @@ jest.mock('react-aria-components', () => ({
         {children}
         <input
           readOnly
+          aria-label="hidden value"
           data-testid="hidden-value"
           value={value ?? ''}
           onChange={(e) => onChange?.(e.target.value)}
@@ -81,7 +82,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     if (showUpload) {
       return (
         <div>
-          <input data-testid="file-input" type="file" />
+          <input aria-label="file input" data-testid="file-input" type="file" />
           <button type="button" onClick={() => setShowUpload(false)}>
             select-radio
           </button>
@@ -92,6 +93,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     return (
       <div>
         {label && (
+          // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
           <label>
             {label}
             {isRequired ? '*' : ''}
@@ -135,6 +137,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         <div>
           {children}
           <input
+            aria-label="file input"
             data-testid="file-input"
             type="file"
             onChange={(e) => onSelect?.(e.target.files)}
@@ -175,8 +178,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         label: string;
         value: string;
       }) => (
+        // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
         <label>
-          <input type="radio" value={value} />
+          <input aria-label={label} type="radio" value={value} />
           {label}
           {hint ? <span>{hint}</span> : null}
         </label>
@@ -247,11 +251,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
       }: Record<string, unknown>) => (
         <div>
           {label ? (
+            // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
             <label htmlFor={id as string}>{label as string}</label>
           ) : null}
           {hint ? <span>{hint as string}</span> : null}
           <input
             aria-invalid={isInvalid as boolean}
+            aria-label={label as string}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- mock passes through the autoFocus prop under test
             autoFocus={autoFocus as boolean}
             data-required={String(Boolean(isRequired))}
             disabled={isDisabled as boolean}
@@ -285,6 +292,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           selectedKey,
         }: Record<string, unknown>) => (
           <div>
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock */}
             {label ? <label>{label as string}</label> : null}
             {hint ? <span>{hint as string}</span> : null}
             <div
@@ -342,10 +350,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         value,
       }: Record<string, unknown>) => (
         <div>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock */}
           {label ? <label>{label as string}</label> : null}
           {hint ? <span>{hint as string}</span> : null}
           <textarea
             aria-invalid={isInvalid as boolean}
+            aria-label={label as string}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- mock passes through the autoFocus prop under test
             autoFocus={autoFocus as boolean}
             data-disabled={String(Boolean(isDisabled))}
             data-required={String(Boolean(isRequired))}

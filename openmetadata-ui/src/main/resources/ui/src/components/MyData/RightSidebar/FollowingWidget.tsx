@@ -17,8 +17,8 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
+import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/widget/following.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -262,7 +262,7 @@ function FollowingWidget({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<FollowingAssetsIcon height={22} width={22} />}
+        icon={<FollowingAssetsIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
         sortOptions={translatedSortOptions}

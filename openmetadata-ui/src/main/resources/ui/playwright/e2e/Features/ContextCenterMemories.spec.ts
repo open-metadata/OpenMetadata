@@ -566,6 +566,8 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
         await page.getByRole('button', { name: /cancel/i }).click();
+        await expect(dialog).not.toBeVisible();
+        await expect(page).not.toHaveURL(/memory=/);
       });
     });
 
@@ -1368,12 +1370,15 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
-
+        const searchResPromise = page.waitForResponse(
+          (res) => res.url().includes('/search/query') && res.status() === 200
+        );
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
         await assetSearch.fill(table.name);
+        await searchResPromise;
         await waitForAllLoadersToDisappear(page);
 
         const option = page.getByRole('option', {

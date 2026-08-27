@@ -35,6 +35,7 @@ jest.mock('../FeedEditor/FeedEditor', () => ({
         <div
           data-testid="feed-editor"
           ref={ref}
+          role="presentation"
           onChange={onChangeHandler}
           onClick={onSave}>
           FeedEditor

@@ -543,17 +543,21 @@ test.describe('User Profile Feed Interactions', () => {
     const testMessage = 'Initial conversation thread for mention test';
     const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
 
-    await apiContext.post('/api/v1/feed', {
+    // user3 follows the table so the admin-authored conversation surfaces in
+    // user3's OwnerOrFollows profile feed, while the feed-card avatar stays a
+    // different user for the navigation assertion below.
+    await tableEntity.followTable(apiContext, user3.responseData.id);
+
+    await apiContext.post('/api/v1/conversations', {
       data: {
         message: testMessage,
         about: entityLink,
-        type: 'Conversation',
       },
     });
 
-    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+    const feedUrl = `/api/v1/conversations?entityLink=${encodeURIComponent(
       entityLink
-    )}&type=Conversation&limit=25`;
+    )}&limit=25`;
 
     await expect
       .poll(
@@ -578,10 +582,13 @@ test.describe('User Profile Feed Interactions', () => {
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
-    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
-
+    const conversationsResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/conversations' &&
+        response.request().method() === 'GET'
+    );
     await visitOwnProfilePage(page);
-    await feedResponse;
+    await conversationsResponse;
 
     await page
       .getByTestId('message-container')
@@ -598,8 +605,13 @@ test.describe('User Profile Feed Interactions', () => {
     const popover = page.locator('.ant-popover-card');
     await popover.waitFor({ state: 'visible' });
 
-    // Get the expected username from the popover BEFORE clicking
+    // Get the expected username from the popover BEFORE clicking. The popover
+    // renders an empty name until its user request resolves, so wait for the
+    // resolved text instead of capturing an empty string.
     const userNameElement = popover.getByTestId('user-name');
+
+    await expect(userNameElement).not.toBeEmpty();
+
     const expectedUserName = await userNameElement.textContent();
 
     // Set up response listener AFTER getting expected name and BEFORE clicking
@@ -1398,12 +1410,15 @@ base.describe(
             entity.entityResponseData.name
           );
 
-          const feedResponse = page.waitForResponse(
-            '/api/v1/feed?entityLink=*&type=Conversation'
+          const activityResponse = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname.startsWith(
+                '/api/v1/activity/entity/'
+              ) && response.request().method() === 'GET'
           );
 
           await page.getByTestId('activity_feed').click();
-          await feedResponse;
+          await activityResponse;
 
           await waitForAllLoadersToDisappear(page);
 
