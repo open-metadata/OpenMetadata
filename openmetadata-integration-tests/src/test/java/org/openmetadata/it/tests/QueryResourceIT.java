@@ -487,6 +487,21 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertQueryNotSearchableInDomain(client, query.getId(), originalDomain.getFullyQualifiedName());
   }
 
+  @Test
+  void queryStopsInheritingDomainsFromSoftDeletedTables(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Domain domain = createDomain(ns, "soft_deleted_table");
+    final Table table = createTableInDomain(ns, "soft_deleted", domain);
+    final Query query = createQueryUsedIn(ns, List.of(table));
+
+    assertInheritedQueryDomains(query.getId(), List.of(domain));
+
+    client.tables().delete(table.getId());
+
+    assertInheritedQueryDomains(query.getId(), List.of());
+    assertQueryNotSearchableInDomain(client, query.getId(), domain.getFullyQualifiedName());
+  }
+
   private Query createQueryUsedIn(TestNamespace ns, List<Table> tables) {
     final List<EntityReference> tableReferences =
         tables.stream().map(Table::getEntityReference).toList();
@@ -567,7 +582,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   }
 
   private void assertInheritedQueryDomainIds(UUID queryId, List<UUID> expectedIds) {
-    final Query fetched = getEntityWithFields(queryId.toString(), "domains,queryUsedIn");
+    final Query fetched = getEntityWithFields(queryId.toString(), "domains");
     final List<UUID> actualIds =
         fetched.getDomains().stream().map(EntityReference::getId).sorted().toList();
     assertEquals(expectedIds, actualIds);

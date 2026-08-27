@@ -133,6 +133,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -145,7 +146,6 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -190,6 +190,8 @@ public class SearchRepository {
    * carries far fewer and stays one update-by-query.
    */
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
+
+  private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
 
   /**
    * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
@@ -2061,45 +2063,48 @@ public class SearchRepository {
 
   /**
    * Re-read each referenced entity with the same bounded field set {@link
-   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
-   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
-   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
-   * into a single bulk request. Duplicate references are resolved only once; chunking of the
-   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
-   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   * #updateEntity(EntityReference)} uses, then push bounded bulk index updates. Use this in place of
+   * a per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness while batching both DB reads and ES writes.
+   * Duplicate references are resolved only once. Callers inside a transaction should wrap the call
+   * in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
    */
   public void updateEntitiesByReference(List<EntityReference> references) {
     if (nullOrEmpty(references)) {
       return;
     }
-    Set<String> seen = new HashSet<>();
-    List<EntityInterface> entities = new ArrayList<>(references.size());
+    final Set<String> seen = new HashSet<>();
+    final Map<String, List<UUID>> idsByType = new LinkedHashMap<>();
     for (EntityReference reference : references) {
-      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
-      // re-index needlessly. Skip malformed refs too.
       if (reference == null
           || reference.getId() == null
           || reference.getType() == null
           || !seen.add(reference.getType() + ":" + reference.getId())) {
         continue;
       }
-      try {
-        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
-        String fields =
-            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
-        EntityInterface entity =
-            entityRepository.get(
-                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
-        entity.setChangeDescription(null);
-        entities.add(entity);
-      } catch (EntityNotFoundException e) {
-        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
-        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
-        // entity's own delete cascade removes its document.
-        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      idsByType
+          .computeIfAbsent(reference.getType(), ignored -> new ArrayList<>())
+          .add(reference.getId());
+    }
+
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      final EntityRepository<?> entityRepository = Entity.getEntityRepository(entry.getKey());
+      final String fieldNames =
+          String.join(",", searchIndexFactory.getReindexFieldsFor(entry.getKey()));
+      final EntityUtil.Fields fields = entityRepository.getOnlySupportedFields(fieldNames);
+      final List<UUID> ids = entry.getValue();
+      for (int start = 0; start < ids.size(); start += REFERENCE_REINDEX_BATCH_SIZE) {
+        final List<UUID> chunk =
+            List.copyOf(
+                ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
+        final List<? extends EntityInterface> entities =
+            entityRepository.get(null, chunk, fields, Include.NON_DELETED);
+        entities.forEach(entity -> entity.setChangeDescription(null));
+        if (!entities.isEmpty()) {
+          updateEntitiesIndex(entities);
+        }
       }
     }
-    updateEntitiesIndex(entities);
   }
 
   /**
@@ -3113,11 +3118,12 @@ public class SearchRepository {
 
   private void reindexQueriesForDomainSource(String entityType, UUID entityId, String entityFqn) {
     if (QUERY_DOMAIN_SOURCE_TYPES.contains(entityType)) {
-      final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);
-      final List<EntityReference> queries =
-          repository.getQueriesForDomainSource(entityType, entityId, entityFqn);
       deferIfFlushScopeActive(
-          () -> updateEntitiesByReference(queries),
+          () -> {
+            final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);
+            updateEntitiesByReference(
+                repository.getQueriesForDomainSource(entityType, entityId, entityFqn));
+          },
           "reindexQueriesForDomainChange",
           entityId.toString(),
           entityFqn,
@@ -3604,6 +3610,7 @@ public class SearchRepository {
       searchClient.softDeleteOrRestoreEntity(
           getWriteIndexName(indexMapping), entityId, script.painless());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+      reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
 
       if (Entity.TABLE.equals(entityType)) {
         softDeleteOrRestoreTableColumns((Table) entity, delete);

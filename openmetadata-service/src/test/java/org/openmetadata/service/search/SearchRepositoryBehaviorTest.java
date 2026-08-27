@@ -89,6 +89,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
@@ -262,7 +263,10 @@ class SearchRepositoryBehaviorTest {
 
       for (String entityType : MOCK_ENTITY_TYPES) {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
-        EntityRepository<?> mockRepo = mock(EntityRepository.class);
+        EntityRepository<?> mockRepo =
+            Entity.QUERY.equals(entityType)
+                ? mock(QueryRepository.class)
+                : mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
         doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
@@ -1387,6 +1391,9 @@ class SearchRepositoryBehaviorTest {
             "cluster_table_search_index",
             entity.getId().toString(),
             new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
+    QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
+    verify(queryRepository)
+        .getQueriesForDomainSource(Entity.TABLE, entity.getId(), entity.getFullyQualifiedName());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);

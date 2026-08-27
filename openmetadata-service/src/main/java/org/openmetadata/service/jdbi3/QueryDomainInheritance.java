@@ -16,6 +16,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 final class QueryDomainInheritance {
   private QueryDomainInheritance() {}
 
+  static boolean hasExplicitDomains(Query query) {
+    return listOrEmpty(query.getDomains()).stream()
+        .anyMatch(reference -> !Boolean.TRUE.equals(reference.getInherited()));
+  }
+
   static List<EntityReference> resolve(Query query, Map<UUID, Table> tablesById) {
     final List<EntityReference> explicitDomains =
         listOrEmpty(query.getDomains()).stream()
