@@ -27,7 +27,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * requiring re-ingestion.
  */
 @Slf4j
-public class SupersetChartFqnCollisionFix {
+public final class SupersetChartFqnCollisionFix {
 
   private static final String GET_SUPERSET_SERVICES =
       "SELECT id FROM dashboard_service_entity WHERE serviceType = 'Superset'";
@@ -62,7 +62,7 @@ public class SupersetChartFqnCollisionFix {
           serviceIds.add(UUID.fromString(idObj.toString()));
         }
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn("Error finding Superset services", e);
     }
     return serviceIds;
@@ -103,7 +103,7 @@ public class SupersetChartFqnCollisionFix {
         reindexParentDashboards(collectionDAO, chartId);
         fixedCount = 1;
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn("Error processing Chart entity {}", chartId, e);
     }
     return fixedCount;
@@ -120,7 +120,7 @@ public class SupersetChartFqnCollisionFix {
       ChartRepository chartRepository = (ChartRepository) Entity.getEntityRepository(Entity.CHART);
       Chart chart = chartRepository.get(null, chartId, chartRepository.getFields("dashboards"));
       Entity.getSearchRepository().updateEntityIndex(chart);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.error(
           "Chart {} FQN fixed in the database but the search index could not be refreshed; "
               + "run 'Recreate Search Indexes' to sync.",
@@ -154,7 +154,7 @@ public class SupersetChartFqnCollisionFix {
       Dashboard dashboard =
           dashboardRepository.get(null, dashboardId, dashboardRepository.getFields("charts"));
       Entity.getSearchRepository().updateEntityIndex(dashboard);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.error(
           "Chart {} was renamed but parent Dashboard {} search index could not be refreshed; "
               + "run 'Recreate Search Indexes' to sync.",
