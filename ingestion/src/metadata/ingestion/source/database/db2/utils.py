@@ -12,6 +12,7 @@
 """
 Module to define overriden dialect methods
 """
+
 import sys
 from enum import Enum
 from threading import Lock
