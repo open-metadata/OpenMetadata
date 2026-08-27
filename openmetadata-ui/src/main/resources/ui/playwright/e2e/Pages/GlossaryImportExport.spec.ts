@@ -42,9 +42,9 @@ import {
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
-  suppressCsvJobsTray,
   fillGlossaryRowDetails,
   startCsvPreviewAndWaitForGrid,
+  suppressCsvJobsTray,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
