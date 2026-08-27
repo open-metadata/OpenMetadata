@@ -52,6 +52,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -367,10 +368,32 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
-    # pylint: disable=too-many-locals
     def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
         """
-        Get columns from Glue.
+        Get columns from Glue, yielding each column name at most once.
+
+        A name can reach us twice for two reasons: Glue lists a partition key in
+        StorageDescriptor.Columns as well as in PartitionKeys, and Glue lower cases column names
+        on write, so a column DT declared alongside a partition key dt arrives as dt twice.
+        Either way the server rejects the whole table with "Column name <name> is repeated".
+        """
+        table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
+        seen_column_names = set()
+        for column in self._iter_columns(column_data):
+            column_name = model_str(column.name)
+            if column_name in seen_column_names:
+                logger.debug(
+                    f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "
+                    f"partition key is also in StorageDescriptor.Columns, or when lower casing merges two names."
+                )
+                continue
+            seen_column_names.add(column_name)
+            yield column
+
+    # pylint: disable=too-many-locals
+    def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
+        """
+        Yield the raw Glue columns, regular ones first and partition keys last.
         """
         # Check if this is an Iceberg table
         table = self.context.get().table_data
