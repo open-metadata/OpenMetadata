@@ -83,7 +83,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
@@ -111,7 +110,6 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -121,14 +119,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -1873,23 +1867,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(COLUMN_FIELD)) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new ColumnDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new ColumnTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     return exportToCsv(name, user, recursive, null);
   }
@@ -1997,87 +1974,6 @@ public class TableRepository extends EntityRepository<Table> {
             new Fields(
                 allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun, callback);
-  }
-
-  static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Column column;
-
-    ColumnDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Table table =
-          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), COLUMN_FIELD, ALL);
-      threadContext.setAboutEntity(table);
-      column =
-          getColumn(
-              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      column.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class ColumnTagWorkflow extends TagTaskWorkflow {
-    private final Column column;
-
-    ColumnTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Table table =
-          Entity.getEntity(TABLE, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
-      threadContext.setAboutEntity(table);
-      column =
-          getColumn(
-              (Table) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      column.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  private static Column getColumn(Table table, String columnName) {
-    String childrenName = "";
-    if (columnName.contains(".")) {
-      String fieldNameWithoutQuotes = columnName.substring(1, columnName.length() - 1);
-      columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
-    }
-
-    Column column = EntityUtil.findColumn(table.getColumns(), columnName);
-    if (!childrenName.isEmpty() && column != null) {
-      column = getChildColumn(column.getChildren(), childrenName);
-    }
-    if (column == null) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldName("column", columnName));
-    }
-    return column;
-  }
-
-  private static Column getChildColumn(List<Column> column, String childrenName) {
-    Column childrenColumn = null;
-    for (Column col : column) {
-      if (col.getName().equals(childrenName)) {
-        childrenColumn = col;
-        break;
-      }
-    }
-    if (childrenColumn == null) {
-      for (Column value : column) {
-        if (value.getChildren() != null) {
-          childrenColumn = getChildColumn(value.getChildren(), childrenName);
-          if (childrenColumn != null) {
-            break;
-          }
-        }
-      }
-    }
-    return childrenColumn;
   }
 
   private void validateTableFQN(String fqn) {

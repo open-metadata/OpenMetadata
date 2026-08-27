@@ -72,7 +72,6 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import {
   STATUS_DOT_RADIUS,
@@ -171,7 +170,6 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
-  const { entityThread = [] } = useActivityFeedProvider();
   const { setShowAILearningBanner } = useTestCaseStore();
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
@@ -272,7 +270,6 @@ function TestSummaryGraph({
     const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
-      entityThread,
       tasks,
     });
     const isFreshnessTest = data.information.some(
@@ -280,7 +277,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, tasks, testCaseParameterValue]);
+  }, [testCaseResults, tasks, testCaseParameterValue]);
 
   // A store write during render (inside the memo above) triggers React
   // update-depth loops; it must stay in an effect.

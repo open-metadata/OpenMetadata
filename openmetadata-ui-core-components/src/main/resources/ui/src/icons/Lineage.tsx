@@ -37,7 +37,15 @@ export const Lineage: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <rect rx={3.2} stroke="currentColor" strokeWidth={1.3} x={2} y={6.801} />
+    <rect
+      height={6.4}
+      rx={3.2}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      width={6.4}
+      x={2}
+      y={6.801}
+    />
     <circle cx={16} cy={4} r={1.35} stroke="currentColor" strokeWidth={1.3} />
     <circle
       cx={16}

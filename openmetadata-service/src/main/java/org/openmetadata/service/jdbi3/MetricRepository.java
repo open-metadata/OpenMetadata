@@ -66,8 +66,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -668,12 +666,6 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
   }
 
   public static void checkUpdatedByReviewer(Metric metric, String updatedBy) {

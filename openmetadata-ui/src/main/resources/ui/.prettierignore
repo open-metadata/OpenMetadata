@@ -48,6 +48,12 @@ src/antlr/generated
 # Generated TS
 src/generated/
 
+# Generated (dereferenced) JSON schemas - rebuilt by `yarn parse-schema` on postinstall
+src/jsons/connectionSchemas/
+src/jsons/ingestionSchemas/
+src/jsons/governanceSchemas/
+src/jsons/applicationSchemas/
+src/jsons/configuration/
 
 # Assets
 *.gif
