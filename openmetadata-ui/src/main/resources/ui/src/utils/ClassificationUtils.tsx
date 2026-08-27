@@ -88,7 +88,7 @@ export const getCommonColumns = (options?: {
       render: (_, record) => (
         <div className="d-flex items-center gap-2">
           <Icon
-            className="flex-shrink-0"
+            className="tw:shrink-0"
             iconValue={record.style?.iconURL}
             size={18}
           />

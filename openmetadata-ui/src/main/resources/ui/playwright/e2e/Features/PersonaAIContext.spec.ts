@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, Request, Route } from '@playwright/test';
+import { Locator, Page, Request, Route } from '@playwright/test';
 import { EntityType } from '../../../src/enums/entity.enum';
 import {
   CacheState,
@@ -36,6 +36,16 @@ const persona = new PersonaClass();
 const dbService = new DatabaseServiceClass();
 const RULE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATED_RULE_ID = '44444444-4444-4444-8444-444444444444';
+
+// Post antd->core migration each rule field/operator renders a core
+// Select.ComboBox (OMFieldSelect). The default "owners" rule leaves an empty,
+// hidden `<div class="rule--field">` first in the DOM, so scope to the
+// container that actually holds a combobox — the pre-migration
+// `.rule--field .ant-select` selector filtered these out implicitly.
+const comboboxField = (scope: Page | Locator, className: string): Locator =>
+  scope
+    .locator(className)
+    .filter({ has: scope.locator('input[role="combobox"]') });
 
 // Reusable rule fixture for tests that only need a visible rule card to exist
 // (cache-state tests, edit-discard test). Keeps the inline mock objects DRY.
@@ -547,9 +557,13 @@ test.describe.serial('Persona AI Context', () => {
     }
 
     await adminPage.getByTestId('add-context-condition').click();
+    // Conjunction toggle is a react-aria ToggleButtonGroup with
+    // selectionMode="single", which renders a radiogroup whose items expose
+    // role="radio" (not button) — matching how CuratedAssets and the advanced
+    // search helper query the same toggle.
     const orOperator = adminPage
       .getByRole('dialog')
-      .getByRole('button', { name: 'Or', exact: true });
+      .getByRole('radio', { name: 'Or', exact: true });
     await expect(orOperator).toBeVisible();
     await orOperator.click();
     await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
@@ -1297,28 +1311,23 @@ test.describe.serial('Persona AI Context', () => {
 
     await adminPage.getByTestId('empty-add-context-rule').click();
     await adminPage.getByTestId('add-context-condition').click();
-    await adminPage
-      .locator('.rule--field .ant-select')
-      .first()
-      .waitFor({ state: 'visible' });
 
-    await selectOption(
-      adminPage,
-      adminPage.locator('.rule--field .ant-select').first(),
-      'Custom Properties',
-      true
-    );
+    const fieldContainer = comboboxField(adminPage, '.rule--field').first();
+    await fieldContainer.waitFor({ state: 'visible' });
+    await selectOption(adminPage, fieldContainer, 'Custom Properties', true);
 
-    // The sub-field selector must appear — click it and verify our mocked property
-    // is listed and "No data" is absent.
-    const subFieldSelect = adminPage.locator('.rule--field .ant-select').last();
-    await subFieldSelect.click();
-    const dropdown = adminPage.locator('.ant-select-dropdown:visible').first();
-    await dropdown.waitFor({ state: 'visible' });
-    await expect(dropdown).toContainText('pw-context-enum-prop');
-    await expect(dropdown).not.toContainText('No data');
+    const fieldInput = fieldContainer.locator('input[role="combobox"]');
+    await fieldInput.fill('');
+    await fieldInput.press('ArrowDown');
 
-    await adminPage.keyboard.press('Escape');
+    await expect(
+      adminPage.getByRole('option', { name: 'pw-context-enum-prop' })
+    ).toBeVisible();
+    await expect(
+      adminPage.getByRole('option', { name: 'No data' })
+    ).toHaveCount(0);
+
+    await fieldInput.blur();
   });
 
   // Regression guard for the hasUnfinishedRule bug exercising the async-dropdown
@@ -1367,25 +1376,16 @@ test.describe.serial('Persona AI Context', () => {
       .fill('service-is-regression-test');
 
     await adminPage.getByTestId('add-context-condition').click();
-    await adminPage
-      .locator('.rule--field .ant-select')
-      .first()
-      .waitFor({ state: 'visible' });
+    const serviceField = comboboxField(adminPage, '.rule--field').first();
+    await serviceField.waitFor({ state: 'visible' });
 
-    await selectOption(
-      adminPage,
-      adminPage.locator('.rule--field .ant-select').first(),
-      'Service',
-      true
-    );
+    await selectOption(adminPage, serviceField, 'Service', true);
 
-    const operatorLocator = adminPage
-      .locator('.rule--operator .ant-select')
-      .first();
+    const operatorLocator = comboboxField(adminPage, '.rule--operator').first();
     await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
     await selectOption(adminPage, operatorLocator, 'Is', false);
 
-    const valueSelect = adminPage.locator('.rule--widget .ant-select').first();
+    const valueSelect = comboboxField(adminPage, '.rule--widget').first();
     await valueSelect.waitFor({ state: 'visible' });
 
     await selectOption(adminPage, valueSelect, dbService.entity.name, true);
@@ -1661,11 +1661,11 @@ test.describe.serial('Persona AI Context', () => {
         adminPage.getByTestId('delete-condition-button')
       ).toHaveCount(2);
 
-      const firstField = drawer.locator('.rule--field .ant-select').first();
+      const firstField = comboboxField(adminPage, '.rule--field').first();
       await firstField.waitFor({ state: 'visible' });
       await selectOption(adminPage, firstField, 'Description', true);
 
-      const firstOp = drawer.locator('.rule--operator .ant-select').first();
+      const firstOp = comboboxField(adminPage, '.rule--operator').first();
       await firstOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, firstOp, 'Contains', false);
       const alphaInput = drawer
@@ -1691,10 +1691,10 @@ test.describe.serial('Persona AI Context', () => {
         adminPage.getByTestId('delete-condition-button')
       ).toHaveCount(3);
 
-      const secondField = drawer.locator('.rule--field .ant-select').last();
+      const secondField = comboboxField(adminPage, '.rule--field').last();
       await selectOption(adminPage, secondField, 'Description', true);
 
-      const secondOp = drawer.locator('.rule--operator .ant-select').last();
+      const secondOp = comboboxField(adminPage, '.rule--operator').last();
       await secondOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, secondOp, 'Contains', false);
       const betaInput = drawer
@@ -1707,7 +1707,7 @@ test.describe.serial('Persona AI Context', () => {
       // Only now change the root conjunction to OR — this just flips the
       // conjunction on the existing two-rule group without any structural
       // change, so both alpha and beta remain in the serialized query.
-      await drawer.getByRole('button', { name: 'Or', exact: true }).click();
+      await drawer.getByRole('radio', { name: 'Or', exact: true }).click();
     });
 
     const createRuleRequest = adminPage.waitForRequest(
