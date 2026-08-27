@@ -362,8 +362,15 @@ public final class AlertUtil {
           || fieldChange.getNewValue() == null) {
         continue;
       }
-      PipelineStatus status =
-          JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
+      PipelineStatus status;
+      try {
+        status = JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
+      } catch (Exception ex) {
+        // This filter runs on every pipeline event in the batch, including subscriptions with no
+        // pipelineStatus rule, so a throw here would drop the whole delivery batch.
+        LOG.warn("Could not read pipelineStatus for the staleness check, delivering", ex);
+        return false;
+      }
       OptionalLong executedAt = effectiveExecutionTime(status);
       return executedAt.isPresent() && executedAt.getAsLong() < startingTimestamp;
     }

@@ -156,4 +156,24 @@ class StalePipelineExecutionTest {
 
     assertFalse(AlertUtil.checkIfChangeEventIsAllowed(stale, rules, WATERMARK));
   }
+
+  @Test
+  @DisplayName("an unreadable pipelineStatus payload is delivered, not thrown out of the batch")
+  void unreadablePayloadIsDelivered() {
+    ChangeEvent event =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(Entity.PIPELINE)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("pipelineStatus")
+                                .withNewValue("not a pipeline status")))
+                    .withFieldsAdded(Collections.emptyList()));
+
+    assertFalse(AlertUtil.isStalePipelineExecution(event, WATERMARK));
+  }
 }
