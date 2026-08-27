@@ -14,16 +14,14 @@
 import classNames from 'classnames';
 import React, {
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Intent, SubNavConfig } from '../AppModule.types';
 import { useAllAppModules } from '../sharedAppModules';
-import { matchModuleByPathname } from '../state/useActiveModule';
+import { useActiveModuleStore } from '../state/useActiveModule';
 import { emitIntent } from '../useIntent';
 import ContextCenterSubNavSections from './ContextCenterSubNavSections';
 import MainPanel from './MainPanel';
@@ -46,7 +44,9 @@ const Sidebar: React.FC = () => {
   const modules = useAllAppModules();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [subCollapsed, setSubCollapsed] = useState(false);
+  // Submenus start collapsed (sub-rail) and open only when the user explicitly
+  // expands them — navigating into a sub-mode module must not pop the panel.
+  const [subCollapsed, setSubCollapsed] = useState(true);
 
   const mainNavItems = useMemo(() => buildMainNavItems(modules), [modules]);
 
@@ -54,18 +54,22 @@ const Sidebar: React.FC = () => {
   // top-level/More split) to the module-derived nav items.
   const { nodes: mainNavNodes } = useCustomizedMainNav(mainNavItems);
 
+  // Derive the sub-nav from the STICKY active module (kept in sync with the URL
+  // by `useSyncActiveModule`), not the raw pathname: module-less shared pages
+  // (e.g. `/table/<fqn>`) retain the last module so the sub-nav stays open
+  // mid-flow instead of collapsing.
+  const activeModuleId = useActiveModuleStore((s) => s.activeModule);
+
   const activeSubNav: SubNavConfig | null = useMemo(() => {
-    const moduleId = matchModuleByPathname(pathname, modules);
-    const activeModule = moduleId
-      ? modules.find((m) => m.id === moduleId)
+    const activeModule = activeModuleId
+      ? modules.find((m) => m.id === activeModuleId)
       : undefined;
 
     return activeModule?.subNav ?? null;
-  }, [pathname, modules]);
+  }, [activeModuleId, modules]);
 
   const inSubMode = activeSubNav !== null;
   const isContextCenter = activeSubNav?.key === CONTEXT_CENTER_SUBNAV_KEY;
-  const prevInSubModeRef = useRef(false);
 
   const handleUploadFile = useCallback(() => emitIntent(Intent.UploadFile), []);
   const handleCreateArticle = useCallback(
@@ -88,13 +92,10 @@ const Sidebar: React.FC = () => {
     />
   ) : undefined;
 
-  useEffect(() => {
-    if (inSubMode && !prevInSubModeRef.current) {
-      setCollapsed(true);
-      setSubCollapsed(false);
-    }
-    prevInSubModeRef.current = inSubMode;
-  }, [inSubMode]);
+  // Collapsed/expanded state (both main and sub) is purely user-controlled via
+  // the explicit toggle handlers below — navigating to a route never changes
+  // it, otherwise every click into a submenu item would rail the main nav / pop
+  // the submenu open on its own.
 
   const showRail = collapsed;
   const showSubPanel = inSubMode && !subCollapsed;
