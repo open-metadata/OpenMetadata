@@ -268,15 +268,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
 
     // validate all the Tasks
-    for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+    for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it
-    // is unrelated to workflow execution. We should bring back the old behavior for this one.
-    String storedPipelineStatus =
-        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
-    if (storedPipelineStatus != null) {
+    StatusChange statusChange =
+        resolveStatusChange(pipeline.getFullyQualifiedName(), pipelineStatus);
+    if (statusChange.outcome() == StatusOutcome.UPDATED) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
@@ -284,7 +282,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               PIPELINE_STATUS_EXTENSION,
               JsonUtils.pojoToJson(pipelineStatus),
               pipelineStatus.getTimestamp());
-    } else {
+    } else if (statusChange.outcome() == StatusOutcome.CREATED) {
       storeTimeSeries(
           pipeline.getFullyQualifiedName(),
           PIPELINE_STATUS_EXTENSION,
@@ -294,7 +292,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     ChangeDescription change =
         addPipelineStatusChangeDescription(
-            pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+            pipeline.getVersion(), pipelineStatus, statusChange.previous());
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
     pipeline.setIncrementalChangeDescription(change);
@@ -376,8 +374,44 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         ENTITY_UPDATED);
   }
 
+  enum StatusOutcome {
+    UNCHANGED,
+    CREATED,
+    UPDATED
+  }
+
+  record StatusChange(StatusOutcome outcome, PipelineStatus previous) {}
+
+  private static final Comparator<Status> BY_TASK_NAME =
+      Comparator.comparing(Status::getName, Comparator.nullsFirst(String::compareTo));
+
+  private StatusChange resolveStatusChange(String pipelineFqn, PipelineStatus incoming) {
+    String storedJson =
+        getExtensionAtTimestamp(pipelineFqn, PIPELINE_STATUS_EXTENSION, incoming.getTimestamp());
+    if (storedJson == null) {
+      return new StatusChange(StatusOutcome.CREATED, null);
+    }
+    PipelineStatus stored = JsonUtils.readValue(storedJson, PipelineStatus.class);
+    return new StatusChange(
+        isSameStatus(stored, incoming) ? StatusOutcome.UNCHANGED : StatusOutcome.UPDATED, stored);
+  }
+
+  static boolean isSameStatus(PipelineStatus stored, PipelineStatus incoming) {
+    return canonicalize(stored).equals(canonicalize(incoming));
+  }
+
+  // Round-trips through JSON so an explicit null collapses onto the schema default, and orders
+  // taskStatus by name because connectors do not guarantee a stable order across ingestions.
+  private static PipelineStatus canonicalize(PipelineStatus status) {
+    PipelineStatus copy = JsonUtils.readValue(JsonUtils.pojoToJson(status), PipelineStatus.class);
+    if (copy.getTaskStatus() != null) {
+      copy.setTaskStatus(copy.getTaskStatus().stream().sorted(BY_TASK_NAME).toList());
+    }
+    return copy;
+  }
+
   private ChangeDescription addPipelineStatusChangeDescription(
-      Double version, Object newValue, Object oldValue) {
+      Double version, PipelineStatus newValue, PipelineStatus oldValue) {
     FieldChange fieldChange =
         new FieldChange().withName("pipelineStatus").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
