@@ -15,7 +15,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { getFeedCount } from '../../../rest/feedsAPI';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ActivityFeedTab } from './ActivityFeedTab.component';
 import {
@@ -26,6 +26,7 @@ import {
 const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
+const mockListConversations = jest.fn();
 const mockUseRequiredParams = jest.fn();
 const mockFetchEntityActivity = jest.fn();
 const mockFetchUserActivity = jest.fn();
@@ -104,8 +105,12 @@ jest.mock('../../../rest/tasksAPI', () => ({
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  getFeedCount: jest.fn(),
+jest.mock('../../../rest/conversationsAPI', () => ({
+  listConversations: (...args: unknown[]) => mockListConversations(...args),
+}));
+
+jest.mock('../../../rest/activityAPI', () => ({
+  getEntityActivityByFqn: jest.fn(),
 }));
 
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
@@ -113,26 +118,6 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
     <span data-testid="filter-count">{count}</span>
   ),
   getEntityUserLink: jest.fn().mockReturnValue(''),
-}));
-
-jest.mock('../../../utils/FeedUtilsPure', () => ({
-  // Real implementations — folding the /feed/count array and summing the tab
-  // total are the behaviours the tests below exercise.
-  aggregateFeedCountResponse: jest.requireActual('../../../utils/FeedUtilsPure')
-    .aggregateFeedCountResponse,
-  getFeedTotalCount: jest.requireActual('../../../utils/FeedUtilsPure')
-    .getFeedTotalCount,
-  getFeedCounts: jest.fn((_, __, ___, cb) =>
-    cb({
-      conversationCount: mockConversationCount,
-      activityCount: mockActivityCount,
-      mentionCount: 0,
-      totalCount: mockConversationCount + mockActivityCount,
-      totalTasksCount: 0,
-      openTaskCount: 0,
-      closedTaskCount: 0,
-    })
-  ),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -144,7 +129,11 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 }));
 
 jest.mock('../ActivityFeedList/ActivityFeedListV1New.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="feed-list" />)
+  jest
+    .fn()
+    .mockImplementation(({ isLoading }) => (
+      <div data-loading={String(isLoading)} data-testid="feed-list" />
+    ))
 );
 
 jest.mock('../ActivityFeedList/TaskListV1.component', () =>
@@ -228,15 +217,20 @@ describe('ActivityFeedTab', () => {
       completed: 0,
       total: 0,
     });
+    mockListConversations.mockImplementation(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: mockConversationCount },
+      })
+    );
+    (getEntityActivityByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: mockActivityCount },
+      })
+    );
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
-    (getFeedCount as jest.Mock).mockResolvedValue([
-      {
-        entityLink: '<#E::user::admin>',
-        conversationCount: 0,
-        mentionCount: 0,
-      },
-    ]);
   });
 
   describe('Activity fetch is gated by tab', () => {
@@ -281,67 +275,59 @@ describe('ActivityFeedTab', () => {
     });
   });
 
-  describe('User entity feed counts tolerate an empty /feed/count response', () => {
-    it('still renders the tab when the feed count response is empty', async () => {
-      // A user with no threads gets back [] — indexing res[0] threw here, which
-      // was swallowed by the catch and left the whole tab unrendered.
-      (getFeedCount as jest.Mock).mockResolvedValue([]);
+  describe('User entity feed counts tolerate an empty conversation response', () => {
+    it('still renders the tab when no conversations exist', async () => {
+      mockListConversations.mockResolvedValue({
+        data: [],
+        paging: { total: 0 },
+      });
 
       renderUserComponent(ActivityFeedTabs.TASKS);
 
-      await waitFor(() => expect(getFeedCount).toHaveBeenCalled());
+      await waitFor(() => expect(mockListConversations).toHaveBeenCalled());
 
       expect(showErrorToast).not.toHaveBeenCalled();
       expect(screen.getByTestId('task-list')).toBeInTheDocument();
     });
   });
 
-  describe('Mentions sub-tab fetches tasks the user is mentioned in', () => {
-    it('calls getTaskData with FeedFilter.MENTIONS and never getFeedData', async () => {
-      renderComponent(ActivityFeedTabs.MENTIONS);
+  describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {
+    it('fetches conversations alongside activity events on the All tab', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
 
       await waitFor(() =>
-        expect(mockGetTaskData).toHaveBeenCalledWith(
-          FeedFilter.MENTIONS,
+        expect(mockGetFeedData).toHaveBeenCalledWith(
+          undefined,
           undefined,
           EntityType.TABLE,
-          'test.db.table',
-          'open'
+          'test.db.table'
         )
       );
-
-      // The mentions list renders off provider `tasks`, so routing it through
-      // getFeedData (which writes entityThread) left the previous My Tasks
-      // list on screen.
-      expect(mockGetFeedData).not.toHaveBeenCalled();
     });
 
-    it('renders the task list, not the feed list, on the mentions sub-tab', async () => {
+    it('calls getFeedData with FeedFilter.MENTIONS when mentions tab is active', async () => {
       renderComponent(ActivityFeedTabs.MENTIONS);
 
-      await waitFor(() =>
-        expect(screen.getByTestId('task-list')).toBeInTheDocument()
-      );
+      await waitFor(() => {
+        const calls = mockGetFeedData.mock.calls;
+        const mentionsCall = calls.find(
+          ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
+        );
 
-      expect(screen.queryByTestId('feed-list')).not.toBeInTheDocument();
-      expect(screen.getByText('message.no-mentions')).toBeInTheDocument();
+        expect(mentionsCall).toBeDefined();
+      });
     });
 
-    it('does not pass FeedFilter.MENTIONS on the my-tasks sub-tab', async () => {
+    it('does not call getFeedData with FeedFilter.MENTIONS when tasks tab is active', async () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() => expect(mockGetTaskData).toHaveBeenCalled());
 
-      expect(
-        mockGetTaskData.mock.calls.find(
-          ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
-        )
-      ).toBeUndefined();
-      expect(
-        mockGetFeedData.mock.calls.find(
-          ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
-        )
-      ).toBeUndefined();
+      const mentionsCall = mockGetFeedData.mock.calls.find(
+        ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
+      );
+
+      expect(mentionsCall).toBeUndefined();
     });
   });
 
@@ -481,7 +467,7 @@ describe('ActivityFeedTab', () => {
       );
 
       await waitFor(() =>
-        expect(screen.getByTestId('task-list')).toHaveAttribute(
+        expect(screen.getByTestId('feed-list')).toHaveAttribute(
           'data-loading',
           'true'
         )

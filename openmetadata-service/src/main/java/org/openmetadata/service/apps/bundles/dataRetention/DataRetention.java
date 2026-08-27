@@ -6,7 +6,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
-import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
@@ -48,8 +46,6 @@ public class DataRetention extends AbstractNativeApplication {
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
   private IndexingError failureDetails = null;
 
-  private final FeedRepository feedRepository;
-
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
@@ -59,7 +55,6 @@ public class DataRetention extends AbstractNativeApplication {
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
-    this.feedRepository = Entity.getFeedRepository();
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
@@ -112,6 +107,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("change_events", new StepStats());
     entityStats.withAdditionalProperty("consumers_dlq", new StepStats());
     entityStats.withAdditionalProperty("activity_threads", new StepStats());
+    entityStats.withAdditionalProperty("activity_comments", new StepStats());
 
     // Add stats for relationship and hierarchy cleanup
     entityStats.withAdditionalProperty("orphaned_relationships", new StepStats());
@@ -182,11 +178,25 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
     cleanChangeEvents(retentionPeriod);
 
-    int threadRetentionPeriod = config.getActivityThreadsRetentionPeriod();
-    LOG.info(
-        "Starting cleanup for activity threads with retention period: {} days.",
-        threadRetentionPeriod);
-    cleanActivityThreads(threadRetentionPeriod);
+    Integer threadRetentionPeriod = config.getActivityThreadsRetentionPeriod();
+    if (isRetentionEnabled(threadRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for activity threads with retention period: {} days.",
+          threadRetentionPeriod);
+      cleanActivityThreads(threadRetentionPeriod);
+    } else {
+      LOG.info("Activity threads are retained indefinitely.");
+    }
+
+    Integer activityCommentsRetentionPeriod = config.getActivityCommentsRetentionPeriod();
+    if (isRetentionEnabled(activityCommentsRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for activity comments with retention period: {} days.",
+          activityCommentsRetentionPeriod);
+      cleanActivityComments(activityCommentsRetentionPeriod);
+    } else {
+      LOG.info("Activity comments are retained indefinitely.");
+    }
 
     int testCaseResultsRetentionPeriod = config.getTestCaseResultsRetentionPeriod();
     LOG.info(
@@ -232,20 +242,27 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Initiating activity threads cleanup: Retention = {} days.", retentionPeriod);
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
-    List<UUID> threadIdsToDelete =
-        feedRepository.fetchConversationThreadIdsOlderThan(cutoffMillis, BATCH_SIZE);
-
-    if (threadIdsToDelete.isEmpty()) {
-      LOG.info(
-          "No activity threads found older than retention period of {} days, skipping cleanup.",
-          retentionPeriod);
-      return;
-    }
-
     executeWithStatsTracking(
-        "activity_threads", () -> feedRepository.deleteThreadsInBatch(threadIdsToDelete));
+        "activity_threads",
+        () ->
+            Entity.getConversationRepository()
+                .deleteExpiredUserConversations(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Activity threads cleanup complete.");
+  }
+
+  @Transaction
+  private void cleanActivityComments(int retentionPeriod) {
+    LOG.info("Initiating activity comments cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executeWithStatsTracking(
+        "activity_comments",
+        () ->
+            Entity.getConversationRepository()
+                .deleteExpiredActivityConversations(cutoffMillis, BATCH_SIZE));
+
+    LOG.info("Activity comments cleanup complete.");
   }
 
   @Transaction
@@ -486,6 +503,10 @@ public class DataRetention extends AbstractNativeApplication {
     return Instant.now()
         .minusMillis(Duration.ofDays(retentionPeriodInDays).toMillis())
         .toEpochMilli();
+  }
+
+  static boolean isRetentionEnabled(Integer retentionPeriod) {
+    return retentionPeriod != null && retentionPeriod > 0;
   }
 
   private synchronized void updateStats(String entity, int successCount, int failureCount) {
