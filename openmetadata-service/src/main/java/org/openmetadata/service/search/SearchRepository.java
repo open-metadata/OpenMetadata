@@ -458,7 +458,7 @@ public class SearchRepository {
           Entity.API_SERVICE,
           Entity.DRIVE_SERVICE);
 
-  private static final Set<String> QUERY_DOMAIN_SOURCE_TYPES =
+  private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
@@ -3117,7 +3117,7 @@ public class SearchRepository {
   }
 
   private void reindexQueriesForDomainSource(String entityType, UUID entityId, String entityFqn) {
-    if (QUERY_DOMAIN_SOURCE_TYPES.contains(entityType)) {
+    if (QUERY_DOMAIN_REINDEX_SOURCE_TYPES.contains(entityType)) {
       deferIfFlushScopeActive(
           () -> {
             final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);

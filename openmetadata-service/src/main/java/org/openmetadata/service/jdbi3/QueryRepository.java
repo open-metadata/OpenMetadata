@@ -51,7 +51,7 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
   static final int DOMAIN_REINDEX_BATCH_SIZE = 100;
   private static final String INITIAL_QUERY_ID_CURSOR = "";
-  private static final Set<String> QUERY_DOMAIN_SOURCE_TYPES =
+  private static final Set<String> QUERY_ANCESTOR_DOMAIN_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA);
 
   public QueryRepository() {
@@ -160,10 +160,7 @@ public class QueryRepository extends EntityRepository<Query> {
             ? daoCollection
                 .relationshipDAO()
                 .findFromBatch(queryIds, Entity.QUERY, Relationship.MENTIONED_IN.ordinal())
-            : daoCollection
-                .relationshipDAO()
-                .findFromBatch(
-                    queryIds, Relationship.MENTIONED_IN.ordinal(), Entity.TABLE, Entity.QUERY);
+            : findActiveTableUsageRelationships(queryIds);
     final Map<String, Map<UUID, EntityReference>> referencesByType =
         queryUsageRequested ? loadQueryUsageReferences(relationships) : Map.of();
     Map<UUID, List<EntityReference>> queryUsageMap = new HashMap<>();
@@ -221,12 +218,22 @@ public class QueryRepository extends EntityRepository<Query> {
       return getQueryUsage(query);
     }
     if (fields.contains(FIELD_DOMAINS)) {
-      return findFromRecords(query.getId(), Entity.QUERY, Relationship.MENTIONED_IN, Entity.TABLE)
-          .stream()
-          .map(record -> new EntityReference().withId(record.getId()).withType(record.getType()))
+      return findActiveTableUsageRelationships(List.of(query.getId().toString())).stream()
+          .map(
+              record ->
+                  new EntityReference()
+                      .withId(UUID.fromString(record.getFromId()))
+                      .withType(record.getFromEntity()))
           .toList();
     }
     return query.getQueryUsedIn();
+  }
+
+  private List<CollectionDAO.EntityRelationshipObject> findActiveTableUsageRelationships(
+      List<String> queryIds) {
+    return daoCollection
+        .relationshipDAO()
+        .findFromBatch(queryIds, Relationship.MENTIONED_IN.ordinal(), Entity.TABLE, Entity.QUERY);
   }
 
   private Map<UUID, Table> loadTablesWithDomains(List<Query> queries) {
@@ -235,8 +242,11 @@ public class QueryRepository extends EntityRepository<Query> {
     if (!tableIds.isEmpty()) {
       final TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
       final List<Table> tables =
-          repository.getDao().findEntitiesByIds(new ArrayList<>(tableIds), Include.NON_DELETED);
-      repository.setFieldsInBulk(new EntityUtil.Fields(Set.of(FIELD_DOMAINS)), tables);
+          repository.get(
+              null,
+              new ArrayList<>(tableIds),
+              repository.getFields(FIELD_DOMAINS),
+              Include.NON_DELETED);
       result = tables.stream().collect(Collectors.toMap(Table::getId, Function.identity()));
     }
     return result;
@@ -322,7 +332,7 @@ public class QueryRepository extends EntityRepository<Query> {
                   Relationship.MENTIONED_IN.ordinal(),
                   afterQueryId,
                   DOMAIN_REINDEX_BATCH_SIZE);
-    } else if (QUERY_DOMAIN_SOURCE_TYPES.contains(sourceType) && !nullOrEmpty(sourceFqn)) {
+    } else if (QUERY_ANCESTOR_DOMAIN_SOURCE_TYPES.contains(sourceType) && !nullOrEmpty(sourceFqn)) {
       queryIds =
           daoCollection
               .relationshipDAO()
