@@ -47,24 +47,27 @@ def _(
     if ssl_manager:
         request.connection.config = ssl_manager.setup_ssl(request.connection.config)
 
+    connection_config = getattr(request.connection, "config", None)
     try:
-        if hasattr(request.connection.config, "hostPort"):
-            host_port_str = str(request.connection.config.hostPort or "")
-            if "localhost" in host_port_str:
-                result = _test_connection(metadata, request.connection.config)
-                raise_test_connection_exception(result)
+        host_port = getattr(connection_config, "hostPort", None)
+        host_port_str = str(host_port or "")
+        if "localhost" in host_port_str:
+            result = _test_connection(metadata, connection_config)
+            raise_test_connection_exception(result)
 
-        _ = _test_connection(metadata, request.connection.config, automation_workflow)
+        _ = _test_connection(metadata, connection_config, automation_workflow)
     except Exception as error:
-        host_port_str = str(getattr(request.connection.config, "hostPort", None) or "")
-        if not host_port_str or "localhost" not in host_port_str:
+        host_port = getattr(connection_config, "hostPort", None)
+        host_port_str = str(host_port or "")
+        if host_port is None or "localhost" not in host_port_str:
             raise error  # noqa: TRY201
 
-        host_port_type = type(request.connection.config.hostPort)
         docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
-        request.connection.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
+        setattr(  # noqa: B010
+            connection_config, "hostPort", type(host_port)(docker_host_port_str)
+        )
 
-        _ = _test_connection(metadata, request.connection.config, automation_workflow)
+        _ = _test_connection(metadata, connection_config, automation_workflow)
 
     if ssl_manager:
         ssl_manager.cleanup_temp_files()
