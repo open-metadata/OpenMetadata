@@ -172,6 +172,7 @@ import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
+import org.openmetadata.service.search.vector.client.OnnxEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -4615,6 +4616,13 @@ public class SearchRepository {
           throw new IllegalStateException("DJL configuration is required when using djl provider");
         }
         yield new DjlEmbeddingClient(llmConfig);
+      }
+      case "onnx" -> {
+        if (embeddings.getOnnx() == null) {
+          throw new IllegalStateException(
+              "ONNX configuration is required when using onnx provider");
+        }
+        yield new OnnxEmbeddingClient(llmConfig);
       }
       default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
     };

@@ -96,12 +96,12 @@
     "embeddings": {
       "type": "object",
       "javaType": "org.openmetadata.schema.configuration.LLMEmbeddingsConfig",
-      "description": "Vector embedding configuration for semantic search. Credentials are reused from the sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey/endpoint); this section selects the embedding provider and per-provider embedding model. The embedding provider may differ from the chat completion provider.",
+      "description": "Vector embedding configuration for semantic search. Credentials are reused from the sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey/endpoint); this section selects the embedding provider and per-provider embedding model. The embedding provider may differ from the chat completion provider. The local providers (djl, onnx) need no credentials.",
       "properties": {
         "provider": {
           "description": "Embedding provider to use for semantic search vectors.",
           "type": "string",
-          "enum": ["bedrock", "openai", "google", "djl"],
+          "enum": ["bedrock", "openai", "google", "djl", "onnx"],
           "default": "bedrock"
         },
         "maxConcurrentRequests": {
@@ -140,8 +140,18 @@
         "djl": {
           "type": "object",
           "javaType": "org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig",
+          "description": "DJL embeddings. The model is downloaded from the DJL model zoo on first use, so the server needs outbound network access at startup.",
           "properties": {
             "embeddingModel": { "type": "string", "default": "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2" }
+          },
+          "additionalProperties": false
+        },
+        "onnx": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMOnnxEmbeddingConfig",
+          "description": "In-process ONNX embeddings. The model weights ship with the application, so there is no download, no outbound network call and no credential; suitable for air-gapped deployments.",
+          "properties": {
+            "embeddingModel": { "type": "string", "default": "all-MiniLM-L6-v2" }
           },
           "additionalProperties": false
         }

@@ -569,6 +569,14 @@
       <version>0.34.0</version>
     </dependency>
 
+    <!-- Dependencies for vector embedding (in-process ONNX). The model weights are bundled in the
+         artifact, which is what lets the onnx provider embed without any download or credential. -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+      <version>${langchain4j-embeddings.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>

@@ -1015,11 +1015,13 @@ public class SystemRepository {
 
       return switch (provider.toLowerCase()) {
         case "djl" -> getDjlEmbeddingMessage(embeddings);
+        case "onnx" -> getOnnxEmbeddingMessage(embeddings);
         case "bedrock" -> getBedrockEmbeddingMessage(llmConfig, embeddings);
         case "openai" -> getOpenAiEmbeddingMessage(llmConfig, embeddings);
         case "google" -> getGoogleEmbeddingMessage(llmConfig, embeddings);
         default -> String.format(
-            "Unknown provider '%s'. Supported providers: djl, bedrock, openai, google", provider);
+            "Unknown provider '%s'. Supported providers: djl, onnx, bedrock, openai, google",
+            provider);
       };
     } catch (Exception e) {
       LOG.error("Error getting embedding configuration", e);
@@ -1033,6 +1035,16 @@ public class SystemRepository {
       message =
           String.format(
               "DJL configuration: embeddingModel: %s", embeddings.getDjl().getEmbeddingModel());
+    }
+    return message;
+  }
+
+  private String getOnnxEmbeddingMessage(LLMEmbeddingsConfig embeddings) {
+    String message = "ONNX provider selected but onnx configuration block is missing";
+    if (embeddings.getOnnx() != null) {
+      message =
+          String.format(
+              "ONNX configuration: embeddingModel: %s", embeddings.getOnnx().getEmbeddingModel());
     }
     return message;
   }

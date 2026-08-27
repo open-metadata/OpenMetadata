@@ -21,7 +21,8 @@ export interface LlmConfiguration {
      * Vector embedding configuration for semantic search. Credentials are reused from the
      * sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint,
      * google.apiKey/endpoint); this section selects the embedding provider and per-provider
-     * embedding model. The embedding provider may differ from the chat completion provider.
+     * embedding model. The embedding provider may differ from the chat completion provider. The
+     * local providers (djl, onnx) need no credentials.
      */
     embeddings?: Embeddings;
     /**
@@ -104,17 +105,27 @@ export interface AWSBaseConfig {
  * Vector embedding configuration for semantic search. Credentials are reused from the
  * sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint,
  * google.apiKey/endpoint); this section selects the embedding provider and per-provider
- * embedding model. The embedding provider may differ from the chat completion provider.
+ * embedding model. The embedding provider may differ from the chat completion provider. The
+ * local providers (djl, onnx) need no credentials.
  */
 export interface Embeddings {
     bedrock?: EmbeddingsBedrock;
-    djl?:     Djl;
-    google?:  EmbeddingsGoogle;
+    /**
+     * DJL embeddings. The model is downloaded from the DJL model zoo on first use, so the
+     * server needs outbound network access at startup.
+     */
+    djl?:    Djl;
+    google?: EmbeddingsGoogle;
     /**
      * Maximum number of concurrent embedding requests.
      */
     maxConcurrentRequests?: number;
-    openai?:                EmbeddingsOpenai;
+    /**
+     * In-process ONNX embeddings. The model weights ship with the application, so there is no
+     * download, no outbound network call and no credential; suitable for air-gapped deployments.
+     */
+    onnx?:   Onnx;
+    openai?: EmbeddingsOpenai;
     /**
      * Embedding provider to use for semantic search vectors.
      */
@@ -126,6 +137,10 @@ export interface EmbeddingsBedrock {
     embeddingModelId?:   string;
 }
 
+/**
+ * DJL embeddings. The model is downloaded from the DJL model zoo on first use, so the
+ * server needs outbound network access at startup.
+ */
 export interface Djl {
     embeddingModel?: string;
 }
@@ -133,6 +148,14 @@ export interface Djl {
 export interface EmbeddingsGoogle {
     embeddingDimension?: number;
     embeddingModelId?:   string;
+}
+
+/**
+ * In-process ONNX embeddings. The model weights ship with the application, so there is no
+ * download, no outbound network call and no credential; suitable for air-gapped deployments.
+ */
+export interface Onnx {
+    embeddingModel?: string;
 }
 
 export interface EmbeddingsOpenai {
@@ -147,6 +170,7 @@ export enum Provider {
     Bedrock = "bedrock",
     Djl = "djl",
     Google = "google",
+    Onnx = "onnx",
     Openai = "openai",
 }
 

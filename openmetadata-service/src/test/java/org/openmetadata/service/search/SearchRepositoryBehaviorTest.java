@@ -2958,6 +2958,10 @@ class SearchRepositoryBehaviorTest {
     assertThrows(
         IllegalStateException.class,
         () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.DJL)));
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.ONNX)));
   }
 
   private LLMConfiguration embeddingConfigWithProvider(Provider provider) {

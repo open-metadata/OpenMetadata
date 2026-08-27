@@ -638,7 +638,7 @@ llmConfiguration:
   # (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey); this section only selects the
   # embedding provider + model. The embedding provider may differ from the chat provider above.
   embeddings:
-    provider: ${EMBEDDING_PROVIDER:-bedrock}  # bedrock | openai | google | djl
+    provider: ${EMBEDDING_PROVIDER:-bedrock}  # bedrock | openai | google | djl | onnx
     maxConcurrentRequests: ${MAX_CONCURRENT_EMBEDDING_REQUESTS:-10}
     bedrock:
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-"amazon.titan-embed-text-v2:0"}
@@ -651,6 +651,10 @@ llmConfiguration:
       embeddingDimension: ${GOOGLE_EMBEDDING_DIMENSION:-768}
     djl:
       embeddingModel: ${DJL_EMBEDDING_MODEL:-"ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"}
+    # In-process ONNX. No credentials and no model download: the weights ship with the server, so
+    # this is the provider that works in an air-gapped deployment.
+    onnx:
+      embeddingModel: ${ONNX_EMBEDDING_MODEL:-"all-MiniLM-L6-v2"}
 
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"

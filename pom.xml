@@ -175,6 +175,7 @@
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
     <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
+    <langchain4j-embeddings.version>1.14.1-beta24</langchain4j-embeddings.version>
   </properties>
 
   <dependencyManagement>
