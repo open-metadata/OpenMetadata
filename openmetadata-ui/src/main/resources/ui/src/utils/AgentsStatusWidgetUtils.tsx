@@ -158,15 +158,13 @@ export const getFormattedAgentsList = (
   return orderedAgentsList;
 };
 
+// Every list this is handed is authoritative: an empty one means the service has no such agent
+// left, so a deleted or disabled one drops off the widget. Frames that report nothing at all —
+// the payload-less ones that close the stream — are dropped by the caller instead, since there is
+// no way to tell them apart from here.
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
-  collateAIagentsLiveInfo: CollateAgentLiveInfo[],
-  // Terminal frames (stream completed, or an error fetching chart data) carry no
-  // payload, so keep the agents already on screen instead of blanking them as the
-  // run finishes. This holds for both halves: the server sends empty lists for
-  // `ingestionPipelineStatus` too, and killing a run ends the stream, so the
-  // metadata agents would otherwise stay gone until the page was reloaded.
-  preservedAgents: AgentsInfo[] = []
+  collateAIagentsLiveInfo: CollateAgentLiveInfo[]
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -193,15 +191,10 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     };
   });
 
-  const metadataAgents = isEmpty(formattedAgentsList)
-    ? preservedAgents.filter((agent) => !agent.isCollateAgent)
-    : formattedAgentsList;
-
-  const collateAIagents = isEmpty(liveCollateAgents)
-    ? preservedAgents.filter((agent) => agent.isCollateAgent)
-    : liveCollateAgents;
-
-  const allAgentsList: AgentsInfo[] = [...metadataAgents, ...collateAIagents];
+  const allAgentsList: AgentsInfo[] = [
+    ...formattedAgentsList,
+    ...liveCollateAgents,
+  ];
 
   const orderedAgentsList = reduce(
     AUTOPILOT_AGENTS_ORDERED_LIST,

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  RenderResult,
+  screen,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -19,6 +25,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
+import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 import Ingestion from './Ingestion.component';
 
 jest.mock(
@@ -257,16 +264,32 @@ describe('Ingestion', () => {
   // first load swapped the cards for skeletons, so the agents dropped off the list until the
   // request came back.
   describe('refetching an already loaded list', () => {
-    const loadedProps = {
-      ...ingestionProps,
-      agents: [mockAgent],
-      isLoading: true,
+    // Mounts on the first load, lands the response, then reopens the request — the only way to
+    // reach the refetch state, since the flag alone cannot tell the two apart.
+    const renderThenRefetch = async (agents: Agent[]) => {
+      let view!: RenderResult;
+
+      await act(async () => {
+        view = render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion {...ingestionProps} agents={agents} isLoading={false} />
+        );
+      });
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion {...ingestionProps} isLoading agents={agents} />
+        );
+      });
     };
 
     it('should keep the agent cards while the list refetches', async () => {
-      await act(async () => {
-        render(<Ingestion {...loadedProps} />, { wrapper: MemoryRouter });
-      });
+      await renderThenRefetch([mockAgent]);
 
       expect(
         screen.getByTestId(`agent-card-${mockAgent.fqn}`)
@@ -275,10 +298,17 @@ describe('Ingestion', () => {
     });
 
     it('should keep the deployment summary card while the list refetches', async () => {
-      await act(async () => {
-        render(<Ingestion {...loadedProps} />, { wrapper: MemoryRouter });
-      });
+      await renderThenRefetch([mockAgent]);
 
+      expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
+    });
+
+    // A service with no agents is a loaded answer too, so its refetches must not fall back to
+    // skeletons — the emptiness of the list says nothing about whether it has been fetched.
+    it('should keep the empty state while a list with no agents refetches', async () => {
+      await renderThenRefetch([]);
+
+      expect(screen.queryByTestId('agent-group-skeleton')).toBeNull();
       expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
     });
 
