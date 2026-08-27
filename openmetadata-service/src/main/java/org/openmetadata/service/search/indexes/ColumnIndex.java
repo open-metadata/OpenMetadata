@@ -94,11 +94,15 @@ public interface ColumnIndex extends SearchIndex {
   }
 
   private boolean hasUndocumentedColumn(List<Column> columns) {
+    return hasUndocumentedColumn(columns, 1, SearchFieldLimits.active());
+  }
+
+  private boolean hasUndocumentedColumn(List<Column> columns, int depth, SearchFieldLimits limits) {
     boolean undocumented = false;
-    if (columns != null) {
+    if (columns != null && depth <= limits.getDepthLimit()) {
       for (Column col : columns) {
         if (CommonUtil.nullOrEmpty(col.getDescription())
-            || hasUndocumentedColumn(col.getChildren())) {
+            || hasUndocumentedColumn(col.getChildren(), depth + 1, limits)) {
           undocumented = true;
           break;
         }

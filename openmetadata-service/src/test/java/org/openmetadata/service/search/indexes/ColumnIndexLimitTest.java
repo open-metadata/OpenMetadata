@@ -174,6 +174,22 @@ class ColumnIndexLimitTest {
   }
 
   @Test
+  void columnDescriptionStatus_ignores_columns_beyond_depth_limit() {
+    activateLimits(2, 10000);
+    Column beyondLimit = new Column().withName("c3");
+    Column withinLimit =
+        new Column().withName("c2").withDescription("d2").withChildren(List.of(beyondLimit));
+    Column top =
+        new Column().withName("c1").withDescription("d1").withChildren(List.of(withinLimit));
+    Table table = new Table().withColumns(List.of(top));
+
+    assertEquals(
+        "COMPLETE",
+        new TestColumnIndex().getColumnDescriptionStatus(table),
+        "columns beyond the indexing depth limit are not indexed and must not affect status");
+  }
+
+  @Test
   void flattenColumns_respects_depth_limit() {
     activateLimits(3, 10000);
 
