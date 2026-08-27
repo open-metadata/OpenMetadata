@@ -1374,7 +1374,13 @@ public class RdfPropertyMapper {
     if (column.has("profile") && !column.get("profile").isNull()) {
       RdfQualityMapper.emitColumnProfile(column.get("profile"), columnResource, model);
     }
+    emitColumnTags(column, columnResource, model);
     return columnResource;
+  }
+
+  private void emitColumnTags(JsonNode column, Resource columnResource, Model model) {
+    RdfJsonNode.array(column, "tags")
+        .ifPresent(tags -> addEntityReference(columnResource, OM_NS + "hasTag", tags, model));
   }
 
   private void applyColumnConstraint(Resource columnResource, String constraint, Model model) {

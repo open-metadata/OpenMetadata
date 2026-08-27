@@ -228,7 +228,7 @@ public class JsonLdTranslator {
 
     // Always add OpenMetadata-specific type
     String omNamespace = model.getNsPrefixURI("om");
-    String omType = entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
+    String omType = RdfUtils.getOpenMetadataType(entityType);
     entityResource.addProperty(RDF.type, model.createResource(omNamespace + omType));
 
     // Add PROV-O class typing (prov:Entity/Activity/Agent) so PROV-O reasoners can

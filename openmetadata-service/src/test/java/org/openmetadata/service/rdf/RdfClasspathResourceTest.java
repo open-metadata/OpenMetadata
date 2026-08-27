@@ -13,13 +13,35 @@
 
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
 
 class RdfClasspathResourceTest {
+
+  private static final String ONTOLOGY_RESOURCE = "/rdf/ontology/openmetadata.ttl";
+  private static final String ONTOLOGY_NAMESPACE = "https://open-metadata.org/ontology/";
+
+  @Test
+  void ontologyDeclaresOnlyTheCanonicalLlmModelClass() {
+    Model ontology = OntologyDocument.loadModel(List.of(ONTOLOGY_RESOURCE));
+    try {
+      assertTrue(
+          ontology.contains(
+              ontology.createResource(ONTOLOGY_NAMESPACE + "LLMModel"), RDF.type, OWL.Class));
+      assertFalse(
+          ontology.contains(
+              ontology.createResource(ONTOLOGY_NAMESPACE + "LlmModel"), RDF.type, OWL.Class));
+    } finally {
+      ontology.close();
+    }
+  }
 
   @Test
   void ontologyLoadingFailsFastWhenARequiredResourceIsMissing() {

@@ -215,6 +215,35 @@ om:Worksheet a owl:Class ;
     rdfs:subClassOf om:DataAsset .
 
 #################################################################
+# AI Classes
+#################################################################
+
+om:LLMModel a owl:Class ;
+    rdfs:label "LLM Model" ;
+    rdfs:comment "Registered large language model deployment, fine-tune, or base model" ;
+    rdfs:subClassOf om:Entity .
+
+om:AIApplication a owl:Class ;
+    rdfs:label "AI Application" ;
+    rdfs:subClassOf om:Entity .
+
+om:McpServer a owl:Class ;
+    rdfs:label "MCP Server" ;
+    rdfs:subClassOf om:Entity .
+
+om:AgentExecution a owl:Class ;
+    rdfs:label "Agent Execution" ;
+    rdfs:subClassOf om:Entity, prov:Activity .
+
+om:McpExecution a owl:Class ;
+    rdfs:label "MCP Execution" ;
+    rdfs:subClassOf om:Entity, prov:Activity .
+
+om:PromptTemplate a owl:Class ;
+    rdfs:label "Prompt Template" ;
+    rdfs:subClassOf om:Entity .
+
+#################################################################
 # Metadata & Governance Classes
 #################################################################
 

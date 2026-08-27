@@ -1,7 +1,10 @@
 package org.openmetadata.service.rdf;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -57,7 +60,7 @@ public final class RdfUtils {
     if (entityType == null) {
       return null;
     }
-    String key = entityType.toLowerCase();
+    String key = entityType.toLowerCase(Locale.ROOT);
     if (PROV_ACTIVITY_TYPES.contains(key)) {
       return "prov:Activity";
     }
@@ -71,7 +74,7 @@ public final class RdfUtils {
   }
 
   public static String getRdfType(String entityType) {
-    return switch (entityType.toLowerCase()) {
+    return switch (entityType.toLowerCase(Locale.ROOT)) {
       case "table" -> "dcat:Dataset";
       case "database" -> "dcat:Catalog";
       case "dashboard" -> "dcat:DataService";
@@ -108,7 +111,27 @@ public final class RdfUtils {
       case "workflow", "workflowdefinition" -> "om:Workflow";
       case "workflowinstance" -> "om:WorkflowInstance";
       case "automation" -> "om:Automation";
-      default -> "om:" + entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
+      default -> "om:" + getOpenMetadataType(entityType);
+    };
+  }
+
+  public static String getOpenMetadataType(String entityType) {
+    if (nullOrEmpty(entityType)) {
+      return null;
+    }
+    return switch (entityType.toLowerCase(Locale.ROOT)) {
+      case "aiapplication" -> "AIApplication";
+      case "apicollection" -> "APICollection";
+      case "apiendpoint" -> "APIEndpoint";
+      case "apiservice" -> "APIService";
+      case "llmmodel" -> "LLMModel";
+      case "llmservice" -> "LLMService";
+      case "mlmodel" -> "MLModel";
+      case "mlmodelservice" -> "MLModelService";
+      case "mcpexecution" -> "McpExecution";
+      case "mcpserver" -> "McpServer";
+      case "mcpservice" -> "McpService";
+      default -> entityType.substring(0, 1).toUpperCase(Locale.ROOT) + entityType.substring(1);
     };
   }
 

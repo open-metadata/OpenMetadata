@@ -9,6 +9,7 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
+import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfShaclValidator;
@@ -17,6 +18,30 @@ class RdfShaclValidatorTest {
 
   private static final String OM_NS = "https://open-metadata.org/ontology/";
   private static final String BASE = "https://open-metadata.org/";
+
+  @Test
+  @DisplayName("Projected containment predicates conform and tables may have no columns")
+  void testProjectedContainmentPredicatesConformWithoutColumns() {
+    Model model = ModelFactory.createDefaultModel();
+    Resource service = typed(model, "entity/databaseService/1", "DatabaseService");
+    Resource database = typed(model, "entity/database/1", "Database");
+    Resource schema = typed(model, "entity/databaseSchema/1", "DatabaseSchema");
+    Resource table = typed(model, "entity/table/1", "Table");
+    Resource glossary = typed(model, "entity/glossary/1", "Glossary");
+    Resource term = typed(model, "entity/glossaryTerm/1", "GlossaryTerm");
+
+    database.addProperty(model.createProperty(OM_NS, "belongsToService"), service);
+    schema.addProperty(model.createProperty(OM_NS, "belongsToDatabase"), database);
+    table.addProperty(model.createProperty(OM_NS, "belongsToSchema"), schema);
+    term.addProperty(SKOS.inScheme, glossary);
+
+    ValidationReport report = RdfShaclValidator.validate(model);
+
+    assertTrue(
+        report.conforms(),
+        "Projection-aligned containment and an empty table should conform: "
+            + reportSummary(report));
+  }
 
   @Test
   @DisplayName("A column-lineage edge whose om:fromColumn is a string literal violates the shape")
@@ -102,5 +127,11 @@ class RdfShaclValidatorTest {
     StringBuilder sb = new StringBuilder();
     report.getEntries().forEach(e -> sb.append(e).append("\n"));
     return sb.toString();
+  }
+
+  private static Resource typed(Model model, String path, String type) {
+    Resource resource = model.createResource(BASE + path);
+    resource.addProperty(RDF.type, model.createResource(OM_NS + type));
+    return resource;
   }
 }

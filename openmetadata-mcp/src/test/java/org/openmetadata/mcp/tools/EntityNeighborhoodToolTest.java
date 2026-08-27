@@ -25,12 +25,17 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -38,6 +43,9 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 class EntityNeighborhoodToolTest {
 
+  private static final String BASE_URI = "https://open-metadata.org/";
+  private static final String KNOWLEDGE_GRAPH = BASE_URI + "graph/knowledge";
+  private static final String ONTOLOGY_GRAPH = BASE_URI + "graph/ontology";
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
   private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
 
@@ -153,6 +161,32 @@ class EntityNeighborhoodToolTest {
   }
 
   @Test
+  void constructDoesNotTraverseFromInstancesIntoOntologyDefinitions() {
+    Model source = ModelFactory.createDefaultModel();
+    Model ontology = ModelFactory.createDefaultModel();
+    Resource table = source.createResource("urn:start");
+    Resource column = source.createResource("urn:column");
+    Resource tableClass = source.createResource("https://open-metadata.org/ontology/Table");
+    Resource rowCount = source.createResource("https://open-metadata.org/ontology/rowCount");
+    Property hasColumn = source.createProperty("https://open-metadata.org/ontology/hasColumn");
+    source.add(table, RDF.type, tableClass);
+    source.add(table, hasColumn, column);
+    ontology.add(tableClass, RDF.type, OWL.Class);
+    ontology.add(rowCount, RDFS.domain, tableClass);
+
+    Model result = executeConstruct(source, ontology, 2, 100);
+    try {
+      assertTrue(result.contains(table, hasColumn, column));
+      assertFalse(result.contains(tableClass, RDF.type, OWL.Class));
+      assertFalse(result.contains(rowCount, RDFS.domain, tableClass));
+    } finally {
+      result.close();
+      ontology.close();
+      source.close();
+    }
+  }
+
+  @Test
   void wrapsRepositoryFailureWithNeighborhoodContext() {
     RdfRepository repository = enabledRepository();
     when(repository.executeSparqlQuery(anyString(), anyString()))
@@ -206,17 +240,13 @@ class EntityNeighborhoodToolTest {
     Resource twoHop = source.createResource("urn:two-hop");
     source.add(hop, predicate, twoHop);
 
-    String query = EntityNeighborhoodTool.buildConstructQuery("urn:start", 2, 6);
-    try (QueryExecution execution = QueryExecutionFactory.create(query, source)) {
-      Model result = execution.execConstruct();
-      try {
-        assertTrue(
-            result.contains(hop, predicate, twoHop),
-            "2-hop triple was crowded out by the 1-hop fan-out, so depth had no effect");
-      } finally {
-        result.close();
-      }
+    Model result = executeConstruct(source, null, 2, 6);
+    try {
+      assertTrue(
+          result.contains(hop, predicate, twoHop),
+          "2-hop triple was crowded out by the 1-hop fan-out, so depth had no effect");
     } finally {
+      result.close();
       source.close();
     }
   }
@@ -226,9 +256,20 @@ class EntityNeighborhoodToolTest {
   }
 
   private static Model executeConstruct(Model source, int depth) {
-    String query = EntityNeighborhoodTool.buildConstructQuery("urn:start", depth, 100);
-    try (QueryExecution execution = QueryExecutionFactory.create(query, source)) {
+    return executeConstruct(source, null, depth, 100);
+  }
+
+  private static Model executeConstruct(Model source, Model ontology, int depth, int limit) {
+    Dataset dataset = DatasetFactory.createTxnMem();
+    dataset.addNamedModel(KNOWLEDGE_GRAPH, ModelFactory.createDefaultModel().add(source));
+    if (ontology != null) {
+      dataset.addNamedModel(ONTOLOGY_GRAPH, ModelFactory.createDefaultModel().add(ontology));
+    }
+    String query = EntityNeighborhoodTool.buildConstructQuery("urn:start", BASE_URI, depth, limit);
+    try (QueryExecution execution = QueryExecutionFactory.create(query, dataset)) {
       return execution.execConstruct();
+    } finally {
+      dataset.close();
     }
   }
 

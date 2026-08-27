@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.rdf.translator;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,7 +21,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.ModelType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.service.rdf.RdfUtils;
@@ -52,6 +59,36 @@ class JsonLdTranslatorTest {
 
     assertTrue(containsIdentifier(document, RdfUtils.columnUri(BASE_URI, parentFqn)));
     assertTrue(containsIdentifier(document, RdfUtils.columnUri(BASE_URI, childFqn)));
+  }
+
+  @Test
+  void emitsOnlyTheCanonicalLlmModelType() {
+    UUID modelId = UUID.randomUUID();
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", "llmModel");
+    LLMModel entity =
+        new LLMModel()
+            .withId(modelId)
+            .withName("claimsCopilot")
+            .withFullyQualifiedName("claimsCopilot")
+            .withModelType(ModelType.BaseModel)
+            .withBaseModel("gpt-4");
+
+    Model model = new JsonLdTranslator(new ObjectMapper(), BASE_URI).toRdf(entity);
+    try {
+      Resource entityResource = model.createResource(BASE_URI + "entity/llmModel/" + modelId);
+      assertTrue(
+          model.contains(
+              entityResource,
+              RDF.type,
+              model.createResource("https://open-metadata.org/ontology/LLMModel")));
+      assertFalse(
+          model.contains(
+              entityResource,
+              RDF.type,
+              model.createResource("https://open-metadata.org/ontology/LlmModel")));
+    } finally {
+      model.close();
+    }
   }
 
   private static boolean containsIdentifier(JsonNode node, String identifier) {

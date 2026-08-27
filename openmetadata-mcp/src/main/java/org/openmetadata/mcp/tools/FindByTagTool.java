@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Finds entities associated with a tag or glossary-term fully qualified name. */
@@ -87,14 +88,11 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
    * One row per entity, not one row per {@code rdf:type}.
    *
    * <p>{@code ?entity a ?entityType} with {@code DISTINCT} emitted a separate row for every type an
-   * entity carries, and OpenMetadata really does type some entities more than once - three LLM
-   * models in a live graph are typed as both {@code om:LlmModel} and {@code om:LLMModel}, two
-   * ontology classes differing only in case. That turned 15 matching entities into 18 rows and
-   * silently corrupted {@code limit}/{@code offset}: a page could contain the same asset twice while
-   * the caller believed it had seen 18 distinct assets. Grouping by {@code ?entity} collapses the
-   * duplicates, and {@code MIN} makes the surviving type, FQN and label a deterministic choice
-   * rather than an arbitrary one. Multiple FQN or label triples on one entity are collapsed the same
-   * way.
+   * entity carries. OpenMetadata entities legitimately carry ontology, PROV-O, and DCAT types, so
+   * projecting the type directly can return the same asset multiple times and corrupt {@code
+   * limit}/{@code offset}. Grouping by {@code ?entity} collapses those rows, and {@code MIN} makes
+   * the surviving type, FQN, and label deterministic. Multiple FQN or label triples on one entity
+   * are collapsed the same way.
    */
   static String buildSparql(String tagFqn, String entityType, int limit, int offset) {
     String typeFilter = entityTypeFilter(entityType);
@@ -124,7 +122,8 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
   private static String entityTypeFilter(String entityType) {
     return McpToolParameters.isBlank(entityType)
         ? "  FILTER(STRSTARTS(STR(?typeIri), \"%s\"))\n".formatted(ONTOLOGY_NAMESPACE)
-        : "  FILTER(?typeIri = <%s%s>)\n".formatted(ONTOLOGY_NAMESPACE, capitalize(entityType));
+        : "  FILTER(?typeIri = <%s%s>)\n"
+            .formatted(ONTOLOGY_NAMESPACE, RdfUtils.getOpenMetadataType(entityType));
   }
 
   static List<EntityMatch> parseRows(String selectJson) {
@@ -137,10 +136,6 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
     return McpToolParameters.isBlank(entityType)
         ? null
         : McpEntityReference.validateType(entityType);
-  }
-
-  private static String capitalize(String value) {
-    return Character.toUpperCase(value.charAt(0)) + value.substring(1);
   }
 
   private static int clamp(int value, int minimum, int maximum) {

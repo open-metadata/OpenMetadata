@@ -14,6 +14,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -76,6 +77,14 @@ class FindByTagToolTest {
   }
 
   @Test
+  void canonicalizesAcronymsInEntityTypeFilters() {
+    String query = FindByTagTool.buildSparql("AI.Model", "llmModel", 50, 0);
+
+    assertTrue(query.contains("ontology/LLMModel"));
+    assertFalse(query.contains("ontology/LlmModel"));
+  }
+
+  @Test
   void rejectsDisabledRepository() {
     RdfRepository repository = mock(RdfRepository.class);
     when(repository.isEnabled()).thenReturn(false);
@@ -123,10 +132,9 @@ class FindByTagToolTest {
   /**
    * An entity carrying two ontology types must still be one result row.
    *
-   * <p>OpenMetadata really does double-type some assets - LLM models appear as both {@code
-   * om:LlmModel} and {@code om:LLMModel} in a live graph. With {@code ?entity a ?entityType} in the
-   * projection each type produced its own row, so a single asset was returned twice and the
-   * limit/offset window silently counted it twice.
+   * <p>OpenMetadata assets legitimately carry more than one RDF type. With {@code ?entity a
+   * ?entityType} in the projection each type produced its own row, so a single asset was returned
+   * twice and the limit/offset window silently counted it twice.
    */
   @Test
   void doubleTypedEntityYieldsOneRow() {
@@ -143,7 +151,7 @@ class FindByTagToolTest {
     source.add(
         entity,
         source.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
-        source.createResource(ns + "LlmModel"));
+        source.createResource(ns + "Entity"));
     source.add(
         entity,
         source.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),

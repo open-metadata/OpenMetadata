@@ -533,6 +533,35 @@ class RdfPropertyMapperTest {
     }
 
     @Test
+    @DisplayName("Column tags should be projected as RDF relationships")
+    void testColumnTagsAreProjected() throws Exception {
+      UUID tagId = UUID.randomUUID();
+      ObjectNode tag = objectMapper.createObjectNode();
+      tag.put("tagFQN", "PII.Sensitive");
+      tag.put("source", "Classification");
+      tag.put("href", "https://open-metadata.org/api/v1/tags/" + tagId);
+
+      ObjectNode column = objectMapper.createObjectNode();
+      column.put("name", "email");
+      column.put("dataType", "VARCHAR");
+      column.put("fullyQualifiedName", "service.db.schema.customers.email");
+      column.set("tags", objectMapper.createArrayNode().add(tag));
+
+      invokePrivate(
+          "emitColumns",
+          new Class[] {JsonNode.class, Resource.class, Model.class},
+          objectMapper.createArrayNode().add(column),
+          entityResource,
+          model);
+
+      Resource columnResource =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.schema.customers.email"));
+      Resource tagResource = model.createResource(BASE_URI + "entity/tag/" + tagId);
+      assertTrue(
+          model.contains(columnResource, model.createProperty(OM_NS, "hasTag"), tagResource));
+    }
+
+    @Test
     @DisplayName("Per-column constraints map to isPrimaryKey, isNullable, and isUnique")
     void testPerColumnConstraintFlags() throws Exception {
       ArrayNode columns = objectMapper.createArrayNode();

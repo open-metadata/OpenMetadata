@@ -4,6 +4,7 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
 # SHACL Shapes for OpenMetadata Entities
 # These shapes define validation constraints for RDF data
@@ -52,11 +53,10 @@ om:TableShape a sh:NodeShape ;
     sh:property [
         sh:path om:hasColumn ;
         sh:class om:Column ;
-        sh:minCount 1 ;
-        sh:message "Table must have at least one column"@en ;
+        sh:message "Table columns must reference om:Column resources"@en ;
     ] ;
     sh:property [
-        sh:path om:belongsTo ;
+        sh:path om:belongsToSchema ;
         sh:class om:DatabaseSchema ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
@@ -136,7 +136,7 @@ om:DatabaseShape a sh:NodeShape ;
         sh:message "Database can only contain database schemas"@en ;
     ] ;
     sh:property [
-        sh:path om:belongsTo ;
+        sh:path om:belongsToService ;
         sh:class om:DatabaseService ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
@@ -152,7 +152,7 @@ om:DatabaseSchemaShape a sh:NodeShape ;
         sh:message "Database schema can only contain tables"@en ;
     ] ;
     sh:property [
-        sh:path om:belongsTo ;
+        sh:path om:belongsToDatabase ;
         sh:class om:Database ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
@@ -289,7 +289,7 @@ om:ServiceConnectionShape a sh:NodeShape ;
 om:GlossaryTermShape a sh:NodeShape ;
     sh:targetClass om:GlossaryTerm ;
     sh:property [
-        sh:path om:belongsTo ;
+        sh:path skos:inScheme ;
         sh:class om:Glossary ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
