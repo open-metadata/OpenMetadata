@@ -198,9 +198,36 @@ export const getKeyValues = ({
       }
 
       // Default object handling
+      const childProperties = schemaPropertyObject[key]?.properties;
+      if (childProperties) {
+        return getKeyValues({
+          obj: value,
+          schemaPropertyObject: childProperties,
+          schema,
+          serviceCategory,
+        });
+      }
+
+      // Handle oneOf schema for nested object fields (e.g. GCP credentials)
+      const childOneOf = schemaPropertyObject[key]?.oneOf;
+      if (childOneOf) {
+        return childOneOf.map((oneOfSchema: Record<string, unknown>) => {
+          if (oneOfSchema.properties) {
+            return getKeyValues({
+              obj: value,
+              schemaPropertyObject: oneOfSchema.properties,
+              schema,
+              serviceCategory,
+            });
+          }
+
+          return null;
+        });
+      }
+
       return getKeyValues({
         obj: value,
-        schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
+        schemaPropertyObject: {},
         schema,
         serviceCategory,
       });
