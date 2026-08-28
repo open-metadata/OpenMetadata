@@ -53,7 +53,10 @@
     "ui-checkstyle:playwright:changed": "bash scripts/ui-checkstyle-playwright-changed.sh",
     "tw-audit": "node scripts/tw-audit.js",
     "tw-audit:report": "node scripts/tw-audit.js --report",
-    "tw-guard": "node scripts/tw-deprecation-guard.js"
+    "tw-guard": "node scripts/tw-deprecation-guard.js",
+    "test:eslint-rules": "node --test eslint-rules/*.test.mjs 'playwright/eslint-rules/tests/**/*.test.mjs'",
+    "lint:playwright:suppressions": "yarn lint:playwright --prune-suppressions",
+    "generate:playwright-rules": "node scripts/generate-playwright-rule-table.mjs"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
