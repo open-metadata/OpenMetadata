@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isEqual } from 'lodash';
-import { ReactNode, useCallback, useEffect } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -62,27 +62,43 @@ function DestinationFormItemFormBridge({
     defaultValues: getDestinationFormFields(values),
   });
   const { getValues, reset, trigger, watch } = methods;
+  const { destinations, readTimeout, resources, timeout } = values;
+  const normalizedValues = useMemo(
+    () =>
+      getDestinationFormFields({
+        destinations,
+        readTimeout,
+        resources,
+        timeout,
+      }),
+    [destinations, readTimeout, resources, timeout]
+  );
+  const latestValues = useRef(normalizedValues);
+  const latestOnChange = useRef(onChange);
+
+  // Legacy form boundaries create adapter props inline. Keeping their latest
+  // values in refs prevents unrelated parent renders from replacing the RHF
+  // subscription or re-running its reset guard.
+  latestValues.current = normalizedValues;
+  latestOnChange.current = onChange;
 
   useEffect(() => {
-    const nextValues = getDestinationFormFields(values);
-
-    if (!isEqual(getDestinationFormFields(getValues()), nextValues)) {
-      reset(nextValues);
+    if (!isEqual(getDestinationFormFields(getValues()), normalizedValues)) {
+      reset(normalizedValues);
     }
-  }, [getValues, reset, values]);
+  }, [getValues, normalizedValues, reset]);
 
   useEffect(() => {
     const subscription = watch(() => {
       const nextValues = getDestinationFormFields(getValues());
-      const currentValues = getDestinationFormFields(values);
 
-      if (!isEqual(currentValues, nextValues)) {
-        onChange(nextValues);
+      if (!isEqual(latestValues.current, nextValues)) {
+        latestOnChange.current(nextValues);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [getValues, onChange, values, watch]);
+  }, [getValues, watch]);
 
   const validate = useCallback(async () => {
     const coreFormIsValid = await trigger();

@@ -27,6 +27,41 @@ import DestinationFormItemFormBridge, {
   DestinationFormFields,
 } from './DestinationFormItemFormBridge';
 
+const mockWatchSubscription = jest.fn();
+
+jest.mock('react-hook-form', () => {
+  const actual = jest.requireActual(
+    'react-hook-form'
+  ) as typeof import('react-hook-form');
+  const wrappedWatches = new WeakMap<object, object>();
+
+  return {
+    ...actual,
+    useForm: (...args: Parameters<typeof actual.useForm>) => {
+      const methods = actual.useForm(...args);
+      const originalWatch = methods.watch;
+      let wrappedWatch = wrappedWatches.get(originalWatch) as
+        | typeof originalWatch
+        | undefined;
+
+      if (!wrappedWatch) {
+        wrappedWatch = new Proxy(originalWatch, {
+          apply(target, thisArg, argArray) {
+            if (typeof argArray[0] === 'function') {
+              mockWatchSubscription();
+            }
+
+            return Reflect.apply(target, thisArg, argArray);
+          },
+        });
+        wrappedWatches.set(originalWatch, wrappedWatch);
+      }
+
+      return { ...methods, watch: wrappedWatch };
+    },
+  };
+});
+
 jest.mock('./DestinationFormItem.component', () => {
   const { useFormContext, useWatch } = jest.requireActual(
     'react-hook-form'
@@ -69,6 +104,7 @@ interface HarnessProps {
 function Harness({ initialValues, isRequired, onFinish }: HarnessProps) {
   const [values, setValues] = useState(initialValues ?? {});
   const [validationError, setValidationError] = useState<string>();
+  const [renderCount, setRenderCount] = useState(0);
 
   return (
     <>
@@ -90,8 +126,8 @@ function Harness({ initialValues, isRequired, onFinish }: HarnessProps) {
             Submit
           </button>
         )}
-        values={values}
-        onChange={setValues}
+        values={{ ...values }}
+        onChange={(nextValues) => setValues(nextValues)}
       />
       {validationError}
       <button
@@ -105,6 +141,12 @@ function Harness({ initialValues, isRequired, onFinish }: HarnessProps) {
         type="button"
         onClick={() => onFinish(values)}>
         Submit
+      </button>
+      <button
+        data-testid="rerender-parent"
+        type="button"
+        onClick={() => setRenderCount((count) => count + 1)}>
+        {renderCount}
       </button>
     </>
   );
@@ -187,5 +229,16 @@ describe('DestinationFormItemFormBridge', () => {
         'Email'
       )
     );
+  });
+
+  it('keeps one form subscription across unrelated parent renders', () => {
+    mockWatchSubscription.mockClear();
+    render(<Harness onFinish={jest.fn()} />);
+
+    expect(mockWatchSubscription).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('rerender-parent'));
+
+    expect(mockWatchSubscription).toHaveBeenCalledTimes(1);
   });
 });
