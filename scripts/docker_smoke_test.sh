@@ -124,25 +124,21 @@ fi
 # The reason this image is distroless *cc* and not distroless *base*, and the
 # reason it is not alpine: DJL's libtokenizers.so and onnxruntime are both
 # glibc-linked and both need the GNU C++ runtime.
+# Why the base is java-base and not base or cc. libstdc++/libgcc are what DJL's
+# libtokenizers.so and onnxruntime link; libz is what libtorch's libgfortran
+# links, and cc-debian12 does not ship it.
 docker create --name "$CONTAINER" "$IMAGE" >/dev/null
-found_cxx=0
-for triplet in x86_64-linux-gnu aarch64-linux-gnu; do
-  if docker cp "$CONTAINER:/usr/lib/$triplet/libstdc++.so.6" "$WORKDIR_TMP/" >/dev/null 2>&1 &&
-     docker cp "$CONTAINER:/lib/$triplet/libgcc_s.so.1" "$WORKDIR_TMP/" >/dev/null 2>&1; then
-    found_cxx=1
-    pass "libstdc++.so.6 and libgcc_s.so.1 are present ($triplet)"
-    break
+for lib in libstdc++.so.6 libgcc_s.so.1 libz.so.1; do
+  found=""
+  for dir in /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /lib/aarch64-linux-gnu /usr/lib; do
+    if docker cp "$CONTAINER:$dir/$lib" "$WORKDIR_TMP/" >/dev/null 2>&1; then found="$dir"; break; fi
+  done
+  if [ -n "$found" ]; then
+    pass "$lib is present ($found)"
+  else
+    fail "$lib is missing -- the JNI natives the server loads will not link"
   fi
 done
-[ "$found_cxx" = "1" ] || fail "libstdc++.so.6 / libgcc_s.so.1 missing -- JNI natives will not load"
-
-# Copied in explicitly: distroless cc ships every other glibc library the natives
-# want but not this one, and libtorch's libgfortran links it.
-if docker cp "$CONTAINER:/usr/lib/libz.so.1" "$WORKDIR_TMP/" >/dev/null 2>&1; then
-  pass "libz.so.1 is present"
-else
-  fail "libz.so.1 missing -- the djl provider will fail to load libtorch"
-fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 # Runs bootstrap/openmetadata-ops.sh exactly the way compose and the helm chart

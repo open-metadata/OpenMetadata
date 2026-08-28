@@ -55,13 +55,15 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-# `cc`, not `base`: the JNI natives the server loads link the GNU C++ runtime.
-# DJL's libtokenizers.so (and onnxruntime, for the local embedding provider) both
-# need libstdc++.so.6 and libgcc_s.so.1, which only the cc variant carries -- on
-# base-debian12 they fail with "libstdc++.so.6: cannot open shared object file".
-# This is also why the image left alpine: those natives are glibc-linked and
-# musl+gcompat cannot load them (gcompat exports none of the _FORTIFY_SOURCE
-# `__*_chk` symbols they need).
+# `java-base`, not `base` or `cc`: it is the distroless variant built for images
+# that bring their own jlink runtime, so it already carries every glibc library a
+# JVM and its JNI natives need -- libstdc++.so.6 and libgcc_s.so.1 for DJL's
+# libtokenizers.so and for onnxruntime, plus libz.so.1, which libtorch's
+# libgfortran links and which cc-debian12 does not ship. On base-debian12 the
+# natives fail with "libstdc++.so.6: cannot open shared object file"; on
+# cc-debian12 they get one step further and fail on libz. This is also why the
+# image left alpine: those natives are glibc-linked and musl+gcompat cannot load
+# them (gcompat exports none of the _FORTIFY_SOURCE `__*_chk` symbols they need).
 #
 # `debug-nonroot`, not `nonroot`: it adds busybox, which keeps the shell that
 # bin/openmetadata-server-start.sh, bootstrap/openmetadata-ops.sh, the compose
@@ -69,7 +71,7 @@ RUN find /javaruntime/bin -type f \
 # image is a worthwhile follow-up, but it is a coordinated change across this
 # repo, openmetadata-helm-charts and a release boundary -- not a side effect of
 # fixing the libc.
-FROM gcr.io/distroless/cc-debian12:debug-nonroot
+FROM gcr.io/distroless/java-base-debian13:debug-nonroot
 
 ARG RI_VERSION="2.0.0-SNAPSHOT"
 ARG BUILD_DATE
@@ -92,12 +94,6 @@ ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
-# The one glibc library distroless cc leaves out. libtorch pulls libgfortran,
-# which links libz.so.1, so without this the djl provider downloads its natives
-# and then dies with "libz.so.1: cannot open shared object file" (issue #26700).
-# The glob keeps the multi-arch build working -- the triplet directory differs
-# between linux/amd64 and linux/arm64.
-COPY --from=jre-builder /lib/*-linux-gnu/libz.so.1* /usr/lib/
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /

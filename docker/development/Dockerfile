@@ -42,18 +42,12 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-FROM gcr.io/distroless/cc-debian12:debug-nonroot
+FROM gcr.io/distroless/java-base-debian13:debug-nonroot
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
-# The one glibc library distroless cc leaves out. libtorch pulls libgfortran,
-# which links libz.so.1, so without this the djl provider downloads its natives
-# and then dies with "libz.so.1: cannot open shared object file" (issue #26700).
-# The glob keeps the multi-arch build working -- the triplet directory differs
-# between linux/amd64 and linux/arm64.
-COPY --from=jre-builder /lib/*-linux-gnu/libz.so.1* /usr/lib/
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /
