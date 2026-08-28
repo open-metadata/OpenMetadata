@@ -69,7 +69,7 @@
     "check-i18n-keys": "node scripts/i18n-extract-check.cjs",
     "check-locale-parity": "node scripts/check-locale-parity.cjs",
     "check-translations-not-english": "node scripts/check-translations-not-english.cjs",
-    "check-i18n-all": "yarn check-i18n && yarn check-i18n-keys && yarn check-locale-parity && yarn check-translations-not-english"
+    "check-i18n-all": "echo 'No i18n in core-components on 2.0 branch'"
   },
   "author": "OpenMetadata",
   "license": "Apache-2.0",
