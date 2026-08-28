@@ -67,8 +67,14 @@ jest.mock('../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ extraDropdownContent }: { extraDropdownContent?: unknown[] }) => (
-        <div data-testid="manage-button">
+      ({
+        extraDropdownContent,
+        canDelete,
+      }: {
+        extraDropdownContent?: unknown[];
+        canDelete?: boolean;
+      }) => (
+        <div data-can-delete={String(canDelete)} data-testid="manage-button">
           {(extraDropdownContent as { key: string }[] | undefined)?.map(
             (item) => (
               <div data-testid={item.key} key={item.key} />
@@ -86,7 +92,13 @@ jest.mock('./TeamsHeaderSection/TeamsInfo.component', () =>
   jest.fn().mockImplementation(() => <div>TeamsInfo</div>)
 );
 jest.mock('../../../common/EntityDescription/Description', () =>
-  jest.fn().mockImplementation(() => <div>Description</div>)
+  jest
+    .fn()
+    .mockImplementation(({ hasEditAccess }: { hasEditAccess?: boolean }) => (
+      <div data-has-edit-access={String(hasEditAccess)} data-testid="description">
+        Description
+      </div>
+    ))
 );
 jest.mock('../../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>)
@@ -245,5 +257,82 @@ describe('TeamDetailsV1 default tab selection', () => {
     renderComponent({ childTeams: [ORGANIZATION_TEAM] });
 
     expect(screen.queryByText('TeamHierarchy')).not.toBeInTheDocument();
+  });
+});
+
+// Task 8 Batch 3: entityPermissions.EditAll -> canEditAll (getDerivedPermissionFlags).
+// A non-organization team is required to exercise the ManageButton branch — the
+// Organization team always uses the unconditional (EditAll-independent) branch.
+const NON_ORG_TEAM = {
+  ...ORGANIZATION_TEAM,
+  id: 'non-org-team-id',
+  name: 'engineering',
+  fullyQualifiedName: 'engineering',
+  teamType: TeamType.Department,
+} as unknown as Team;
+
+describe('TeamDetailsV1 ManageButton canEditAll wiring', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('hides the ManageButton for a non-organization team when EditAll is false', async () => {
+    renderComponent({
+      currentTeam: NON_ORG_TEAM,
+      entityPermissions: { EditAll: false } as OperationPermission,
+    });
+
+    await screen.findByText('TeamsHeadingLabel');
+
+    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+  });
+
+  it('shows the ManageButton with canDelete=true for a non-organization team when EditAll is true', async () => {
+    renderComponent({
+      currentTeam: NON_ORG_TEAM,
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('manage-button')).toHaveAttribute(
+      'data-can-delete',
+      'true'
+    );
+  });
+});
+
+// Task 8 Batch 3: editDescriptionPermission's raw
+// `(entityPermissions.EditAll || entityPermissions.EditDescription) && !isTeamDeleted`
+// -> canEditDescription (getDerivedPermissionFlags). Documented explicit-deny-wins
+// behavior change: an explicit `EditDescription: false` now wins over `EditAll: true`,
+// where the old raw OR granted access regardless (same pattern as CommonWidgets /
+// QuickLinkFormModal in Task 8 Batch 2).
+describe('TeamDetailsV1 description hasEditAccess wiring (explicit-deny-wins)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('grants edit access via EditAll when EditDescription is not present', async () => {
+    renderComponent({
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('description')).toHaveAttribute(
+      'data-has-edit-access',
+      'true'
+    );
+  });
+
+  it('denies edit access when EditDescription is explicitly false, even with EditAll true', async () => {
+    renderComponent({
+      entityPermissions: {
+        EditAll: true,
+        EditDescription: false,
+      } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('description')).toHaveAttribute(
+      'data-has-edit-access',
+      'false'
+    );
   });
 });
