@@ -128,6 +128,57 @@ describe('Glossary Utils', () => {
     ]);
   });
 
+  it('should hold back an orphan even when the parent reference omits its type', () => {
+    // The API may return a parent reference with only fqn/id and no type. The
+    // orphan must still be held back rather than promoted to a spurious root.
+    const orphanChild = {
+      fullyQualifiedName: 'G.Parent.Child',
+      name: 'Child',
+      parent: { fullyQualifiedName: 'G.Parent' },
+    } as unknown as GlossaryTerm;
+    const topLevel = {
+      fullyQualifiedName: 'G.Top',
+      name: 'Top',
+    } as unknown as GlossaryTerm;
+
+    expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
+  });
+
+  it('should keep grandchildren when an intermediate term has no inline children', () => {
+    // Flat pages deliver a parent before its children, and an intermediate
+    // term may arrive with an empty children field. The grandchild must still
+    // appear beneath it (regression: a snapshot copy would orphan it).
+    const root = {
+      fullyQualifiedName: 'A',
+      name: 'A',
+      children: [],
+    } as unknown as GlossaryTerm;
+    const intermediate = {
+      fullyQualifiedName: 'A.B',
+      name: 'B',
+      children: [],
+      parent: { fullyQualifiedName: 'A', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+    const leaf = {
+      fullyQualifiedName: 'A.B.C',
+      name: 'C',
+      parent: { fullyQualifiedName: 'A.B', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+
+    expect(buildTree([root, intermediate, leaf])).toEqual([
+      {
+        ...root,
+        children: [
+          {
+            ...intermediate,
+            type: 'glossaryTerm',
+            children: [{ ...leaf, type: 'glossaryTerm' }],
+          },
+        ],
+      },
+    ]);
+  });
+
   it('should return an empty array if no glossary term is provided', () => {
     const expandableKeys = findExpandableKeys();
 

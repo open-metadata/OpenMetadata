@@ -45,18 +45,26 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
     const parentNode = parentFqn ? nodes[parentFqn] : undefined;
 
     if (parentNode) {
-      (parentNode.children ??= []).push({ ...current, type: 'glossaryTerm' });
+      // Push the live node (mutated in place), not a shallow copy: children can
+      // be attached to this node on a later page, and a snapshot would keep the
+      // node's original (possibly undefined) children array, orphaning any
+      // grandchildren added afterwards.
+      (parentNode.children ??= []).push(
+        Object.assign(current, { type: 'glossaryTerm' })
+      );
 
       return;
     }
 
-    // A term that references a parent glossary term which is absent from this
-    // data set is an orphan of a not-yet-loaded page (progressive expand-all
-    // paginates all levels by name, so a descendant can arrive before its
-    // parent). Hold it back instead of promoting it to a spurious root and
-    // corrupting the hierarchy; it attaches once its parent's page loads.
+    // A term that references a parent term absent from this data set is an
+    // orphan of a not-yet-loaded page (progressive expand-all paginates all
+    // levels by name, so a descendant can arrive before its parent). Hold it
+    // back instead of promoting it to a spurious root and corrupting the
+    // hierarchy; it attaches once its parent's page loads. Gate on the parent
+    // FQN's presence — not a populated parent.type, which the API may omit —
+    // and only exclude a parent that is the glossary itself (a genuine root).
     const isOrphanOfUnloadedParent =
-      Boolean(parentFqn) && obj.parent?.type === EntityType.GLOSSARY_TERM;
+      Boolean(parentFqn) && obj.parent?.type !== EntityType.GLOSSARY;
 
     if (!isOrphanOfUnloadedParent) {
       tree.push(current);

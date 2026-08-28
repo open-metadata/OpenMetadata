@@ -1144,17 +1144,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setToggleExpandBtn(true);
       fetchExpadedTree();
     }
-  }, [
-    glossaryTerms,
-    glossaryChildTerms,
-    setGlossaryChildTerms,
-    loadingChildren,
-    setLoadingChildren,
-    toggleExpandBtn,
-    setExpandedRowKeys,
-    showErrorToast,
-    selectedStatus,
-  ]);
+  }, [toggleExpandBtn, fetchAllTerms, fetchExpadedTree, handlePagingChange]);
 
   const statusDropdownMenu: MenuProps = useMemo(
     () => ({
