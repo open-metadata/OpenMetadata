@@ -30,8 +30,12 @@ const fs = require('fs');
 
 const LIMIT = (() => {
   const i = process.argv.indexOf('--limit');
+  if (i === -1) {
+    return 50;
+  }
+  const n = parseInt(process.argv[i + 1], 10);
 
-  return i !== -1 ? parseInt(process.argv[i + 1], 10) : 50;
+  return Number.isNaN(n) ? 50 : n;
 })();
 
 function read(file) {
@@ -148,9 +152,9 @@ function main() {
     // PR-authored source, so treat it as untrusted.
     const msg = f.msg
       .replace(/\s*\n\s*/g, ' ')
+      .slice(0, 160)
       .replace(/\\/g, '\\\\')
-      .replace(/\|/g, '\\|')
-      .slice(0, 160);
+      .replace(/\|/g, '\\|');
     body.push(
       `| ${icon} | \`${f.file}:${f.line}:${f.col}\` | \`${f.rule}\` | ${msg} |`
     );
