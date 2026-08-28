@@ -186,16 +186,27 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.getByText('Always visible')).toBeInTheDocument();
   });
 
-  it('does not show tooltip on interaction when trigger is disabled', () => {
+  it('does not show tooltip on interaction when trigger is disabled', async () => {
+    const user = userEvent.setup();
+    setupPointerModality();
+
     render(
       <Tooltip triggerIsDisabled title="Hidden">
         <span>trigger</span>
       </Tooltip>
     );
 
-    expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
-
     const wrapper = screen.getByText('trigger').closest('button');
     expect(wrapper).toBeDisabled();
+
+    expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
+
+    // Try to hover over the disabled trigger — tooltip should not appear
+    await user.hover(wrapper!);
+
+    // Give the tooltip time to appear (if it were going to)
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
   });
 });
