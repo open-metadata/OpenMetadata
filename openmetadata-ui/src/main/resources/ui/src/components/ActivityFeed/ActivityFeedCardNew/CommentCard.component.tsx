@@ -16,7 +16,10 @@ import { compare } from 'fast-json-patch';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { Post, Thread } from '../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../generated/entity/feed/conversation';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -39,15 +42,17 @@ const ActivityFeedEditor = withSuspenseFallback(
 );
 
 interface CommentCardInterface {
-  feed: Thread;
-  post: Post;
+  conversation?: Conversation;
+  conversationId: string;
+  reply: ConversationReply;
   isLastReply: boolean;
   closeFeedEditor: () => void;
 }
 
 const CommentCard = ({
-  feed,
-  post,
+  conversation,
+  conversationId,
+  reply,
   isLastReply,
   closeFeedEditor,
 }: CommentCardInterface) => {
@@ -78,7 +83,7 @@ const CommentCard = ({
 
   const [, , user] = useUserProfile({
     permission: true,
-    name: post.from ?? '',
+    name: reply.author.name ?? reply.author.fullyQualifiedName ?? '',
   });
 
   const onEditPost = () => {
@@ -87,9 +92,9 @@ const CommentCard = ({
   };
 
   const onUpdate = async (message: string) => {
-    const updatedPost = { ...feed, message };
-    const patch = compare(feed, updatedPost);
-    updateFeed(feed.id, post.id, false, patch);
+    const updatedReply = { ...reply, message };
+    const patch = compare(reply, updatedReply);
+    updateFeed(conversationId, reply.id, false, patch);
     setIsEditPost(!isEditPost);
   };
 
@@ -98,8 +103,8 @@ const CommentCard = ({
   }, [onUpdate, postMessage]);
 
   const defaultValue = useMemo(
-    () => MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(post.message)),
-    [post.message]
+    () => MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(reply.message)),
+    [reply.message]
   );
 
   const feedBodyRender = useMemo(() => {
@@ -121,7 +126,7 @@ const CommentCard = ({
     return (
       <RichTextEditorPreviewerV1
         className="text-wrap text-xs"
-        markdown={getFrontEndFormat(post.message)}
+        markdown={getFrontEndFormat(reply.message)}
       />
     );
   }, [isEditPost, postMessage, handleSave]);
@@ -136,19 +141,29 @@ const CommentCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture">
-        <UserPopOverCard userName={post.from ?? ''}>
+        <UserPopOverCard
+          userName={reply.author.name ?? reply.author.fullyQualifiedName ?? ''}>
           <div className="d-flex items-center">
-            <ProfilePicture key={post.id} name={post.from ?? ''} width="32" />
+            <ProfilePicture
+              key={reply.id}
+              name={reply.author.name ?? reply.author.fullyQualifiedName ?? ''}
+              width="32"
+            />
           </div>
         </UserPopOverCard>
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            <UserPopOverCard userName={post.from ?? ''}>
+            <UserPopOverCard
+              userName={
+                reply.author.name ?? reply.author.fullyQualifiedName ?? ''
+              }>
               <Link
                 className="reply-card-user-name"
-                to={getUserPath(post.from ?? '')}>
+                to={getUserPath(
+                  reply.author.name ?? reply.author.fullyQualifiedName ?? ''
+                )}>
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>
@@ -160,25 +175,31 @@ const CommentCard = ({
             <Tooltip
               color="white"
               overlayClassName="timestamp-tooltip"
-              title={formatDateTime(post.postTs)}>
+              title={formatDateTime(reply.createdAt)}>
               <Typography.Text
                 className="feed-card-header-v2-timestamp mr-2"
                 data-testid="timestamp">
-                {getRelativeTime(post.postTs)}
+                {getRelativeTime(reply.createdAt)}
               </Typography.Text>
             </Tooltip>
           </Typography.Text>
         </div>
         {feedBodyRender}
 
-        <FeedCardFooterNew isPost feed={feed} post={post} />
+        <FeedCardFooterNew
+          isReply
+          conversation={conversation}
+          conversationId={conversationId}
+          reply={reply}
+        />
       </div>
 
       {isHovered && (
         <ActivityFeedActions
-          isPost
-          feed={feed}
-          post={post}
+          isReply
+          conversation={conversation}
+          conversationId={conversationId}
+          reply={reply}
           onEditPost={onEditPost}
         />
       )}

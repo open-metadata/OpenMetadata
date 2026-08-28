@@ -727,9 +727,8 @@ test('My Tasks Widget', async ({ page, persona, testUser }) => {
       entitySelector:
         '[data-testid="task-feed-card"] [data-testid="redirect-task-button-link"]',
       urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
-      apiResponseUrl: '/api/v1/feed',
-      searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
-      altApiResponseUrl: '/api/v1/tasks', // New Task API endpoint
+      apiResponseUrl: '/api/v1/tasks',
+      searchQuery: 'view=visible',
       emptyStateTestId: 'my-task-empty-state', // Custom empty state test ID for MyTaskWidget
     });
   });

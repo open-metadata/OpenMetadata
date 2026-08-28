@@ -1,0 +1,410 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenMetadataConnection",
+  "description": "OpenMetadata Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection",
+  "definitions": {
+    "openmetadataType": {
+      "description": "OpenMetadata service type",
+      "type": "string",
+      "enum": [
+        "OpenMetadata"
+      ],
+      "default": "OpenMetadata"
+    },
+    "extraHeaders": {
+      "description": "Additional headers to be sent to the API endpoint.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "authProvider": {
+      "javaType": "org.openmetadata.schema.services.connections.metadata.AuthProvider",
+      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
+      "type": "string",
+      "enum": [
+        "basic",
+        "azure",
+        "google",
+        "okta",
+        "auth0",
+        "aws-cognito",
+        "custom-oidc",
+        "ldap",
+        "saml",
+        "openmetadata"
+      ],
+      "default": "basic"
+    }
+  },
+  "properties": {
+    "clusterName": {
+      "description": "Cluster name to differentiate OpenMetadata Server instance",
+      "type": "string",
+      "default": "openmetadata"
+    },
+    "type": {
+      "description": "Service Type",
+      "default": "OpenMetadata",
+      "type": "string",
+      "enum": [
+        "OpenMetadata"
+      ]
+    },
+    "hostPort": {
+      "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
+      "type": "string",
+      "default": "http://localhost:8585/api"
+    },
+    "authProvider": {
+      "description": "OpenMetadata Server Authentication Provider.",
+      "javaType": "org.openmetadata.schema.services.connections.metadata.AuthProvider",
+      "type": "string",
+      "enum": [
+        "basic",
+        "azure",
+        "google",
+        "okta",
+        "auth0",
+        "aws-cognito",
+        "custom-oidc",
+        "ldap",
+        "saml",
+        "openmetadata"
+      ],
+      "default": "basic"
+    },
+    "verifySSL": {
+      "description": "Flag to verify SSL Certificate for OpenMetadata Server.",
+      "default": "no-ssl",
+      "title": "Verify SSL",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ]
+    },
+    "sslConfig": {
+      "description": "SSL Configuration for OpenMetadata Server",
+      "title": "SSL Config",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "securityConfig": {
+      "mask": true,
+      "description": "OpenMetadata Client security configuration.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "openMetadataJWTClientConfig",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
+      "properties": {
+        "jwtToken": {
+          "description": "OpenMetadata generated JWT token.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "jwtToken"
+      ]
+    },
+    "secretsManagerProvider": {
+      "description": "Secrets Manager Provider for OpenMetadata Server.",
+      "default": "db",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Secrets Manager Provider",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
+      "enum": [
+        "db",
+        "managed-aws",
+        "aws",
+        "managed-aws-ssm",
+        "aws-ssm",
+        "managed-azure-kv",
+        "azure-kv",
+        "in-memory",
+        "gcp",
+        "kubernetes"
+      ],
+      "additionalProperties": false
+    },
+    "secretsManagerLoader": {
+      "description": "Secrets Manager Loader for the Pipeline Service Client.",
+      "default": "noop",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Secrets Manager Client Loader",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",
+      "enum": [
+        "noop",
+        "airflow",
+        "env"
+      ],
+      "additionalProperties": false
+    },
+    "apiVersion": {
+      "description": "OpenMetadata server API version to use.",
+      "type": "string",
+      "default": "v1"
+    },
+    "includeTopics": {
+      "description": "Include Topics for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeTables": {
+      "description": "Include Tables for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeDashboards": {
+      "description": "Include Dashboards for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includePipelines": {
+      "description": "Include Pipelines for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeMlModels": {
+      "description": "Include MlModels for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeUsers": {
+      "description": "Include Users for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeTeams": {
+      "description": "Include Teams for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeGlossaryTerms": {
+      "description": "Include Glossary Terms for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeTags": {
+      "description": "Include Tags for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includePolicy": {
+      "description": "Include Tags for Policy",
+      "type": "boolean",
+      "default": true
+    },
+    "includeMessagingServices": {
+      "description": "Include Messaging Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "enableVersionValidation": {
+      "description": "Validate Openmetadata Server & Client Version.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeDatabaseServices": {
+      "description": "Include Database Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includePipelineServices": {
+      "description": "Include Pipeline Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "limitRecords": {
+      "description": "Limit the number of records for Indexing.",
+      "type": "integer",
+      "default": 1000
+    },
+    "forceEntityOverwriting": {
+      "description": "Force the overwriting of any entity during the ingestion.",
+      "type": "boolean",
+      "default": false
+    },
+    "storeServiceConnection": {
+      "description": "If set to true, when creating a service during the ingestion we will store its Service Connection. Otherwise, the ingestion will create a bare service without connection details.",
+      "type": "boolean",
+      "default": true
+    },
+    "elasticsSearch": {
+      "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of sink component ex: metadata",
+          "type": "string"
+        },
+        "config": {
+          "description": "key/value pairs to pass to workflow component.",
+          "type": "object",
+          "additionalProperties": {
+            ".{1,}": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ]
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsDataInsightExtraction": {
+      "description": "Flag to enable Data Insight Extraction",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsElasticSearchReindexingExtraction": {
+      "description": "Flag to enable ElasticSearch Reindexing Extraction",
+      "type": "boolean",
+      "default": true
+    },
+    "extraHeaders": {
+      "title": "Extra Headers",
+      "description": "Additional headers to be sent to the API endpoint.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
+}
