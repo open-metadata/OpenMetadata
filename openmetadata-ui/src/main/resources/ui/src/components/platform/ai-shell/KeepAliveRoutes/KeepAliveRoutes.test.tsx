@@ -30,6 +30,10 @@ describe('isCacheableRoutePath', () => {
   it('rejects non-string input', () => {
     expect(isCacheableRoutePath(undefined)).toBe(false);
   });
+
+  it('rejects the AskCollate New-Chat landing so it remounts fresh each visit', () => {
+    expect(isCacheableRoutePath('/conversations')).toBe(false);
+  });
 });
 
 describe('getActiveCacheableRoute', () => {

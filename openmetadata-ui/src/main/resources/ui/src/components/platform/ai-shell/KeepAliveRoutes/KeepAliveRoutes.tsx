@@ -41,15 +41,19 @@ interface KeepAliveRoute {
   children?: React.ReactNode;
 }
 
-// Route paths that must never be kept alive in the hidden cache. Empty by
-// default in OSS — module roots that immediately redirect to a concrete
-// child, or location-reactive single-mount shells, are added here (or, later,
-// derived from a module flag) so their hidden copies don't re-trigger
-// navigation or render duplicate DOM.
+// Route paths that must never be kept alive in the hidden cache — module roots
+// that immediately redirect to a concrete child, or location-reactive
+// single-mount shells, so their hidden copies don't re-trigger navigation or
+// render duplicate DOM.
+//   - `/conversations`: the AskCollate New-Chat landing. Kept alive, its hidden
+//     copy would retain the previous in-progress chat, so navigating back to it
+//     ("New Chat") would show a stale conversation instead of a fresh empty
+//     session. It must remount on every visit. (`/conversations/:id` is already
+//     non-cacheable via its dynamic segment.)
 // A static, immutable allow-list read via `.has()` — never mutated at runtime,
 // so it cannot grow. Not a cache; the unbounded-cache guard is a false positive.
 // eslint-disable-next-line openmetadata-performance/no-unbounded-module-cache
-const NON_CACHEABLE_ROUTE_PATHS = new Set<string>([]);
+const NON_CACHEABLE_ROUTE_PATHS = new Set<string>(['/conversations']);
 
 const ROUTE_CACHE_CONTAINER_STYLE: React.CSSProperties = {
   height: '100%',
