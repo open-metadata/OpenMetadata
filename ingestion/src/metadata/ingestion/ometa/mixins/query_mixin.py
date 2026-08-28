@@ -17,7 +17,7 @@ To be used by OpenMetadata class
 import hashlib
 import json
 from functools import lru_cache
-from typing import List, Optional, Union  # noqa: UP035
+from typing import Any, Callable, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createQueryCostRecord import (
@@ -43,6 +43,8 @@ class OMetaQueryMixin:
     """
 
     client: REST
+    get_by_name: Callable[..., Any]
+    get_suffix: Callable[..., str]
 
     def _get_query_hash(self, query: str) -> str:
         result = hashlib.md5(query.encode())
@@ -54,13 +56,16 @@ class OMetaQueryMixin:
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
         if query.query.root is None:
             return None
-        fqn = self._qualified_query_fqn(query.service, self._get_query_hash(query=query.query.root))
+        fqn = self._qualified_query_fqn(
+            model_str(query.service),
+            self._get_query_hash(query=query.query.root),
+        )
         query_entity = self.get_by_name(entity=Query, fqn=fqn)
         if query_entity is None:
             try:
                 resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
-                if resp and resp.get("id"):
-                    query_entity = Query(**resp)
+                if resp and resp.get("id"):  # pyright: ignore[reportAttributeAccessIssue]
+                    query_entity = Query(**resp)  # pyright: ignore[reportCallIssue]
             except APIError as err:
                 # Same SQL created by another table in this run — fetch it so usage still attaches.
                 if err.status_code == 409:
