@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { hydrateQuickFilterLabels } from '../../../../utils/AdvancedSearchPureUtils';
+import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
 import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
@@ -155,11 +155,12 @@ export const useListingData = <
   const selectedEntities = selectionState.selectedEntities;
 
   // The URL carries only the lowercased aggregation key, so the chips and the
-  // checked dropdown options take their casing from the rows currently listed.
-  const hydratedFilters = useMemo(
-    () => hydrateQuickFilterLabels(parsedFilters, dataFetching.entities),
-    [parsedFilters, dataFetching.entities]
-  );
+  // checked dropdown options get their casing restored here.
+  const hydratedFilters = useQuickFilterLabels({
+    fields: parsedFilters,
+    sources: dataFetching.entities,
+    index: searchIndex,
+  });
 
   // Refetch function to reload data with current filters
   const refetch = useCallback(() => {

@@ -194,6 +194,50 @@ describe('getOptionsFromAggregationBucket', () => {
       expect(option.label).toBe('Aaron Johnson');
     });
 
+    it('leaves the bucket key alone rather than labelling it with a sibling value', () => {
+      const bucket = {
+        key: 'pii.sensitive',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                // The bucket's own value is missing from this document, so any
+                // element picked here would be a different tag.
+                _source: { tags: [{ tagFQN: 'Tier.Tier1' }] },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'tags.tagFQN'
+      );
+
+      expect(option.label).toBe('pii.sensitive');
+    });
+
+    it('leaves the bucket key alone when a string-array holds only other values', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: { hits: [{ _source: { ownerDisplayName: ['Bob Smith'] } }] },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.label).toBe('aaron johnson');
+    });
+
     it('picks the matching entry from a multi-value string-array by bucket key', () => {
       const bucket = {
         key: 'aaron johnson',

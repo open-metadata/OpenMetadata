@@ -55,9 +55,9 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
-import { hydrateQuickFilterLabels } from '../../utils/AdvancedSearchPureUtils';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
@@ -159,9 +159,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
 
-  // Quick-filter values round trip through the URL as lowercased aggregation
-  // keys; every hit of a filtered result set carries the value that matched, so
-  // the selected chips take their casing from the results already fetched.
   const hitSources = useMemo(
     () => (searchResults?.hits?.hits ?? []).map((hit) => hit._source),
     [searchResults]
@@ -551,6 +548,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
     [selectedQuickFilters]
   );
+  // Selected values round trip through the URL as lowercased aggregation keys.
+  // Labels are presentational, so only the rendered fields are hydrated — query
+  // building keeps reading the raw state, whose keys never change.
+  const quickFilterFields = useQuickFilterLabels({
+    fields: selectedQuickFilters,
+    sources: hitSources,
+    index: activeTabKey,
+  });
+
   const hasActiveFilterQuery = useMemo(
     () => hasQuickFilterValues || !isEmpty(browseFields),
     [hasQuickFilterValues, browseFields]
@@ -652,15 +658,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
     );
 
     setSelectedQuickFilters(
-      hydrateQuickFilterLabels(
-        dropdownItems.map((item) => ({
-          ...item,
-          value: selectedValuesFromQuickFilter?.[item.label] ?? [],
-        })),
-        hitSources
-      )
+      dropdownItems.map((item) => ({
+        ...item,
+        value: selectedValuesFromQuickFilter?.[item.label] ?? [],
+      }))
     );
-  }, [activeTabKey, quickFilters, hitSources]);
+  }, [activeTabKey, quickFilters]);
 
   useEffect(() => {
     if (!isUndefined(searchResults) && searchResults?.hits?.hits[0]) {
@@ -737,7 +740,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               defaultQueryFilter={
                 browseQueryFilter as unknown as Record<string, unknown>
               }
-              fields={selectedQuickFilters}
+              fields={quickFilterFields}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
               helperText={t('message.pick-values-to-refine')}
               index={activeTabKey}
@@ -847,7 +850,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     ? undefined
                     : t('message.browse-estate-query-placeholder')
                 }
-                fields={selectedQuickFilters}
+                fields={quickFilterFields}
                 onClearAll={clearFilters}
                 onRemoveBrowseLevel={handleRemoveBrowseLevel}
                 onRemoveValue={handleRemoveQuickFilterValue}

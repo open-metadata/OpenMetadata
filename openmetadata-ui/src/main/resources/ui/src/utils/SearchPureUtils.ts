@@ -70,8 +70,11 @@ export const extractSourceValue = (
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     if (Array.isArray(val)) {
-      // When we hit an array mid-traversal, find the element whose resolved
-      // leaf value case-insensitively equals the bucket key, falling back to [0].
+      // Mid-traversal array: only the element whose resolved leaf value
+      // case-insensitively equals the bucket key belongs to this bucket. There
+      // is deliberately no positional fallback — a sibling value (the second
+      // tag of a doc carrying two) would be a wrong label, which is worse than
+      // the lowercased bucket key the caller falls back to.
       const remainingPath = parts.slice(i).join('.');
       const match = (val as unknown[]).find((item) => {
         const leaf = extractSourceValue(
@@ -82,16 +85,14 @@ export const extractSourceValue = (
 
         return leaf?.toLowerCase() === bucketKey.toLowerCase();
       });
-      const chosen = match ?? (val as unknown[])[0];
-      if (chosen === undefined) {
-        return undefined;
-      }
 
-      return extractSourceValue(
-        chosen as Record<string, unknown>,
-        remainingPath,
-        bucketKey
-      );
+      return match === undefined
+        ? undefined
+        : extractSourceValue(
+            match as Record<string, unknown>,
+            remainingPath,
+            bucketKey
+          );
     } else if (val && typeof val === 'object' && part in (val as object)) {
       val = (val as Record<string, unknown>)[part];
     } else {
@@ -99,16 +100,12 @@ export const extractSourceValue = (
     }
   }
 
-  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"])
+  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"]),
+  // where the same reasoning applies: match the bucket key or resolve nothing.
   if (Array.isArray(val)) {
-    const strings = (val as unknown[]).filter(
-      (item): item is string => typeof item === 'string'
-    );
-    const match = strings.find(
-      (s) => s.toLowerCase() === bucketKey.toLowerCase()
-    );
-
-    return match ?? strings[0];
+    return (val as unknown[])
+      .filter((item): item is string => typeof item === 'string')
+      .find((item) => item.toLowerCase() === bucketKey.toLowerCase());
   }
 
   return typeof val === 'string' ? val : undefined;

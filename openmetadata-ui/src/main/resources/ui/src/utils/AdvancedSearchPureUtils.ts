@@ -237,26 +237,23 @@ const findSourceLabel = (
 };
 
 /**
- * Restores the original casing of already-selected quick-filter values.
+ * Rewrites the labels of already-selected quick-filter values.
  *
  * Only the lowercased bucket key survives a round trip through the URL, so a
  * reloaded or shared listing would render its chips and checked options in
- * lowercase. Every hit of a filtered result set carries the value that matched
- * in its `_source`, so the labels are recovered from the rows already on screen
- * rather than through another aggregation request. Fields keep their identity
- * when nothing resolves, so an unchanged filter set does not re-render.
+ * lowercase. `resolveLabel` supplies the original casing for one value; a field
+ * keeps its identity when nothing resolves, so an unchanged filter set does not
+ * re-render. Values that already carry a resolved label are left alone.
  */
-export const hydrateQuickFilterLabels = (
+export const applyQuickFilterLabels = (
   fields: ExploreQuickFilterField[],
-  sources: unknown[]
-): ExploreQuickFilterField[] => {
-  if (isEmpty(sources)) {
-    return fields;
-  }
-
-  return fields.map((field) => {
-    const sourceFields = getQuickFilterSourceFields(field);
-    if (!sourceFields || isEmpty(field.value)) {
+  resolveLabel: (
+    field: ExploreQuickFilterField,
+    optionKey: string
+  ) => string | undefined
+): ExploreQuickFilterField[] =>
+  fields.map((field) => {
+    if (isEmpty(field.value)) {
       return field;
     }
 
@@ -268,7 +265,7 @@ export const hydrateQuickFilterLabels = (
         return option;
       }
 
-      const label = findSourceLabel(sources, sourceFields, option.key);
+      const label = resolveLabel(field, option.key);
       if (!label || label === option.key) {
         return option;
       }
@@ -278,6 +275,28 @@ export const hydrateQuickFilterLabels = (
     });
 
     return hasResolvedLabel ? { ...field, value } : field;
+  });
+
+/**
+ * Recovers selected-value casing from the rows currently listed: every hit of a
+ * filtered result set carries the value that matched in its `_source`, so no
+ * extra request is needed for the common case. A value whose only matching row
+ * sits on another page stays unresolved here — see `useQuickFilterLabels`.
+ */
+export const hydrateQuickFilterLabels = (
+  fields: ExploreQuickFilterField[],
+  sources: unknown[]
+): ExploreQuickFilterField[] => {
+  if (isEmpty(sources)) {
+    return fields;
+  }
+
+  return applyQuickFilterLabels(fields, (field, optionKey) => {
+    const sourceFields = getQuickFilterSourceFields(field);
+
+    return sourceFields
+      ? findSourceLabel(sources, sourceFields, optionKey)
+      : undefined;
   });
 };
 
