@@ -13,6 +13,16 @@
 import { render, screen } from '@testing-library/react';
 import CsvCellPreview from './CsvCellPreview.component';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    title,
+    children,
+  }: {
+    title?: React.ReactNode;
+    children: React.ReactNode;
+  }) => <span title={String(title ?? '')}>{children}</span>,
+}));
+
 describe('CsvCellPreview', () => {
   it('should render an avatar chip for an owner', () => {
     render(<CsvCellPreview column="owners" value="user:admin" />);

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { FieldProps } from '@rjsf/utils';
 import { Tooltip } from '@openmetadata/ui-core-components';
+import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';

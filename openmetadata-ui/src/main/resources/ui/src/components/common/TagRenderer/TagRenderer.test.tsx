@@ -13,6 +13,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TagRenderer } from './TagRenderer';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    title,
+    children,
+  }: {
+    title?: React.ReactNode;
+    children: React.ReactNode;
+  }) => <span title={String(title ?? '')}>{children}</span>,
+}));
+
 describe('TagRenderer', () => {
   const mockOnClose = jest.fn();
   const defaultProps = {

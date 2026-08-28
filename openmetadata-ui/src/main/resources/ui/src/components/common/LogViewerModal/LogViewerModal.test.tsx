@@ -76,6 +76,32 @@ jest.mock('@melloware/react-logviewer', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: ({
+    children,
+    onPress,
+    className,
+    'data-testid': testId,
+    'aria-label': ariaLabel,
+    'aria-pressed': ariaPressed,
+    onClick,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+    className?: string;
+    'data-testid'?: string;
+    'aria-label'?: string;
+    'aria-pressed'?: boolean;
+    onClick?: () => void;
+  }) => (
+    <button
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      className={className}
+      data-testid={testId}
+      onClick={onClick ?? onPress}>
+      {children}
+    </button>
+  ),
   ModalOverlay: ({
     children,
     isOpen,
