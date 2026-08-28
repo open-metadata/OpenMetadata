@@ -19,7 +19,11 @@ import {
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { selectScheduleFrequency } from '../../utils/scheduleInterval';
+import {
+  expectScheduleFrequencySelected,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+} from '../../utils/scheduleInterval';
 import {
   confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
@@ -123,7 +127,7 @@ test(
 
     /**
      * Step 2: Update the pipeline
-     * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
+     * @description Opens pipeline actions, enters edit flow, changes the weekly day selection, deploys, and
      * validates the updated success messaging before returning to the service view.
      */
     await test.step('Verify test case count column displays correct values', async () => {
@@ -157,14 +161,8 @@ test(
         )
         .click();
 
-      await expect(
-        page.getByTestId('week-segment-day-option-container')
-      ).toBeVisible();
-
-      await page
-        .getByTestId('week-segment-day-option-container')
-        .getByText('W')
-        .click();
+      await expectScheduleFrequencySelected(page, 'week');
+      await selectScheduleDayOfWeek(page, 'Wednesday');
       const updateDeployResponse = page.waitForResponse(
         '/api/v1/services/ingestionPipelines/deploy/*'
       );

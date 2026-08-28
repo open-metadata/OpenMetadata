@@ -616,7 +616,9 @@ test.describe(
           .locator('textarea')
           .fill('External test for read-only validation');
 
-        await page.getByTestId('entity-type').click();
+        // Clicking the field wrapper leaves this React Aria popover in its exit
+        // transition, so target the trigger button to keep its options mounted.
+        await page.getByTestId('entity-type').getByRole('button').click();
         const tableOption = page.getByRole('option', {
           name: 'TABLE',
           exact: true,
@@ -729,7 +731,10 @@ test.describe(
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        await page.getByTestId('data-quality-dimension').click();
+        await page
+          .getByTestId('data-quality-dimension')
+          .getByRole('button')
+          .click();
         const accuracyOption = page.getByRole('option', {
           name: 'Accuracy',
           exact: true,
