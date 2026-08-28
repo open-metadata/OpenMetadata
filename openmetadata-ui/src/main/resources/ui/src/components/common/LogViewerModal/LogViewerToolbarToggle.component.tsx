@@ -10,32 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FunctionComponent } from 'react';
 import { LogViewerToolbarToggleProps } from './LogViewerToolbarToggle.interface';
 
-const TOOLTIP_DELAY_MS = 500;
-
-// The log viewer is a bespoke terminal surface with its own `lvm-*` palette, so
-// its toolbar toggles cannot use the library's utility buttons (which have no
-// pressed state) — this keeps the shared shape in one place instead.
 const LogViewerToolbarToggle: FunctionComponent<
   LogViewerToolbarToggleProps
 > = ({ icon, isActive, label, testId, onToggle }) => (
-  <Tooltip delay={TOOLTIP_DELAY_MS} placement="top" title={label}>
-    <button
-      aria-label={label}
-      aria-pressed={isActive}
-      className={classNames('lvm-icon-button', {
-        'lvm-icon-button--active': isActive,
-      })}
-      data-testid={testId}
-      type="button"
-      onClick={onToggle}>
-      {icon}
-    </button>
-  </Tooltip>
+  <Button
+    aria-label={label}
+    aria-pressed={isActive}
+    className={classNames('lvm-icon-button', {
+      'lvm-icon-button--active': isActive,
+    })}
+    data-testid={testId}
+    tooltip={label}
+    tooltipPlacement="top"
+    onClick={onToggle}>
+    {icon}
+  </Button>
 );
 
 export default LogViewerToolbarToggle;
