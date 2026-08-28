@@ -416,6 +416,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 <div className="frequency-button-group m-t-xs">
                   {frequencyOptions.map((option) => (
                     <Button
+                      aria-pressed={selectedPeriod === option.id}
                       className={
                         selectedPeriod === option.id
                           ? SELECTED_FREQUENCY_CLASS

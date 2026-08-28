@@ -76,6 +76,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     className?: string;
   } & Record<string, unknown>) => (
     <button
+      aria-pressed={rest['aria-pressed'] as boolean | undefined}
       data-color={color}
       data-selected={className ? 'true' : 'false'}
       data-testid={rest['data-testid'] as string}
@@ -262,6 +263,10 @@ describe('ScheduleInterval', () => {
     expect(screen.getByTestId('cron-container')).toBeInTheDocument();
     expect(screen.getByTestId('frequency-day')).toHaveAttribute(
       'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('frequency-day')).toHaveAttribute(
+      'aria-pressed',
       'true'
     );
     expect(screen.getByTestId('time-picker')).toBeInTheDocument();

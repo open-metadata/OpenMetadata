@@ -44,9 +44,10 @@ export const expectScheduleFrequencySelected = async (
   page: Page,
   frequency: ScheduleFrequency
 ) => {
-  await expect(
-    page.getByTestId(`frequency-${frequency}`).getByTestId('selected-indicator')
-  ).toBeVisible();
+  await expect(page.getByTestId(`frequency-${frequency}`)).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
 };
 
 const selectOption = async (page: Page, testId: string, option: string) => {
