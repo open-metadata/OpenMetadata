@@ -549,7 +549,7 @@
   },
   "playwright/e2e/Features/SettingsNavigationPage.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 8
+      "count": 9
     }
   },
   "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts": {
@@ -1058,7 +1058,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 21
+      "count": 16
     }
   },
   "playwright/e2e/Search/SearchRelevance.spec.ts": {
