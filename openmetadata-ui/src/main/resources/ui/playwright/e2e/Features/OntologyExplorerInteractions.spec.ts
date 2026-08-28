@@ -57,7 +57,6 @@ test.describe('Cross-glossary term hydration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, salesGlossary.responseData.id);
@@ -119,7 +118,6 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await termA.visitEntityPage(page);
     await page.getByTestId('relations_graph').click();
     await waitForGraphLoaded(page);

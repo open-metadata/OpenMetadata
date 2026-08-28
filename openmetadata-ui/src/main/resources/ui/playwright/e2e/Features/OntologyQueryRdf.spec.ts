@@ -172,8 +172,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
             ) && response.request().method() === 'POST'
       );
       await page
-        .locator('[data-testid^="ontology-query-suggestion-"]')
-        .first()
+        .getByTestId(
+          `ontology-query-suggestion-relatedTo-${target.responseData.id}`
+        )
         .click();
       const queryResponse = await queryResponsePromise;
 

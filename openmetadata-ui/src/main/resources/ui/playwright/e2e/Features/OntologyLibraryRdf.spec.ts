@@ -153,7 +153,9 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
         )
       ).toBe(true);
       await expect(
-        page.getByText('Ontology pack installed').first()
+        page
+          .getByTestId('ontology-pack-detail')
+          .getByText('Ontology pack installed')
       ).toBeVisible();
       await expect(page.getByText(`Installed · ${FIBO_VERSION}`)).toBeVisible();
 

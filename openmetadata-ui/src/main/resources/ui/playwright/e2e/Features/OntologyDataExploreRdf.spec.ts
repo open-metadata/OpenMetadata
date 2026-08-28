@@ -83,14 +83,17 @@ const isStudioDataGraph = (
 
 async function assertStudioDesignContract(
   page: Page,
-  termId: string
+  termId: string,
+  assetId: string
 ): Promise<void> {
   const shell = page.getByTestId('ontology-studio-shell');
-  const header = shell.locator('header').first();
-  const subNavigation = shell.locator('nav').first();
+  const header = shell.locator(':scope > header');
+  const subNavigation = shell.locator(':scope > nav');
   const dataTab = page.getByRole('tab', { name: 'Data' });
   const cluster = page.getByTestId(`ontology-data-cluster-${termId}`);
-  const assetName = cluster.getByTestId('ontology-data-asset-name').first();
+  const assetName = cluster
+    .getByTestId(`ontology-data-asset-${assetId}`)
+    .getByTestId('ontology-data-asset-name');
 
   await expect(shell).toHaveCSS('font-family', /Inter/);
   await expect(header).toHaveCSS('height', '56px');
@@ -383,7 +386,11 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       expect((await dataResponse).ok()).toBe(true);
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-data-edge-legend')).toBeVisible();
-      await assertStudioDesignContract(page, primaryTerm.responseData.id);
+      await assertStudioDesignContract(
+        page,
+        primaryTerm.responseData.id,
+        tableFixture.entityResponseData.id
+      );
       const primaryAssetRows = page
         .getByTestId(`ontology-data-cluster-${primaryTerm.responseData.id}`)
         .locator('button[data-testid^="ontology-data-asset-"]');
@@ -461,7 +468,9 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
           !url.searchParams.has('parent')
         );
       });
-      await page.getByRole('menuitemradio').first().click();
+      await page
+        .getByRole('menuitemradio', { name: /all glossaries/i })
+        .click();
       expect((await allDataResponse).ok()).toBe(true);
       await waitForGraphLoaded(page);
       await expect(

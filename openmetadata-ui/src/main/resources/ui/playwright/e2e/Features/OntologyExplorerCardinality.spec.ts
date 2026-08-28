@@ -177,7 +177,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, glossary.responseData.id);

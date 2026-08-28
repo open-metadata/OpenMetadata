@@ -63,7 +63,6 @@ test.describe('Ontology Studio - Scope and view controls', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
   });
@@ -92,9 +91,7 @@ test.describe('Ontology Studio - Scope and view controls', () => {
     );
 
     await page.getByTestId('submode-tab-graph').click();
-    await expect(
-      page.locator('.ontology-g6-container canvas').first()
-    ).toBeVisible();
+    await expect(page.locator('.ontology-g6-container canvas')).toBeVisible();
   });
 
   test('opens the glossary scope menu with both glossaries', async ({
@@ -135,8 +132,6 @@ test.describe('Ontology Studio - Scope and view controls', () => {
 
     await modelTab.click();
     await expect(modelTab).toHaveAttribute('aria-selected', 'true');
-    await expect(
-      page.locator('.ontology-g6-container canvas').first()
-    ).toBeVisible();
+    await expect(page.locator('.ontology-g6-container canvas')).toBeVisible();
   });
 });

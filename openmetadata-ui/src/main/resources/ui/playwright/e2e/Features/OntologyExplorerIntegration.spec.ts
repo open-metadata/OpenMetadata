@@ -266,7 +266,9 @@ test.describe('Ontology Explorer - Data Mode Asset Cards', () => {
     await expect(cluster).toBeVisible();
     await expect(cluster).toContainText(/[1-9]\d*\s+assets?/i);
     await expect(
-      cluster.locator('button[data-testid^="ontology-data-asset-"]').first()
+      cluster.getByTestId(
+        `ontology-data-asset-${spiralTable.entityResponseData.id}`
+      )
     ).toBeVisible();
   });
 });

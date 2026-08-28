@@ -84,7 +84,6 @@ test.describe('Ontology Explorer — E2E', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, catalog.responseData.id);
