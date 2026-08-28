@@ -20,7 +20,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     title?: React.ReactNode;
     children: React.ReactNode;
-  }) => <span title={String(title ?? '')}>{children}</span>,
+  }) => <span aria-label={String(title ?? '')}>{children}</span>,
 }));
 
 describe('TagRenderer', () => {
@@ -50,7 +50,7 @@ describe('TagRenderer', () => {
     render(<TagRenderer {...defaultProps} label={longLabel} />);
 
     expect(screen.getByText('test persona...')).toBeInTheDocument();
-    expect(screen.getByTitle(longLabel)).toBeInTheDocument();
+    expect(screen.getByLabelText(longLabel)).toBeInTheDocument();
   });
 
   it('should render close button when closable is true', () => {

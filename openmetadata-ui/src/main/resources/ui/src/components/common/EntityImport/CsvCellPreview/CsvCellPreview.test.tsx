@@ -20,7 +20,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     title?: React.ReactNode;
     children: React.ReactNode;
-  }) => <span title={String(title ?? '')}>{children}</span>,
+  }) => <span aria-label={String(title ?? '')}>{children}</span>,
 }));
 
 describe('CsvCellPreview', () => {
@@ -57,7 +57,7 @@ describe('CsvCellPreview', () => {
       screen.getByText('BusinessGlossary / Revenue / NetSales')
     ).toBeInTheDocument();
     expect(
-      screen.getByTitle('BusinessGlossary.Revenue.NetSales')
+      screen.getByLabelText('BusinessGlossary.Revenue.NetSales')
     ).toBeInTheDocument();
   });
 
@@ -96,8 +96,8 @@ describe('CsvCellPreview', () => {
       />
     );
 
-    expect(screen.getByTitle('Cost Center: FIN-204')).toBeInTheDocument();
-    expect(screen.getByTitle('Review Cadence: Quarterly')).toBeInTheDocument();
+    expect(screen.getByLabelText('Cost Center: FIN-204')).toBeInTheDocument();
+    expect(screen.getByLabelText('Review Cadence: Quarterly')).toBeInTheDocument();
   });
 
   it('should render an em-dash when empty', () => {
