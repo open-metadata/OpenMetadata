@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { getTaskTitle } from '../taskTitle.utils';
 import { formatEntityType } from '../taskList.utils';
 import { formatInboxDate } from '../inbox.utils';
@@ -41,12 +42,14 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   isActive,
   onClick,
 }) => {
+  const { t } = useTranslation();
   const entityType = formatEntityType(task.about?.type);
   const createdByName = task.createdBy?.displayName ?? task.createdBy?.name;
   const commentCount = task.commentCount ?? task.comments?.length ?? 0;
-  // Titleless tasks carry the taskId as their name; the id already shows in the
-  // meta row below, so the title slot stays empty instead of repeating it.
-  const taskTitle = getTaskTitle(task);
+  // Titleless tasks (governance workflows) carry the taskId as their name, so
+  // getTaskTitle composes a title from the task type and the entity it is about
+  // instead of repeating the id shown in the meta row.
+  const taskTitle = getTaskTitle(task, t);
 
   return (
     <Box

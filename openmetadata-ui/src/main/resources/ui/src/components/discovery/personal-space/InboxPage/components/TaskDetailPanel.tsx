@@ -602,9 +602,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
   );
   const statusBadge = getTaskStatusBadge(task, t);
-  // Titleless tasks carry the taskId as their name and the id renders above the
-  // heading, so the heading is dropped rather than repeating it.
-  const titleText = getTaskTitle(task) ?? '';
+  // Titleless tasks (governance workflows) carry the taskId as their name, so
+  // getTaskTitle composes a title from the task type and the entity it is about
+  // instead of repeating the id.
+  const titleText = getTaskTitle(task, t);
   const aboutRef = task.about;
   // Incident tasks carry no `about`; the failing test case FQN only appears in
   // the description ("New incident for test case: <fqn>") as the trailing token.
