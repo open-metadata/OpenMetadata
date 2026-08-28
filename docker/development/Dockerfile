@@ -42,7 +42,7 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-FROM gcr.io/distroless/java-base-debian13:debug-nonroot
+FROM gcr.io/distroless/cc-debian13:debug-nonroot
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"

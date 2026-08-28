@@ -55,13 +55,12 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-# `java-base`, not `base` or `cc`: it is the distroless variant built for images
-# that bring their own jlink runtime, so it already carries every glibc library a
-# JVM and its JNI natives need -- libstdc++.so.6 and libgcc_s.so.1 for DJL's
-# libtokenizers.so and for onnxruntime, plus libz.so.1, which libtorch's
-# libgfortran links and which cc-debian12 does not ship. On base-debian12 the
-# natives fail with "libstdc++.so.6: cannot open shared object file"; on
-# cc-debian12 they get one step further and fail on libz. This is also why the
+# `cc`, not `base`: the JNI natives the server loads link the GNU C++ runtime.
+# DJL's libtokenizers.so and onnxruntime need libstdc++.so.6 and libgcc_s.so.1,
+# and libtorch's libgfortran needs libz.so.1. base-debian12 fails the first with
+# "libstdc++.so.6: cannot open shared object file"; cc-debian12 gets one step
+# further and fails on libz, which it does not ship. debian13 carries all three
+# plus libgomp, so nothing has to be copied in by hand. This is also why the
 # image left alpine: those natives are glibc-linked and musl+gcompat cannot load
 # them (gcompat exports none of the _FORTIFY_SOURCE `__*_chk` symbols they need).
 #
@@ -71,7 +70,7 @@ RUN find /javaruntime/bin -type f \
 # image is a worthwhile follow-up, but it is a coordinated change across this
 # repo, openmetadata-helm-charts and a release boundary -- not a side effect of
 # fixing the libc.
-FROM gcr.io/distroless/java-base-debian13:debug-nonroot
+FROM gcr.io/distroless/cc-debian13:debug-nonroot
 
 ARG RI_VERSION="2.0.0-SNAPSHOT"
 ARG BUILD_DATE
