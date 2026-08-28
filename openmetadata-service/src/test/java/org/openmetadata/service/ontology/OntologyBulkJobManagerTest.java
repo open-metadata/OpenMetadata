@@ -104,14 +104,13 @@ class OntologyBulkJobManagerTest {
   }
 
   @Test
-  void completesWithACompactTypedResultAndRecoversStaleJobs() {
+  void completesWithACompactTypedResult() {
     final JobDAO jobDao = mock(JobDAO.class);
     final OntologyBulkJobManager manager = manager(jobDao);
     final OntologyBulkResultArtifact artifact =
         new OntologyBulkResultArtifact().withId(UUID.randomUUID());
 
     manager.complete(JOB_ID, artifact, 640);
-    manager.markStaleJobsFailed();
 
     verify(jobDao)
         .completeJob(
@@ -123,7 +122,6 @@ class OntologyBulkJobManagerTest {
             eq(640),
             eq(OntologyBulkTestFixtures.NOW),
             eq(OntologyBulkTestFixtures.NOW));
-    verify(jobDao).markStaleRunningOntologyBulkJobsFailed(OntologyBulkTestFixtures.NOW);
   }
 
   private static OntologyBulkJobManager manager(final JobDAO jobDao) {

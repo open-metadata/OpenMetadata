@@ -119,10 +119,6 @@ public final class OntologyBulkJobManager implements OntologyBulkExecutionServic
     }
   }
 
-  public int markStaleJobsFailed() {
-    return jobDao.markStaleRunningOntologyBulkJobsFailed(now());
-  }
-
   OntologyBulkJobArguments arguments(final BackgroundJob job) {
     return JsonUtils.convertValue(job.getJobArgs(), OntologyBulkJobArguments.class);
   }

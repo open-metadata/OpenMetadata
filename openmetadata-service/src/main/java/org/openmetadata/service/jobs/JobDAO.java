@@ -261,16 +261,14 @@ public interface JobDAO {
   @SqlQuery("SELECT cancelRequested FROM background_jobs WHERE id = :id")
   Boolean isCancelRequested(@Bind("id") long id);
 
-  // Scoped by updatedAt so a server only reaps jobs nobody is working on. An
-  // unscoped sweep would fail every RUNNING job in the cluster, so each pod
-  // starting during a rolling deploy would kill its peers' live exports.
-  // Workers heartbeat updatedAt, so anything past the window has no live owner.
+  // Workers heartbeat updatedAt, so the cutoff prevents a rolling deployment from failing jobs
+  // owned by another server. Only job types managed by GenericBackgroundWorker belong here.
   @SqlUpdate(
       "UPDATE background_jobs SET status = 'FAILED', error = 'Job stopped responding and was marked failed.', "
           + "message = 'Job stopped responding and was marked failed.', updatedAt = :updatedAt, completedAt = :updatedAt "
-          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT') "
+          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK') "
           + "AND status = 'RUNNING' AND updatedAt < :staleBefore")
-  int markStaleRunningCsvJobsFailed(
+  int markStaleRunningJobsFailed(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);
 
   @SqlUpdate("UPDATE background_jobs SET updatedAt = :updatedAt WHERE id = :id")
@@ -304,14 +302,6 @@ public interface JobDAO {
 
   @SqlUpdate("DELETE FROM background_jobs WHERE id IN (<ids>)")
   int deleteJobsByIds(@BindList("ids") List<Long> ids);
-
-  @SqlUpdate(
-      "UPDATE background_jobs SET status = 'FAILED', "
-          + "error = 'Server restarted before the ontology bulk job completed.', "
-          + "message = 'Server restarted before the ontology bulk job completed.', "
-          + "updatedAt = :updatedAt, completedAt = :updatedAt "
-          + "WHERE jobType = 'ONTOLOGY_BULK' AND status = 'RUNNING'")
-  int markStaleRunningOntologyBulkJobsFailed(@Bind("updatedAt") long updatedAt);
 
   @SqlUpdate(
       "INSERT INTO background_job_logs (logId, jobId, createdAt, level, message) "

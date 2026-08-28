@@ -506,7 +506,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
     JobHandlerRegistry registry = new JobHandlerRegistry();
     OntologyBulkJobHandler ontologyBulkJobHandler = OntologyBulkJobHandler.createDefault();
-    ontologyBulkJobHandler.recoverStaleJobs();
     registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
     registry.register(
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,

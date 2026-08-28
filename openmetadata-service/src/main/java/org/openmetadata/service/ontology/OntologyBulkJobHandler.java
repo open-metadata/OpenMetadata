@@ -35,10 +35,6 @@ public final class OntologyBulkJobHandler implements JobHandler {
         components.service(), components.jobManager(), repositoryLoader());
   }
 
-  public int recoverStaleJobs() {
-    return jobManager.markStaleJobsFailed();
-  }
-
   OntologyBulkJobHandler(
       final OntologyBulkExecutionService service,
       final OntologyBulkJobManager jobManager,
