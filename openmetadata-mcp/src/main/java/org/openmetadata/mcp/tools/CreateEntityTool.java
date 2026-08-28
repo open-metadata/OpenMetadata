@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import jakarta.ws.rs.core.Response;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -106,13 +107,42 @@ public class CreateEntityTool implements McpTool {
       EntityCreationSpec type, EntityInterface entity, String userName) {
     EntityRepository<EntityInterface> repository = type.typedRepository();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    EntityInterface saved;
+    try {
+      saved = repository.create(null, entity, userName, impersonatedBy);
+    } catch (RuntimeException failure) {
+      if (!isDuplicateKey(failure)) {
+        throw failure;
+      }
+      String identity =
+          nullOrEmpty(entity.getFullyQualifiedName())
+              ? entity.getName()
+              : entity.getFullyQualifiedName();
+      throw new IllegalArgumentException(
+          "A '"
+              + type.entityType()
+              + "' entity named '"
+              + identity
+              + "' already exists. Nothing was created. Use patch_entity with the existing entity"
+              + " FQN to modify it.",
+          failure);
+    }
     RestUtil.PutResponse<EntityInterface> response =
-        new RestUtil.PutResponse<>(
-            Response.Status.CREATED,
-            repository.create(null, entity, userName, impersonatedBy),
-            EventType.ENTITY_CREATED);
+        new RestUtil.PutResponse<>(Response.Status.CREATED, saved, EventType.ENTITY_CREATED);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
     return response;
+  }
+
+  private static boolean isDuplicateKey(Throwable failure) {
+    Throwable current = failure;
+    while (current != null) {
+      if (current instanceof SQLException sqlException
+          && (sqlException.getErrorCode() == 1062 || "23505".equals(sqlException.getSQLState()))) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   /** Shared parameters plus attributes bound to the entity class owned by the repository. */

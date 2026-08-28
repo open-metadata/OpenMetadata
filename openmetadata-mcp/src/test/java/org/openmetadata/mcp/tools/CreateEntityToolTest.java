@@ -22,7 +22,9 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,11 +77,21 @@ class CreateEntityToolTest {
 
   @Test
   void createEntityContractIsCreateOnly() throws IOException {
-    String description = tool("create_entity").path("description").asText();
+    JsonNode createEntity = tool("create_entity");
+    String description = createEntity.path("description").asText();
 
     assertTrue(description.contains("never modifies an existing entity"));
     assertTrue(description.contains("Use patch_entity for every edit"));
     assertFalse(description.contains("UPDATES"));
+    assertFalse(createEntity.path("annotations").path("destructiveHint").asBoolean());
+  }
+
+  @Test
+  void patchEntityContractOffersOnlyTheImplementedRawPatch() throws IOException {
+    JsonNode parameters = tool("patch_entity").path("parameters");
+
+    assertEquals(Set.of("entityType", "fqn", "patch"), propertyNames(parameters));
+    assertEquals(Set.of("entityType", "fqn", "patch"), textValues(parameters.path("required")));
   }
 
   @Test
@@ -430,6 +442,65 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void aDatabaseDuplicateReturnsCreateConflictGuidanceWithoutLeakingDatabaseDetails() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    SQLException databaseFailure =
+        new SQLException(
+            "duplicate key value violates unique constraint glossary_name_unique", "23505");
+    doThrow(new RuntimeException(new RuntimeException(databaseFailure)))
+        .when(repository)
+        .create(isNull(), any(), anyString(), any());
+
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.GLOSSARY,
+                    repository,
+                    () ->
+                        new CreateEntityTool()
+                            .execute(
+                                mock(Authorizer.class),
+                                mock(Limits.class),
+                                securityContext(),
+                                glossary())));
+
+    assertTrue(failure.getMessage().contains("'glossary' entity named 'Finance' already exists"));
+    assertTrue(failure.getMessage().contains("Nothing was created"));
+    assertTrue(failure.getMessage().contains("patch_entity"));
+    assertFalse(failure.getMessage().contains("constraint"));
+    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+  }
+
+  @Test
+  void aMySqlDuplicateIsRecognizedByItsVendorCode() {
+    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    SQLException databaseFailure = new SQLException("Duplicate entry", "23000", 1062);
+    doThrow(new RuntimeException(databaseFailure))
+        .when(repository)
+        .create(isNull(), any(), anyString(), any());
+
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                withRepository(
+                    Entity.GLOSSARY,
+                    repository,
+                    () ->
+                        new CreateEntityTool()
+                            .execute(
+                                mock(Authorizer.class),
+                                mock(Limits.class),
+                                securityContext(),
+                                glossary())));
+
+    assertTrue(failure.getMessage().contains("already exists"));
+    assertFalse(failure.getMessage().contains("Duplicate entry"));
+  }
+
+  @Test
   void anArticleUsesTheCreatePageContract() {
     EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
@@ -695,6 +766,18 @@ class CreateEntityToolTest {
 
   private static boolean hasEntityTypeEnum(String toolName) throws IOException {
     return tool(toolName).path("parameters").path("properties").path("entityType").has("enum");
+  }
+
+  private static Set<String> propertyNames(JsonNode parameters) {
+    Set<String> names = new HashSet<>();
+    parameters.path("properties").fieldNames().forEachRemaining(names::add);
+    return names;
+  }
+
+  private static Set<String> textValues(JsonNode values) {
+    Set<String> texts = new HashSet<>();
+    values.forEach(value -> texts.add(value.asText()));
+    return texts;
   }
 
   private static JsonNode tool(String toolName) throws IOException {
