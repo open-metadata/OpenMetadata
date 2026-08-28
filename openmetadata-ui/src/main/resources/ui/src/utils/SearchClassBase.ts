@@ -40,8 +40,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  TAGS_INITIAL_SORT_FIELD,
   tagSortingFields,
+  TAGS_INITIAL_SORT_FIELD,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -63,9 +63,9 @@ import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
-  ENTITY_ICON_BG_SIZE_MAP,
   EntityIconBgSize,
   EntityIconSize,
+  ENTITY_ICON_BG_SIZE_MAP,
   getEntityIcon,
 } from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';

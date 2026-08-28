@@ -243,7 +243,6 @@ const EmbeddedAddServicePage = () => {
     setActiveServiceStep(2);
     // Only the arriving connector should retrigger this — including serviceConfig.serviceType
     // would fight the user's own edits on the Connect step.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedServiceType]);
 
   const handleServiceTypeClick = (
