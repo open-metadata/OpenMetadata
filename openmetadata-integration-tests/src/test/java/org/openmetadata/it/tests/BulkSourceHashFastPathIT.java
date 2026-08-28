@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 
 /**
@@ -161,6 +163,47 @@ public class BulkSourceHashFastPathIT {
         "soft-deleted table must be restored by the bulk path");
   }
 
+  @Test
+  void test_manualPatchClearsSourceHash_soSameHashReappliesTags(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String tagFqn = createClassificationAndTag(ns);
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    CreateTable original =
+        table(ns, schemaFqn, "fp_patch_tags", "desc", "hash-patch-tags").withTags(List.of(tag));
+    BulkApi.upsert("tables", List.of(original));
+
+    String fqn = tableFqn(schemaFqn, original.getName());
+    Table created = getTable(fqn);
+    assertTrue(
+        created.getTags() != null
+            && created.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN())),
+        "tag must be applied on create");
+
+    // Simulate a UI/automation edit that removes the tag via PATCH (out-of-band vs. ingestion).
+    patchTableTagsToEmpty(created.getId().toString());
+
+    Table patched = getTable(fqn);
+    assertTrue(
+        patched.getTags() == null || patched.getTags().isEmpty(),
+        "tag must be cleared by the manual PATCH");
+    assertNull(patched.getSourceHash(), "PATCH must clear the stored sourceHash");
+
+    // Re-ingest the same source content with the same sourceHash. The fast-path must NOT skip the
+    // entity (the stored hash was cleared above), so the source tag is re-applied.
+    BulkApi.upsert("tables", List.of(original));
+
+    Table after = getTable(fqn);
+    assertTrue(
+        after.getTags() != null
+            && after.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN())),
+        "tag must be re-applied on re-ingest even with a matching sourceHash");
+  }
+
   // ===================================================================
   // HELPERS
   // ===================================================================
@@ -187,6 +230,61 @@ public class BulkSourceHashFastPathIT {
     return schemaFqn + "." + tableName;
   }
 
+  /** Creates a classification + tag over raw HTTP and returns the tag's fully qualified name. */
+  private String createClassificationAndTag(TestNamespace ns) throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String adminToken = SdkClients.getAdminToken();
+
+    String clsName = ns.prefix("fp_cls");
+    String clsBody = "{\"name\":\"" + clsName + "\",\"description\":\"regression classification\"}";
+    HttpResponse<String> clsResp =
+        HTTP_CLIENT.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/classifications"))
+                .header("Authorization", "Bearer " + adminToken)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(clsBody))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertTrue(
+        clsResp.statusCode() == 200 || clsResp.statusCode() == 201,
+        "create classification: " + clsResp.statusCode() + " " + clsResp.body());
+    String clsFqn = OBJECT_MAPPER.readTree(clsResp.body()).get("fullyQualifiedName").asText();
+
+    String tagBody =
+        "{\"name\":\"fp_tag\",\"description\":\"regression tag\",\"classification\":\""
+            + clsFqn
+            + "\"}";
+    HttpResponse<String> tagResp =
+        HTTP_CLIENT.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/tags"))
+                .header("Authorization", "Bearer " + adminToken)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(tagBody))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertTrue(
+        tagResp.statusCode() == 200 || tagResp.statusCode() == 201,
+        "create tag: " + tagResp.statusCode() + " " + tagResp.body());
+    return OBJECT_MAPPER.readTree(tagResp.body()).get("fullyQualifiedName").asText();
+  }
+
+  /** PATCHes the table to replace its tags with an empty list (a manual, out-of-band edit). */
+  private void patchTableTagsToEmpty(String tableId) throws Exception {
+    String patchBody = "[{\"op\":\"replace\",\"path\":\"/tags\",\"value\":[]}]";
+    HttpResponse<String> response =
+        HTTP_CLIENT.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(SdkClients.getServerUrl() + "/v1/tables/" + tableId))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .header("Content-Type", "application/json-patch+json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(patchBody))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), "PATCH table tags: " + response.body());
+  }
+
   private Table getTable(String fqn) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
@@ -195,7 +293,7 @@ public class BulkSourceHashFastPathIT {
                     SdkClients.getServerUrl()
                         + "/v1/tables/name/"
                         + fqn
-                        + "?fields=sourceHash&include=all"))
+                        + "?fields=sourceHash,tags&include=all"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();

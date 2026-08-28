@@ -143,6 +143,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default void setSourceHash(String sourceHash) {
+    // No-op for entities that do not declare sourceHash; overridden by generated classes that do.
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);

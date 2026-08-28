@@ -4373,6 +4373,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated = restorePatchSecrets(original, updated);
     }
 
+    // A PATCH modifies the entity outside the bulk ingestion path. Clear the sourceHash so the
+    // next ingestion's bulk fast-path does not skip a re-sync of the source content (e.g. tags
+    // removed by a UI edit must be re-applied on the next run). The next bulk update re-stamps it.
+    updated.setSourceHash(null);
+
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
