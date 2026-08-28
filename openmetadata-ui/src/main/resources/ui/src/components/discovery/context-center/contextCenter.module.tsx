@@ -101,11 +101,11 @@ export const contextCenterModule: AppModule = {
   routes: [
     {
       path: ROUTES.CONTEXT_CENTER,
-      element: <Navigate replace to={ROUTES.CONTEXT_CENTER_DASHBOARD} />,
+      element: <Navigate replace to={ROUTES.CONTEXT_CENTER_OVERVIEW} />,
       position: RoutePosition.APP,
     },
     {
-      path: ROUTES.CONTEXT_CENTER_DASHBOARD,
+      path: ROUTES.CONTEXT_CENTER_OVERVIEW,
       element: (
         <ContextCenterLayout>
           <ContextCenterDashboardPage />
@@ -206,8 +206,8 @@ export const contextCenterModule: AppModule = {
             key: 'dashboard',
             icon: DashboardIcon,
             activeIcon: DashboardActiveIcon,
-            labelKey: 'label.dashboard',
-            path: ROUTES.CONTEXT_CENTER_DASHBOARD,
+            labelKey: 'label.overview',
+            path: ROUTES.CONTEXT_CENTER_OVERVIEW,
           },
           {
             key: 'articles',
