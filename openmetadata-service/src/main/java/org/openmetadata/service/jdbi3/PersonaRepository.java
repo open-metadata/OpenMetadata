@@ -39,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
 import org.openmetadata.service.aicontext.PersonaContextCache;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -295,6 +296,13 @@ public class PersonaRepository extends EntityRepository<Persona> {
       SubjectCache.invalidateAllUserContexts();
     } else {
       invalidateUserContexts(persona.getUsers(), List.of());
+    }
+    // Creates don't broadcast (only the update and delete paths publish), so peers would keep a
+    // user context without the persona this create just assigned for the full 15-minute TTL —
+    // long enough for the user's persona selection to be rejected as "not assigned".
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(PERSONA, persona.getId(), persona.getFullyQualifiedName(), "create");
     }
   }
 

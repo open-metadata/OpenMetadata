@@ -56,9 +56,6 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -90,9 +87,9 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -178,11 +175,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
@@ -209,8 +204,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
-import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
@@ -245,8 +238,6 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -266,8 +257,8 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -345,6 +336,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
+  private record StoredEntityJson(UUID entityId, String json) {}
+
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
   // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
@@ -380,12 +373,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @VisibleForTesting
-  static long writeEpochById(String entityType, UUID id) {
+  static long readEpochById(String entityType, UUID id) {
     return readEpochById(new ImmutablePair<>(entityType, id));
   }
 
   @VisibleForTesting
-  static long writeEpochByName(String entityType, String fqn) {
+  static long readEpochByName(String entityType, String fqn) {
     return readEpochByName(cacheNameKey(entityType, fqn));
   }
 
@@ -606,6 +599,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set by {@link #preloadParentsForBulk(List)} and cleared after use.
    */
   private final ThreadLocal<Map<UUID, EntityInterface>> parentCacheForPrepare = new ThreadLocal<>();
+
+  private final ThreadLocal<StoredEntityJson> storedEntityJson = new ThreadLocal<>();
 
   protected final ChangeSummarizer<T> changeSummarizer;
 
@@ -1173,6 +1168,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Clear the parent cache after bulk prepare. */
   public void clearParentCache() {
     parentCacheForPrepare.remove();
+    storedEntityJson.remove();
   }
 
   /**
@@ -1290,6 +1286,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setChangeDescription(original.getChangeDescription());
   }
 
+  protected T restorePatchSecrets(T original, T updated) {
+    return updated;
+  }
+
   /**
    * This function updates the Elasticsearch indexes wherever the specific entity is present.
    * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
@@ -1330,12 +1330,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>This method needs to be explicitly called, typically from initialize method. See {@link
    * RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
+  public final void initSeedDataFromResourcesOnStartup() throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
+    initSeedDataFromResources();
+  }
+
   public final void initSeedDataFromResources() throws IOException {
     List<T> entities = getEntitiesFromSeedData();
     for (T entity : entities) {
       try {
         initializeEntity(entity);
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn(
             "Failed to initialize {} '{}': {}",
             entityType,
@@ -1367,6 +1375,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             json = json.replace("<separator>", Entity.SEPARATOR);
             entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
+            SeedDataGate.getInstance().recordSeedFailure();
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
@@ -3925,8 +3934,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <ul>
    *   <li><b>user</b> — already excluded historically; user lookups are dominated by auth-time
    *       reads that talk to a different code path.
-   *   <li><b>THREAD / task</b> — feeds and tasks are write-heavy (every mutation creates a
-   *       thread), the JSON is small, and the workflow engine ({@link
+   *   <li><b>task</b> — tasks are write-heavy, the JSON is small, and the workflow engine ({@link
    *       org.openmetadata.service.governance.workflows.WorkflowHandler Flowable}) polls
    *       these tables on a tight loop. Stale-by-cache-window data here breaks workflow
    *       transitions and the IT suite (TaskResourceIT / IncidentTaskIntegrationIT /
@@ -3945,7 +3953,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final Set<String> UNCACHED_ENTITY_TYPES =
       Set.of(
           Entity.USER,
-          Entity.THREAD,
           Entity.TASK,
           Entity.WORKFLOW,
           Entity.WORKFLOW_DEFINITION,
@@ -3975,27 +3982,51 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void writeThroughCache(T entity, boolean update) {
-    var cachedEntityDao = CacheBundle.getCachedEntityDao();
-    if (cachedEntityDao == null
-        || !isValidEntityForCache(entity)
-        || !isCacheableEntityType(entityType)) {
-      return;
-    }
-    // Populate synchronously on the write path. A previous async version raced on rapid updates:
-    // two CompletableFutures on the shared executor could complete out of order, leaving the
-    // cache pinned to the older value while the DB held the newer one. Running on the request
-    // thread guarantees the final cache write observes the final DB commit order.
-    //
-    // Use the same storage-shaped JSON the DB column stores — i.e. relationship fields (owners,
-    // tags, followers, domains, etc.) stripped. If we serialized the in-memory POJO directly,
-    // downstream reads that bypass setFieldsInternal (e.g. inheritance traversal loading the
-    // parent via find()) would see embedded owners that don't reflect the current
-    // entity_relationship state and return stale inherited data.
+    StoredEntityJson storedJson = storedEntityJson.get();
     try {
-      String json = serializeForStorage(entity);
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao == null
+          || !isValidEntityForCache(entity)
+          || !isCacheableEntityType(entityType)) {
+        return;
+      }
+      String json =
+          storedJson != null
+                  && storedJson.json() != null
+                  && entity.getId().equals(storedJson.entityId())
+              ? storedJson.json()
+              : serializeForStorage(entity);
       writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
     } catch (Exception e) {
       LOG.debug("Write-through cache failed: {} {}", entityType, entity.getId(), e);
+    } finally {
+      storedEntityJson.remove();
+    }
+  }
+
+  final void storeEntityAndCaptureJson(T entity, boolean update) {
+    captureStoredEntityJson(entity, () -> storeEntity(entity, update));
+  }
+
+  private void storeEntityWithVersionAndCaptureJson(
+      T entity, boolean update, Double expectedVersion) {
+    captureStoredEntityJson(entity, () -> storeEntityWithVersion(entity, update, expectedVersion));
+  }
+
+  private void captureStoredEntityJson(T entity, Runnable storeOperation) {
+    storedEntityJson.set(new StoredEntityJson(entity.getId(), null));
+    boolean storeCompleted = false;
+    try {
+      storeOperation.run();
+      storeCompleted = true;
+    } finally {
+      StoredEntityJson storedJson = storedEntityJson.get();
+      if (!storeCompleted
+          || storedJson == null
+          || storedJson.json() == null
+          || !Objects.equals(entity.getId(), storedJson.entityId())) {
+        storedEntityJson.remove();
+      }
     }
   }
 
@@ -4337,6 +4368,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
+    }
+    try (var ignored = phase("patchRestoreSecrets")) {
+      updated = restorePatchSecrets(original, updated);
     }
 
     updated.setUpdatedBy(user);
@@ -4883,8 +4917,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
-              // Delete all the threads that are about this entity
-              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+              Entity.getConversationRepository()
+                  .deleteByEntity(entityType, List.of(entityInterface.getId()));
 
               // Drop cached state before the DB row goes away. A concurrent read arriving
               // between this invalidate and the dao.delete below would still observe the
@@ -5027,17 +5061,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
-    createNewEntityFlush(entity);
-    try (var ignored = phase("createPostCreate")) {
-      postCreate(entity);
-    }
+    try {
+      createNewEntityFlush(entity);
+      try (var ignored = phase("createPostCreate")) {
+        postCreate(entity);
+      }
 
-    // Write-through cache: store entity in cache after creation
-    try (var ignored = phase("createWriteThroughCache")) {
-      writeThroughCache(entity, false);
-    }
+      // Write-through cache: store entity in cache after creation
+      try (var ignored = phase("createWriteThroughCache")) {
+        writeThroughCache(entity, false);
+      }
 
-    return entity;
+      return entity;
+    } finally {
+      storedEntityJson.remove();
+    }
   }
 
   private void createNewEntityFlush(T entity) {
@@ -5049,7 +5087,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createNewEntityFlushBody(T entity) {
     try (var ignored = phase("createStoreEntity")) {
-      storeEntity(entity, false);
+      storeEntityAndCaptureJson(entity, false);
       storeExtension(entity);
       storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
     }
@@ -5078,6 +5116,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       committed = true;
     } finally {
       scope.finish(committed);
+      if (!committed) {
+        storedEntityJson.remove();
+      }
     }
   }
 
@@ -5374,6 +5415,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+    StoredEntityJson pendingCapture = storedEntityJson.get();
+    if (pendingCapture != null
+        && pendingCapture.json() == null
+        && Objects.equals(entity.getId(), pendingCapture.entityId())) {
+      storedEntityJson.set(new StoredEntityJson(entity.getId(), json));
     }
   }
 
@@ -5788,8 +5835,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .map(entity -> entity.getId().toString())
             .toList();
 
+    // Batch-delete only the entities' own custom-property rows (jsonSchema "customFieldSchema") in
+    // one statement per chunk. deleteAllBatch() would delete EVERY entity_extension row for the id
+    // -- including columnExtension rows -- so a bulk import update of a table that carries
+    // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
-      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
+      daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
     }
   }
 
@@ -6948,16 +6999,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
     }
-    try (var ignored = phase("bulkHardDeleteFeedThreads")) {
-      Entity.getFeedRepository().deleteByAbout(entityIds);
+    try (var ignored = phase("bulkHardDeleteConversations")) {
+      Entity.getConversationRepository().deleteByEntity(entityType, entityIds);
     }
   }
 
   /**
    * Delete the Task 2.0 feed artifacts (tasks and announcements) that are about this entity.
    *
-   * <p>{@link FeedRepository#deleteByAbout} only clears the pre-2.0 {@code thread_entity} table and
-   * no-ops once legacy thread storage is unavailable. Tasks and announcements moved to their own
+   * <p>The legacy feed cleanup only cleared the pre-2.0 {@code thread_entity} table, which no longer
+   * exists now that conversations own their storage. Tasks and announcements moved to their own
    * tables in Task 2.0, so a hard delete left them behind as orphans whose {@code about} no longer
    * resolves. Both are reached through {@code entity --MENTIONED_IN--> artifact}, so they must be
    * collected here, before the entity's own relationship rows are removed.
@@ -8504,28 +8555,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity.getTags();
   }
 
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-    if (EntityUtil.isDescriptionTask(taskType)) {
-      return new DescriptionTaskWorkflow(threadContext);
-    } else if (EntityUtil.isTagTask(taskType)) {
-      return new TagTaskWorkflow(threadContext);
-    } else if (EntityUtil.isApprovalTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-    }
-  }
-
-  public final void validateTaskThread(ThreadContext threadContext) {
-    ThreadType threadType = threadContext.getThread().getType();
-    if (threadType != ThreadType.Task) {
-      throw new IllegalArgumentException(
-          String.format("Thread type %s is not task related", threadType));
-    }
-  }
-
   protected void validateColumnTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : listOrEmpty(columns)) {
@@ -8766,21 +8795,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>The flush body destructively mutates the updater baseline ({@code original/updated/
      * previous} and the change-tracking flags) via {@code revert()}/{@code updateInternal()}. A
      * deadlock retry replays the body, so we snapshot the baseline before the first attempt and
-     * restore it at the start of every attempt — otherwise a replay would diff from a half-mutated
-     * baseline and double-bump the version. The restore runs as the per-attempt prologue inside the
-     * transaction so it re-applies on each replay.
+     * restore it before each replay — otherwise a replay would diff from a half-mutated baseline and
+     * double-bump the version. Non-entity flags are reset on the first attempt as well, while the
+     * unchanged caller POJOs avoid a redundant restore.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
       UpdaterSnapshot snapshot = snapshotUpdaterState();
-      flushInOneTransaction(
-          () -> {
-            restoreUpdaterState(snapshot);
-            flushUpdateBody(useOptimisticStore, importMode);
-          });
-      if (entityStored) {
-        try (var ignored = phase("entityUpdateCacheWriteThrough")) {
-          invalidateCachesAfterStore();
+      boolean[] firstAttempt = {true};
+      try {
+        flushInOneTransaction(
+            () -> {
+              restoreUpdaterState(snapshot, !firstAttempt[0]);
+              firstAttempt[0] = false;
+              flushUpdateBody(useOptimisticStore, importMode);
+            });
+        if (entityStored) {
+          try (var ignored = phase("entityUpdateCacheWriteThrough")) {
+            invalidateCachesAfterStore();
+          }
         }
+      } finally {
+        storedEntityJson.remove();
       }
     }
 
@@ -8788,8 +8823,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UpdaterSnapshot snapshot = new UpdaterSnapshot();
       snapshot.canonicalOriginal = original;
       snapshot.canonicalUpdated = updated;
-      snapshot.originalJson = JsonUtils.pojoToJson(original);
-      snapshot.updatedJson = JsonUtils.pojoToJson(updated);
+      snapshot.originalTokens = JsonUtils.toTokenBuffer(original);
+      snapshot.updatedTokens = JsonUtils.toTokenBuffer(updated);
       snapshot.previous = deepCopyEntity(previous);
       snapshot.changeDescription = deepCopyChange(changeDescription);
       snapshot.incrementalChangeDescription = deepCopyChange(incrementalChangeDescription);
@@ -8805,14 +8840,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * Reset the updater baseline at the start of every deadlock-retry attempt. The {@code original}
      * and {@code updated} field references are restored to the SAME caller-supplied objects (callers
      * of {@code update()}/{@code patch()} read the mutated {@code updated} back through their own
-     * reference, so identity must be preserved) and their contents are overwritten in place from the
-     * pre-first-attempt JSON. {@code previous} is updater-internal, so a fresh deep copy is fine.
+     * reference, so identity must be preserved) and, on retry, their contents are overwritten in
+     * place from the pre-first-attempt token streams. {@code previous} is updater-internal, so a
+     * fresh deep copy is fine.
      */
-    private void restoreUpdaterState(UpdaterSnapshot snapshot) {
+    private void restoreUpdaterState(UpdaterSnapshot snapshot, boolean restoreEntityContents) {
       original = snapshot.canonicalOriginal;
       updated = snapshot.canonicalUpdated;
-      overwriteInPlace(original, snapshot.originalJson);
-      overwriteInPlace(updated, snapshot.updatedJson);
+      if (restoreEntityContents) {
+        JsonUtils.overwriteFromTokenBuffer(original, snapshot.originalTokens);
+        JsonUtils.overwriteFromTokenBuffer(updated, snapshot.updatedTokens);
+      }
       previous = deepCopyEntity(snapshot.previous);
       changeDescription = deepCopyChange(snapshot.changeDescription);
       incrementalChangeDescription = deepCopyChange(snapshot.incrementalChangeDescription);
@@ -8840,14 +8878,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // No subclass guards on the base updater.
     }
 
-    private void overwriteInPlace(T target, String json) {
-      try {
-        JsonUtils.getObjectMapper().readerForUpdating(target).readValue(json);
-      } catch (JsonProcessingException e) {
-        throw new IllegalStateException("Failed to restore updater baseline on retry", e);
-      }
-    }
-
     private T deepCopyEntity(T entity) {
       return entity == null ? null : JsonUtils.deepCopy(entity, entityClass);
     }
@@ -8859,15 +8889,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /**
      * Baseline of the destructively-mutated updater fields, captured before the first deadlock-retry
      * attempt and re-applied at the start of every attempt (see {@link #flushUpdate}). Holds the
-     * canonical caller object references plus their pre-first-attempt JSON so a replay restores both
-     * identity and contents, and deep copies of the internal state so an in-place mutation during
-     * one attempt cannot corrupt the snapshot used by the next.
+     * canonical caller object references plus their pre-first-attempt token streams so a replay
+     * restores both identity and contents, and deep copies of the internal state so an in-place
+     * mutation during one attempt cannot corrupt the snapshot used by the next.
      */
     private final class UpdaterSnapshot {
       private T canonicalOriginal;
       private T canonicalUpdated;
-      private String originalJson;
-      private String updatedJson;
+      private TokenBuffer originalTokens;
+      private TokenBuffer updatedTokens;
       private T previous;
       private ChangeDescription changeDescription;
       private ChangeDescription incrementalChangeDescription;
@@ -10399,14 +10429,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           updated.getId(),
           updated.getChangeDescription());
-      EntityRepository.this.storeEntity(updated, true);
+      EntityRepository.this.storeEntityAndCaptureJson(updated, true);
       entityStored = true;
     }
 
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
-      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+      EntityRepository.this.storeEntityWithVersionAndCaptureJson(
+          updated, true, original.getVersion());
       entityStored = true;
     }
 
@@ -11058,134 +11089,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       return json;
-    }
-  }
-
-  public static class DescriptionTaskWorkflow extends TaskWorkflow {
-    DescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setDescription(
-          org.openmetadata.service.util.DescriptionSanitizer.sanitize(resolveTask.getNewValue()));
-      return aboutEntity;
-    }
-  }
-
-  public static class TagTaskWorkflow extends TaskWorkflow {
-    TagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setTags(tags);
-      return aboutEntity;
-    }
-  }
-
-  /**
-   * Generic approval task workflow usable for any entity. Checks that the acting user is a
-   * reviewer of the entity, then delegates resolution to the governance WorkflowHandler. Falls
-   * back to a direct entityStatus patch when the Flowable workflow record no longer exists (e.g.
-   * after a corrupted restart).
-   */
-  public static class ApprovalTaskWorkflow extends TaskWorkflow {
-    ApprovalTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      EntityInterface entity = threadContext.getAboutEntity();
-      verifyReviewer(entity, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveLegacyThreadTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn("Workflow failed for taskId='{}', applying status directly", taskId);
-        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
-        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
-        EntityFieldUtils.setEntityField(
-            entity,
-            threadContext.getAbout().getEntityType(),
-            user,
-            FIELD_ENTITY_STATUS,
-            entityStatus,
-            true);
-      }
-
-      return entity;
-    }
-  }
-
-  /**
-   * Checks that {@code user} is an assignee of the given task thread. Throws
-   * {@link AuthorizationException} if not.
-   */
-  public static void checkUpdatedByTaskAssignee(Thread thread, String user) {
-    List<EntityReference> assignees = listOrEmpty(thread.getTask().getAssignees());
-    if (nullOrEmpty(assignees)) {
-      return; // no assignees configured – allow any user (backward compat)
-    }
-    boolean isAssignee =
-        assignees.stream()
-            .anyMatch(
-                ref -> {
-                  if (TEAM.equals(ref.getType())) {
-                    org.openmetadata.schema.entity.teams.Team team =
-                        Entity.getEntityByName(TEAM, ref.getName(), "users", Include.NON_DELETED);
-                    return team.getUsers().stream()
-                        .anyMatch(
-                            u ->
-                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
-                  }
-                  return ref.getName().equals(user)
-                      || (ref.getFullyQualifiedName() != null
-                          && ref.getFullyQualifiedName().equals(user));
-                });
-    if (!isAssignee) {
-      throw new AuthorizationException(notTaskAssignee(user));
-    }
-  }
-
-  /**
-   * Checks that {@code user} is a reviewer of the given entity. Throws {@link
-   * AuthorizationException} if not.
-   */
-  public static void verifyReviewer(EntityInterface entity, String user) {
-    List<EntityReference> reviewers = entity.getReviewers();
-    if (nullOrEmpty(reviewers)) {
-      return;
-    }
-    boolean isReviewer =
-        reviewers.stream()
-            .anyMatch(
-                e -> {
-                  if (TEAM.equals(e.getType())) {
-                    org.openmetadata.schema.entity.teams.Team team =
-                        Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                    return team.getUsers().stream()
-                        .anyMatch(
-                            u ->
-                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
-                  }
-                  return e.getName().equals(user) || e.getFullyQualifiedName().equals(user);
-                });
-    if (!isReviewer) {
-      throw new AuthorizationException(notReviewer(user));
     }
   }
 

@@ -13,7 +13,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import {
   redirectToHomePage,
-  removeLandingBanner,
   toastNotification,
   visitOwnProfilePage,
 } from './common';
@@ -265,9 +264,20 @@ export const waitForLandingPageWidget = async (
 ): Promise<Locator> => {
   const widget = page.getByTestId(widgetKey);
 
-  await revealLandingPageWidget(page, widgetKey);
-
-  await expect(widget).toBeVisible();
+  // The reveal has to be retried, not done once. A deferred slot mounts its widget only
+  // when scrolled into view, and `expect(...).toBeVisible()` cannot scroll. So when the
+  // layout attaches *after* a single reveal — a fresh `/my-data` load right after saving a
+  // layout is the common case — `revealLandingPageWidget` finds nothing to scroll, the
+  // widget never mounts, and the visibility assertion then burns its entire timeout on an
+  // element that was never going to appear no matter how long it waited. Polling the reveal
+  // rides out that render delay; a widget that is genuinely missing still fails, just at the
+  // poll timeout rather than instantly.
+  await expect
+    .poll(() => isLandingPageWidgetVisible(page, widgetKey), {
+      timeout: 60_000,
+      intervals: [500, 1_000, 2_000, 5_000],
+    })
+    .toBe(true);
 
   await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden();
 
@@ -287,7 +297,6 @@ export const toNameableEntity = (
 };
 
 export const checkAllDefaultWidgets = async (page: Page) => {
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -417,7 +426,6 @@ export const addAndVerifyWidget = async (
   await redirectToHomePage(page, false);
 
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
-  await removeLandingBanner(page);
 
   // The save response is awaited and its toast asserted above, and `redirectToHomePage`
   // disables ETag conditional reads, so the first read-back is authoritative — the widget
@@ -737,7 +745,6 @@ export const verifyWidgetHeaderNavigation = async (
   // Home keeps background requests alive on some persona routes; use the lighter
   // redirect path and wait on rendered state instead of networkidle.
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
     () => undefined
@@ -755,7 +762,6 @@ export const verifyDomainCountInDomainWidget = async (
   ].join(', ');
 
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
 
   await expect
     .poll(
@@ -795,7 +801,6 @@ export const verifyDataProductCountInDataProductWidget = async (
   const widgetCardSelector = `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`;
 
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
 
   await expect
     .poll(

@@ -208,6 +208,7 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
         '**/VisualRegression/**',
@@ -245,7 +246,7 @@ export default defineConfig({
         '**/SSORenewal.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
     },
@@ -415,6 +416,17 @@ export default defineConfig({
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+    },
+    // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
+    // waitForResponse/debounce flow is not interleaved with other chromium shards.
+    {
+      name: 'AdvancedSearch',
+      testMatch: '**/AdvancedSearch.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: entityDependencies,
+      grep: shardGrep,
+      fullyParallel: true,
+      teardown: entityTeardown,
     },
   ],
 

@@ -59,8 +59,8 @@ export const seedDrawerFilterAssets = async (
 
   const domainPatch = {
     op: 'add' as const,
-    path: '/domains/0',
-    value: { id: domain.responseData.id, type: 'domain' },
+    path: '/domains',
+    value: [{ id: domain.responseData.id, type: 'domain' }],
   };
 
   await tieredTable.create(apiContext);

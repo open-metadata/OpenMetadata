@@ -18,7 +18,6 @@ import {
   Card,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -59,6 +58,7 @@ import {
   getLineageByEntityCount,
   getLineageDataByFQN,
 } from '../../rest/lineageAPI';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
@@ -71,6 +71,7 @@ import {
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -79,6 +80,7 @@ import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder'
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
+import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
@@ -94,6 +96,20 @@ import {
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
+
+const LINEAGE_IMPACT_OPTION_ICONS: Record<
+  EImpactLevel,
+  FC<{ className?: string }>
+> = Object.fromEntries(
+  LINEAGE_IMPACT_OPTIONS.map((option) => [
+    option.key,
+    (() =>
+      searchClassBase.getEntityIconWithBg(
+        option.entityType,
+        EntityIconSize.Size14
+      )) as FC<{ className?: string }>,
+  ])
+) as Record<EImpactLevel, FC<{ className?: string }>>;
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
@@ -431,7 +447,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               onSelectionChange={() => void 0}>
               {LINEAGE_IMPACT_OPTIONS.map((option) => (
                 <Dropdown.Item
-                  icon={option.icon as FC<{ className?: string }>}
+                  icon={LINEAGE_IMPACT_OPTION_ICONS[option.key]}
                   id={option.key}
                   key={option.key}
                   label={option.label}
@@ -945,14 +961,17 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames({ isFullScreen }, 'lineage-card')}
+      className={classNames(
+        { isFullScreen },
+        'lineage-card tw:flex tw:flex-col'
+      )}
       data-testid="lineage-card-table"
       variant="default">
       <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
         {cardHeader}
       </div>
 
-      <Card.Content className="tw:p-5 lineage-container">
+      <Card.Content className="tw:p-5 lineage-container tw:overflow-y-auto">
         <TableV2
           bordered
           className="h-full"

@@ -23,10 +23,12 @@ import {
   listAnnouncements,
 } from '../../rest/announcementsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ConfirmState } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { AnnouncementThreadBodyProp } from './Announcement.interface';
+import {
+  AnnouncementThreadBodyProp,
+  ConfirmState,
+} from './Announcement.interface';
 import AnnouncementThreads from './AnnouncementThreads';
 
 const AnnouncementThreadBody = ({

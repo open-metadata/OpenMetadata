@@ -37,7 +37,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
   REFRESHABLE_AUTH_ERRORS,
   UN_AUTHORIZED_EXCLUDED_PATHS,
@@ -69,7 +68,6 @@ import {
   readAppModeHint,
   readAppModeSession,
   resolveEffectiveAppMode,
-  resolveInitialAppMode,
   setAppDefaultMode,
   translateWireMode,
   writeAppMode,
@@ -95,6 +93,7 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
+import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
   getOidcToken,
@@ -307,8 +306,16 @@ export const AuthProvider = ({
   const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
-    // Let SSO complete the logout process
-    await authenticatorRef.current?.invokeLogout();
+    try {
+      // Let SSO complete the logout process. Swallow failures so local
+      // cleanup always runs — a rejected OIDC end-session call must not
+      // leave the user half-logged-out with a stale persona session key.
+      await authenticatorRef.current?.invokeLogout();
+    } catch {
+      // SSO logout failed; proceed with local cleanup anyway
+    }
+
+    clearPersonaSession();
 
     setIsAuthenticated(false);
 
@@ -358,44 +365,11 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      // Non-default app modes (e.g. AskCollate's 'ai') own their own
-      // shell and land pages — navigating to /my-data would drop the
-      // user on the Classic My Data page even though their tab is in
-      // AI mode. Route to `/` and let the mode-specific route tree
-      // render its own landing page.
-      //
-      // At post-login redirect time `useResolvedAppMode` has not yet
-      // run, so the useAppMode store alone only reflects the
-      // sessionStorage tuple (empty on a fresh login). `resolveInitialAppMode`
-      // consults the same synchronously-available signals as the
-      // resolver — session tuple → fresh cross-tab hint → user's
-      // stored preference — so a user whose "remember" checkbox is on
-      // AI or whose sibling tab is in AI lands on `/` from the start
-      // instead of being bounced through `/my-data` and then flipped
-      // to AI by the resolver a tick later. Persona (async) stays
-      // with the resolver.
-      const userName = useApplicationStore.getState().currentUser?.name;
-      const appMode = resolveInitialAppMode(userName);
-      if (appMode !== DEFAULT_APP_MODE) {
-        navigate(ROUTES.HOME);
-
-        return;
-      }
-
-      // Check if provider uses OidcAuthenticator which has routing logic
-      const usesOidcAuthenticator = [
-        AuthProviderEnum.Google,
-        AuthProviderEnum.CustomOidc,
-        AuthProviderEnum.AwsCognito,
-      ].includes(authConfig?.provider as AuthProviderEnum);
-
-      // For providers using OidcAuthenticator, navigate to HOME for routing
-      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
-      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
-        navigate(ROUTES.HOME);
-      } else {
-        navigate(ROUTES.MY_DATA);
-      }
+      // Route to `/` and let the (mode-specific) route tree render its
+      // own landing page. Rendering in place at `/` is provider-agnostic
+      // and lets non-default app modes (e.g. AskCollate's AI) own their
+      // own landing page without racing an early client-side redirect.
+      navigate(ROUTES.HOME);
     }
   };
 
@@ -413,6 +387,7 @@ export const AuthProvider = ({
   }, []);
 
   const resetUserDetails = (forceLogout = false) => {
+    clearPersonaSession();
     setCurrentUser({} as User);
     clearOidcToken();
     setIsAuthenticated(false);
@@ -509,8 +484,8 @@ export const AuthProvider = ({
 
   // When the tab becomes visible after being backgrounded, browsers may have
   // throttled or suspended the proactive renewal timer. Check token freshness
-  // immediately and refresh if expired, or reschedule the timer with the
-  // correct remaining time.
+  // immediately and refresh only when the token is actually stale; otherwise
+  // just reschedule the timer with the correct remaining time.
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') {
@@ -518,21 +493,27 @@ export const AuthProvider = ({
       }
       try {
         const token = await getOidcToken();
-        const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
-
-        // eslint-disable-next-line no-console
-        console.debug(
-          '[VisibilityHandler] token length:',
-          token?.length,
-          'isExpired:',
-          isExpired,
-          'timeoutExpiry:',
-          timeoutExpiry,
-          'hasTokenService:',
-          !!tokenService.current
-        );
-
-        if (isExpired || timeoutExpiry <= 0) {
+        // No token in storage (user is on /signin, or just logged out).
+        // Firing tokenService.refreshToken() here would still invoke the
+        // renewer (e.g. OIDC signinSilent → hidden iframe to the IdP) on
+        // every tab focus — pure IdP-side noise for a signed-out session.
+        if (!token) {
+          return;
+        }
+        const { exp, isExpired, timeoutExpiry } =
+          extractDetailsFromToken(token);
+        // A missing / non-positive `exp` means the token is opaque, not a
+        // JWT at all, or spec-violating. extractDetailsFromToken returns
+        // `isExpired: true` for the jwt-decode-throws branch AND
+        // `isExpired: false, timeoutExpiry: 0` for the isNil(exp) branch —
+        // neither is signal we can act on, so leave the token in place and
+        // let the next real 401 drive a refresh via the axios interceptor.
+        // MUST come before the isExpired branch — otherwise opaque tokens
+        // would fire refresh() on every tab focus.
+        if (typeof exp !== 'number' || exp <= 0) {
+          return;
+        }
+        if (isExpired) {
           const newToken = await tokenService.current?.refreshToken();
           // Post-refresh reauth: if the user was bounced to signin by an
           // earlier failed call, a successful refresh must re-run the
@@ -542,12 +523,24 @@ export const AuthProvider = ({
           if (newToken && !useApplicationStore.getState().isAuthenticated) {
             await getLoggedInUserDetails();
           }
-        } else {
-          startTokenExpiryTimer();
+
+          return;
         }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('[VisibilityHandler] error:', error);
+        // Only near-expiry (within the pre-expiry buffer) should proactively
+        // refresh here. `timeoutExpiry === 0` exactly captures that case
+        // once we've ruled out invalid exp above.
+        if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
+          const newToken = await tokenService.current?.refreshToken();
+          if (newToken && !useApplicationStore.getState().isAuthenticated) {
+            await getLoggedInUserDetails();
+          }
+
+          return;
+        }
+        startTokenExpiryTimer();
+      } catch {
+        // Storage read errors fall through: the next real 401 will drive
+        // the refresh via the axios interceptor.
       }
     };
 

@@ -1,0 +1,405 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "reverseIngestionPipeline",
+  "javaType": "org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline",
+  "description": "Apply a set of operations on a service",
+  "type": "object",
+  "definitions": {
+    "reverseIngestionType": {
+      "description": "Reverse Ingestion Config Pipeline type",
+      "type": "string",
+      "enum": [
+        "ReverseIngestion"
+      ],
+      "default": "ReverseIngestion"
+    },
+    "operation": {
+      "description": "Operation to be performed on the entity",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The id of the operation",
+          "type": "string",
+          "format": "uuid"
+        },
+        "entityLink": {
+          "description": "Entity to be modified",
+          "type": "string",
+          "pattern": "(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$"
+        },
+        "type": {
+          "description": "Type of operation to perform",
+          "type": "string",
+          "javaType": "org.openmetadata.schema.metadataIngestion.reverseIngestionOperationType",
+          "enum": [
+            "UPDATE_DESCRIPTION",
+            "UPDATE_OWNER",
+            "UPDATE_TAGS"
+          ]
+        },
+        "SQLTemplate": {
+          "description": "Templated SQL command to be used for the operation. Context parameters will be populated based on the event type.",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "The configuration for the operation to be applied",
+          "oneOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "Reverse Ingestion Description Config",
+              "type": "object",
+              "description": "Configuration for updating descriptions",
+              "javaType": "org.openmetadata.schema.metadataIngestion.reverseingestionconfig.descriptionConfig",
+              "properties": {
+                "previousDescription": {
+                  "description": "Previous description of the service",
+                  "type": "string"
+                },
+                "newDescription": {
+                  "description": "New description of the service",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "Reverse Ingestion Owner Config",
+              "type": "object",
+              "description": "Configuration for updating owners",
+              "javaType": "org.openmetadata.schema.metadataIngestion.reverseingestionconfig.ownerConfig",
+              "properties": {
+                "removedOwners": {
+                  "description": "Removed owners from the entity",
+                  "$ref": "#/definitions/operation/properties/parameters/oneOf/1/properties/addedOwners"
+                },
+                "addedOwners": {
+                  "description": "Added owners to be applied",
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Entity Reference List",
+                  "type": "array",
+                  "items": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "Entity Reference",
+                    "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
+                    "type": "object",
+                    "javaType": "org.openmetadata.schema.type.EntityReference",
+                    "properties": {
+                      "id": {
+                        "description": "Unique identifier that identifies an entity instance.",
+                        "$ref": "#/definitions/operation/properties/id"
+                      },
+                      "type": {
+                        "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Name of the entity instance.",
+                        "type": "string"
+                      },
+                      "fullyQualifiedName": {
+                        "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
+                        "type": "string"
+                      },
+                      "description": {
+                        "description": "Optional description of entity.",
+                        "$comment": "@om-field-type",
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "description": "Display Name that identifies this entity.",
+                        "type": "string"
+                      },
+                      "deleted": {
+                        "description": "If true the entity referred to has been soft-deleted.",
+                        "type": "boolean"
+                      },
+                      "inherited": {
+                        "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+                        "type": "boolean"
+                      },
+                      "href": {
+                        "description": "Link to the entity resource.",
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "default": null
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "Reverse Ingestion Tags Config",
+              "type": "object",
+              "description": "Configuration for updating tags",
+              "javaType": "org.openmetadata.schema.metadataIngestion.reverseingestionconfig.tagsConfig",
+              "properties": {
+                "removedTags": {
+                  "description": "Removed tags of the entity",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/operation/properties/parameters/oneOf/2/properties/addedTags/items"
+                  }
+                },
+                "addedTags": {
+                  "description": "Added tags to be applied",
+                  "type": "array",
+                  "items": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "TagLabel",
+                    "description": "This schema defines the type for labeling an entity with a Tag.",
+                    "type": "object",
+                    "javaType": "org.openmetadata.schema.type.TagLabel",
+                    "definitions": {
+                      "tagFQN": {
+                        "type": "string"
+                      },
+                      "TagSource": {
+                        "type": "string",
+                        "default": "Classification",
+                        "enum": [
+                          "Classification",
+                          "Glossary"
+                        ]
+                      }
+                    },
+                    "properties": {
+                      "tagFQN": {
+                        "$ref": "#/definitions/operation/properties/parameters/oneOf/2/properties/addedTags/items/definitions/tagFQN"
+                      },
+                      "name": {
+                        "description": "Name of the tag or glossary term.",
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "description": "Display Name that identifies this tag.",
+                        "type": "string"
+                      },
+                      "description": {
+                        "description": "Description for the tag label.",
+                        "$ref": "#/properties/service/properties/description"
+                      },
+                      "style": {
+                        "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
+                        "type": "object",
+                        "javaType": "org.openmetadata.schema.entity.type.Style",
+                        "properties": {
+                          "color": {
+                            "description": "Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.",
+                            "type": "string"
+                          },
+                          "iconURL": {
+                            "description": "An icon to associate with GlossaryTerm, Tag, Domain or Data Product.",
+                            "type": "string",
+                            "format": "url"
+                          },
+                          "coverImage": {
+                            "description": "Cover image configuration for the entity.",
+                            "type": "object",
+                            "javaType": "org.openmetadata.schema.entity.type.CoverImage",
+                            "properties": {
+                              "url": {
+                                "description": "URL of the cover image.",
+                                "type": "string",
+                                "format": "url"
+                              },
+                              "position": {
+                                "description": "Position of the cover image in CSS background-position format. Supports keywords (top, center, bottom) or pixel values (e.g., '20px 30px').",
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "source": {
+                        "description": "Label is from Tags or Glossary.",
+                        "$ref": "#/definitions/operation/properties/parameters/oneOf/2/properties/addedTags/items/definitions/TagSource"
+                      },
+                      "labelType": {
+                        "description": "Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see Classification.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.",
+                        "type": "string",
+                        "enum": [
+                          "Manual",
+                          "Propagated",
+                          "Automated",
+                          "Derived",
+                          "Generated"
+                        ],
+                        "default": "Manual"
+                      },
+                      "state": {
+                        "description": "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.",
+                        "type": "string",
+                        "enum": [
+                          "Suggested",
+                          "Confirmed"
+                        ],
+                        "default": "Confirmed"
+                      },
+                      "href": {
+                        "description": "Link to the tag resource.",
+                        "$ref": "#/properties/service/properties/href"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "description": "An explanation of why this tag was proposed, specially for autoclassification tags"
+                      },
+                      "appliedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Timestamp when this tag was applied in ISO 8601 format"
+                      },
+                      "appliedBy": {
+                        "type": "string",
+                        "description": "Who it is that applied this tag (e.g: a bot, AI or a human)"
+                      },
+                      "metadata": {
+                        "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "title": "TagLabelMetadata",
+                        "type": "object",
+                        "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
+                        "properties": {
+                          "recognizer": {
+                            "description": "Metadata about the recognizer that automatically applied this tag",
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "title": "TagLabelRecognizerMetadata",
+                            "type": "object",
+                            "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
+                            "properties": {
+                              "recognizerId": {
+                                "description": "Unique identifier of the recognizer that applied this tag",
+                                "$ref": "#/definitions/operation/properties/id"
+                              },
+                              "recognizerName": {
+                                "description": "Human-readable name of the recognizer",
+                                "type": "string"
+                              },
+                              "score": {
+                                "description": "Confidence score assigned by the recognizer (0.0 to 1.0)",
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "target": {
+                                "description": "What the recognizer analyzed to apply this tag",
+                                "type": "string",
+                                "enum": [
+                                  "content",
+                                  "column_name"
+                                ]
+                              },
+                              "patterns": {
+                                "description": "Details of patterns that matched during recognition",
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/definitions/operation/properties/parameters/oneOf/2/properties/addedTags/items/properties/metadata/properties/recognizer/definitions/patternMatch"
+                                }
+                              }
+                            },
+                            "required": [
+                              "recognizerId",
+                              "recognizerName",
+                              "score"
+                            ],
+                            "additionalProperties": false,
+                            "definitions": {
+                              "patternMatch": {
+                                "type": "object",
+                                "description": "Information about a pattern that matched during recognition",
+                                "properties": {
+                                  "name": {
+                                    "description": "Name of the pattern that matched",
+                                    "type": "string"
+                                  },
+                                  "regex": {
+                                    "description": "Regular expression or pattern definition",
+                                    "type": "string"
+                                  },
+                                  "score": {
+                                    "description": "Confidence score for this specific pattern match",
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "expiryDate": {
+                            "description": "Epoch time in milliseconds when the certification tag expires",
+                            "type": "integer",
+                            "format": "utc-millisec"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "tagFQN",
+                      "source",
+                      "labelType",
+                      "state"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "entityLink",
+        "type",
+        "parameters"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/reverseIngestionType",
+      "default": "ReverseIngestion"
+    },
+    "service": {
+      "description": "Service to be modified",
+      "$ref": "#/definitions/operation/properties/parameters/oneOf/1/properties/addedOwners/items"
+    },
+    "operations": {
+      "description": "List of operations to be performed on the service",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/operation"
+      }
+    },
+    "ingestionRunner": {
+      "description": "Optional value of the ingestion runner name responsible for running the workflow",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "service",
+    "operations"
+  ]
+}

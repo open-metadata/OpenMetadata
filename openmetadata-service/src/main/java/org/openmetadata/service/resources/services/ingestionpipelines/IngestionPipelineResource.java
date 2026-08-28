@@ -1155,6 +1155,12 @@ public class IngestionPipelineResource
         Map<String, Object> lastIngestionLogsMap =
             repository.getLogs(
                 ingestionPipeline.getFullyQualifiedName(), UUID.fromString(runId), after, limit);
+        Object logError = lastIngestionLogsMap.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+        if (logError != null) {
+          return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+              .entity(Map.of(PipelineServiceClientInterface.LOGS_ERROR_KEY, logError))
+              .build();
+        }
         lastIngestionLogs =
             lastIngestionLogsMap.entrySet().stream()
                 .filter(entry -> entry.getValue() != null)
@@ -1173,6 +1179,12 @@ public class IngestionPipelineResource
     } else {
       // Get the logs from the service client
       lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+      String logError = lastIngestionLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+      if (logError != null) {
+        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            .entity(Map.of(PipelineServiceClientInterface.LOGS_ERROR_KEY, logError))
+            .build();
+      }
     }
 
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
@@ -1252,6 +1264,10 @@ public class IngestionPipelineResource
                       .collect(
                           Collectors.toMap(
                               Map.Entry::getKey, entry -> entry.getValue().toString()));
+              String logError = logChunk.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+              if (logError != null) {
+                throw new PipelineServiceClientException(logError);
+              }
               Object logs = logChunk.remove("logs");
               if (logs != null) {
                 logChunk.put(
@@ -1262,6 +1278,13 @@ public class IngestionPipelineResource
             } else {
               // Get the logs from the service client
               logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+              String logError =
+                  logChunk == null
+                      ? null
+                      : logChunk.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+              if (logError != null) {
+                throw new PipelineServiceClientException(logError);
+              }
             }
 
             if (logChunk == null || logChunk.isEmpty()) {

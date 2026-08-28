@@ -68,6 +68,15 @@ const downloadDataUrl = (dataUrl: string): void => {
   link.click();
 };
 
+const renderWebglFallback = (t: ReturnType<typeof useTranslation>['t']) => (
+  <ErrorPlaceHolder
+    className="knowledge-graph-3d-empty"
+    icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
+    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+    {t('message.knowledge-graph-3d-webgl-unavailable')}
+  </ErrorPlaceHolder>
+);
+
 const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   entity,
   entityType,
@@ -383,15 +392,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
             {t('message.no-knowledge-graph-data')}
           </ErrorPlaceHolder>
         ) : (
-          <ErrorBoundary
-            fallbackRender={() => (
-              <ErrorPlaceHolder
-                className="knowledge-graph-3d-empty"
-                icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
-                type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                {t('message.knowledge-graph-3d-webgl-unavailable')}
-              </ErrorPlaceHolder>
-            )}>
+          <ErrorBoundary fallbackRender={() => renderWebglFallback(t)}>
             <Suspense fallback={<Loader />}>
               <KnowledgeGraph3DScene
                 data={view}

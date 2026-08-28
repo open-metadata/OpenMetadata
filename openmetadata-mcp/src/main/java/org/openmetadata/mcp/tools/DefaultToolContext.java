@@ -10,6 +10,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
@@ -85,9 +87,6 @@ public class DefaultToolContext {
           tool = new GetEntityTool();
           result = tool.execute(authorizer, securityContext, params);
           break;
-        case "get_asset_context":
-          result = new GetAssetContextTool().execute(authorizer, securityContext, params);
-          break;
         case "get_persona_context":
           result = new GetPersonaContextTool().execute(authorizer, securityContext, params);
           break;
@@ -97,26 +96,14 @@ public class DefaultToolContext {
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
-        case "get_knowledge_content":
-          result = new GetKnowledgeContentTool().execute(authorizer, securityContext, params);
+        case "company_context":
+          result = new CompanyContextTool().execute(authorizer, securityContext, params);
           break;
-        case "search_company_context":
-          result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
+        case "create_entity":
+          result = new CreateEntityTool().execute(authorizer, limits, securityContext, params);
           break;
-        case "get_company_context":
-          result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
-          break;
-        case "create_context_memory":
-          result =
-              new CreateContextMemoryTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary":
-          tool = new GlossaryTool();
-          result = tool.execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary_term":
-          tool = new GlossaryTermTool();
-          result = tool.execute(authorizer, limits, securityContext, params);
+        case "describe_entity_type":
+          result = new DescribeEntityTypeTool().execute(authorizer, securityContext, params);
           break;
         case "patch_entity":
           tool = new PatchEntityTool();
@@ -137,22 +124,6 @@ public class DefaultToolContext {
           break;
         case "root_cause_analysis":
           result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
-          break;
-        case "create_metric":
-          result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_classification":
-          result =
-              new CreateClassificationTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_tag":
-          result = new CreateTagTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_domain":
-          result = new CreateDomainTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_data_product":
-          result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
           break;
         default:
           return new CallToolOutcome(
@@ -176,7 +147,9 @@ public class DefaultToolContext {
       logToolFailure(toolName, ex, statusCode);
       Map<String, Object> error =
           errorPayload(
-              String.format("Error executing tool: %s", McpResponseTrim.safeMessage(ex)),
+              String.format(
+                  "Error executing tool: %s",
+                  McpResponseTrim.summarizeFailure(ex, isServerFault(statusCode))),
               statusCode);
       return new CallToolOutcome(errorResult(error), elapsedMs(startNanos), classifyException(ex));
     }
@@ -297,6 +270,35 @@ public class DefaultToolContext {
   }
 
   /**
+   * The status the backend already reported, when the exception carries one.
+   *
+   * <p>A search-client {@code ResponseException} embeds {@code status line [HTTP/1.1 400 Bad
+   * Request]} in its message but matches none of the name or message rules below, so it fell through
+   * to the default 500. {@link McpResponseTrim#summarizeFailure} turns a 5xx into "this is a backend
+   * fault, retrying will not help" - so a caller with a malformed {@code queryFilter} was told its
+   * arguments were fine. The reverse fired too: a real 5xx mentioning {@code
+   * index_not_found_exception} matched the "not found" rule and became a 404.
+   *
+   * <p>Believing the reported status settles both. Only 4xx and 5xx are taken; anything else falls
+   * through to the keyword table.
+   */
+  private static CategoryMatcher reportedStatus(String message) {
+    CategoryMatcher matched = null;
+    Matcher status = REPORTED_HTTP_STATUS.matcher(message);
+    if (status.find()) {
+      int code = Integer.parseInt(status.group(1));
+      if (code >= STATUS_BAD_REQUEST) {
+        matched = new CategoryMatcher(meta -> true, categoryForStatus(code), code);
+      }
+    }
+    return matched;
+  }
+
+  /** Matches the {@code status line [HTTP/1.1 400 Bad Request]} a search client embeds in its message. */
+  private static final Pattern REPORTED_HTTP_STATUS =
+      Pattern.compile("status line \\[http/\\d(?:\\.\\d)? (\\d{3})");
+
+  /**
    * Pairing of an exception (name, message) predicate with the telemetry bucket and HTTP status it
    * should produce. Kept as a static table so adding a new category (or extending an existing one
    * with a new keyword) is a one-line change rather than another {@code else if} branch.
@@ -339,7 +341,12 @@ public class DefaultToolContext {
                   meta.name().contains("Validation")
                       || meta.name().contains("IllegalArgument")
                       || meta.name().contains("BadRequest")
-                      || meta.message().contains("invalid argument"),
+                      || meta.message().contains("invalid argument")
+                      // A caller's queryFilter is parsed before the request is sent, so this
+                      // failure carries no reported status and used to default to 500 - reporting
+                      // the caller's own malformed DSL as a backend outage.
+                      || meta.message().contains("json parsing failed")
+                      || meta.message().contains("failed to parse"),
               McpToolCallUsage.ErrorCategory.VALIDATION,
               STATUS_BAD_REQUEST),
           new CategoryMatcher(
@@ -364,10 +371,13 @@ public class DefaultToolContext {
         new ExceptionMeta(
             cursor.getClass().getSimpleName(),
             cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT));
-    return CATEGORY_MATCHERS.stream()
-        .filter(matcher -> matcher.matches().test(meta))
-        .findFirst()
-        .orElse(null);
+    CategoryMatcher reported = reportedStatus(meta.message());
+    return reported != null
+        ? reported
+        : CATEGORY_MATCHERS.stream()
+            .filter(matcher -> matcher.matches().test(meta))
+            .findFirst()
+            .orElse(null);
   }
 
   private static long elapsedMs(long startNanos) {
