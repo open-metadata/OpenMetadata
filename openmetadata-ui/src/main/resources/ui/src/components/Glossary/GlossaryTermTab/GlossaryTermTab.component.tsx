@@ -141,21 +141,6 @@ const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
 
-// childrenCount from the API is the whole subtree size (all descendants), so
-// the loaded count must also be counted recursively — not just direct children
-// — otherwise a multi-level parent never reaches "N of N loaded".
-const countLoadedNestedTerms = (term: ModifiedGlossaryTerm): number => {
-  const loadedChildren = (term.children ?? []).filter(
-    (child) => !(child as ModifiedGlossaryTerm).isLoadMoreButton
-  );
-
-  return loadedChildren.reduce(
-    (sum, child) =>
-      sum + 1 + countLoadedNestedTerms(child as ModifiedGlossaryTerm),
-    0
-  );
-};
-
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -194,6 +179,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       glossaryTerms: terms,
     };
   }, [glossaryChildTerms, findExpandableKeysForArray]);
+
+  // Precompute each term's loaded-descendant count once per data change (the
+  // API's childrenCount is the whole subtree size, so this must be recursive).
+  // The name column looks it up in O(1) rather than re-walking every subtree
+  // on each render.
+  const loadedNestedCountByFqn = useMemo(() => {
+    const counts = new Map<string, number>();
+    const walk = (term: ModifiedGlossaryTerm): number => {
+      const children = (term.children ?? []) as ModifiedGlossaryTerm[];
+      const count = children.reduce((sum, child) => sum + 1 + walk(child), 0);
+      if (term.fullyQualifiedName) {
+        counts.set(term.fullyQualifiedName, count);
+      }
+
+      return count;
+    };
+    glossaryTerms.forEach(walk);
+
+    return counts;
+  }, [glossaryTerms]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -329,7 +334,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const response = await searchGlossaryTermsPaginated({
           q: searchTerm,
           glossaryFqn: activeGlossary?.fullyQualifiedName,
-          limit: PAGE_SIZE_LARGE,
+          // limit must match the pageSize used to compute the offset, else
+          // Previous/Next would skip or repeat results if pageSize changes.
+          limit: pageSize,
           offset: options?.offset ?? 0,
           fields:
             'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
@@ -340,7 +347,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       } else {
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
-          PAGE_SIZE_LARGE,
+          pageSize,
           options?.after,
           entityStatusParam,
           options?.before
@@ -750,7 +757,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
           const name = getEntityName(record);
           const totalNested = record.childrenCount ?? 0;
-          const loadedNested = countLoadedNestedTerms(record);
+          const loadedNested =
+            loadedNestedCountByFqn.get(record.fullyQualifiedName ?? '') ?? 0;
           // Collapsed shows the total ("N terms"); expanded shows load
           // progress ("x of y loaded", reaching "y of y loaded" once done).
           const isRowExpanded = expandedRowKeys.includes(
@@ -1000,6 +1008,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleLoadMoreChildren,
     loadingChildren,
     expandedRowKeys,
+    loadedNestedCountByFqn,
   ]);
 
   const handleCheckboxChange = useCallback(
