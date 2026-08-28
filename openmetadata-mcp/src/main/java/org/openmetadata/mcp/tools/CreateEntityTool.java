@@ -80,8 +80,7 @@ public class CreateEntityTool implements McpTool {
     applyRepositoryDefaults(entity);
     authorizeCreate(authorizer, limits, securityContext, entityType, entity);
     RuleEngine.getInstance().evaluate(entity);
-    RestUtil.PutResponse<EntityInterface> response =
-        persist(authorizer, securityContext, type, entity, userName);
+    RestUtil.PutResponse<EntityInterface> response = persist(type, entity, userName);
 
     Map<String, Object> result =
         McpResponseUtils.compact(response.getEntity(), response.getChangeType());
@@ -90,11 +89,6 @@ public class CreateEntityTool implements McpTool {
     return result;
   }
 
-  /**
-   * CREATE rights first, then the overwrite check once {@code prepareInternal} has resolved the
-   * fully qualified name - {@code createOrUpdate} updates in place when the name is taken, so a
-   * caller holding only create rights must not be able to overwrite somebody else's entity.
-   */
   private static void authorizeCreate(
       Authorizer authorizer,
       Limits limits,
@@ -109,24 +103,14 @@ public class CreateEntityTool implements McpTool {
   }
 
   private static RestUtil.PutResponse<EntityInterface> persist(
-      Authorizer authorizer,
-      CatalogSecurityContext securityContext,
-      EntityCreationSpec type,
-      EntityInterface entity,
-      String userName) {
-    String entityType = type.entityType();
+      EntityCreationSpec type, EntityInterface entity, String userName) {
     EntityRepository<EntityInterface> repository = type.typedRepository();
-    repository.prepareInternal(entity, false);
-    boolean overwritesExisting =
-        CommonUtils.authorizeOverwrite(authorizer, securityContext, entityType, entity);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     RestUtil.PutResponse<EntityInterface> response =
-        overwritesExisting
-            ? repository.createOrUpdate(null, entity, userName, impersonatedBy)
-            : new RestUtil.PutResponse<>(
-                Response.Status.CREATED,
-                repository.create(null, entity, userName, impersonatedBy),
-                EventType.ENTITY_CREATED);
+        new RestUtil.PutResponse<>(
+            Response.Status.CREATED,
+            repository.create(null, entity, userName, impersonatedBy),
+            EventType.ENTITY_CREATED);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
     return response;
   }
