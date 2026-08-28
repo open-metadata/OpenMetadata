@@ -170,7 +170,7 @@ RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 ARG INGESTION_DEPENDENCY="all"
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
-RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.64.0"
 RUN mkdir -p /ingestion/src/metadata/generated
 RUN python /scripts/datamodel_generation.py
@@ -208,6 +208,10 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # The util-linux upgrade rides along in the same root layer. trixie's base ships
 # 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and CVE-2026-27456;
 # trixie-security has 2.41.5-0+deb13u1.
+# openssl follows the same cache boundary. The early apt layer can retain
+# 3.5.6-1~deb13u2, while trixie-security carries the CVE-2026-14457 fix in
+# 3.5.7-1~deb13u2. Querying the source package upgrades openssl, libssl3t64,
+# and libssl-dev together so no scanner-visible binary is left behind.
 # The package set is computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
@@ -226,8 +230,10 @@ USER root
 RUN set -eu; \
     pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
     [ -n "$pkgs" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
+    ossl="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="openssl"{print $2}')"; \
+    [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $pkgs; \
+    apt-get -qq install -y --only-upgrade $pkgs $ossl; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \
