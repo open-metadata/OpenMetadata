@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { ColumnsType, ColumnType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import {
+  ColumnsType,
+  ColumnType,
+} from '../components/common/Table/Table.interface';
 import { TAG_LIST_SIZE } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityType } from '../enums/entity.enum';

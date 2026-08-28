@@ -81,7 +81,9 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[role="dialog"].ant-modal').waitFor();
 
-  const deleteResponse = page.waitForResponse('/api/v1/feed/*/posts/*');
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/conversations/*/replies/*'
+  );
 
   await page.getByTestId('save-button').click();
 
@@ -90,7 +92,7 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
 /**
  * Reactions are served by two different endpoints depending on what the card is:
- * legacy conversation threads use `/api/v1/feed/{id}`, activity events use
+ * conversations use `/api/v1/conversations/{id}`, activity events use
  * `PUT /api/v1/activity/{id}/reaction/{type}`. Matching only the feed one made
  * `reactOnFeed` hang for 60s against the landing-page widget, which renders
  * activity events.
@@ -99,6 +101,7 @@ export const waitForReactionResponse = (page: Page, reaction: string) =>
   page.waitForResponse(
     (response) =>
       (response.url().includes('/api/v1/activity') ||
+        response.url().includes('/api/v1/conversations') ||
         response.url().includes('/api/v1/feed')) &&
       response.url().includes(`/reaction/${reaction}`) &&
       response.ok()
@@ -146,9 +149,7 @@ export const addMentionCommentInFeed = async (
   isReply = false
 ) => {
   if (!isReply) {
-    const fetchFeedResponse = page.waitForResponse(
-      '/api/v1/feed?type=Conversation*'
-    );
+    const fetchFeedResponse = page.waitForResponse('/api/v1/conversations*');
     await fetchFeedResponse;
   }
 
@@ -191,7 +192,7 @@ export const addMentionCommentInFeed = async (
     .waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        /\/api\/v1\/feed\/[^/]+\/posts(?:\?|$)/.test(response.url()),
+        /\/api\/v1\/conversations\/[^/]+\/replies(?:\?|$)/.test(response.url()),
       { timeout: 5000 }
     )
     .catch(() => null);
@@ -239,9 +240,8 @@ export const reactOnActivity = async (
     // Activity API uses /api/v1/activity/*/reaction/* endpoint
     const waitForReactionResponse = page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/activity') &&
-          response.url().includes('/reaction')) ||
-        response.url().includes('/api/v1/feed')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/reaction')
     );
 
     await page
@@ -276,4 +276,27 @@ export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
   ]).catch(() => {
     // Neither appeared within timeout, which may be acceptable
   });
+};
+/**
+ * Post a comment on an activity event
+ */
+export const postActivityComment = async (page: Page, commentText: string) => {
+  const commentInput = page.locator('[data-testid="comments-input-field"]');
+
+  await expect(commentInput).toBeVisible();
+  await commentInput.click();
+
+  const editorField = page.locator('[data-testid="editor-wrapper"] .ql-editor');
+  await editorField.fill(commentText);
+
+  const sendButton = page.getByTestId('send-button');
+
+  await expect(sendButton).toBeEnabled();
+
+  const postResponse = page.waitForResponse('/api/v1/activity/*/replies');
+  await sendButton.click();
+  await postResponse;
+
+  // Verify comment appears
+  await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
 };

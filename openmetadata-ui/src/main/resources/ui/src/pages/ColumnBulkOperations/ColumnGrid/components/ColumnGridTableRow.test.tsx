@@ -15,6 +15,15 @@ import React from 'react';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 import { ColumnGridTableRow } from './ColumnGridTableRow';
 
+const ROW_TEST_ID = 'column-row-test_col';
+const CELL_TEXT = {
+  columnName: 'name',
+  path: 'path',
+  description: 'desc',
+  tags: 'tags',
+  glossaryTerms: 'glossary',
+};
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Table: {
     Row: ({
@@ -45,7 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('../../../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <span data-testid="loader">loader</span>)
+  jest.fn().mockImplementation(() => <span data-testid="loader" />)
 );
 
 const mockEntity = {
@@ -63,39 +72,43 @@ const mockTableColumns = [
   { id: 'glossaryTerms' },
 ];
 
-const renderProps = {
-  renderColumnNameCell: jest.fn(() => <span>name</span>),
-  renderPathCell: jest.fn(() => <span>path</span>),
-  renderDescriptionCell: jest.fn(() => <span>desc</span>),
-  renderTagsCell: jest.fn(() => <span>tags</span>),
-  renderGlossaryTermsCell: jest.fn(() => <span>glossary</span>),
-};
+const cellSlots = [
+  <ColumnGridTableRow.Cell columnId="columnName" key="columnName">
+    <span>{CELL_TEXT.columnName}</span>
+  </ColumnGridTableRow.Cell>,
+  <ColumnGridTableRow.Cell columnId="path" key="path">
+    <span>{CELL_TEXT.path}</span>
+  </ColumnGridTableRow.Cell>,
+  <ColumnGridTableRow.Cell columnId="description" key="description">
+    <span>{CELL_TEXT.description}</span>
+  </ColumnGridTableRow.Cell>,
+  <ColumnGridTableRow.Cell columnId="tags" key="tags">
+    <span>{CELL_TEXT.tags}</span>
+  </ColumnGridTableRow.Cell>,
+  <ColumnGridTableRow.Cell columnId="glossaryTerms" key="glossaryTerms">
+    <span>{CELL_TEXT.glossaryTerms}</span>
+  </ColumnGridTableRow.Cell>,
+];
 
 describe('ColumnGridTableRow', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('renders the row and delegates each cell to its render adapter', () => {
+  it('places each supplied cell slot in its matching column', () => {
     render(
       <ColumnGridTableRow
         entity={mockEntity}
         isSelected={false}
-        tableColumns={mockTableColumns}
-        {...renderProps}
-      />
+        tableColumns={mockTableColumns}>
+        {cellSlots}
+      </ColumnGridTableRow>
     );
 
-    expect(screen.getByTestId('column-row-test_col')).toBeInTheDocument();
+    expect(screen.getByTestId(ROW_TEST_ID)).toBeInTheDocument();
     expect(screen.getByTestId('column-name-cell')).toBeInTheDocument();
     expect(screen.getByTestId('column-description-cell')).toBeInTheDocument();
-    expect(renderProps.renderColumnNameCell).toHaveBeenCalledWith(mockEntity);
-    expect(renderProps.renderDescriptionCell).toHaveBeenCalledWith(mockEntity);
-    expect(renderProps.renderTagsCell).toHaveBeenCalledWith(mockEntity);
-    expect(renderProps.renderGlossaryTermsCell).toHaveBeenCalledWith(
-      mockEntity
-    );
-    // dataType is rendered from the entity directly, not via an adapter.
+    expect(screen.getByText(CELL_TEXT.columnName)).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.description)).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.tags)).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.glossaryTerms)).toBeInTheDocument();
+    // dataType is rendered from the entity directly, not via a cell slot.
     expect(screen.getByText('VARCHAR')).toBeInTheDocument();
   });
 
@@ -105,9 +118,11 @@ describe('ColumnGridTableRow', () => {
         isPendingRefetch
         entity={mockEntity}
         isSelected={false}
-        tableColumns={[{ id: 'columnName' }]}
-        {...renderProps}
-      />
+        tableColumns={[{ id: 'columnName' }]}>
+        <ColumnGridTableRow.Cell columnId="columnName">
+          <span>{CELL_TEXT.columnName}</span>
+        </ColumnGridTableRow.Cell>
+      </ColumnGridTableRow>
     );
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
@@ -118,12 +133,12 @@ describe('ColumnGridTableRow', () => {
       <ColumnGridTableRow
         entity={mockEntity}
         isSelected={false}
-        tableColumns={mockTableColumns}
-        {...renderProps}
-      />
+        tableColumns={mockTableColumns}>
+        {cellSlots}
+      </ColumnGridTableRow>
     );
 
-    expect(screen.getByTestId('column-row-test_col')).toHaveAttribute(
+    expect(screen.getByTestId(ROW_TEST_ID)).toHaveAttribute(
       'data-row-type',
       'parent'
     );
@@ -133,12 +148,12 @@ describe('ColumnGridTableRow', () => {
         showParentChildColors
         entity={{ ...mockEntity, parentId: 'p1' } as ColumnGridRowData}
         isSelected={false}
-        tableColumns={mockTableColumns}
-        {...renderProps}
-      />
+        tableColumns={mockTableColumns}>
+        {cellSlots}
+      </ColumnGridTableRow>
     );
 
-    expect(screen.getByTestId('column-row-test_col')).toHaveAttribute(
+    expect(screen.getByTestId(ROW_TEST_ID)).toHaveAttribute(
       'data-row-type',
       'child'
     );

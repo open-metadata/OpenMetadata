@@ -21,7 +21,6 @@ import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-gi
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 import {
   BLACK_COLOR,
-  ROUTES,
   STAR_OMD_USER,
   TWO_MINUTE_IN_MILLISECOND,
   VERSION,
@@ -30,6 +29,7 @@ import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getRepositoryData } from '../../../rest/commonAPI';
+import { isLandingPagePath } from '../../../utils/RouterUtils';
 import { getVersionedStorageKey } from '../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import './github-star-card.style.less';
@@ -57,7 +57,7 @@ const GithubStarCard = () => {
   );
 
   const isHomePage = useMemo(
-    () => location.pathname.includes(ROUTES.MY_DATA),
+    () => isLandingPagePath(location.pathname),
     [location.pathname]
   );
 

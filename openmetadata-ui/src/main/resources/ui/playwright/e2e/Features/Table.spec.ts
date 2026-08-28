@@ -23,7 +23,6 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
-  escapeESReservedCharacters,
   getFirstRowColumnLink,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
@@ -111,9 +110,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       return (
         responseUrl.pathname.includes(
           '/api/v1/dataQuality/testCases/search/list'
-        ) &&
-        (responseUrl.searchParams.get('q') ?? '') ===
-          `*${escapeESReservedCharacters(searchTerm)}*`
+        ) && (responseUrl.searchParams.get('q') ?? '') === searchTerm
       );
     });
 
@@ -176,10 +173,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       return (
         responseUrl.pathname.includes(
           '/api/v1/dataQuality/testCases/search/list'
-        ) &&
-        (responseUrl.searchParams.get('q') ?? '').includes(
-          escapeESReservedCharacters(noMatchSearch)
-        )
+        ) && (responseUrl.searchParams.get('q') ?? '').includes(noMatchSearch)
       );
     });
     await page.locator('[data-testid="searchbar-component"] input').click();
@@ -612,9 +606,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
+    const saveTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('saveAssociatedTag').click();
-
-    await page.waitForResponse('api/v1/columns/name/*');
+    await saveTagResponse;
 
     await expect(
       page
@@ -661,9 +655,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
+    const removeTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('saveAssociatedTag').click();
-
-    await page.waitForResponse('api/v1/columns/name/*');
+    await removeTagResponse;
 
     await expect(
       page

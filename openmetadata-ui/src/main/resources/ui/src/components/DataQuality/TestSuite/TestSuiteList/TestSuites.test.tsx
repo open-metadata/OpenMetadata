@@ -110,7 +110,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
   }>) => {
-    const value = { sortDescriptor, onSortChange };
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
 
     return (
       <SortContext.Provider value={value}>
@@ -489,7 +492,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
