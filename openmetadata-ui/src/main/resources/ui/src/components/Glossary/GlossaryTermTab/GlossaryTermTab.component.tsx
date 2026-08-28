@@ -104,7 +104,6 @@ import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
-  findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryPureUtils';
@@ -230,23 +229,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     Record<string, Task[]>
   >({});
 
-  const { glossaryTerms, expandableKeys } = useMemo(() => {
+  const glossaryTerms = useMemo(() => {
     // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
     // duplicate keys make the underlying collection unrepresentable (it throws
     // "Invalid array length" while building rows). Guard here so no write path
     // can ever hand the table colliding keys.
-    const terms = uniqBy(
+    return uniqBy(
       Array.isArray(glossaryChildTerms)
         ? (glossaryChildTerms as ModifiedGlossaryTerm[])
         : [],
       'fullyQualifiedName'
     );
-
-    return {
-      expandableKeys: findExpandableKeysForArray(terms),
-      glossaryTerms: terms,
-    };
-  }, [glossaryChildTerms, findExpandableKeysForArray]);
+  }, [glossaryChildTerms]);
 
   // Precompute each term's loaded-descendant count once per data change (the
   // API's childrenCount is the whole subtree size, so this must be recursive).
@@ -1126,10 +1120,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const toggleExpandAll = useCallback(async () => {
-    setToggleExpandBtn((prev) => !prev);
-    if (expandedRowKeys.length === expandableKeys.length) {
+    // Drive the action off the expand-all mode flag, not a row-count equality:
+    // a partially loaded tree (only the first page of nested terms) never has
+    // every expandable row expanded, so a row-count check would wrongly treat
+    // a second click as another expand and reset the accumulated pages.
+    if (toggleExpandBtn) {
       // Collapse all - reload the first page of top-level terms and clear the
       // accumulated expand-all tree state so a later expand starts clean.
+      setToggleExpandBtn(false);
       setExpandedRowKeys([]);
       setCurrentPage(1);
       setExpandTree({ loaded: 0, total: 0 });
@@ -1141,6 +1139,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }));
       fetchAllTerms();
     } else {
+      // Enter expand-all mode explicitly so the "load more" bar stays visible
+      // through subsequent renders (e.g. after a manual row collapse).
+      setToggleExpandBtn(true);
       fetchExpadedTree();
     }
   }, [
@@ -1149,16 +1150,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setGlossaryChildTerms,
     loadingChildren,
     setLoadingChildren,
-    expandedRowKeys,
-    expandableKeys,
+    toggleExpandBtn,
     setExpandedRowKeys,
     showErrorToast,
     selectedStatus,
   ]);
-
-  const isAllExpanded = useMemo(() => {
-    return expandedRowKeys.length === expandableKeys.length;
-  }, [expandedRowKeys, expandableKeys]);
 
   const statusDropdownMenu: MenuProps = useMemo(
     () => ({
@@ -1246,7 +1242,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     if (isExpandingAll) {
       expandCollapseLabel = t('label.loading');
-    } else if (isAllExpanded) {
+    } else if (toggleExpandBtn) {
       expandCollapseLabel = t('label.collapse-all');
     } else {
       expandCollapseLabel = t('label.expand-all');
@@ -1299,7 +1295,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               ) : (
                 <Icon
                   className="text-primary"
-                  component={isAllExpanded ? DownUpArrowIcon : UpDownArrowIcon}
+                  component={
+                    toggleExpandBtn ? DownUpArrowIcon : UpDownArrowIcon
+                  }
                   height="14px"
                 />
               )}
@@ -1310,7 +1308,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       </>
     );
   }, [
-    isAllExpanded,
+    toggleExpandBtn,
     isExpandingAll,
     isStatusDropdownVisible,
     statusDropdownMenu,

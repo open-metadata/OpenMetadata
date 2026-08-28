@@ -95,6 +95,36 @@ describe('Glossary Utils', () => {
     );
   });
 
+  it('should hold back a nested term whose parent term is absent instead of promoting it to a root', () => {
+    // Progressive expand-all paginates all levels by name, so a descendant can
+    // arrive on an earlier page than its parent term. Such an orphan must be
+    // held back (not rendered as a spurious root) and attach once its parent's
+    // page loads.
+    const orphanChild = {
+      fullyQualifiedName: 'G.Parent.Child',
+      name: 'Child',
+      parent: { fullyQualifiedName: 'G.Parent', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+    const topLevel = {
+      fullyQualifiedName: 'G.Top',
+      name: 'Top',
+    } as unknown as GlossaryTerm;
+    const parentTerm = {
+      fullyQualifiedName: 'G.Parent',
+      name: 'Parent',
+      children: [],
+    } as unknown as GlossaryTerm;
+
+    // Parent not yet loaded: only the genuine root is returned.
+    expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
+
+    // Parent loaded on a later page: the child attaches beneath it.
+    expect(buildTree([orphanChild, topLevel, parentTerm])).toEqual([
+      topLevel,
+      { ...parentTerm, children: [{ ...orphanChild, type: 'glossaryTerm' }] },
+    ]);
+  });
+
   it('should return an empty array if no glossary term is provided', () => {
     const expandableKeys = findExpandableKeys();
 
@@ -409,12 +439,12 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      description: 350,
+      description: 420,
       name: 250,
-      owners: 280,
-      reviewers: 220,
+      owners: 220,
+      reviewers: 200,
       status: 150,
-      synonyms: 220,
+      synonyms: 200,
     });
   });
 

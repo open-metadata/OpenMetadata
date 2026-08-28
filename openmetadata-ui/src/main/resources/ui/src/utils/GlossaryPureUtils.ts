@@ -41,11 +41,24 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const tree: GlossaryTerm[] = [];
   data.forEach((obj) => {
     const current = nodes[obj.fullyQualifiedName ?? ''];
-    const parent = nodes[obj.parent?.fullyQualifiedName ?? ''];
+    const parentFqn = obj.parent?.fullyQualifiedName;
+    const parentNode = parentFqn ? nodes[parentFqn] : undefined;
 
-    if (parent?.children) {
-      parent.children.push({ ...current, type: 'glossaryTerm' });
-    } else {
+    if (parentNode) {
+      (parentNode.children ??= []).push({ ...current, type: 'glossaryTerm' });
+
+      return;
+    }
+
+    // A term that references a parent glossary term which is absent from this
+    // data set is an orphan of a not-yet-loaded page (progressive expand-all
+    // paginates all levels by name, so a descendant can arrive before its
+    // parent). Hold it back instead of promoting it to a spurious root and
+    // corrupting the hierarchy; it attaches once its parent's page loads.
+    const isOrphanOfUnloadedParent =
+      Boolean(parentFqn) && obj.parent?.type === EntityType.GLOSSARY_TERM;
+
+    if (!isOrphanOfUnloadedParent) {
       tree.push(current);
     }
   });
