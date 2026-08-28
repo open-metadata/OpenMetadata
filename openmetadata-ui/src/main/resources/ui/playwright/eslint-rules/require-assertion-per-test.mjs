@@ -19,10 +19,7 @@ const isTestCall = (node) =>
     node.callee.property.type === 'Identifier' &&
     ['only', 'fixme'].includes(node.callee.property.name));
 
-// Unwinds a (possibly chained) call/member expression back to its root node
-// — e.g. `page.getByTestId('x').click()` -> the `page` Identifier — by
-// alternating between "step out of a member access" and "step out of a
-// call" until neither applies.
+// `page.getByTestId('x').click()` -> the `page` Identifier.
 const unwindToRoot = (node) => {
   let current = node;
 
@@ -39,10 +36,8 @@ const unwindToRoot = (node) => {
   return current;
 };
 
-// The identifiers a test body is allowed to call without losing its
-// "provably does nothing but interact" status: the Playwright fixtures it
-// destructures (`page`, `adminPage`, `context`, ...), plus the conventional
-// `page` name as a safety net for callbacks that don't destructure at all.
+// Fixtures the callback destructures, plus `page` as a fallback for callbacks
+// that don't destructure at all.
 const getFixtureNames = (body) => {
   const names = new Set(['page']);
   const [param] = body.params;
@@ -73,15 +68,10 @@ const rule = {
   },
 
   create(context) {
-    // Every CallExpression in the file, collected during the single
-    // traversal below, so `Program:exit` can ask "which calls fall inside
-    // this test's body?" by range instead of re-walking each body by hand.
     const allCalls = [];
     const testCalls = [];
-    // Ranges of every real `expect` identifier in the file. An AST walk, not a
-    // source-text scan: `\bexpect\b` also matched the word inside comments and
-    // string literals, so `// we expect the click to work` or a URL containing
-    // "expect" silently exempted an assertion-free test.
+    // An AST walk, not a source-text scan: `\bexpect\b` also matched the word
+    // in comments and strings, silently exempting assertion-free tests.
     const expectRanges = [];
 
     return {
@@ -113,9 +103,8 @@ const rule = {
 
           const [bodyStart, bodyEnd] = body.range;
 
-          // Any `expect` *identifier* inside the body counts, not just a
-          // call: `await verifyRow(page, expect)` delegates the assertion by
-          // reference, and flagging that would be a false positive.
+          // An `expect` identifier counts, not just a call: `verifyRow(page,
+          // expect)` delegates the assertion by reference.
           const hasExpectReference = expectRanges.some(
             ([start, end]) => start >= bodyStart && end <= bodyEnd
           );
@@ -124,19 +113,12 @@ const rule = {
             continue;
           }
 
-          // Beyond the expect check, this rule can only flag a test when it is
-          // PROVABLY assertion-free: no `expect` reference anywhere, AND
-          // every call in the body stays on a Playwright page/locator
-          // fixture chain (`page.getByTestId(...).click()`). Any call to an
-          // imported function or a page-object method
-          // (`entity.descriptionUpdate(page)`, `addUser(...)`,
-          // `verifyAuthenticated(...)`) may assert internally, and proving
-          // otherwise would need interprocedural analysis this rule doesn't
-          // do — so such a call exempts the whole test. Under-reporting is
-          // the deliberate, correct bias for a rule wired to block CI: a
-          // missed truly-empty test costs nothing but a moment's
-          // inattention, while a wrongly flagged delegating test costs a
-          // developer's time proving a false alarm.
+          // Flag only when PROVABLY assertion-free: every call must stay on a
+          // page/locator fixture chain. A call to a helper or page-object
+          // method may assert internally, and proving otherwise needs
+          // interprocedural analysis this rule doesn't do, so it exempts the
+          // test. Under-reporting is the deliberate bias for a CI-blocking
+          // rule — a false alarm costs more than a missed empty test.
           const fixtureNames = getFixtureNames(body);
           const nestedCalls = allCalls.filter((call) => {
             const [callStart, callEnd] = call.range;
@@ -145,15 +127,10 @@ const rule = {
               call !== node && callStart >= bodyStart && callEnd <= bodyEnd
             );
           });
-          // `test.slow()`, `test.setTimeout()`, `test.step()`, and their
-          // siblings are transparent, not exempting: they can't assert, so
-          // they don't count toward "does something other than interact
-          // with the page." A `test.step` callback is inline and fully
-          // visible in the same body — unlike a delegated helper there's no
-          // interprocedural barrier — so its own calls are already
-          // collected above and checked on their own merits; treating the
-          // `test.step(...)` call itself as transparent doesn't lose that
-          // coverage.
+          // `test.*` calls are transparent, not exempting: they can't assert.
+          // A `test.step` callback is inline, so its own calls are collected
+          // above and judged on their merits — treating the `test.step(...)`
+          // call itself as transparent loses no coverage.
           const isTestNamespaceCall = (call) => {
             const root = unwindToRoot(call.callee);
 

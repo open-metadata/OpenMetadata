@@ -277,13 +277,11 @@ jobs:
           files_ignore: |
             playwright/test-data/**
           # `files` is a literal block scalar — every line is a glob, so this
-          # note has to live outside it. The guardrail step also runs the
-          # generated-rule-table drift check and the rule unit tests, so
-          # anything those read must trigger it; otherwise the drift guard
-          # never runs for the files that cause drift. The handbook holds the
-          # generated table, eslint-rules/ and the plugin under playwright/
-          # supply the descriptions it is generated from, the generator decides
-          # its shape, and package.json defines the commands the step invokes.
+          # note lives outside it. The guardrail step also runs the rule-table
+          # drift check and the rule unit tests, so everything those read must
+          # trigger it, or the drift guard never runs for the files causing
+          # drift: the handbook, eslint-rules/, the plugin, the generator, and
+          # package.json.
           files: |
             playwright/**/*.{ts,tsx,js,jsx}
             playwright/**/*.md
@@ -306,34 +304,25 @@ jobs:
             exit 0
           fi
 
-          # The guardrail checks run here, before --fix/--write, so they judge
-          # what the contributor actually wrote. Deliberately part of this step
-          # rather than its own: every `run:` executing PR-authored code in this
-          # pull_request_target job is a CodeQL "poisonable step", and a separate
-          # step would add one more for no gain in isolation — it would run the
-          # same commands with the same privileges against the same checkout.
+          # Runs before --fix/--write so it judges what the contributor wrote.
+          # Kept in this step rather than its own: every `run:` in this
+          # pull_request_target job is a CodeQL "poisonable step", and a
+          # separate one would add another with no isolation gain.
           #
-          # Guard against directives that bypass the entire guardrail system.
-          # A bare `eslint-disable` (no rule list) disables all 18 rules, and
-          # disabling om-playwright/justified-rule-disable itself removes the
-          # justification requirement for every other rule — after which any
-          # rule can be disabled unjustified. Neither can be caught by
-          # justified-rule-disable.js itself: ESLint filters a rule's own
-          # reports on lines its own disable comment covers, so a rule cannot
-          # police a directive that disables the rule.
+          # A bare `eslint-disable` (empty rule list) disables all 18 rules,
+          # and disabling justified-rule-disable itself drops the justification
+          # requirement for every other rule. Neither can be caught by that
+          # rule: ESLint filters a rule's own reports on lines its own disable
+          # comment covers, so a rule cannot police a directive disabling it.
           #
-          # The pattern matches a directive with an EMPTY rule list, which is
-          # what disables everything — including the justified forms
-          # `/* eslint-disable -- why */` and `// eslint-disable-line -- why`,
-          # where the justification is not a rule name and the directive still
-          # silences all 18 rules. A directive that names a rule is left alone.
+          # Matches the empty-rule-list forms only — including justified ones
+          # like `/* eslint-disable -- why */`, where the justification is not
+          # a rule name and all 18 rules still go quiet. Named rules are fine.
           #
-          # The exclusion is a path filter, not --exclude-dir: grep matches
-          # --exclude-dir against a basename at any depth, so a spec parked in
-          # playwright/e2e/**/eslint-rules/ would be linted by eslint.config.mjs
-          # (which only ignores the adjacent playwright/eslint-rules/) yet
-          # skipped here. Only the real plugin directory is exempt, and only
-          # because its own source and RuleTester fixtures quote these strings.
+          # A path filter, not --exclude-dir: grep matches --exclude-dir on a
+          # basename at any depth, so a spec under playwright/e2e/**/eslint-rules/
+          # would be linted by eslint.config.mjs yet skipped here. Only the real
+          # plugin dir is exempt, since its fixtures quote these strings.
           MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?[[:space:]]*(\*/|--|$)|eslint-disable.*om-playwright/justified-rule-disable' \
                playwright/ --include='*.ts' --include='*.tsx' \
                | grep -v '^playwright/eslint-rules/' || true)
@@ -346,14 +335,11 @@ jobs:
             exit 1
           fi
 
-          # Full corpus, not changed-files-only, and the non-pruning variant
-          # (lint:playwright, not lint:playwright:suppressions):
-          # --prune-suppressions would silently rewrite eslint-suppressions.json
-          # to drop stale entries and exit 0, so a fixed violation would never
-          # fail CI. Without pruning, a stale (now-unused) suppression entry
-          # exits non-zero, forcing the fix to be recorded by committing a
-          # pruned eslint-suppressions.json — that's what makes the baseline
-          # ratchet down instead of just never growing.
+          # Full corpus, and the non-pruning variant: --prune-suppressions
+          # rewrites eslint-suppressions.json and exits 0, so a fixed violation
+          # would never fail CI. Without it, a stale entry exits non-zero,
+          # forcing the pruned file to be committed — which is what makes the
+          # baseline ratchet down rather than merely never grow.
           if { yarn test:eslint-rules && \
                yarn lint:playwright && \
                node scripts/generate-playwright-rule-table.mjs --check; } > /tmp/pw-guardrails.out 2>&1; then
@@ -363,9 +349,8 @@ jobs:
           fi
           if [ "$RESULT" -ne 0 ]; then
             cat /tmp/pw-guardrails.out
-            # `|| true`: under GitHub's default `bash -eo pipefail`, a `grep` that
-            # matches nothing exits 1 and would abort the script here, skipping
-            # the GITHUB_OUTPUT writes below and leaving the PR comment blank.
+            # `|| true`: under `bash -eo pipefail` a grep matching nothing exits
+            # 1, aborting before the GITHUB_OUTPUT writes below.
             OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30) || true
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
             echo "$OUT" >> "$GITHUB_OUTPUT"
@@ -374,16 +359,11 @@ jobs:
           fi
 
           # organize-imports resolves each argument against the TypeScript
-          # project and aborts with "Could not find source file" on anything
-          # that is not in it — so a .json in the list kills the whole step.
-          # The trigger above deliberately includes eslint-suppressions.json,
-          # package.json and the handbook .md, because a change to any of them
-          # must run the guardrails. That makes the crash certain rather than
-          # likely: a PR push lists only what that push touched, but the merge
-          # queue lists everything the PR changes against main — always
-          # including the suppressions file. Filter here, as the src step
-          # does. eslint and prettier handle JSON and Markdown fine, so they
-          # keep the full list.
+          # project and aborts on anything outside it, so a .json kills the
+          # step. The trigger deliberately includes eslint-suppressions.json,
+          # which the merge queue always lists (it diffs the whole PR against
+          # main), making the crash certain there. eslint and prettier handle
+          # JSON and Markdown fine, so they keep the full list.
           TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx)$/ { printf "%s ", $0 }')
           if [ -n "$TS_FILES" ]; then
             yarn organize-imports:cli $TS_FILES

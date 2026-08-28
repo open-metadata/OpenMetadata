@@ -31,19 +31,14 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     }
   }
 
-  // The ratchet's recorded state, per rule. Exact equality rather than a
-  // ceiling, deliberately: a `total <= CEILING` bound accumulates headroom as
-  // the burn-down PRs land. Drop the total to 200 against a 1,520 bound and
-  // 1,320 units of free space open up, into which a new violation can be
-  // suppressed with CI fully green — and nothing recomputes the bound.
-  //
-  // Lower a number when you fix violations, and commit the pruned
-  // eslint-suppressions.json in the same change. Raising one is almost always
-  // wrong: a new violation should be fixed, not suppressed. Either direction
-  // is now an explicit edit here that a reviewer sees.
+  // Exact equality, not a ceiling: a `total <= CEILING` bound accumulates
+  // headroom as burn-down PRs land, and that slack absorbs new suppressions
+  // with CI green. Lower a number when you fix violations and commit the
+  // pruned eslint-suppressions.json with it; raising one is almost always
+  // wrong. Either direction is an explicit edit a reviewer sees.
   //
   // Known gap: counts are per file+rule, so swapping one violation for another
-  // of the same rule in the same file stays invisible to this check.
+  // of the same rule in the same file stays invisible here.
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 12,
     'om-playwright/no-blanket-test-slow': 83,

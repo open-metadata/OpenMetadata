@@ -37,13 +37,10 @@ const buildTable = async () => {
   // the rest of scripts/*.js.
   const { default: config } = await import('../eslint.config.mjs');
 
-  // Rule descriptions live in three plugins depending on the prefix:
-  // `playwright/*` ships from the upstream eslint-plugin-playwright package,
-  // `om-playwright/*` is the guardrail plugin under playwright/eslint-rules,
-  // and `openmetadata-playwright/*` is the repo-wide plugin in eslint-rules/.
-  // All three must be collected, or a rule can exist in the linter while the
-  // generated table silently omits it — the drift this generator exists to
-  // prevent, in the other direction.
+  // Descriptions come from three plugins by prefix: `playwright/*` (upstream),
+  // `om-playwright/*` (playwright/eslint-rules), `openmetadata-playwright/*`
+  // (eslint-rules/). Collect all three, or a rule can exist in the linter
+  // while the table silently omits it — the same drift, in reverse.
   const { default: upstream } = await import('eslint-plugin-playwright');
   const { default: local } = await import(
     '../playwright/eslint-rules/index.mjs'

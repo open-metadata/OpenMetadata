@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-// Hooks/modifiers Playwright recognizes as a single member-expression suffix
-// on a test object, e.g. `test.beforeEach`, `test.only`, `test.step`.
 const BLANKET_HOOK_NAMES = new Set(['beforeEach']);
 const OWN_SLOT_HOOK_NAMES = new Set(['beforeAll', 'afterAll', 'afterEach']);
 const PER_TEST_MODIFIER_NAMES = new Set([
@@ -78,15 +76,10 @@ const collectDescribeAlias = (node, describeAliasNames) => {
   }
 };
 
-// A test object is whatever identifier is actually used as one in this file
-// — normally `test`, but suites alias it (`const base = test.extend(...)`
-// as `base`, `testPersona`, etc). The cheapest reliable signal that an
-// identifier is a test object: it's used as `X.describe(...)`, or called
-// directly as `X('name', fn)`. `test` is seeded unconditionally so a file
-// that only ever calls `test.slow()` (no `test(...)`/`test.describe(...)`
-// call in scope, e.g. an isolated snippet) still resolves. Signals are
-// collected here and resolved into `testObjectIdentifiers` in `Program:exit`
-// (see below), once `describeAliasNames` has been fully populated too.
+// Suites alias the test object (`const base = test.extend(...)`), so identify
+// it by use: `X.describe(...)` or a direct `X('name', fn)` call. `test` is
+// seeded unconditionally so a file that only calls `test.slow()` still
+// resolves.
 const collectTestObjectSignal = (node, signals) => {
   const info = getCalleeInfo(node.callee);
 
@@ -198,11 +191,8 @@ const rule = {
   },
 
   create(context) {
-    // Identifier resolution needs the whole file, so candidate `.slow()`
-    // calls and test-object signals are collected during the single
-    // traversal and resolved/classified in `Program:exit`, once every
-    // `describe`/test-invocation alias and describe-function alias in the
-    // file has been seen (declaration order shouldn't matter).
+    // Resolution is deferred to `Program:exit` so declaration order doesn't
+    // matter — every alias in the file must be seen first.
     const testObjectIdentifiers = new Set(['test']);
     const describeAliasNames = new Set();
     const testObjectSignals = [];
@@ -221,9 +211,8 @@ const rule = {
       },
       'Program:exit'() {
         for (const signal of testObjectSignals) {
-          // A variable bound to `test.describe` itself, called directly,
-          // looks identical to a per-test invocation (`X('name', fn)`) —
-          // exclude it so it isn't promoted to a full test-object identity.
+          // A `test.describe` alias called directly is indistinguishable from
+          // a per-test invocation; see collectDescribeAlias above.
           if (
             signal.type === 'directCall' &&
             describeAliasNames.has(signal.name)

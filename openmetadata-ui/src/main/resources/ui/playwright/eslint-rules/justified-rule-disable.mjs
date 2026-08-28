@@ -11,14 +11,11 @@
  *  limitations under the License.
  */
 
-// Anchored to the full (trimmed) comment body, mirroring how ESLint itself
-// recognizes a directive comment: the comment must consist of nothing but
-// the directive, optionally followed by a rule list and/or ` -- <why>`. This
-// is what stops the rule from misreading prose that merely *mentions*
-// "eslint-disable" (e.g. this file's own doc comments) as a real directive.
-// The rule list is optional in the grammar itself: `/* eslint-disable */`
-// and `// eslint-disable-next-line` (no rule names) are both valid ESLint
-// directives that disable every active rule file-wide or line-wide.
+// Anchored to the full trimmed comment body, as ESLint itself recognizes a
+// directive: nothing but the directive, optionally a rule list and/or
+// ` -- <why>`. Anchoring stops prose that merely mentions "eslint-disable"
+// (this file's own doc comments) from being read as a directive. The rule
+// list is optional in the grammar — a bare directive disables everything.
 const DISABLE_DIRECTIVE =
   /^eslint-disable(?:-next-line|-line)?(?:\s+([^\n]*))?$/;
 const TARGET_RULE = /\b(?:om-)?playwright\//;
@@ -49,10 +46,9 @@ const rule = {
             continue;
           }
 
-          // `--` separates the rule list from the justification text per
-          // ESLint's own directive grammar; a rule list of `''` (nothing
-          // before `--`, or nothing at all) means every rule is disabled,
-          // regardless of whether a justification follows.
+          // Per ESLint's grammar `--` separates the rule list from the
+          // justification; an empty rule list disables every rule, justified
+          // or not.
           const raw = match[1] || '';
           const dashIndex = raw.indexOf('--');
           const ruleList = (
