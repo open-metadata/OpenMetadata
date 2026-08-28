@@ -235,9 +235,9 @@ import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -977,6 +977,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
       parent = null;
     }
     return parent;
+  }
+
+  /**
+   * Batch-resolve EntityReferences by id for the bulk field fetchers.
+   *
+   * <p>Fails fast on an id that cannot be resolved, preserving the contract of the per-record
+   * {@link Entity#getEntityReferenceById} calls this replaced. The batch query underneath
+   * ({@code findReferencesByIds}) is a plain {@code WHERE id IN (...)}, so it silently omits ids it
+   * cannot find; without this check an orphaned relationship row would change from failing the
+   * request to silently dropping the reference.
+   */
+  protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
+    List<UUID> distinctIds = ids.stream().distinct().toList();
+    Map<UUID, EntityReference> refsById = new HashMap<>();
+    if (!distinctIds.isEmpty()) {
+      for (EntityReference ref :
+          Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
+        refsById.put(ref.getId(), ref);
+      }
+      for (UUID id : distinctIds) {
+        if (!refsById.containsKey(id)) {
+          throw EntityNotFoundException.byMessage(
+              CatalogExceptionMessage.entityNotFound(entityType, id));
+        }
+      }
+    }
+    return refsById;
   }
 
   /**
@@ -3453,13 +3480,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Invalidate cache entries for an entity identified by an {@link
-   * CollectionDAO.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
+   * CoreRelationshipDAOs.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
    * JSON payload (when present) so the by-name cache variant is evicted alongside the by-id one.
    * Callers that only have {@code (type, id)} and pass {@code fqn=null} leave GET-by-name entries
    * stale until TTL expiry — use this when the referenced entity's FQN needs to be invalidated too.
    */
   public static void invalidateCacheForReferencedEntity(
-      CollectionDAO.EntityRelationshipRecord record) {
+      CoreRelationshipDAOs.EntityRelationshipRecord record) {
     if (record == null) {
       return;
     }
@@ -6466,7 +6493,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // and the bulk subtree walkers — Team → Team, KnowledgePage → KnowledgePage,
     // Classification → Tag etc. express their hierarchy via PARENT_OF, and a CONTAINS-only
     // probe would skip them on restore even though delete already cascades through them.
-    List<CollectionDAO.EntityRelationshipRecord> records =
+    List<CoreRelationshipDAOs.EntityRelationshipRecord> records =
         daoCollection
             .relationshipDAO()
             .findTo(
@@ -6477,7 +6504,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     Map<String, List<UUID>> idsByType = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
+    for (CoreRelationshipDAOs.EntityRelationshipRecord record : records) {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
@@ -11974,22 +12001,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
 
-    List<CollectionDAO.ExtensionRecordWithId> records =
+    List<CoreRelationshipDAOs.ExtensionRecordWithId> records =
         daoCollection
             .entityExtensionDAO()
             .getExtensionsBatch(entityListToStrings(entities), fieldFQNPrefix);
 
-    Map<UUID, List<CollectionDAO.ExtensionRecordWithId>> extensionsMap =
-        records.stream().collect(Collectors.groupingBy(CollectionDAO.ExtensionRecordWithId::id));
+    Map<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> extensionsMap =
+        records.stream()
+            .collect(Collectors.groupingBy(CoreRelationshipDAOs.ExtensionRecordWithId::id));
 
     Map<UUID, Object> result = new HashMap<>();
 
-    for (Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry : extensionsMap.entrySet()) {
+    for (Entry<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> entry :
+        extensionsMap.entrySet()) {
       UUID entityId = entry.getKey();
-      List<CollectionDAO.ExtensionRecordWithId> extensionRecords = entry.getValue();
+      List<CoreRelationshipDAOs.ExtensionRecordWithId> extensionRecords = entry.getValue();
 
       ObjectNode objectNode = JsonUtils.getObjectNode();
-      for (CollectionDAO.ExtensionRecordWithId record : extensionRecords) {
+      for (CoreRelationshipDAOs.ExtensionRecordWithId record : extensionRecords) {
         String fieldName = TypeRegistry.getPropertyName(record.extensionName());
         JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());
         objectNode.set(fieldName, extensionJsonNode);
