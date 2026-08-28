@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LightdashConnection",
+  "description": "Lightdash Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.LightdashConnection",
+  "definitions": {
+    "lightdashType": {
+      "description": "Lightdash service type",
+      "type": "string",
+      "enum": [
+        "Lightdash"
+      ],
+      "default": "Lightdash"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Lightdash",
+      "type": "string",
+      "enum": [
+        "Lightdash"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host Port",
+      "description": "Address for your running Lightdash instance",
+      "type": "string",
+      "format": "uri",
+      "default": "http://localhost:5000"
+    },
+    "apiKey": {
+      "title": "API Key",
+      "description": "The personal access token you can generate in the Lightdash app under the user settings",
+      "type": "string",
+      "format": "password"
+    },
+    "projectUUID": {
+      "title": "Project UUID",
+      "description": "The Project UUID for your Lightdash instance",
+      "type": "string"
+    },
+    "spaceUUID": {
+      "title": "Space UUID",
+      "description": "The Space UUID for your Lightdash instance",
+      "type": "string"
+    },
+    "proxyAuthentication": {
+      "title": "Proxy Authentication",
+      "description": "Use if your Lightdash instance is behind a proxy like (Cloud IAP)",
+      "type": "string",
+      "format": "password"
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "title": "Default Dashboard Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "title": "Default Chart Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "title": "Default Data Model Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "title": "Default Project Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "apiKey",
+    "projectUUID",
+    "spaceUUID"
+  ]
+}

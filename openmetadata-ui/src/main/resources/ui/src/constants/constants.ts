@@ -156,7 +156,7 @@ export const ROUTES = {
   KNOWLEDGE_PAGE_VERSION: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   CONTEXT_CENTER: '/context-center',
   CONTEXT_CENTER_WITH_TAB: `/context-center/${PLACEHOLDER_ROUTE_TAB}`,
-  CONTEXT_CENTER_DASHBOARD: '/context-center/dashboard',
+  CONTEXT_CENTER_OVERVIEW: '/context-center/overview',
   CONTEXT_CENTER_ARTICLES: '/context-center/articles',
   CONTEXT_CENTER_ARTICLE_DETAIL: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}`,
   CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
