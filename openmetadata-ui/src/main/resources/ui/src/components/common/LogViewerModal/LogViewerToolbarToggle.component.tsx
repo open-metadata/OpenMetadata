@@ -24,6 +24,7 @@ const LogViewerToolbarToggle: FunctionComponent<
     className={classNames('lvm-icon-button', {
       'lvm-icon-button--active': isActive,
     })}
+    color="link-gray"
     data-testid={testId}
     tooltip={label}
     tooltipPlacement="top"
