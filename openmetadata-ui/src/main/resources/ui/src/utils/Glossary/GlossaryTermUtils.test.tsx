@@ -395,6 +395,65 @@ describe('getGlossaryTermDetailPageTabs', () => {
       expect(mockGetCountBadge).toHaveBeenLastCalledWith(7, '', false);
     });
 
+    // Edge case in the sequence guard itself: resetChildrenCounts() must
+    // NOT reset the per-fqn request-sequence counter, only childrenCounts.
+    // If it did, a fqn re-fetched right after a reset would restart its
+    // counter at the same number a still-in-flight, pre-reset request for
+    // that same fqn had already captured — letting the stale response
+    // coincidentally pass the "is this still the latest?" check and briefly
+    // overwrite the fresh count.
+    it('does not let a request in-flight during a reset pass the staleness check once a fresh same-fqn request resolves', async () => {
+      let resolveStaleRequest: (value: {
+        data: never[];
+        paging: { total: number };
+      }) => void;
+      const staleRequest = new Promise<{
+        data: never[];
+        paging: { total: number };
+      }>((resolve) => {
+        resolveStaleRequest = resolve;
+      });
+      mockGetFirstLevelGlossaryTermsPaginated.mockImplementationOnce(
+        () => staleRequest
+      );
+
+      const stalePromise = useGlossaryStore
+        .getState()
+        .fetchChildrenCount('Finance.Revenue');
+
+      await waitFor(() => {
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledTimes(
+          1
+        );
+      });
+
+      // A reset happens while the request above is still in-flight (e.g.
+      // the user navigates away and back to the same entity).
+      useGlossaryStore.getState().resetChildrenCounts();
+
+      // A fresh request for the SAME fqn fires and resolves first.
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValueOnce({
+        data: [],
+        paging: { total: 7 },
+      });
+      await useGlossaryStore.getState().fetchChildrenCount('Finance.Revenue');
+
+      expect(
+        useGlossaryStore.getState().childrenCounts['Finance.Revenue']
+      ).toBe(7);
+
+      // The stale, pre-reset request finally resolves with a different
+      // count. It must be discarded, not applied.
+      await act(async () => {
+        resolveStaleRequest({ data: [], paging: { total: 4 } });
+        await stalePromise;
+      });
+
+      expect(
+        useGlossaryStore.getState().childrenCounts['Finance.Revenue']
+      ).toBe(7);
+    });
+
     // useGlossary.store seeds termsStatusFilter with the default filter
     // string, so a genuinely undefined termsStatusFilter here only happens
     // once the table has mounted and the user explicitly selected "All"
@@ -455,6 +514,7 @@ describe('getGlossaryTermDetailPageTabs', () => {
         q: 'bridge',
         glossaryFqn: 'Finance.Revenue',
         limit: 1000,
+        offset: 0,
         entityStatus: 'Approved,Draft,In Review',
       });
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
@@ -479,6 +539,48 @@ describe('getGlossaryTermDetailPageTabs', () => {
       await screen.findByTestId('terms');
 
       expect(mockGetCountBadge).toHaveBeenLastCalledWith(60, '', false);
+    });
+
+    // Real reviewer feedback: fetchAllTerms's own search branch supports
+    // "load more" via offset/hasMore, exactly like the plain listing does —
+    // a single AGGREGATE_PAGE_SIZE_LARGE (1000) request silently truncated
+    // the badge for any term with more than 1000 matching children, the
+    // same category of bug as the earlier 50-row cap above.
+    it('pages through offset/hasMore and sums every page when more than 1000 terms match the search', async () => {
+      useGlossaryStore.setState({ termsSearchTerm: 'bridge' } as never);
+      mockSearchGlossaryTermsPaginated
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 1000 }, (_, i) => ({ id: `term-${i}` })),
+          paging: { total: 1001 },
+        })
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 250 }, (_, i) => ({
+            id: `term-${1000 + i}`,
+          })),
+          paging: { total: 1251 },
+        });
+
+      renderGlossaryTermsTabLabel();
+
+      await waitFor(() => {
+        expect(mockGetCountBadge).toHaveBeenLastCalledWith(1250, '', false);
+      });
+
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledTimes(2);
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenNthCalledWith(1, {
+        q: 'bridge',
+        glossaryFqn: 'Finance.Revenue',
+        limit: 1000,
+        offset: 0,
+        entityStatus: undefined,
+      });
+      expect(mockSearchGlossaryTermsPaginated).toHaveBeenNthCalledWith(2, {
+        q: 'bridge',
+        glossaryFqn: 'Finance.Revenue',
+        limit: 1000,
+        offset: 1000,
+        entityStatus: undefined,
+      });
     });
 
     it('switches back to the plain listing API once the search term is cleared', async () => {

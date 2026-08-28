@@ -312,9 +312,11 @@ describe('Test Glossary-details component', () => {
     // (offset + terms.size() + (hasMore ? 1 : 0)), not a real count — the
     // table itself already works around this the same way (its own
     // fetchAllTerms uses data.length for the search branch). 1000, not the
-    // table's own PAGE_SIZE_LARGE (50): the badge is a one-shot count with
-    // no "load more" to fall back on, so a 50-row cap would silently
-    // undercount any term with more than 50 matching children.
+    // table's own PAGE_SIZE_LARGE (50): a 50-row cap would silently
+    // undercount any term with more than 50 matching children. The store's
+    // fetchChildrenCount pages through offset/hasMore beyond a single 1000
+    // response, mirroring fetchAllTerms's own "load more" — covered by its
+    // own tests in GlossaryTermUtils.test.tsx.
     it('uses the search API with AGGREGATE_PAGE_SIZE_LARGE and counts the returned rows, not paging.total, when termsSearchTerm is set', async () => {
       useGlossaryStore.setState({
         activeGlossary: { fullyQualifiedName: 'Mock Glossary' },
@@ -338,6 +340,7 @@ describe('Test Glossary-details component', () => {
         q: 'bridge',
         glossaryFqn: 'Mock Glossary',
         limit: 1000,
+        offset: 0,
         entityStatus: 'Approved,Draft,In Review',
       });
       expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
