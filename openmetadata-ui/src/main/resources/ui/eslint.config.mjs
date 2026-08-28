@@ -562,8 +562,14 @@ export default [
   // repo's other rule plugins in eslint-rules/. Excluded from the Playwright
   // test rules above, and needs the Node globals its RuleTester and node:test
   // usage rely on.
+  //
+  // scripts/*.mjs is build-time tooling that runs under Node directly. It had
+  // no config block, so `process`/`console` were undefined there — an error
+  // only reachable when a scripts/ file lands in a changed-file lint, which the
+  // merge queue guarantees and a PR event does not. The .js tooling alongside
+  // it is CommonJS and needs a different fix; left alone deliberately.
   {
-    files: ['playwright/eslint-rules/**/*.mjs'],
+    files: ['playwright/eslint-rules/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: {
         ...globals.node,
