@@ -767,11 +767,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Divider className="tw:my-2" orientation="vertical" />
 
             <Dropdown.Root>
+              {/* The Tools label should match the adjacent 14px Explore filters. */}
               <Button
                 hideFocusOutline
                 color="tertiary"
                 iconTrailing={<ChevronDown size={14} />}
-                size="xs">
+                size="sm">
                 {t('label.tool-plural')}
               </Button>
               <Dropdown.Popover>

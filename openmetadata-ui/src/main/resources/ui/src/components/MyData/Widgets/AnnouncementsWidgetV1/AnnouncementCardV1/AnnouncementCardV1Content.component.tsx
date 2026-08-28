@@ -15,8 +15,6 @@ import classNames from 'classnames';
 import { lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { FieldOperation } from '../../../../../generated/entity/feed/thread';
-import { getFieldOperationText } from '../../../../../utils/AnnouncementsUtils';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../../utils/RouterUtils';
@@ -42,7 +40,6 @@ interface AnnouncementCardV1ContentProps {
   entityIcon: ReactNode;
   entityName: string;
   entityType: string;
-  fieldOperation?: FieldOperation;
   timestamp?: number;
   title: string;
   userName: string;
@@ -79,7 +76,6 @@ const AnnouncementCardV1Content = ({
   entityIcon,
   entityName,
   entityType,
-  fieldOperation,
   timestamp,
   title,
   userName,
@@ -150,14 +146,6 @@ const AnnouncementCardV1Content = ({
                   onClick={handleUserClick}>
                   {userName}
                 </Link>
-              )}
-              {fieldOperation && fieldOperation !== FieldOperation.None && (
-                <Typography.Text
-                  className="field-operation-text"
-                  style={{ color }}>
-                  {' '}
-                  {getFieldOperationText(fieldOperation)}
-                </Typography.Text>
               )}
               <span
                 className={classNames(

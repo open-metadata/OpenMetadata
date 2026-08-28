@@ -746,11 +746,7 @@ const TagPage = () => {
     if (tagItem?.style?.iconURL) {
       return (
         <div className="align-middle" data-testid="icon">
-          <Icon
-            className="object-contain"
-            iconValue={tagItem.style.iconURL}
-            size={36}
-          />
+          <Icon iconValue={tagItem.style.iconURL} size={36} />
         </div>
       );
     }

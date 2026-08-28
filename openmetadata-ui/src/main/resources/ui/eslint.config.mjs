@@ -22,7 +22,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
-import jsoncParser from 'jsonc-eslint-parser';
+import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
@@ -44,7 +44,7 @@ export default [
       'mock-api/**',
       'src/antlr/generated/**',
       'src/generated/antlr/**',
-      'src/jsons/connectionSchemas/**',
+      'src/jsons/**',
       'src/generated/**',
       'coverage/**',
       'playwright/doc-generator/**',
@@ -197,7 +197,11 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-explicit-any': 'error',
 
       // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
       // for no longer reproduces — verified running against this config, where

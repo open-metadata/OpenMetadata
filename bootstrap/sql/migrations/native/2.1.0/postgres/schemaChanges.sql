@@ -36,6 +36,98 @@ CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 
+-- Conversation V2 stores bounded roots and replies as schema-first JSON. Indexed mentions and
+-- domains remain normalized because they participate in filters and authorization.
+CREATE TABLE IF NOT EXISTS conversation_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    source character varying(16) GENERATED ALWAYS AS ((json ->> 'source'::text)) STORED NOT NULL,
+    entityType character varying(64) GENERATED ALWAYS AS
+      ((json #>> '{entityRef,type}'::text[])) STORED NOT NULL,
+    entityId character varying(36) GENERATED ALWAYS AS
+      ((json #>> '{entityRef,id}'::text[])) STORED NOT NULL,
+    entityFqnHash character varying(768),
+    about character varying(2048) GENERATED ALWAYS AS ((json ->> 'about'::text)) STORED NOT NULL,
+    aboutFqnHash character varying(768),
+    activityEventId character varying(36) GENERATED ALWAYS AS
+      ((json ->> 'activityEventId'::text)) STORED,
+    creatorId character varying(36) GENERATED ALWAYS AS
+      ((json #>> '{createdBy,id}'::text[])) STORED,
+    createdAt bigint GENERATED ALWAYS AS
+      (((json ->> 'createdAt'::text))::bigint) STORED NOT NULL,
+    updatedAt bigint GENERATED ALWAYS AS
+      (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    resolved boolean GENERATED ALWAYS AS
+      (((json ->> 'resolved'::text))::boolean) STORED NOT NULL,
+    replyCount integer GENERATED ALWAYS AS
+      (((json ->> 'replyCount'::text))::integer) STORED NOT NULL,
+    json jsonb NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_conversation_activity_event UNIQUE (activityEventId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_entity
+    ON conversation_entity (entityType, entityId, updatedAt DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_entity_fqn
+    ON conversation_entity (entityFqnHash, updatedAt DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_about
+    ON conversation_entity (aboutFqnHash, updatedAt DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_creator
+    ON conversation_entity (creatorId, updatedAt DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_source_updated
+    ON conversation_entity (source, updatedAt DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_created
+    ON conversation_entity (createdAt, id);
+
+CREATE TABLE IF NOT EXISTS conversation_reply (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    conversationId character varying(36) GENERATED ALWAYS AS
+      ((json ->> 'conversationId'::text)) STORED NOT NULL,
+    authorId character varying(36) GENERATED ALWAYS AS
+      ((json #>> '{author,id}'::text[])) STORED NOT NULL,
+    createdAt bigint GENERATED ALWAYS AS
+      (((json ->> 'createdAt'::text))::bigint) STORED NOT NULL,
+    updatedAt bigint GENERATED ALWAYS AS
+      (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    json jsonb NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_conversation_reply_conversation
+      FOREIGN KEY (conversationId) REFERENCES conversation_entity(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_reply_cursor
+    ON conversation_reply (conversationId, createdAt, id);
+CREATE INDEX IF NOT EXISTS idx_conversation_reply_author
+    ON conversation_reply (authorId, createdAt, id);
+
+CREATE TABLE IF NOT EXISTS conversation_mention (
+    conversationId character varying(36) NOT NULL,
+    targetType character varying(16) NOT NULL,
+    targetId character varying(36) NOT NULL,
+    mentionedEntityType character varying(64) NOT NULL,
+    mentionedEntityId character varying(36) NOT NULL,
+    createdAt bigint NOT NULL,
+    PRIMARY KEY (targetType, targetId, mentionedEntityType, mentionedEntityId),
+    CONSTRAINT fk_conversation_mention_conversation
+      FOREIGN KEY (conversationId) REFERENCES conversation_entity(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_mention_lookup
+    ON conversation_mention (mentionedEntityType, mentionedEntityId, createdAt, conversationId);
+CREATE INDEX IF NOT EXISTS idx_conversation_mention_conversation
+    ON conversation_mention (conversationId, targetType, targetId);
+
+CREATE TABLE IF NOT EXISTS conversation_domain (
+    conversationId character varying(36) NOT NULL,
+    domainId character varying(36) NOT NULL,
+    PRIMARY KEY (conversationId, domainId),
+    CONSTRAINT fk_conversation_domain_conversation
+      FOREIGN KEY (conversationId) REFERENCES conversation_entity(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_domain_lookup
+    ON conversation_domain (domainId, conversationId);
+
+ALTER TABLE conversation_entity DROP COLUMN IF EXISTS activityTimestamp;
 -- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
 -- The partial index avoids write amplification for relationships that have no pipeline metadata.
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
