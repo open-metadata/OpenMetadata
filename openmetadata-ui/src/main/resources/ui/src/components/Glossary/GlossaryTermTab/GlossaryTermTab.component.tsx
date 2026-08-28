@@ -32,10 +32,10 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { TFunction } from 'i18next';
 import { debounce, isEmpty, isUndefined, unionBy, uniqBy } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -116,6 +116,10 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -134,6 +138,73 @@ const WorkflowHistory = withSuspenseFallback(
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
+
+const renderGlossaryExpandIcon = (
+  {
+    expanded,
+    onExpand,
+    record,
+  }: Parameters<
+    NonNullable<ExpandableConfig<ModifiedGlossaryTerm>['expandIcon']>
+  >[0],
+  loadingChildren: Record<string, boolean>,
+  t: TFunction
+) => {
+  const isLoadMoreRow = record.isLoadMoreButton;
+
+  if (isLoadMoreRow) {
+    return (
+      <>
+        <AriaButton
+          aria-label={t('label.move-the-entity', {
+            entity: t('label.term-lowercase'),
+          })}
+          className="glossary-term-drag-handle-hidden"
+          slot="drag">
+          <span />
+        </AriaButton>
+        <span className="expand-cell-empty-icon-container" />
+      </>
+    );
+  }
+
+  const { children, childrenCount } = record;
+  const isLoading = loadingChildren[record.fullyQualifiedName || ''];
+  const dragHandle = (
+    <AriaButton
+      aria-label={t('label.move-the-entity', {
+        entity: t('label.term-lowercase'),
+      })}
+      className="glossary-term-drag-handle m-r-xs"
+      slot="drag">
+      <IconDrag className="drag-icon" height={12} width={8} />
+    </AriaButton>
+  );
+
+  return (childrenCount ?? children?.length ?? 0) > 0 ? (
+    <>
+      {dragHandle}
+      {isLoading ? (
+        <span className="m-r-xs expand-loader">
+          <Loader size="x-small" />
+        </span>
+      ) : (
+        <Icon
+          className="m-r-xs vertical-baseline"
+          component={expanded ? IconDown : IconRight}
+          data-testid="expand-icon"
+          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+          onClick={(e) => onExpand(record, e)}
+        />
+      )}
+    </>
+  ) : (
+    <>
+      {dragHandle}
+      <span className="expand-cell-empty-icon-container" />
+    </>
+  );
+};
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
@@ -1343,62 +1414,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
-      expandIcon: ({ expanded, onExpand, record }) => {
-        const isLoadMoreRow = record.isLoadMoreButton;
-
-        if (isLoadMoreRow) {
-          return (
-            <>
-              <AriaButton
-                aria-label={t('label.move-the-entity', {
-                  entity: t('label.term-lowercase'),
-                })}
-                className="glossary-term-drag-handle-hidden"
-                slot="drag">
-                <span />
-              </AriaButton>
-              <span className="expand-cell-empty-icon-container" />
-            </>
-          );
-        }
-
-        const { children, childrenCount } = record;
-        const isLoading = loadingChildren[record.fullyQualifiedName || ''];
-        const dragHandle = (
-          <AriaButton
-            aria-label={t('label.move-the-entity', {
-              entity: t('label.term-lowercase'),
-            })}
-            className="glossary-term-drag-handle m-r-xs"
-            slot="drag">
-            <IconDrag className="drag-icon" height={12} width={8} />
-          </AriaButton>
-        );
-
-        return (childrenCount ?? children?.length ?? 0) > 0 ? (
-          <>
-            {dragHandle}
-            {isLoading ? (
-              <span className="m-r-xs expand-loader">
-                <Loader size="x-small" />
-              </span>
-            ) : (
-              <Icon
-                className="m-r-xs vertical-baseline"
-                component={expanded ? IconDown : IconRight}
-                data-testid="expand-icon"
-                style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
-                onClick={(e) => onExpand(record, e)}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {dragHandle}
-            <span className="expand-cell-empty-icon-container" />
-          </>
-        );
-      },
+      expandIcon: (props) =>
+        renderGlossaryExpandIcon(props, loadingChildren, t),
       expandedRowKeys: expandedRowKeys,
       onExpand: async (expanded, record) => {
         if (expanded) {

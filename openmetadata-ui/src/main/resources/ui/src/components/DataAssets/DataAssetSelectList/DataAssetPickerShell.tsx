@@ -222,6 +222,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           {searchable && (
             <Box>
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
                 autoFocus
                 className="tw:w-full"
                 icon={SearchLg}

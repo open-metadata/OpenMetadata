@@ -44,6 +44,7 @@ import {
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -2194,10 +2195,12 @@ test.describe('Glossary tests', () => {
           .filter({ hasText: 'EN' })
           .first();
         await languageDropdown.click();
+        await waitForAntdPopupToSettle(page);
 
         const germanOption = page.getByRole('menuitem', {
           name: 'Deutsch - DE',
         });
+        await expect(germanOption).toBeVisible();
         await germanOption.click();
 
         await waitForAllLoadersToDisappear(page);
@@ -2230,10 +2233,12 @@ test.describe('Glossary tests', () => {
           .filter({ hasText: 'DE' })
           .first();
         await languageDropdown.click();
+        await waitForAntdPopupToSettle(page);
 
         const englishOption = page.getByRole('menuitem', {
           name: 'English - EN',
         });
+        await expect(englishOption).toBeVisible();
         await englishOption.click();
       });
     } finally {

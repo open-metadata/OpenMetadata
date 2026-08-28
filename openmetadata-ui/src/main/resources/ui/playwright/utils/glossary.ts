@@ -50,6 +50,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from './entity';
+import { waitForAggregation } from './searchAggregation';
 import { sidebarClick } from './sidebar';
 import {
   TaskDetails,
@@ -940,9 +941,7 @@ const testFilterWithSpecificOption = async (
   await page.getByTestId('drop-down-menu').waitFor();
 
   if (searchText) {
-    const aggregateResponse = page.waitForResponse(
-      '/api/v1/search/aggregate?*'
-    );
+    const aggregateResponse = waitForAggregation(page, { value: searchText });
     await page
       .getByRole('textbox', { name: 'Search Service Type...' })
       .fill(searchText);
@@ -1189,16 +1188,29 @@ export const changeTermHierarchyFromModal = async (
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  // Ant's Modal spreads data-testid onto `.ant-modal-root`, a zero-size wrapper
+  // that never satisfies toBeVisible even while the dialog is on screen — the
+  // dialog itself is the element with a box. Scoping still matters: the bare
+  // `Select Parent` label also matches the control of a hierarchy modal left in
+  // the DOM by an earlier step, and clicking that waits out the whole test on a
+  // hidden element.
+  const hierarchyModal = page
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('dialog');
+  await expect(hierarchyModal).toBeVisible();
 
-  await page.getByLabel('Select Parent').click();
+  const parentSelect = hierarchyModal.getByLabel('Select Parent');
+  await expect(parentSelect).toBeVisible();
+  await expect(parentSelect).toBeEnabled();
+  await parentSelect.click();
+
   await page.locator('.async-tree-select-list-dropdown').waitFor({
     state: 'visible',
   });
 
   if (isGlossaryTerm) {
     const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await parentSelect.fill(entityDisplayName);
     await searchRes;
   }
 
@@ -1577,6 +1589,22 @@ export async function openColumnDropdown(page: Page): Promise<void> {
   });
 }
 
+export async function closeColumnDropdown(page: Page): Promise<void> {
+  const dropdownTitle = page.getByTestId('column-dropdown-title');
+
+  if (!(await dropdownTitle.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await page.keyboard.press('Escape');
+  await dropdownTitle
+    .waitFor({ state: 'hidden', timeout: 5000 })
+    .catch(async () => {
+      await page.getByTestId('column-dropdown').click();
+      await dropdownTitle.waitFor({ state: 'hidden' });
+    });
+}
+
 export async function selectColumns(
   page: Page,
   columnKeys: string[]
@@ -1584,7 +1612,7 @@ export async function selectColumns(
   for (const key of columnKeys) {
     await page.getByTestId(`column-menu-item-${key}`).click();
   }
-  await clickOutside(page);
+  await closeColumnDropdown(page);
 }
 
 export async function deselectColumns(
@@ -1594,7 +1622,7 @@ export async function deselectColumns(
   for (const key of columnKeys) {
     await page.getByTestId(`column-menu-item-${key}`).click();
   }
-  await clickOutside(page);
+  await closeColumnDropdown(page);
 }
 
 export async function ensureColumnsVisible(
@@ -2071,8 +2099,9 @@ export const navigateAndSelectGlossaryTermInTree = async (
 ) => {
   // Expand glossary
   const glossaryNode = page.locator(`[data-nodeid="${glossaryName}"]`);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
   await glossaryNode.click();
-  await page.waitForResponse('/api/v1/glossaryTerms?*');
+  await glossaryTermsResponse;
 
   // Expand parent if provided
   if (parentTermFqn) {

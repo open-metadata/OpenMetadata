@@ -14,9 +14,14 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.micrometer.core.instrument.Metrics;
+import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +33,19 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 
@@ -47,6 +59,7 @@ import org.openmetadata.service.util.JsonStorageUtils;
 public class ActivityStreamRepository {
   private static final int MAX_STORED_SUMMARY_LENGTH = 500;
   private static final String UNRESOLVED_ACTOR_METRIC = "activity_stream.unresolved_actor";
+  private static final UUID NO_DOMAIN_ACCESS = new UUID(0L, 0L);
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -56,6 +69,138 @@ public class ActivityStreamRepository {
 
   public ActivityStreamRepository(CollectionDAO.ActivityStreamDAO activityStreamDAO) {
     this.activityStreamDAO = activityStreamDAO;
+  }
+
+  public ResultList<ActivityEvent> listActivityEvents(
+      SecurityContext securityContext,
+      String entityType,
+      UUID entityId,
+      UUID actorId,
+      String domainsParam,
+      String domain,
+      int days,
+      int limit) {
+    long afterTimestamp = afterTimestamp(days);
+    List<UUID> domainIds =
+        nullOrEmpty(domain)
+            ? getEffectiveDomains(securityContext, domainsParam)
+            : getEffectiveDomainsByFqn(securityContext, domain);
+    List<ActivityEvent> events;
+    if (entityType != null) {
+      events =
+          entityId != null
+              ? listByEntity(entityType, entityId, domainIds, afterTimestamp, limit)
+              : listByEntityType(entityType, domainIds, afterTimestamp, limit);
+    } else if (actorId != null) {
+      events = listByActor(actorId, domainIds, afterTimestamp, limit);
+    } else if (!nullOrEmpty(domainIds)) {
+      events = listByDomains(domainIds, afterTimestamp, limit);
+    } else {
+      events = list(afterTimestamp, limit);
+    }
+    return result(events);
+  }
+
+  public ResultList<ActivityEvent> getEntityActivityById(
+      SecurityContext securityContext,
+      String entityType,
+      UUID entityId,
+      String domain,
+      int days,
+      int limit) {
+    long afterTimestamp = afterTimestamp(days);
+    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
+    if (limit == 0) {
+      int total = countByEntity(entityType, entityId, domainIds, afterTimestamp);
+      return new ResultList<>(List.of(), null, null, total);
+    }
+    return result(listByEntity(entityType, entityId, domainIds, afterTimestamp, limit));
+  }
+
+  public ResultList<ActivityEvent> getEntityActivityByFqn(
+      SecurityContext securityContext,
+      String entityType,
+      String fqn,
+      String domain,
+      int days,
+      int limit) {
+    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "", null);
+    return getEntityActivityById(securityContext, entityType, entity.getId(), domain, days, limit);
+  }
+
+  public ResultList<ActivityEvent> getMyFeed(
+      SecurityContext securityContext, String domain, int days, int limit) {
+    String userName = securityContext.getUserPrincipal().getName();
+    EntityReference user = Entity.getEntityReferenceByName(Entity.USER, userName, null);
+    return result(
+        listByOwners(
+            user.getId().toString(),
+            getTeamIds(userName),
+            getEffectiveDomainsByFqn(securityContext, domain),
+            afterTimestamp(days),
+            limit));
+  }
+
+  public ResultList<ActivityEvent> getFollowingFeed(
+      SecurityContext securityContext, String domain, int days, int limit) {
+    EntityReference user = currentUser(securityContext);
+    return result(
+        listByFollowers(
+            user.getId().toString(),
+            getEffectiveDomainsByFqn(securityContext, domain),
+            afterTimestamp(days),
+            limit));
+  }
+
+  public ResultList<ActivityEvent> getActivityByEntityLink(
+      SecurityContext securityContext, String entityLink, String domain, int days, int limit) {
+    return result(
+        listByAbout(
+            entityLink,
+            getEffectiveDomainsByFqn(securityContext, domain),
+            afterTimestamp(days),
+            limit));
+  }
+
+  public ResultList<ActivityEvent> getUserActivity(
+      SecurityContext securityContext, UUID userId, String domain, int days, int limit) {
+    return result(
+        listByActor(
+            userId,
+            getEffectiveDomainsByFqn(securityContext, domain),
+            afterTimestamp(days),
+            limit));
+  }
+
+  public int getActivityCount(SecurityContext securityContext, String domain, int days) {
+    return count(getEffectiveDomainsByFqn(securityContext, domain), afterTimestamp(days));
+  }
+
+  public ActivityEvent addReaction(
+      SecurityContext securityContext,
+      Authorizer authorizer,
+      UUID activityId,
+      ReactionType reactionType) {
+    ActivityEvent event = authorizeActivityMutation(securityContext, authorizer, activityId);
+    EntityReference user = currentUser(securityContext);
+    return mutateReaction(event.getId(), user, reactionType, true);
+  }
+
+  public ActivityEvent removeReaction(
+      SecurityContext securityContext,
+      Authorizer authorizer,
+      UUID activityId,
+      ReactionType reactionType) {
+    ActivityEvent event = authorizeActivityMutation(securityContext, authorizer, activityId);
+    EntityReference user = currentUser(securityContext);
+    return mutateReaction(event.getId(), user, reactionType, false);
+  }
+
+  public ActivityEvent insertForTesting(
+      SecurityContext securityContext, Authorizer authorizer, ActivityEvent event) {
+    authorizer.authorizeAdmin(securityContext);
+    insert(event);
+    return event;
   }
 
   /**
@@ -438,49 +583,143 @@ public class ActivityStreamRepository {
   /** Add a reaction to an activity event. */
   public ActivityEvent addReaction(
       UUID activityId, EntityReference user, ReactionType reactionType) {
-    ActivityEvent event = getById(activityId);
-
-    List<Reaction> reactions = event.getReactions();
-    if (reactions == null) {
-      reactions = new ArrayList<>();
-    }
-
-    // Check if user already has this reaction type
-    boolean exists =
-        reactions.stream()
-            .anyMatch(
-                r ->
-                    r.getReactionType() == reactionType
-                        && r.getUser().getId().equals(user.getId()));
-
-    if (!exists) {
-      Reaction reaction = new Reaction().withReactionType(reactionType).withUser(user);
-      reactions.add(reaction);
-      event.setReactions(reactions);
-      activityStreamDAO.updateJson(activityId.toString(), JsonUtils.pojoToJson(event));
-    }
-
-    return event;
+    return mutateReaction(activityId, user, reactionType, true);
   }
 
   /** Remove a reaction from an activity event. */
   public ActivityEvent removeReaction(
       UUID activityId, EntityReference user, ReactionType reactionType) {
-    ActivityEvent event = getById(activityId);
+    return mutateReaction(activityId, user, reactionType, false);
+  }
 
-    List<Reaction> reactions = event.getReactions();
-    if (reactions == null || reactions.isEmpty()) {
-      return event;
+  private ActivityEvent mutateReaction(
+      UUID activityId, EntityReference user, ReactionType reactionType, boolean add) {
+    return Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              CollectionDAO.ActivityStreamDAO dao =
+                  handle.attach(CollectionDAO.ActivityStreamDAO.class);
+              String json = dao.findByIdForUpdate(activityId.toString());
+              if (json == null) {
+                throw new EntityNotFoundException("ActivityEvent not found: " + activityId);
+              }
+              ActivityEvent event = JsonUtils.readValue(json, ActivityEvent.class);
+              List<Reaction> reactions = new ArrayList<>();
+              if (event.getReactions() != null) {
+                reactions.addAll(event.getReactions());
+              }
+              boolean changed;
+              if (add) {
+                boolean exists =
+                    reactions.stream()
+                        .anyMatch(
+                            reaction ->
+                                reaction.getReactionType() == reactionType
+                                    && reaction.getUser().getId().equals(user.getId()));
+                changed = !exists;
+                if (changed) {
+                  reactions.add(new Reaction().withReactionType(reactionType).withUser(user));
+                }
+              } else {
+                changed =
+                    reactions.removeIf(
+                        reaction ->
+                            reaction.getReactionType() == reactionType
+                                && reaction.getUser().getId().equals(user.getId()));
+              }
+              if (changed) {
+                event.setReactions(reactions.isEmpty() ? null : reactions);
+                dao.updateJson(activityId.toString(), JsonUtils.pojoToJson(event));
+              }
+              return event;
+            });
+  }
+
+  private ActivityEvent authorizeActivityMutation(
+      SecurityContext securityContext, Authorizer authorizer, UUID activityId) {
+    ActivityEvent event = getById(activityId);
+    EntityReference target = event.getEntity();
+    try {
+      SubjectContext subject = getSubjectContext(securityContext);
+      if (!subject.isAdmin()
+          && subject.hasDomainOnlyAccessRole()
+          && !subject.hasDomains(event.getDomains())) {
+        throw new AuthorizationException("Activity is outside the user's domains");
+      }
+      Entity.getEntity(target.getType(), target.getId(), Entity.FIELD_DOMAINS, Include.ALL, false);
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(target.getType(), MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(target.getType(), target.getId(), null, Include.ALL));
+    } catch (AuthorizationException | EntityNotFoundException exception) {
+      throw new EntityNotFoundException("ActivityEvent not found: " + activityId);
+    }
+    return event;
+  }
+
+  private EntityReference currentUser(SecurityContext securityContext) {
+    return Entity.getEntityReferenceByName(
+        Entity.USER, securityContext.getUserPrincipal().getName(), Include.NON_DELETED);
+  }
+
+  private long afterTimestamp(int days) {
+    return Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+  }
+
+  private ResultList<ActivityEvent> result(List<ActivityEvent> events) {
+    return new ResultList<>(events, null, null, events.size());
+  }
+
+  private List<String> getTeamIds(String userName) {
+    List<String> teamIds = new ArrayList<>();
+    try {
+      org.openmetadata.schema.entity.teams.User user =
+          Entity.getEntityByName(Entity.USER, userName, "teams", null);
+      if (user.getTeams() != null) {
+        user.getTeams().stream()
+            .map(EntityReference::getId)
+            .map(UUID::toString)
+            .forEach(teamIds::add);
+      }
+    } catch (EntityNotFoundException exception) {
+      LOG.debug("Could not get team IDs for user {}: {}", userName, exception.getMessage());
+    }
+    return teamIds;
+  }
+
+  private List<UUID> getEffectiveDomains(SecurityContext securityContext, String domainsParam) {
+    List<UUID> requestedDomains = null;
+    if (!nullOrEmpty(domainsParam)) {
+      requestedDomains =
+          Arrays.stream(domainsParam.split(","))
+              .map(String::trim)
+              .filter(value -> !value.isEmpty())
+              .map(UUID::fromString)
+              .toList();
     }
 
-    // Remove the user's reaction of this type
-    reactions.removeIf(
-        r -> r.getReactionType() == reactionType && r.getUser().getId().equals(user.getId()));
+    SubjectContext subject = getSubjectContext(securityContext);
+    if (!subject.isAdmin() && subject.hasDomainOnlyAccessRole()) {
+      List<UUID> userDomainIds =
+          nullOrEmpty(subject.getUserDomains())
+              ? List.of()
+              : subject.getUserDomains().stream().map(EntityReference::getId).toList();
+      List<UUID> allowedDomains =
+          requestedDomains == null
+              ? userDomainIds
+              : requestedDomains.stream().filter(userDomainIds::contains).toList();
+      return allowedDomains.isEmpty() ? List.of(NO_DOMAIN_ACCESS) : allowedDomains;
+    }
+    return requestedDomains;
+  }
 
-    event.setReactions(reactions.isEmpty() ? null : reactions);
-    activityStreamDAO.updateJson(activityId.toString(), JsonUtils.pojoToJson(event));
-
-    return event;
+  private List<UUID> getEffectiveDomainsByFqn(SecurityContext securityContext, String domainFqn) {
+    if (nullOrEmpty(domainFqn)) {
+      return getEffectiveDomains(securityContext, null);
+    }
+    EntityReference domain =
+        Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, Include.NON_DELETED);
+    return getEffectiveDomains(securityContext, domain.getId().toString());
   }
 
   // ========== Private Helper Methods ==========

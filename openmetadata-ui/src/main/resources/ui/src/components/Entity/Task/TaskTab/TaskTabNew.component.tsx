@@ -620,6 +620,7 @@ export const TaskTabNew = ({
       label: (
         <span
           data-testid={`task-action-menu-item-${item.key}`}
+          role="presentation"
           onClick={
             onItemClick
               ? (event) => {
@@ -1630,7 +1631,7 @@ export const TaskTabNew = ({
     </div>
   );
 
-  const ActionRequired = () => {
+  const renderActionRequired = () => {
     if (!actionButtons) {
       return null;
     }
@@ -1765,34 +1766,34 @@ export const TaskTabNew = ({
                         {startCase(field)}
                       </Typography.Text>
                       <div className="task-proposed-changes-chips">
-                        {removed.map((val, index) =>
+                        {removed.map((val) =>
                           getUrl ? (
                             <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              key={`${field}-removed-${val}-${index}`}
+                              key={`${field}-removed-${val}`}
                               to={getUrl(val)}>
                               {val}
                             </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              key={`${field}-removed-${val}-${index}`}>
+                              key={`${field}-removed-${val}`}>
                               {stripHtmlTags(val)}
                             </span>
                           )
                         )}
-                        {added.map((val, index) =>
+                        {added.map((val) =>
                           getUrl ? (
                             <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              key={`${field}-added-${val}-${index}`}
+                              key={`${field}-added-${val}`}
                               to={getUrl(val)}>
                               {val}
                             </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              key={`${field}-added-${val}-${index}`}>
+                              key={`${field}-added-${val}`}>
                               {stripHtmlTags(val)}
                             </span>
                           )
@@ -1835,7 +1836,7 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {isTaskActionable && !rest.isOpenInDrawer && ActionRequired()}
+        {isTaskActionable && !rest.isOpenInDrawer && renderActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">

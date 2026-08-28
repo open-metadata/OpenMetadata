@@ -50,8 +50,15 @@ const test = base.extend<{
 
     const page = await browser.newPage();
     await page.goto('/signin');
-    await page.waitForFunction(() =>
-      Boolean(navigator.serviceWorker?.controller)
+    // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
+    // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
+    // registers a SW -- there is no clients.claim() race to wait out there.
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker.controller),
+      undefined,
+      { timeout: 30_000 }
     );
 
     await setToken(page, tokenData.config.JWTToken);

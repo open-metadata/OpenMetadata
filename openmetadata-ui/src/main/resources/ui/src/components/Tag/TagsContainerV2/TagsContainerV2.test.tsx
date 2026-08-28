@@ -147,7 +147,10 @@ const renderTagsContainerInsideClickableParent = (props: {
 
   return render(
     <MemoryRouter>
-      <div data-testid="clickable-parent" onClick={props.onParentClick}>
+      <div
+        data-testid="clickable-parent"
+        role="presentation"
+        onClick={props.onParentClick}>
         <TagsContainerV2
           permission
           showInlineEditButton

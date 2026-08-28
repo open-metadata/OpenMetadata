@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Reverse Ingestion Tags Config",
+  "type": "object",
+  "description": "Configuration for updating tags",
+  "javaType": "org.openmetadata.schema.metadataIngestion.reverseingestionconfig.tagsConfig",
+  "properties": {
+    "removedTags": {
+      "description": "Removed tags of the entity",
+      "type": "array",
+      "items": {
+        "$ref": "#/properties/addedTags/items"
+      }
+    },
+    "addedTags": {
+      "description": "Added tags to be applied",
+      "type": "array",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TagLabel",
+        "description": "This schema defines the type for labeling an entity with a Tag.",
+        "type": "object",
+        "javaType": "org.openmetadata.schema.type.TagLabel",
+        "definitions": {
+          "tagFQN": {
+            "type": "string"
+          },
+          "TagSource": {
+            "type": "string",
+            "default": "Classification",
+            "enum": [
+              "Classification",
+              "Glossary"
+            ]
+          }
+        },
+        "properties": {
+          "tagFQN": {
+            "$ref": "#/properties/addedTags/items/definitions/tagFQN"
+          },
+          "name": {
+            "description": "Name of the tag or glossary term.",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "Display Name that identifies this tag.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description for the tag label.",
+            "$comment": "@om-field-type",
+            "type": "string"
+          },
+          "style": {
+            "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
+            "type": "object",
+            "javaType": "org.openmetadata.schema.entity.type.Style",
+            "properties": {
+              "color": {
+                "description": "Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.",
+                "type": "string"
+              },
+              "iconURL": {
+                "description": "An icon to associate with GlossaryTerm, Tag, Domain or Data Product.",
+                "type": "string",
+                "format": "url"
+              },
+              "coverImage": {
+                "description": "Cover image configuration for the entity.",
+                "type": "object",
+                "javaType": "org.openmetadata.schema.entity.type.CoverImage",
+                "properties": {
+                  "url": {
+                    "description": "URL of the cover image.",
+                    "type": "string",
+                    "format": "url"
+                  },
+                  "position": {
+                    "description": "Position of the cover image in CSS background-position format. Supports keywords (top, center, bottom) or pixel values (e.g., '20px 30px').",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "source": {
+            "description": "Label is from Tags or Glossary.",
+            "$ref": "#/properties/addedTags/items/definitions/TagSource"
+          },
+          "labelType": {
+            "description": "Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see Classification.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.",
+            "type": "string",
+            "enum": [
+              "Manual",
+              "Propagated",
+              "Automated",
+              "Derived",
+              "Generated"
+            ],
+            "default": "Manual"
+          },
+          "state": {
+            "description": "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.",
+            "type": "string",
+            "enum": [
+              "Suggested",
+              "Confirmed"
+            ],
+            "default": "Confirmed"
+          },
+          "href": {
+            "description": "Link to the tag resource.",
+            "type": "string",
+            "format": "uri"
+          },
+          "reason": {
+            "type": "string",
+            "description": "An explanation of why this tag was proposed, specially for autoclassification tags"
+          },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when this tag was applied in ISO 8601 format"
+          },
+          "appliedBy": {
+            "type": "string",
+            "description": "Who it is that applied this tag (e.g: a bot, AI or a human)"
+          },
+          "metadata": {
+            "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "TagLabelMetadata",
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
+            "properties": {
+              "recognizer": {
+                "description": "Metadata about the recognizer that automatically applied this tag",
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "title": "TagLabelRecognizerMetadata",
+                "type": "object",
+                "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
+                "properties": {
+                  "recognizerId": {
+                    "description": "Unique identifier of the recognizer that applied this tag",
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "recognizerName": {
+                    "description": "Human-readable name of the recognizer",
+                    "type": "string"
+                  },
+                  "score": {
+                    "description": "Confidence score assigned by the recognizer (0.0 to 1.0)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "target": {
+                    "description": "What the recognizer analyzed to apply this tag",
+                    "type": "string",
+                    "enum": [
+                      "content",
+                      "column_name"
+                    ]
+                  },
+                  "patterns": {
+                    "description": "Details of patterns that matched during recognition",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/properties/addedTags/items/properties/metadata/properties/recognizer/definitions/patternMatch"
+                    }
+                  }
+                },
+                "required": [
+                  "recognizerId",
+                  "recognizerName",
+                  "score"
+                ],
+                "additionalProperties": false,
+                "definitions": {
+                  "patternMatch": {
+                    "type": "object",
+                    "description": "Information about a pattern that matched during recognition",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the pattern that matched",
+                        "type": "string"
+                      },
+                      "regex": {
+                        "description": "Regular expression or pattern definition",
+                        "type": "string"
+                      },
+                      "score": {
+                        "description": "Confidence score for this specific pattern match",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "score"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "expiryDate": {
+                "description": "Epoch time in milliseconds when the certification tag expires",
+                "type": "integer",
+                "format": "utc-millisec"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "tagFQN",
+          "source",
+          "labelType",
+          "state"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

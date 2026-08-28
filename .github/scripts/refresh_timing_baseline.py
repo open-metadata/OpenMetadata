@@ -5,14 +5,18 @@ history artifact produced by a full-mode merge_group run.
 Called from the workflow's `refresh-timing-baseline` job. Normalises the
 reporter's raw schema to the baseline schema the planner reads, preserves
 curated fields on the current baseline (retention pointers and the
-unstable-test-id allowlist), and prints a diff summary useful in the auto-PR
-body.
+unstable-test-id allowlist), and prints a diff summary for the commit body.
 
 Exits:
-  0 — new baseline written OR identical to current (workflow will skip PR)
+  0 — new baseline written OR identical to current (workflow will skip
+      the commit)
   1 — invalid input (missing file, malformed JSON, mode != 'full', etc.)
   2 — drift exceeds --max-drift-percent (safety valve; workflow fails the
       job so a human refreshes manually)
+  3 — change is below --min-materiality-percent (nothing written; the
+      workflow skips the commit). Ordinary run-to-run duration jitter must
+      not produce a main commit per merge_group run — every push to main
+      resets the merge queue, so refreshes have to be rare and meaningful.
 """
 
 from __future__ import annotations
@@ -43,9 +47,17 @@ def parse_args() -> argparse.Namespace:
                         help="Refuse the refresh (exit 2) if more than N%% "
                              "of test-id entries would change. Guards against "
                              "an accidental capture of a broken run.")
+    parser.add_argument("--min-materiality-percent", type=float, default=0.0,
+                        help="Skip the refresh (exit 3) unless the change is "
+                             "material: at least N%% of entries added/removed, "
+                             "or at least N%% with a significant duration "
+                             "shift (>30%% and >5 s). Structural changes "
+                             "(files gained/lost, zero-duration entries "
+                             "recovering) are always material. 0 disables "
+                             "the check.")
     parser.add_argument("--summary", type=Path,
                         help="Optional path to write a human-readable summary "
-                             "for the auto-PR body.")
+                             "for the commit/log output.")
     return parser.parse_args()
 
 
@@ -100,6 +112,15 @@ def compute_diff(current: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]
         1 for k in common
         if abs(cur_by_key[k]["durationMs"] - new_by_key[k]["durationMs"]) > 500
     )
+    # A "significant" shift is one large enough to change how the planner
+    # packs shards: both relatively (>30 %) and absolutely (>5 s) — the
+    # 500 ms `changed_duration` counter above is run-to-run jitter and is
+    # deliberately excluded from materiality.
+    significant_duration_changes = sum(
+        1 for k in common
+        if abs(cur_by_key[k]["durationMs"] - new_by_key[k]["durationMs"])
+        > max(5000, 0.3 * cur_by_key[k]["durationMs"])
+    )
     recovered = sum(
         1 for k in common
         if cur_by_key[k]["durationMs"] == 0 and new_by_key[k]["durationMs"] > 0
@@ -120,6 +141,8 @@ def compute_diff(current: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]
         "added": len(added),
         "removed": len(removed),
         "changed_duration": changed_duration,
+        "significant_duration_changes": significant_duration_changes,
+        "significant_percent": 100.0 * significant_duration_changes / total_entries,
         "recovered": recovered,
         "gained_files": gained_files,
         "lost_files": lost_files,
@@ -134,6 +157,9 @@ def render_summary(diff: dict[str, Any]) -> str:
         f"- entries: {diff['current_entries']} → {diff['new_entries']} "
         f"(+{diff['added']} added, -{diff['removed']} removed)",
         f"- durations changed by > 500 ms: {diff['changed_duration']}",
+        f"- significant shifts (>30% and >5 s): "
+        f"{diff['significant_duration_changes']} "
+        f"({diff['significant_percent']:.1f}%)",
         f"- previously zero → now real: {diff['recovered']}",
         f"- drift: {diff['drift_percent']:.1f}% of test-id entries",
     ]
@@ -180,6 +206,31 @@ def main() -> int:
               f"--max-drift-percent={args.max_drift_percent}; refusing to "
               "auto-refresh. A human should regenerate manually and review.")
         return 2
+
+    if args.min_materiality_percent > 0:
+        structurally_material = (
+            diff["recovered"] > 0
+            or diff["gained_files"]
+            or diff["lost_files"]
+        )
+        percent_material = (
+            diff["drift_percent"] >= args.min_materiality_percent
+            or diff["significant_percent"] >= args.min_materiality_percent
+        )
+        if not structurally_material and not percent_material:
+            skip_note = (
+                f"change below materiality threshold "
+                f"({args.min_materiality_percent:.1f}%): drift "
+                f"{diff['drift_percent']:.1f}%, significant shifts "
+                f"{diff['significant_percent']:.1f}%, nothing structural — "
+                "skipping refresh."
+            )
+            print(skip_note)
+            if args.summary:
+                args.summary.parent.mkdir(parents=True, exist_ok=True)
+                args.summary.write_text(summary + skip_note + "\n",
+                                        encoding="utf-8")
+            return 3
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as fh:
