@@ -84,7 +84,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
@@ -457,31 +457,26 @@ export const DataAssetsHeader = ({
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
-  const {
-    editDomainPermission,
-    editOwnerPermission,
-    editTierPermission,
-    editCertificationPermission,
-    editStylePermission,
-  } = useMemo(
-    () => ({
-      editDomainPermission: permissions.EditAll && !dataAsset.deleted,
-      editOwnerPermission:
-        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
-        !dataAsset.deleted,
-      editTierPermission:
-        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
-        !dataAsset.deleted,
-      editCertificationPermission:
-        getPrioritizedEditPermission(
-          permissions,
-          Operation.EditCertification
-        ) && !dataAsset.deleted,
-      editStylePermission:
-        Boolean(onStyleUpdate) && permissions.EditAll && !dataAsset.deleted,
-    }),
-    [permissions, dataAsset, onStyleUpdate]
+  // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+  // component receives as a prop; `deleted` (destructured above, from `dataAsset.deleted`)
+  // gates every canEdit* flag below, matching each old per-usage `&& !dataAsset.deleted`
+  // guard. `editOwnerPermission`/`editTierPermission` were already prioritized calls
+  // (getPrioritizedEditPermission) — pure renames onto the named flags. No named flag exists
+  // for EditCertification, so `can(Operation.EditCertification)` (same escape hatch the
+  // derivation util itself uses, identical computation to the old prioritized call).
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions, deleted),
+    [permissions, deleted]
   );
+  const {
+    canEditAll: editDomainPermission,
+    canEditOwners: editOwnerPermission,
+    canEditTier: editTierPermission,
+    can,
+  } = flags;
+  const editCertificationPermission = can(Operation.EditCertification);
+  const hasTriggerPermission = can(Operation.Trigger);
+  const editStylePermission = Boolean(onStyleUpdate) && flags.canEditAll;
 
   const hasEditableMetadata =
     editDomainPermission ||
@@ -623,7 +618,7 @@ export const DataAssetsHeader = ({
     if (
       !SERVICE_TYPES.includes(entityType) ||
       EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType) ||
-      !permissions.Trigger
+      !hasTriggerPermission
     ) {
       return null;
     }
@@ -657,7 +652,7 @@ export const DataAssetsHeader = ({
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
     disableRunAgentsButtonMessage,
-    permissions.Trigger,
+    hasTriggerPermission,
     entityType,
     t,
   ]);
@@ -897,12 +892,10 @@ export const DataAssetsHeader = ({
               allowRename={allowRename}
               allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
               buttonClassName="data-assets-header-manage-button"
-              canDelete={permissions.Delete}
+              canDelete={flags.canDelete}
               deleted={dataAsset.deleted}
               displayName={getEntityName(dataAsset)}
-              editDisplayNamePermission={
-                permissions?.EditAll || permissions?.EditDisplayName
-              }
+              editDisplayNamePermission={flags.canEditDisplayName}
               entityFQN={dataAsset.fullyQualifiedName}
               entityId={dataAsset.id}
               entityName={dataAsset.name}
@@ -910,7 +903,7 @@ export const DataAssetsHeader = ({
               extraDropdownContent={extraDropdownContent}
               isRecursiveDelete={isRecursiveDelete}
               onAnnouncementClick={
-                permissions?.EditAll ? handleOpenAnnouncementDrawer : undefined
+                flags.canEditAll ? handleOpenAnnouncementDrawer : undefined
               }
               onEditDisplayName={onDisplayNameUpdate}
               onProfilerSettingUpdate={onProfilerSettingUpdate}
@@ -1097,7 +1090,7 @@ export const DataAssetsHeader = ({
             <>
               <HeaderDotSeparator />
               <RetentionPeriod
-                hasPermission={permissions.EditAll && !dataAsset.deleted}
+                hasPermission={flags.canEditAll}
                 retentionPeriod={dataAsset.retentionPeriod}
                 onUpdate={onUpdateRetentionPeriod}
               />
@@ -1128,7 +1121,7 @@ export const DataAssetsHeader = ({
 
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createPermission={permissions?.EditAll}
+          createPermission={flags.canEditAll}
           entityFQN={dataAsset.fullyQualifiedName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
