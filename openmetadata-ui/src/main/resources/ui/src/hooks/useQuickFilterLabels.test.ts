@@ -154,6 +154,50 @@ describe('useQuickFilterLabels', () => {
     expect(result.current[0].value?.[0].label).toBe(TERM_KEY);
   });
 
+  it('keeps a label that resolves after another value started resolving', async () => {
+    const secondKey = 'enterprise business glossary.purchase order';
+    const secondLabel = 'Enterprise Business Glossary.Purchase Order';
+    const deferred: Record<string, (value: unknown) => void> = {};
+    mockGetAggregationOptions.mockImplementation(
+      (_index, _key, value: string) =>
+        new Promise((resolve) => {
+          deferred[value] = resolve;
+        })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ fields }: { fields: ExploreQuickFilterField[] }) =>
+        useQuickFilterLabels({
+          fields,
+          sources: [],
+          index: SearchIndex.DATA_PRODUCT,
+        }),
+      { initialProps: { fields: glossaryFields([TERM_KEY]) } }
+    );
+
+    await waitFor(() =>
+      expect(mockGetAggregationOptions).toHaveBeenCalledTimes(1)
+    );
+
+    // A second value starts resolving while the first request is still in
+    // flight. The two requests are independent, so neither supersedes the other.
+    rerender({ fields: glossaryFields([TERM_KEY, secondKey]) });
+
+    await waitFor(() =>
+      expect(mockGetAggregationOptions).toHaveBeenCalledTimes(2)
+    );
+
+    deferred[secondKey](aggregationResponse([secondKey], [secondLabel]));
+    await waitFor(() =>
+      expect(result.current[0].value?.[1].label).toBe(secondLabel)
+    );
+
+    deferred[TERM_KEY](aggregationResponse([TERM_KEY], [TERM_LABEL]));
+    await waitFor(() =>
+      expect(result.current[0].value?.[0].label).toBe(TERM_LABEL)
+    );
+  });
+
   it('asks for an unresolvable value once, not on every row change', async () => {
     mockGetAggregationOptions.mockResolvedValue(aggregationResponse([], []));
 
