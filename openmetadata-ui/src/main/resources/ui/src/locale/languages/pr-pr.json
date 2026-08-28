@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} کار در حال اجرا",
     "count-of-total-loaded": "{{count}} از {{total}} بارگذاری شد",
     "count-running": "{{count}} در حال اجرا",
+    "count-term": "{{count}} اصطلاح",
     "count-term-plural": "{{count}} اصطلاح",
     "cover-image": "جلد",
     "covered": "پوشش داده‌شده",

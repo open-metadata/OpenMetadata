@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} taken worden uitgevoerd",
     "count-of-total-loaded": "{{count}} van {{total}} geladen",
     "count-running": "{{count}} actief",
+    "count-term": "{{count}} term",
     "count-term-plural": "{{count}} termen",
     "cover-image": "Omslag",
     "covered": "Gedekt",

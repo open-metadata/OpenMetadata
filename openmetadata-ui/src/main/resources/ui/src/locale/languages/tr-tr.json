@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} iş çalışıyor",
     "count-of-total-loaded": "{{total}} öğeden {{count}} tanesi yüklendi",
     "count-running": "{{count}} çalışıyor",
+    "count-term": "{{count}} terim",
     "count-term-plural": "{{count}} terim",
     "cover-image": "Kapak",
     "covered": "Kapsanan",

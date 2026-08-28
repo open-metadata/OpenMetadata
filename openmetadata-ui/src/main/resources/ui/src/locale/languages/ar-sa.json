@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} مهام قيد التشغيل",
     "count-of-total-loaded": "تم تحميل {{count}} من {{total}}",
     "count-running": "{{count}} قيد التشغيل",
+    "count-term": "مصطلح {{count}}",
     "count-term-plural": "{{count}} مصطلح",
     "cover-image": "غلاف",
     "covered": "مغطى",

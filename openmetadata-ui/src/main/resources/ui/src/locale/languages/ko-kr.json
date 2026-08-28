@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}}개 작업 실행 중",
     "count-of-total-loaded": "{{total}}개 중 {{count}}개 로드됨",
     "count-running": "{{count}}개 실행 중",
+    "count-term": "{{count}}개 용어",
     "count-term-plural": "{{count}}개 용어",
     "cover-image": "씌우다",
     "covered": "포함됨",

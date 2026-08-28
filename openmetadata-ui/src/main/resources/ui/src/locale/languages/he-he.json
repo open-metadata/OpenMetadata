@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} משימות פועלות",
     "count-of-total-loaded": "נטענו {{count}} מתוך {{total}}",
     "count-running": "{{count}} פועלים",
+    "count-term": "מונח {{count}}",
     "count-term-plural": "{{count}} מונחים",
     "cover-image": "תמונת כיסוי",
     "covered": "מכוסה",

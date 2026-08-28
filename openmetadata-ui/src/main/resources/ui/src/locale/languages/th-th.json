@@ -534,6 +534,7 @@
     "count-jobs-running": "กำลังเรียกใช้งาน {{count}} งาน",
     "count-of-total-loaded": "โหลดแล้ว {{count}} จาก {{total}}",
     "count-running": "{{count}} กำลังรัน",
+    "count-term": "{{count}} คำศัพท์",
     "count-term-plural": "{{count}} คำศัพท์",
     "cover-image": "ปก",
     "covered": "ครอบคลุม",

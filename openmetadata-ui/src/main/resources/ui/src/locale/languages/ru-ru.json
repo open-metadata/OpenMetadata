@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} задач выполняется",
     "count-of-total-loaded": "Загружено {{count}} из {{total}}",
     "count-running": "{{count}} выполняется",
+    "count-term": "{{count}} термин",
     "count-term-plural": "{{count}} терминов",
     "cover-image": "Обложка",
     "covered": "Покрыто",

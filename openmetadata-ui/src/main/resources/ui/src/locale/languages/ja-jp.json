@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} 件のジョブを実行中",
     "count-of-total-loaded": "{{total}} 件中 {{count}} 件を読み込み済み",
     "count-running": "{{count}} 件実行中",
+    "count-term": "{{count}} 件の用語",
     "count-term-plural": "{{count}} 件の用語",
     "cover-image": "カバー",
     "covered": "カバー済み",

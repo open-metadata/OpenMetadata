@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} traballos en execución",
     "count-of-total-loaded": "{{count}} de {{total}} cargados",
     "count-running": "{{count}} en execución",
+    "count-term": "{{count}} termo",
     "count-term-plural": "{{count}} termos",
     "cover-image": "Portada",
     "covered": "Cuberto",

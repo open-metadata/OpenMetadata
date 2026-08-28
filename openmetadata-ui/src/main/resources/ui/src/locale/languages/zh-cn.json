@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} 个作业正在运行",
     "count-of-total-loaded": "已加载 {{count}} / {{total}}",
     "count-running": "{{count}} 个运行中",
+    "count-term": "{{count}} 个术语",
     "count-term-plural": "{{count}} 个术语",
     "cover-image": "覆盖",
     "covered": "覆盖",

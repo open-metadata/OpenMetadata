@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} जॉब चालू आहेत",
     "count-of-total-loaded": "{{total}} पैकी {{count}} लोड झाले",
     "count-running": "{{count}} चालू",
+    "count-term": "{{count}} संज्ञा",
     "count-term-plural": "{{count}} संज्ञा",
     "cover-image": "मुखपृष्ठ",
     "covered": "समाविष्ट",

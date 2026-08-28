@@ -832,6 +832,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           const isRowExpanded = expandedRowKeys.includes(
             record.fullyQualifiedName ?? ''
           );
+          const termCountKey =
+            totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
 
           return (
             <div className="tw:flex tw:min-w-0 tw:items-center">
@@ -861,7 +863,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                         count: loadedNested,
                         total: totalNested,
                       })
-                    : t('label.count-term-plural', { count: totalNested })}
+                    : t(termCountKey, { count: totalNested })}
                 </span>
               )}
             </div>

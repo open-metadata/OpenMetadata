@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} tarefas em execução",
     "count-of-total-loaded": "{{count}} de {{total}} carregados",
     "count-running": "{{count}} em execução",
+    "count-term": "{{count}} termo",
     "count-term-plural": "{{count}} termos",
     "cover-image": "Cobrir",
     "covered": "Coberto",

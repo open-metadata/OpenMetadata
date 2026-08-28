@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} jobb körs",
     "count-of-total-loaded": "{{count}} av {{total}} laddade",
     "count-running": "{{count}} körs",
+    "count-term": "{{count}} term",
     "count-term-plural": "{{count}} termer",
     "cover-image": "Omslag",
     "covered": "Täckt",

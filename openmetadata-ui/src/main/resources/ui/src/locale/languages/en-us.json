@@ -534,6 +534,7 @@
     "count-jobs-running": "{{count}} jobs running",
     "count-of-total-loaded": "{{count}} of {{total}} loaded",
     "count-running": "{{count}} running",
+    "count-term": "{{count}} term",
     "count-term-plural": "{{count}} terms",
     "cover-image": "Cover",
     "covered": "Covered",
