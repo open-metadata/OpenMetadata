@@ -318,10 +318,10 @@ export const findAndUpdateNested = (
 export const glossaryTermTableColumnsWidth = () => {
   return {
     name: 250,
-    description: 350,
-    reviewers: 220,
-    synonyms: 220,
-    owners: 280,
+    description: 420,
+    reviewers: 200,
+    synonyms: 200,
+    owners: 220,
     status: 150,
   };
 };
