@@ -51,8 +51,8 @@ class GlossaryTermRelationSettingsUtilTest {
 
     GlossaryTermRelationSettingsUtil.normalize(relationType);
 
-    assertEquals(1, relationType.getSourceMax());
-    assertNull(relationType.getTargetMax());
+    assertNull(relationType.getSourceMax());
+    assertEquals(1, relationType.getTargetMax());
   }
 
   @Test
@@ -65,16 +65,16 @@ class GlossaryTermRelationSettingsUtilTest {
 
     GlossaryTermRelationSettingsUtil.normalize(relationType);
 
-    assertNull(relationType.getSourceMax());
-    assertEquals(1, relationType.getTargetMax());
+    assertEquals(1, relationType.getSourceMax());
+    assertNull(relationType.getTargetMax());
   }
 
   @Test
   void normalizeDerivesDirectionalCardinalityFromLimits() {
     GlossaryTermRelationType oneToMany =
-        relationType("contains").withSourceMax(1).withTargetMax(null);
+        relationType("contains").withSourceMax(null).withTargetMax(1);
     GlossaryTermRelationType manyToOne =
-        relationType("belongsTo").withSourceMax(null).withTargetMax(1);
+        relationType("belongsTo").withSourceMax(1).withTargetMax(null);
 
     GlossaryTermRelationSettingsUtil.normalize(oneToMany);
     GlossaryTermRelationSettingsUtil.normalize(manyToOne);
