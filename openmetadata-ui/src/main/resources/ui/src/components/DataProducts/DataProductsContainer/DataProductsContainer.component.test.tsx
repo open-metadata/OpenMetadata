@@ -50,30 +50,26 @@ jest.mock('../DataProductsSelectList/DataProductsSelectList', () => ({
     ),
 }));
 
-jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
-  WidgetPlusButton: jest
-    .fn()
-    .mockImplementation(({ onClick, disabled, ...props }) => (
-      <button
-        data-testid="add-data-product"
-        disabled={disabled}
-        onClick={onClick}
-        {...props}>
-        Add
-      </button>
-    )),
-  WidgetEditButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button data-testid="edit-button" onClick={onClick} {...props}>
+// 1.13 uses PlusIconButton / EditIconButton, not WidgetPlusButton / WidgetEditButton
+jest.mock('../../common/IconButtons/EditIconButton', () => ({
+  PlusIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button onClick={onClick} {...props}>
+      Add
+    </button>
+  )),
+  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
+    <button onClick={onClick} {...props}>
       Edit
     </button>
   )),
 }));
 
-jest.mock('../../common/WidgetCard/WidgetCard', () => ({
+// 1.13 wraps content in ExpandableCard, not WidgetCard
+jest.mock('../../common/ExpandableCard/ExpandableCard', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(({ children, headerExtra }) => (
-    <div data-testid="widget-card">
-      {headerExtra}
+  default: jest.fn().mockImplementation(({ children, header }) => (
+    <div data-testid="expandable-card">
+      {header}
       {children}
     </div>
   )),
@@ -144,16 +140,18 @@ describe('DataProductsContainer', () => {
     });
   });
 
-  it('disables add button with no domain when rule is enabled', () => {
+  // In 1.13 the add button is conditionally rendered (not rendered-and-disabled):
+  // when domainMissing is true, showAddTagButton is false so PlusIconButton is absent.
+  it('hides add button and shows domain prompt when no domain and rule is enabled', () => {
     render(<DataProductsContainer {...defaultProps} activeDomains={[]} />);
 
-    expect(screen.getByTestId('add-data-product')).toBeDisabled();
+    expect(screen.queryByTestId('add-data-product')).not.toBeInTheDocument();
     expect(
       screen.getByText('message.select-domain-to-add-data-product')
     ).toBeInTheDocument();
   });
 
-  it('enables add button with no domain when rule is disabled', () => {
+  it('shows add button and hides domain prompt when no domain and rule is disabled', () => {
     render(
       <DataProductsContainer
         {...defaultProps}
@@ -162,7 +160,7 @@ describe('DataProductsContainer', () => {
       />
     );
 
-    expect(screen.getByTestId('add-data-product')).not.toBeDisabled();
+    expect(screen.getByTestId('add-data-product')).toBeInTheDocument();
     expect(
       screen.queryByText('message.select-domain-to-add-data-product')
     ).not.toBeInTheDocument();
