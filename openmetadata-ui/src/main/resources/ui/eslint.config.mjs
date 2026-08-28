@@ -323,7 +323,7 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
-      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
