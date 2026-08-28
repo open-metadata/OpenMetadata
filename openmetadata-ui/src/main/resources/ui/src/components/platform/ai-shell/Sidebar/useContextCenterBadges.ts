@@ -12,17 +12,17 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { Include } from 'openmetadata-ui/src/generated/type/include';
-import { listContextFiles } from 'openmetadata-ui/src/rest/assetAPI';
-import { getListContextMemories } from 'openmetadata-ui/src/rest/contextMemoryAPI';
-import { getListKnowledgePages } from 'openmetadata-ui/src/rest/knowledgeCenterAPI';
+import { useMemo } from 'react';
+import { Include } from '../../../../generated/type/include';
+import { listContextFiles } from '../../../../rest/assetAPI';
+import { getListContextMemories } from '../../../../rest/contextMemoryAPI';
+import { getListKnowledgePages } from '../../../../rest/knowledgeCenterAPI';
 import {
   CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
   CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
   CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
-} from 'openmetadata-ui/src/utils/ContextCenterQueryKeys';
-import { useMemo } from 'react';
+} from '../../../../utils/ContextCenterQueryKeys';
 
 const COUNT_LIMIT = 0;
 
