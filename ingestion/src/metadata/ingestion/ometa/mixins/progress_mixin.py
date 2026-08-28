@@ -60,7 +60,7 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.put(
                 f"/services/ingestionPipelines/progress/{encoded_fqn}/{run_id}",
-                json=update.model_dump(mode="json", exclude_none=True),
+                update.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
             logger.debug("Failed to send progress update: %s%s", exc, error_detail(exc))
@@ -78,7 +78,7 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.post(
                 f"/services/ingestionPipelines/metrics/{encoded_fqn}/{run_id}",
-                json=batch.model_dump(mode="json", exclude_none=True),
+                batch.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
             logger.debug("Failed to send operation metrics batch: %s%s", exc, error_detail(exc))
