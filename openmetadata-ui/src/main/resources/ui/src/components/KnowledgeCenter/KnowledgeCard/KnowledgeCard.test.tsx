@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,
@@ -21,6 +25,30 @@ import {
   KNOWLEDGE_PAGE_TAGS,
   QUICK_LINK_MOCK_DATA,
 } from './KnowledgeCard.mock';
+
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockOnUpdateVote = jest.fn();
 const mockOnFollow = jest.fn();
@@ -89,20 +117,6 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
     .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditTags: true,
-    })),
-  }),
-}));
-
 jest.mock('../../../utils/StringUtils', () => ({
   stripMarkdown: jest.fn().mockImplementation((text: string) => text),
 }));
@@ -153,6 +167,61 @@ jest.mock('../../../rest/knowledgeCenterAPI', () => ({
 }));
 
 describe('Knowledge Card', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditTags: true,
+    });
+  });
+
+  // Guardrail: this component owns the single useEntityPermissions call whose raw
+  // `permissions` prop feeds QuickLinkFormModal — see TableDetailsPageV1.test.tsx's afterEach
+  // for the general rationale on asserting the (resource, identifier) pair.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toEqual(expectedIdentifier);
+    });
+  });
+
+  it('fetches permissions for the knowledge item fqn, enabled only for quick links', async () => {
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.KNOWLEDGE_PAGE,
+        QUICK_LINK_MOCK_DATA.fullyQualifiedName,
+        { enabled: true, deleted: false }
+      );
+    });
+  });
+
+  it('disables the permission fetch for a non-quick-link (article) card', async () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.KNOWLEDGE_PAGE,
+        KNOWLEDGE_PAGE_MOCK_DATA.fullyQualifiedName,
+        { enabled: false, deleted: false }
+      );
+    });
+  });
+
   it('should render the knowledge card with title and description', async () => {
     render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
@@ -293,17 +362,15 @@ describe('Knowledge Card', () => {
   });
 
   it('should not render edit and delete buttons when user has no permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockReturnValue({
-        Create: false,
-        Delete: false,
-        ViewAll: false,
-        EditAll: false,
-        EditDescription: false,
-        EditDisplayName: false,
-        EditTags: false,
-      }),
-    }));
+    setMockPermissions({
+      Create: false,
+      Delete: false,
+      ViewAll: false,
+      EditAll: false,
+      EditDescription: false,
+      EditDisplayName: false,
+      EditTags: false,
+    });
     render(
       <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
       { wrapper: MemoryRouter }
@@ -316,17 +383,15 @@ describe('Knowledge Card', () => {
   });
 
   it('should render edit button when user has partial edit permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockReturnValue({
-        Create: false,
-        Delete: false,
-        ViewAll: false,
-        EditAll: false,
-        EditDescription: true,
-        EditDisplayName: false,
-        EditTags: true,
-      }),
-    }));
+    setMockPermissions({
+      Create: false,
+      Delete: false,
+      ViewAll: false,
+      EditAll: false,
+      EditDescription: true,
+      EditDisplayName: false,
+      EditTags: true,
+    });
     render(
       <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
       { wrapper: MemoryRouter }
@@ -338,17 +403,15 @@ describe('Knowledge Card', () => {
   });
 
   it('should not render edit and delete buttons for quick link when readonly', () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockReturnValue({
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        EditAll: true,
-        EditDescription: true,
-        EditDisplayName: true,
-        EditTags: true,
-      }),
-    }));
+    setMockPermissions({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditTags: true,
+    });
     render(
       <KnowledgeCard
         {...mockProps}
