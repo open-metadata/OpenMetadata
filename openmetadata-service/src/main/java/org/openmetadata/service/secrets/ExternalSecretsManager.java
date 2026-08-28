@@ -127,11 +127,29 @@ public abstract class ExternalSecretsManager extends SecretsManager {
    * Resolves a {@code secret:/...} reference, mapping the {@link #NULL_SECRET_STRING} placeholder
    * written by older versions back to an absent value. Services saved before this was fixed still
    * hold a secret whose payload is the literal "null", which must never be used as a credential.
+   * Reading it as absent is what cleans those services up: the connection carries null, and the
+   * next save drops the stale secret through {@link #storeValue}.
+   *
+   * <p>This makes {@link #NULL_SECRET_STRING} a reserved payload — a credential whose real value is
+   * the four characters "null" stores fine but reads back as absent. Nothing recorded alongside the
+   * secret distinguishes the placeholder from that value, so a one-time migration over the vault
+   * could not tell them apart either; it would delete the credential outright where this only hides
+   * it, leaving the warning below and a re-save as the way back.
    */
   @Override
   public String getSecretValue(String secretWithPrefix) {
     String secretValue = super.getSecretValue(secretWithPrefix);
-    return NULL_SECRET_STRING.equals(secretValue) ? null : secretValue;
+    boolean isPlaceholder = NULL_SECRET_STRING.equals(secretValue);
+    if (isPlaceholder) {
+      LOG.warn(
+          "Secret [{}] holds the reserved placeholder \"{}\" that older versions wrote for a "
+              + "cleared credential; reading it as absent. Re-save the field to remove the stale "
+              + "secret, or set a different value if \"{}\" was the intended credential.",
+          secretWithPrefix,
+          NULL_SECRET_STRING,
+          NULL_SECRET_STRING);
+    }
+    return isPlaceholder ? null : secretValue;
   }
 
   public void upsertSecret(String secretName, String secretValue) {

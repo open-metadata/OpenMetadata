@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
@@ -43,6 +44,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 public class SecretsManagerNullSecretIT {
 
   private static final String CLUSTER_NAME = "openmetadata";
+  private static final String DATABASE_SERVICES_PATH = "/v1/services/databaseServices";
   private static final String PASSWORD = "s3cr3t";
   private static final String PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----";
 
@@ -87,8 +89,13 @@ public class SecretsManagerNullSecretIT {
     assertEquals(PASSWORD, secrets.get(secretId(serviceName, "password")));
     assertEquals(PRIVATE_KEY, secrets.get(secretId(serviceName, "privatekey")));
 
+    // Saving an edited service is a PUT of the same create request, not a second POST — which the
+    // server rejects as a duplicate. This is the call the UI makes when the user hits Save.
     connection.withPassword("");
-    DatabaseService cleared = SdkClients.adminClient().databaseServices().create(request);
+    DatabaseService cleared =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, DATABASE_SERVICES_PATH, request, DatabaseService.class);
 
     assertFalse(
         secrets.containsKey(secretId(serviceName, "password")),
