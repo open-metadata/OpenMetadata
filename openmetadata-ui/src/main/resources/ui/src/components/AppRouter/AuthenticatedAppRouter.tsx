@@ -821,10 +821,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
       />
       <Route element={<Navigate to={ROUTES.HOME} />} path={ROUTES.SIGNIN} />
-      <Route
-        element={<Navigate to={ROUTES.HOME} />}
-        path={ROUTES.REGISTER}
-      />
+      <Route element={<Navigate to={ROUTES.HOME} />} path={ROUTES.REGISTER} />
       <Route
         element={<Navigate to={ROUTES.HOME} />}
         path={ROUTES.FORGOT_PASSWORD}
