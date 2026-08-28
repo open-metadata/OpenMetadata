@@ -47,9 +47,10 @@ jest.mock('react-router-dom', () => ({
 jest.mock(
   '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
-    jest.fn().mockImplementation(({ onChange }) => (
+    jest.fn().mockImplementation(({ onChange, value }) => (
       <div>
         ScheduleInterval
+        <span data-testid="schedule-value">{value}</span>
         <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
       </div>
     ))
@@ -245,6 +246,24 @@ describe('AppInstall component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel FormBuilder' }));
 
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
+  });
+
+  it('preserves the selected schedule across back and forward navigation', async () => {
+    mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce(MARKETPLACE_DATA);
+
+    render(<AppInstall />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Save AppInstallVerifyCard' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Submit FormBuilder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
+    fireEvent.click(screen.getByTestId('back-button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit FormBuilder' }));
+
+    expect(screen.getByTestId('schedule-value')).toHaveTextContent(
+      '0 12 * * *'
+    );
   });
 
   it('actions check with schedule type noSchedule', async () => {

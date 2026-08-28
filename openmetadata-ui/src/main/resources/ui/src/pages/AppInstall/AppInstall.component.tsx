@@ -16,7 +16,14 @@ import { RJSFSchema } from '@rjsf/utils';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -69,6 +76,8 @@ const AppInstall = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<string>();
+  // `undefined` is a valid on-demand selection, so initialization needs its own flag.
+  const isScheduleInitialized = useRef(false);
   const [isScheduleValid, setIsScheduleValid] = useState(true);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
@@ -120,13 +129,16 @@ const AppInstall = () => {
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
   const openScheduleStep = useCallback(() => {
-    setScheduleValue(
-      getDefaultScheduleValue({
-        defaultSchedule: defaultValue,
-        includePeriodOptions: initialOptions,
-        allowNoSchedule: true,
-      })
-    );
+    if (!isScheduleInitialized.current) {
+      setScheduleValue(
+        getDefaultScheduleValue({
+          defaultSchedule: defaultValue,
+          includePeriodOptions: initialOptions,
+          allowNoSchedule: true,
+        })
+      );
+      isScheduleInitialized.current = true;
+    }
     setIsScheduleValid(true);
     setActiveServiceStep(3);
   }, [defaultValue, initialOptions]);
