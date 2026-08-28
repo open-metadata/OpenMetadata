@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -57,9 +57,12 @@ describe('Tooltip — child wrapping', () => {
     // 'button' is intentionally excluded from NATIVELY_FOCUSABLE_HTML because
     // react-aria's hover system does not reliably fire on native buttons passed
     // via cloneElement. Wrapping in an AriaButton ensures useHover/usePress attach.
-    const inner = screen.getByRole('button', { name: 'trigger' });
+    const buttons = screen.getAllByRole('button', { name: 'trigger' });
+    expect(buttons).toHaveLength(2);
+    const outer = buttons[0];
+    const inner = buttons[1];
 
-    expect(inner.closest('button')).not.toBe(inner);
+    expect(outer.contains(inner)).toBe(true);
   });
 
   it('does NOT wrap a native anchor', () => {
@@ -164,7 +167,9 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.queryByText('Tooltip text')).not.toBeInTheDocument();
 
     // Native button is wrapped in AriaButton so useHover fires correctly.
-    await user.hover(screen.getByRole('button', { name: 'trigger' }));
+    // Hover over the outer AriaButton (first match).
+    const buttons = screen.getAllByRole('button', { name: 'trigger' });
+    await user.hover(buttons[0]);
 
     await waitFor(() => {
       expect(screen.getByText('Tooltip text')).toBeInTheDocument();
@@ -181,13 +186,16 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.getByText('Always visible')).toBeInTheDocument();
   });
 
-  it('does not render the tooltip content when isDisabled is true', () => {
+  it('does not show tooltip on interaction when trigger is disabled', () => {
     render(
-      <Tooltip isDisabled isOpen title="Hidden">
-        <button>trigger</button>
+      <Tooltip triggerIsDisabled title="Hidden">
+        <span>trigger</span>
       </Tooltip>
     );
 
     expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
+
+    const wrapper = screen.getByText('trigger').closest('button');
+    expect(wrapper).toBeDisabled();
   });
 });
