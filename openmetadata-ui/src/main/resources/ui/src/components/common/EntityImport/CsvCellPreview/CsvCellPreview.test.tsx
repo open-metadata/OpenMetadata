@@ -97,7 +97,9 @@ describe('CsvCellPreview', () => {
     );
 
     expect(screen.getByLabelText('Cost Center: FIN-204')).toBeInTheDocument();
-    expect(screen.getByLabelText('Review Cadence: Quarterly')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Review Cadence: Quarterly')
+    ).toBeInTheDocument();
   });
 
   it('should render an em-dash when empty', () => {
