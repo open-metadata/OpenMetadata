@@ -38,12 +38,16 @@
  */
 const { execSync, execFileSync } = require('child_process');
 
+const MAX_BUFFER = 1024 * 1024 * 64;
+
+const C = { red: (s) => `\x1b[31m${s}\x1b[0m`, green: (s) => `\x1b[32m${s}\x1b[0m`, gray: (s) => `\x1b[90m${s}\x1b[0m` };
+
 const base = process.argv[2];
 const diffArgs = base ? `${base}...HEAD` : '--cached';
 
 function sh(cmd) {
   try {
-    return execSync(cmd, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 });
+    return execSync(cmd, { encoding: 'utf8', maxBuffer: MAX_BUFFER });
   } catch (e) {
     return e.stdout || '';
   }
@@ -53,9 +57,40 @@ function sh(cmd) {
 // the three-dot diff semantics already used for `diffArgs`) rather than the
 // tip of <base>, so unrelated commits that landed on the base branch after
 // this branch forked don't get treated as part of the "before" state.
-const mergeBase = base ? sh(`git merge-base ${base} HEAD`).trim() : null;
+//
+// A shallow clone (actions/checkout defaults to fetch-depth: 1) has no common
+// ancestor to find, and an unresolved merge-base would silently make "before"
+// equal "after", turning the whole guard into a no-op that always passes.
+// Fail loudly instead.
+function resolveMergeBase(baseRef) {
+  let resolved = '';
+  try {
+    resolved = execFileSync('git', ['merge-base', baseRef, 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch (e) {
+    resolved = '';
+  }
+  if (!resolved) {
+    process.stderr.write(
+      C.red(`\n\u2716 Cannot resolve the merge-base of '${baseRef}' and HEAD \u2014 refusing to run as a no-op.\n`)
+    );
+    process.stderr.write(
+      C.gray(
+        `  This usually means a shallow clone. Check out with \`fetch-depth: 0\` (or run \`git fetch --deepen=...\`) and retry.\n`
+      )
+    );
+    process.exit(1);
+  }
+  return resolved;
+}
 
-const C = { red: (s) => `\x1b[31m${s}\x1b[0m`, green: (s) => `\x1b[32m${s}\x1b[0m`, gray: (s) => `\x1b[90m${s}\x1b[0m` };
+let cachedMergeBase;
+
+function mergeBaseRef() {
+  if (cachedMergeBase === undefined) {
+    cachedMergeBase = base ? resolveMergeBase(base) : null;
+  }
+  return cachedMergeBase;
+}
 
 function newLessFiles() {
   const out = sh(`git diff ${diffArgs} --diff-filter=A --name-only -- '*.less'`);
@@ -91,7 +126,10 @@ function parseClause(clause) {
   return specifiers;
 }
 
-// Returns Map<moduleString, { specifiers: Set<string>, statement: string }>
+// Returns Map<moduleString, { specifiers: Set<string>, statements: Map<string, string> }>
+// `statements` maps each specifier back to the import statement that first
+// brought it in, so a failure can point at the statement that actually
+// introduced the new specifier rather than the last one in the file.
 function parseAntdImports(content) {
   const map = new Map();
   if (!content) {
@@ -101,14 +139,17 @@ function parseAntdImports(content) {
   ANTD_IMPORT_RE.lastIndex = 0;
   while ((m = ANTD_IMPORT_RE.exec(content))) {
     const moduleName = m[3];
-    const specifiers = parseClause(m[1]);
     const statement = m[0].replace(/\s+/g, ' ').trim();
     if (!map.has(moduleName)) {
-      map.set(moduleName, { specifiers: new Set(), statement });
+      map.set(moduleName, { specifiers: new Set(), statements: new Map() });
     }
     const entry = map.get(moduleName);
-    specifiers.forEach((s) => entry.specifiers.add(s));
-    entry.statement = statement;
+    parseClause(m[1]).forEach((specifier) => {
+      entry.specifiers.add(specifier);
+      if (!entry.statements.has(specifier)) {
+        entry.statements.set(specifier, statement);
+      }
+    });
   }
   return map;
 }
@@ -135,7 +176,7 @@ function changedTsFiles() {
 
 function gitShow(objectSpec) {
   try {
-    return execFileSync('git', ['show', objectSpec], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 });
+    return execFileSync('git', ['show', objectSpec], { encoding: 'utf8', maxBuffer: MAX_BUFFER });
   } catch (e) {
     // File didn't exist at that ref (e.g. newly added file) — treat as empty.
     return '';
@@ -147,7 +188,7 @@ function getBeforeContent(path) {
     return '';
   }
   // baseRef mode: "before" is the merge-base. Staged mode: "before" is HEAD.
-  return gitShow(`${base ? mergeBase : 'HEAD'}:${path}`);
+  return gitShow(`${base ? mergeBaseRef() : 'HEAD'}:${path}`);
 }
 
 function getAfterContent(path) {
@@ -157,6 +198,20 @@ function getAfterContent(path) {
   // baseRef mode: "after" is HEAD. Staged mode: "after" is the index — the
   // index object spec has no ref before the colon, just `:path`.
   return gitShow(base ? `HEAD:${path}` : `:${path}`);
+}
+
+// Map<statement, specifiers[]> — one hit per offending statement, not per
+// specifier, so a single `import { A, B } from 'antd'` reports once.
+function groupBySourceStatement(specifiers, statements) {
+  const grouped = new Map();
+  specifiers.forEach((specifier) => {
+    const statement = statements.get(specifier);
+    if (!grouped.has(statement)) {
+      grouped.set(statement, []);
+    }
+    grouped.get(statement).push(specifier);
+  });
+  return grouped;
 }
 
 function newAntdImports() {
@@ -173,16 +228,20 @@ function newAntdImports() {
     for (const [moduleName, afterEntry] of afterMap) {
       const beforeEntry = beforeMap.get(moduleName);
       const beforeSpecifiers = beforeEntry ? beforeEntry.specifiers : new Set();
-      const isNew = [...afterEntry.specifiers].some((s) => !beforeSpecifiers.has(s));
-      if (isNew) {
-        hits.push({ file: after, line: afterEntry.statement });
-      }
+      const added = [...afterEntry.specifiers].filter((s) => !beforeSpecifiers.has(s));
+      groupBySourceStatement(added, afterEntry.statements).forEach((specifiers, statement) =>
+        hits.push({ file: after, line: statement, specifiers })
+      );
     }
   }
   return hits;
 }
 
 function main() {
+  // Resolve up front: every downstream `git` call goes through `sh`, which
+  // swallows failures, so an unusable base ref must be caught here or the run
+  // degrades into a no-op that reports success.
+  mergeBaseRef();
   const less = newLessFiles();
   const antd = newAntdImports();
   const problems = less.length + antd.length;
@@ -193,7 +252,9 @@ function main() {
   }
   if (antd.length) {
     process.stderr.write(C.red(`\n✖ New 'antd' import(s) are not allowed — use @openmetadata/ui-core-components (UntitledUI):\n`));
-    antd.forEach((h) => process.stderr.write(`    ${h.file}:  ${h.line}\n`));
+    antd.forEach((h) =>
+      process.stderr.write(`    ${h.file}:  ${h.line}${C.gray(`   (new: ${h.specifiers.join(', ')})`)}\n`)
+    );
   }
 
   if (problems) {
