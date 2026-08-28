@@ -12,6 +12,7 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
@@ -23,11 +24,12 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
+
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;
 
-  return (
-    <span className="ant-select-selection-item" title={(label as string) ?? ''}>
+  const tagContent = (
+    <span className="ant-select-selection-item">
       <span className="ant-select-selection-item-content">{label}</span>
       {closable && (
         <button className="ant-select-selection-item-remove" onClick={onClose}>
@@ -36,6 +38,13 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
       )}
     </span>
   );
+
+  const labelStr = (label as string) ?? '';
+  if (labelStr) {
+    return <Tooltip title={labelStr}>{tagContent}</Tooltip>;
+  }
+
+  return tagContent;
 };
 
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {

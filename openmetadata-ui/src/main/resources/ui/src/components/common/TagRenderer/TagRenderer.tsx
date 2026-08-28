@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 export const TagRenderer = (props: CustomTagProps) => {
@@ -20,8 +21,8 @@ export const TagRenderer = (props: CustomTagProps) => {
       ? `${label.substring(0, 12)}...`
       : label;
 
-  return (
-    <span className="ant-select-selection-item" title={(label as string) ?? ''}>
+  const tagContent = (
+    <span className="ant-select-selection-item">
       {displayLabel}
       {closable && (
         <button className="selected-chip-tag-remove" onClick={onClose}>
@@ -30,4 +31,11 @@ export const TagRenderer = (props: CustomTagProps) => {
       )}
     </span>
   );
+
+  // Show tooltip only if label is truncated
+  if (typeof label === 'string' && label.length > 12) {
+    return <Tooltip title={label}>{tagContent}</Tooltip>;
+  }
+
+  return tagContent;
 };
