@@ -91,10 +91,10 @@ const TagChip: FC<TagChipProps> = ({
   const chipIcon = useMemo(
     () => (
       <Icon
+        className="tw:mr-1 tw:shrink-0"
         fallback={<Tag01 size={sizeStyles[size].icon} />}
         iconValue={icon}
         size={12}
-        wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
       />
     ),
     [icon, size]
