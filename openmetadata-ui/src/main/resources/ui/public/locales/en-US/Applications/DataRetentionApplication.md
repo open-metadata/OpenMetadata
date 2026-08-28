@@ -29,3 +29,17 @@ $$section
 Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).
 
 $$
+
+$$section
+### Audit Log Retention Period (days) $(id="auditLogRetentionPeriod")
+
+Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+
+$$
+
+$$section
+### Extension Retention Periods (days) $(id="extensions")
+
+Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. Leave a key out to use whatever default that extension defines.
+
+$$
