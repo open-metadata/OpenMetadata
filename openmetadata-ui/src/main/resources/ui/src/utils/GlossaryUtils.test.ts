@@ -144,6 +144,36 @@ describe('Glossary Utils', () => {
     expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
   });
 
+  it('should treat direct children of the view root as roots when the root itself is absent', () => {
+    // When expanding a term (not a glossary), the flat list holds that term's
+    // descendants but not the term itself. Its direct children reference it as
+    // their parent, so they must render as roots — passing the root FQN lets
+    // buildTree distinguish them from orphans of a not-yet-loaded page.
+    const rootTermFqn = 'G.Term1';
+    const child = {
+      fullyQualifiedName: 'G.Term1.Term2',
+      name: 'Term2',
+      children: [],
+      parent: { fullyQualifiedName: rootTermFqn, type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+    const grandChild = {
+      fullyQualifiedName: 'G.Term1.Term2.Term3',
+      name: 'Term3',
+      parent: {
+        fullyQualifiedName: 'G.Term1.Term2',
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+
+    // Without the root FQN the direct child would be held back as an orphan.
+    expect(buildTree([child, grandChild])).toEqual([]);
+
+    // With the root FQN it renders as a root with its grandchild nested.
+    expect(buildTree([child, grandChild], rootTermFqn)).toEqual([
+      { ...child, children: [{ ...grandChild, type: 'glossaryTerm' }] },
+    ]);
+  });
+
   it('should keep grandchildren when an intermediate term has no inline children', () => {
     // Flat pages deliver a parent before its children, and an intermediate
     // term may arrive with an empty children field. The grandchild must still

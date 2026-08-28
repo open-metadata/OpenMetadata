@@ -496,7 +496,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       );
       expandedTreeFlatRef.current = mergedFlat;
 
-      setGlossaryChildTerms(buildTree(mergedFlat) as ModifiedGlossary[]);
+      setGlossaryChildTerms(
+        buildTree(
+          mergedFlat,
+          activeGlossary?.fullyQualifiedName
+        ) as ModifiedGlossary[]
+      );
 
       const keys = mergedFlat.reduce((prev, curr) => {
         if (curr.children?.length) {

@@ -28,7 +28,14 @@ import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getGlossaryPath } from './RouterUtils';
 
-export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+export const buildTree = (
+  data: GlossaryTerm[],
+  // FQN of the container the flat list was fetched under (the glossary or the
+  // term being viewed). Its direct children reference it as their parent but it
+  // is not itself part of the data, so they must be treated as genuine roots
+  // rather than orphans of a not-yet-loaded page.
+  rootParentFqn?: string
+): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
 
   data.forEach((obj) => {
@@ -62,9 +69,12 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
     // back instead of promoting it to a spurious root and corrupting the
     // hierarchy; it attaches once its parent's page loads. Gate on the parent
     // FQN's presence — not a populated parent.type, which the API may omit —
-    // and only exclude a parent that is the glossary itself (a genuine root).
+    // and treat as genuine roots the terms whose parent is the glossary itself
+    // or the view's root container (its direct children are never in the data).
     const isOrphanOfUnloadedParent =
-      Boolean(parentFqn) && obj.parent?.type !== EntityType.GLOSSARY;
+      Boolean(parentFqn) &&
+      obj.parent?.type !== EntityType.GLOSSARY &&
+      parentFqn !== rootParentFqn;
 
     if (!isOrphanOfUnloadedParent) {
       tree.push(current);
