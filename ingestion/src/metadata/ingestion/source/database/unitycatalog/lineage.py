@@ -139,6 +139,10 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_COLUMN_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
+                    # The table pair this belongs to is dropped above, so caching the
+                    # columns only grows the map with entries nothing can read.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     table_key = (
                         row.source_table_full_name,
                         row.target_table_full_name,

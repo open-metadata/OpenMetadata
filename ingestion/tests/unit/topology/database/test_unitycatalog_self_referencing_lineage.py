@@ -34,7 +34,16 @@ def _row(source_table: str, target_table: str) -> SimpleNamespace:
     return SimpleNamespace(source_table_full_name=source_table, target_table_full_name=target_table)
 
 
-def _source(rows):
+def _column_row(source_table: str, target_table: str, column: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        source_table_full_name=source_table,
+        target_table_full_name=target_table,
+        source_column_name=column,
+        target_column_name=column,
+    )
+
+
+def _source(rows, column_rows=None):
     """The real caching method, with only the SQL connection stubbed."""
     with patch.object(UnitycatalogLineageSource, "__init__", lambda s: None):
         source = UnitycatalogLineageSource()
@@ -43,8 +52,11 @@ def _source(rows):
     source.source_config = MagicMock()
     source.source_config.queryLogDuration = 1
 
+    source.column_lineage_map = defaultdict(list)
+
     connection = MagicMock()
-    connection.execute.return_value = rows
+    # _cache_lineage runs the table query first, then the column query
+    connection.execute.side_effect = [rows, column_rows if column_rows is not None else []]
     engine = MagicMock()
     engine.connect.return_value.__enter__ = MagicMock(return_value=connection)
     engine.connect.return_value.__exit__ = MagicMock(return_value=False)
@@ -76,3 +88,24 @@ class TestSelfReferencingLineageCache:
         source._cache_lineage()
         assert source.table_lineage_map[SNAPSHOT] == {EVENT_LOG}
         assert source.table_lineage_map.get(EVENT_LOG, set()) == set()
+
+
+class TestSelfReferencingColumnLineageCache:
+    """A self-pair's columns are unreadable once its table pair is dropped."""
+
+    def test_self_referencing_columns_are_not_cached(self):
+        source = _source(
+            [_row(EVENT_LOG, EVENT_LOG)],
+            column_rows=[_column_row(EVENT_LOG, EVENT_LOG, "id")],
+        )
+        source._cache_lineage()
+        assert (EVENT_LOG, EVENT_LOG) not in source.column_lineage_map
+        assert sum(len(v) for v in source.column_lineage_map.values()) == 0
+
+    def test_normal_columns_are_still_cached(self):
+        source = _source(
+            [_row(EVENT_LOG, SNAPSHOT)],
+            column_rows=[_column_row(EVENT_LOG, SNAPSHOT, "id")],
+        )
+        source._cache_lineage()
+        assert source.column_lineage_map[(EVENT_LOG, SNAPSHOT)] == [("id", "id")]
