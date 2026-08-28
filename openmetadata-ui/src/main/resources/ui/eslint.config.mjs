@@ -357,11 +357,14 @@ export default [
       'sonarjs/no-invariant-returns': 'warn', // 0 in sample
 
       // React correctness and re-render cost — the enforceable slice of
-      // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 93 across 59 files
-      'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
-      'react/no-unstable-nested-components': 'warn', // 25 across 23 files
-      'react/no-danger': 'warn', // 0 in sample
+      // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
+      // stable keys, hoisted components, memoized context values; documented
+      // disables only where no real fix exists (static never-reordered lists,
+      // dangerouslySetInnerHTML on sanitized content). Promoted to error.
+      'react/no-array-index-key': 'error',
+      'react/jsx-no-constructed-context-values': 'error',
+      'react/no-unstable-nested-components': 'error',
+      'react/no-danger': 'error',
       // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
       // removed / narrowed where safe, documented disables where the value is
       // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
