@@ -898,6 +898,7 @@ export const DataAssetsHeader = ({
               allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
               buttonClassName="data-assets-header-manage-button"
               canDelete={permissions.Delete}
+              canRestore={permissions.EditAll}
               deleted={dataAsset.deleted}
               displayName={getEntityName(dataAsset)}
               editDisplayNamePermission={

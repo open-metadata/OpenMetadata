@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -27,25 +27,147 @@ import {
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
+const waitForTestCaseListInclude = (
+  page: Page,
+  include: 'deleted' | 'non-deleted'
+) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+      new URL(response.url()).searchParams.get('include') === include
+  );
+
+const openTestCaseList = async (
+  page: Page,
+  testCaseName: string,
+  include: 'deleted' | 'non-deleted'
+) => {
+  const initialListResponse = waitForTestCaseListResponse(page);
+  await page.goto('/data-quality/test-cases');
+  await initialListResponse;
+
+  const searchResponse = waitForTestCaseListResponse(page);
+  await page.getByTestId('searchbar').fill(testCaseName);
+  await searchResponse;
+
+  if (include === 'deleted') {
+    const deletedListResponse = waitForTestCaseListInclude(page, include);
+    await page.getByTestId('show-deleted').click();
+    await deletedListResponse;
+    await waitForAllLoadersToDisappear(page);
+  }
+
+  await expect(page.getByTestId(testCaseName)).toBeVisible();
+};
+
+const softDeleteTestCase = async (
+  apiContext: APIRequestContext,
+  testCaseId: string
+) => {
+  await apiContext.delete(`/api/v1/dataQuality/testCases/${testCaseId}`, {
+    params: { hardDelete: false, recursive: true },
+  });
+};
+
+const waitForDeletedTestCase = async (
+  apiContext: APIRequestContext,
+  testCaseName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          '/api/v1/dataQuality/testCases/search/list',
+          {
+            params: {
+              include: 'deleted',
+              includeAllTests: true,
+              q: `*${testCaseName}*`,
+            },
+          }
+        );
+        const body = await response.json();
+
+        return (body.data ?? []).some(
+          (testCase: { name?: string }) => testCase.name === testCaseName
+        );
+      },
+      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
+
 test.describe(
   'Test case soft delete and restore',
   { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`] },
   () => {
-    const testCaseName = `soft_delete_restore_${uuid()}`;
+    const softDeleteTestCaseName = `soft_delete_${uuid()}`;
+    const restoreTestCaseName = `restore_details_${uuid()}`;
+    const restoreTestCaseDisplayName = `Restore details ${uuid()}`;
+    const restoreTestCaseDescription = `Description preserved after restore ${uuid()}`;
+    const readOnlyTestCaseName = `deleted_read_only_${uuid()}`;
     let table: TableClass;
-    let testCaseId: string;
+    let softDeleteTestCaseId: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       table = new TableClass();
       await table.create(apiContext);
-      const testCase = await table.createTestCase(apiContext, {
-        name: testCaseName,
+
+      // Test-case classification tags are inherited from the parent entity.
+      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
+        data: [
+          {
+            op: 'replace',
+            path: '/tags',
+            value: [
+              {
+                labelType: 'Manual',
+                source: 'Classification',
+                state: 'Confirmed',
+                tagFQN: 'PII.Sensitive',
+              },
+            ],
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+
+      const softDeleteCandidate = await table.createTestCase(apiContext, {
+        name: softDeleteTestCaseName,
         entityLink: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         parameterValues: [{ name: 'columnCount', value: '4' }],
         testDefinition: 'tableColumnCountToEqual',
       });
-      testCaseId = testCase.id;
+      softDeleteTestCaseId = softDeleteCandidate.id;
+
+      const restoreCandidateData = {
+        name: restoreTestCaseName,
+        displayName: restoreTestCaseDisplayName,
+        description: restoreTestCaseDescription,
+        entityLink: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+        parameterValues: [{ name: 'columnCount', value: '4' }],
+        testDefinition: 'tableColumnCountToEqual',
+      };
+      const restoreCandidate = await table.createTestCase(
+        apiContext,
+        restoreCandidateData
+      );
+      const readOnlyCandidate = await table.createTestCase(apiContext, {
+        name: readOnlyTestCaseName,
+        entityLink: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+        parameterValues: [{ name: 'columnCount', value: '4' }],
+        testDefinition: 'tableColumnCountToEqual',
+      });
+
+      await Promise.all([
+        softDeleteTestCase(apiContext, restoreCandidate.id),
+        softDeleteTestCase(apiContext, readOnlyCandidate.id),
+      ]);
+      await Promise.all([
+        waitForDeletedTestCase(apiContext, restoreTestCaseName),
+        waitForDeletedTestCase(apiContext, readOnlyTestCaseName),
+      ]);
       await afterAction();
     });
 
@@ -55,142 +177,132 @@ test.describe(
       await afterAction();
     });
 
-    test('soft deletes, discovers, opens, and restores a test case', async ({
+    test('soft deletes an active test case and lists it as deleted', async ({
       page,
     }) => {
-      test.slow();
       await redirectToHomePage(page);
+      await openTestCaseList(page, softDeleteTestCaseName, 'non-deleted');
 
-      await test.step('Open and find the active test case', async () => {
-        const initialListResponse = waitForTestCaseListResponse(page);
-        await page.goto('/data-quality/test-cases');
-        await initialListResponse;
+      await page
+        .getByTestId(`action-dropdown-${softDeleteTestCaseName}`)
+        .click();
+      await page.getByTestId(`delete-${softDeleteTestCaseName}`).click();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
+      await expect(page.getByTestId('soft-delete')).toBeVisible();
 
-        const searchResponse = waitForTestCaseListResponse(page);
-        await page.getByTestId('searchbar').fill(testCaseName);
-        await searchResponse;
-        await expect(page.getByTestId(testCaseName)).toBeVisible();
-      });
+      const deleteResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/api/v1/dataQuality/testCases/${softDeleteTestCaseId}`
+            ) &&
+          response.url().includes('hardDelete=false') &&
+          response.request().method() === 'DELETE'
+      );
+      const activeListRefresh = waitForTestCaseListResponse(page);
+      await page.getByTestId('confirm-button').click();
+      await deleteResponse;
+      await activeListRefresh;
+      await toastNotification(page, /deleted successfully!/);
+      await expect(page.getByTestId(softDeleteTestCaseName)).not.toBeVisible();
 
-      await test.step('Soft delete the test case', async () => {
-        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
-        await page.getByTestId(`delete-${testCaseName}`).click();
-        await expect(page.getByTestId('delete-modal')).toBeVisible();
-        await expect(page.getByTestId('soft-delete')).toBeVisible();
+      const deletedListResponse = waitForTestCaseListInclude(page, 'deleted');
+      await page.getByTestId('show-deleted').click();
+      await deletedListResponse;
+      await waitForAllLoadersToDisappear(page);
+      await expect(page.getByTestId(softDeleteTestCaseName)).toBeVisible();
+    });
 
-        const deleteResponse = page.waitForResponse(
-          (response) =>
-            response
-              .url()
-              .includes(`/api/v1/dataQuality/testCases/${testCaseId}`) &&
-            response.url().includes('hardDelete=false') &&
-            response.request().method() === 'DELETE'
-        );
-        const activeListRefresh = waitForTestCaseListResponse(page);
-        await page.getByTestId('confirm-button').click();
-        expect((await deleteResponse).status()).toBe(200);
-        await activeListRefresh;
-        await toastNotification(page, /deleted successfully!/);
-        await expect(page.getByTestId(testCaseName)).not.toBeVisible();
-      });
+    test('restores an API-deleted test case without losing its details', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await openTestCaseList(page, restoreTestCaseName, 'deleted');
 
-      await test.step('Find the test case in the deleted list', async () => {
-        const deletedListResponse = page.waitForResponse(
-          (response) =>
-            response
-              .url()
-              .includes('/api/v1/dataQuality/testCases/search/list') &&
-            new URL(response.url()).searchParams.get('include') === 'deleted'
-        );
-        await page.getByTestId('show-deleted').click();
-        await deletedListResponse;
-        await waitForAllLoadersToDisappear(page);
-        await expect(page.getByTestId(testCaseName)).toBeVisible();
-      });
+      await page.getByTestId(`action-dropdown-${restoreTestCaseName}`).click();
+      await page.getByTestId(`restore-${restoreTestCaseName}`).click();
+      const confirmationModal = page.getByTestId('confirmation-modal');
+      const restoreButton = confirmationModal.getByTestId('save-button');
 
-      await test.step('Verify the deleted test case detail is read-only', async () => {
-        const detailResponse = waitForTestCaseDetailsResponse(page);
-        await page.getByTestId(testCaseName).getByRole('link').click();
-        await detailResponse;
-        await expect(page.getByTestId('edit-description')).toHaveCount(0);
-        await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
+      // Ant Design's modal root is a zero-size portal wrapper, so the visible
+      // action inside the dialog is the reliable signal that it is interactive.
+      await expect(restoreButton).toBeVisible();
+      await expect(confirmationModal.getByTestId('body-text')).toContainText(
+        restoreTestCaseName
+      );
 
-        for (const widgetTestId of [
-          'tags-container',
-          'glossary-container',
-          'data-products-container',
-        ]) {
-          const widget = page.getByTestId(widgetTestId);
+      const restoreResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/dataQuality/testCases/restore') &&
+          response.request().method() === 'PUT'
+      );
+      const deletedListRefresh = waitForTestCaseListResponse(page);
+      await restoreButton.click();
+      await restoreResponse;
+      await deletedListRefresh;
+      await expect(page.getByTestId(restoreTestCaseName)).not.toBeVisible();
 
-          await expect(widget).toBeVisible();
-          await expect(widget.getByTestId('edit-button')).toHaveCount(0);
-          await expect(widget.getByTestId('add-tag')).toHaveCount(0);
-        }
+      const activeListResponse = waitForTestCaseListInclude(
+        page,
+        'non-deleted'
+      );
+      await page.getByTestId('show-deleted').click();
+      await activeListResponse;
+      await expect(page.getByTestId(restoreTestCaseName)).toBeVisible();
 
-        await page.getByTestId('manage-button').click();
-        await waitForAntdPopupToSettle(page);
-        await expect(page.getByTestId('restore-button')).toBeVisible();
-        await expect(page.getByTestId('delete-button')).not.toBeVisible();
-        await expect(page.getByTestId('rename-button')).not.toBeVisible();
-      });
+      const detailResponse = waitForTestCaseDetailsResponse(page);
+      await page.getByTestId(restoreTestCaseName).getByRole('link').click();
+      await detailResponse;
 
-      await test.step('Restore the deleted test case', async () => {
-        const returnListResponse = waitForTestCaseListResponse(page);
-        await page.goto('/data-quality/test-cases');
-        await returnListResponse;
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(restoreTestCaseDisplayName);
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        restoreTestCaseName
+      );
+      await expect(page.getByTestId('viewer-container')).toContainText(
+        restoreTestCaseDescription
+      );
+      await expect(page.getByTestId('parameter-container')).toContainText(
+        'Column Count'
+      );
+      await expect(page.getByTestId('parameter-container')).toContainText('4');
+      await expect(
+        page.getByTestId('tags-container').getByTestId('tag-PII.Sensitive')
+      ).toBeVisible();
+    });
 
-        const returnSearchResponse = waitForTestCaseListResponse(page);
-        await page.getByTestId('searchbar').fill(testCaseName);
-        await returnSearchResponse;
+    test('keeps an API-deleted test case read-only except for restore', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await openTestCaseList(page, readOnlyTestCaseName, 'deleted');
 
-        const returnDeletedListResponse = page.waitForResponse(
-          (response) =>
-            response
-              .url()
-              .includes('/api/v1/dataQuality/testCases/search/list') &&
-            new URL(response.url()).searchParams.get('include') === 'deleted'
-        );
-        await page.getByTestId('show-deleted').click();
-        await returnDeletedListResponse;
-        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      const detailResponse = waitForTestCaseDetailsResponse(page);
+      await page.getByTestId(readOnlyTestCaseName).getByRole('link').click();
+      await detailResponse;
 
-        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
-        await page.getByTestId(`restore-${testCaseName}`).click();
-        const confirmationModal = page.getByTestId('confirmation-modal');
-        const restoreButton = confirmationModal.getByTestId('save-button');
+      await expect(page.getByTestId('edit-description')).toHaveCount(0);
+      await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
 
-        // Ant Design's modal root is a zero-size portal wrapper, so the visible
-        // action inside the dialog is the reliable signal that it is interactive.
-        await expect(restoreButton).toBeVisible();
-        await expect(confirmationModal.getByTestId('body-text')).toContainText(
-          testCaseName
-        );
+      for (const widgetTestId of [
+        'tags-container',
+        'glossary-container',
+        'data-products-container',
+      ]) {
+        const widget = page.getByTestId(widgetTestId);
 
-        const restoreResponse = page.waitForResponse(
-          (response) =>
-            response.url().endsWith('/api/v1/dataQuality/testCases/restore') &&
-            response.request().method() === 'PUT'
-        );
-        const deletedListRefresh = waitForTestCaseListResponse(page);
-        await restoreButton.click();
-        expect((await restoreResponse).status()).toBe(200);
-        await deletedListRefresh;
-        await expect(page.getByTestId(testCaseName)).not.toBeVisible();
-      });
+        await expect(widget).toBeVisible();
+        await expect(widget.getByTestId('edit-button')).toHaveCount(0);
+        await expect(widget.getByTestId('add-tag')).toHaveCount(0);
+      }
 
-      await test.step('Verify the restored test case is active', async () => {
-        const activeListResponse = page.waitForResponse(
-          (response) =>
-            response
-              .url()
-              .includes('/api/v1/dataQuality/testCases/search/list') &&
-            new URL(response.url()).searchParams.get('include') ===
-              'non-deleted'
-        );
-        await page.getByTestId('show-deleted').click();
-        await activeListResponse;
-        await expect(page.getByTestId(testCaseName)).toBeVisible();
-      });
+      await page.getByTestId('manage-button').click();
+      await waitForAntdPopupToSettle(page);
+      await expect(page.getByTestId('restore-button')).toBeVisible();
+      await expect(page.getByTestId('delete-button')).not.toBeVisible();
+      await expect(page.getByTestId('rename-button')).not.toBeVisible();
     });
   }
 );

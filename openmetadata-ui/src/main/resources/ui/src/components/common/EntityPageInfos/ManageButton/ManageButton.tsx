@@ -55,7 +55,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   displayName,
   entityType,
   canDelete,
-  canRestore = canDelete,
+  canRestore,
   entityId,
   isAsyncDelete = false,
   isRecursiveDelete,

@@ -180,7 +180,7 @@ describe('Test manage button component', () => {
   });
 
   it('Should call restore callback on click of restore option', async () => {
-    const mockPropsData = { ...mockProps, deleted: true };
+    const mockPropsData = { ...mockProps, canRestore: true, deleted: true };
     render(<ManageButton {...mockPropsData} />);
 
     const manageButton = await screen.findByTestId('manage-button');
@@ -207,7 +207,7 @@ describe('Test manage button component', () => {
 
   it('should keep the restore modal open when the callback reports failure', async () => {
     mockOnRestoreEntity.mockResolvedValueOnce(false);
-    render(<ManageButton {...mockProps} deleted />);
+    render(<ManageButton {...mockProps} canRestore deleted />);
 
     fireEvent.click(await screen.findByTestId('manage-button'));
     fireEvent.click(await screen.findByTestId('restore-button'));
@@ -219,10 +219,8 @@ describe('Test manage button component', () => {
     expect(screen.getByTestId('restore-modal-body')).toBeInTheDocument();
   });
 
-  it('should gate restore independently from delete permission', async () => {
-    render(
-      <ManageButton {...mockProps} canDelete deleted canRestore={false} />
-    );
+  it('should not infer restore permission from delete permission', async () => {
+    render(<ManageButton {...mockProps} canDelete deleted />);
 
     fireEvent.click(await screen.findByTestId('manage-button'));
     fireEvent.click(await screen.findByTestId('restore-button'));

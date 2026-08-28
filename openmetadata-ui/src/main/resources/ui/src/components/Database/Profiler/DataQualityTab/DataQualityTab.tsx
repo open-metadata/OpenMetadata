@@ -113,80 +113,6 @@ const getColumnLayoutStyle = (
   };
 };
 
-interface TestCaseDeleteModalProps {
-  afterDeleteAction: DataQualityTabProps['afterDeleteAction'];
-  deletionMode: NonNullable<DataQualityTabProps['deletionMode']>;
-  isDeleting: boolean;
-  isRemovalLoading: boolean;
-  removeFromTestSuite: DataQualityTabProps['removeFromTestSuite'];
-  selectedTestCase?: TestCaseAction;
-  onCancel: () => void;
-  onDeleteHard: () => void;
-  onRemove: () => void;
-}
-
-const TestCaseDeleteModal = ({
-  afterDeleteAction,
-  deletionMode,
-  isDeleting,
-  isRemovalLoading,
-  removeFromTestSuite,
-  selectedTestCase,
-  onCancel,
-  onDeleteHard,
-  onRemove,
-}: TestCaseDeleteModalProps) => {
-  const { t } = useTranslation();
-
-  if (removeFromTestSuite) {
-    return (
-      <ConfirmationModal
-        bodyText={t(
-          'message.are-you-sure-you-want-to-remove-child-from-parent',
-          {
-            child: getEntityName(selectedTestCase?.data),
-            parent: getEntityName(removeFromTestSuite.testSuite),
-          }
-        )}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.remove')}
-        header={t('label.remove-entity', { entity: t('label.test-case') })}
-        isLoading={isRemovalLoading}
-        visible={selectedTestCase?.action === 'DELETE'}
-        onCancel={onCancel}
-        onConfirm={onRemove}
-      />
-    );
-  }
-
-  if (deletionMode === TEST_CASE_DELETION_MODE.SOFT) {
-    return (
-      <DeleteEntityModal
-        allowSoftDelete
-        afterDeleteAction={afterDeleteAction}
-        entityId={selectedTestCase?.data.id ?? ''}
-        entityName={getEntityName(selectedTestCase?.data)}
-        entityType={EntityType.TEST_CASE}
-        visible={selectedTestCase?.action === 'DELETE'}
-        onCancel={onCancel}
-      />
-    );
-  }
-
-  return (
-    <DeleteModal
-      entityTitle={getEntityName(selectedTestCase?.data)}
-      isDeleting={isDeleting}
-      message={t('message.delete-entity-message', {
-        entity: getEntityName(selectedTestCase?.data),
-      })}
-      open={selectedTestCase?.action === 'DELETE'}
-      onCancel={onCancel}
-      onDelete={onDeleteHard}
-    />
-  );
-};
-
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,
@@ -1035,17 +961,49 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
       )}
 
-      <TestCaseDeleteModal
-        afterDeleteAction={afterDeleteAction}
-        deletionMode={deletionMode}
-        isDeleting={isDeletingTestCase}
-        isRemovalLoading={isTestCaseRemovalLoading}
-        removeFromTestSuite={removeFromTestSuite}
-        selectedTestCase={selectedTestCase}
-        onCancel={handleCancel}
-        onDeleteHard={handleDeleteTestCase}
-        onRemove={handleConfirmClick}
-      />
+      {removeFromTestSuite && (
+        <ConfirmationModal
+          bodyText={t(
+            'message.are-you-sure-you-want-to-remove-child-from-parent',
+            {
+              child: getEntityName(selectedTestCase?.data),
+              parent: getEntityName(removeFromTestSuite.testSuite),
+            }
+          )}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.remove')}
+          header={t('label.remove-entity', { entity: t('label.test-case') })}
+          isLoading={isTestCaseRemovalLoading}
+          visible={selectedTestCase?.action === 'DELETE'}
+          onCancel={handleCancel}
+          onConfirm={handleConfirmClick}
+        />
+      )}
+      {!removeFromTestSuite &&
+        deletionMode === TEST_CASE_DELETION_MODE.SOFT && (
+          <DeleteEntityModal
+            allowSoftDelete
+            afterDeleteAction={afterDeleteAction}
+            entityId={selectedTestCase?.data.id ?? ''}
+            entityName={getEntityName(selectedTestCase?.data)}
+            entityType={EntityType.TEST_CASE}
+            visible={selectedTestCase?.action === 'DELETE'}
+            onCancel={handleCancel}
+          />
+        )}
+      {!removeFromTestSuite &&
+        deletionMode === TEST_CASE_DELETION_MODE.HARD && (
+          <DeleteModal
+            entityTitle={getEntityName(selectedTestCase?.data)}
+            isDeleting={isDeletingTestCase}
+            message={t('message.delete-entity-message', {
+              entity: getEntityName(selectedTestCase?.data),
+            })}
+            open={selectedTestCase?.action === 'DELETE'}
+            onCancel={handleCancel}
+            onDelete={handleDeleteTestCase}
+          />
+        )}
       <ConfirmationModal
         bodyText={t('message.are-you-want-to-restore', {
           entity: getEntityName(selectedTestCase?.data),
