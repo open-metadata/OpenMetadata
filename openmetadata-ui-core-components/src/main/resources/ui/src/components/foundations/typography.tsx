@@ -189,7 +189,13 @@ export const Typography = (props: TypographyProps) => {
   }
 
   if (tooltip) {
-    return <Tooltip title={tooltip}>{content}</Tooltip>;
+    return (
+      <Tooltip
+        title={tooltip}
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
   }
 
   return content;
