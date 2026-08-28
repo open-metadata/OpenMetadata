@@ -167,16 +167,22 @@ const matchesSchemaDiscriminator = (
   value: SchemaObject,
   discriminatorKeys?: Set<string>
 ): boolean => {
-  const discriminators = getSchemaDiscriminators(schemaObject).filter(
+  const schemaDiscriminators = getSchemaDiscriminators(schemaObject);
+  const discriminators = schemaDiscriminators.filter(
     ({ key }) => !discriminatorKeys || discriminatorKeys.has(key)
   );
+  const presentDiscriminators = schemaDiscriminators.filter(
+    ({ key }) => key in value
+  );
+  const matchesDiscriminatorValue = ({
+    key,
+    value: expectedValue,
+  }: SchemaDiscriminator) => key in value && expectedValue === value[key];
 
   return (
     discriminators.length > 0 &&
-    discriminators.every(
-      ({ key, value: expectedValue }) =>
-        key in value && expectedValue === value[key]
-    )
+    discriminators.every(matchesDiscriminatorValue) &&
+    presentDiscriminators.every(matchesDiscriminatorValue)
   );
 };
 

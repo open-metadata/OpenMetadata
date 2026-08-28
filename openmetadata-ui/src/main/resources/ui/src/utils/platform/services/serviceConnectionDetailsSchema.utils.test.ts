@@ -18,7 +18,7 @@ import {
   getSchemaProperty,
   isFilterPatternValue,
   resolveSchemaReference,
-} from './ServiceConnectionDetailsSchemaUtils';
+} from './serviceConnectionDetailsSchema.utils';
 
 const serviceAccountSchema = {
   type: 'object',
@@ -163,6 +163,13 @@ describe('ServiceConnectionDetailsSchemaUtils', () => {
     expect(
       getMatchingOneOfSchema(
         { type: 'unknown', externalType: 'external_account' },
+        getSchemaObjects(propertySchema?.oneOf),
+        [schema]
+      )
+    ).toBeUndefined();
+    expect(
+      getMatchingOneOfSchema(
+        { type: 'external_account', externalType: 'unexpected' },
         getSchemaObjects(propertySchema?.oneOf),
         [schema]
       )

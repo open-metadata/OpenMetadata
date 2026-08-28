@@ -21,15 +21,17 @@ import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import {
-  FilterPatternValue,
   getNestedSchema,
   getSchemaProperty,
   getString,
   isFilterPatternValue,
   isRenderableValue,
   isSchemaObject,
+} from './platform/services/serviceConnectionDetailsSchema.utils';
+import type {
+  FilterPatternValue,
   RenderableValue,
-} from './ServiceConnectionDetailsSchemaUtils';
+} from './platform/services/serviceConnectionDetailsSchema.utils';
 
 type KeyValuesProps = {
   obj: Record<string, unknown>;
