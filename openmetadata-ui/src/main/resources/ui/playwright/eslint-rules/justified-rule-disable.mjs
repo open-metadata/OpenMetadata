@@ -17,7 +17,7 @@
 // (this file's own doc comments) from being read as a directive. The rule
 // list is optional in the grammar — a bare directive disables everything.
 const DISABLE_DIRECTIVE =
-  /^eslint-disable(?:-next-line|-line)?(?:\s+([^\n]*))?$/;
+  /^eslint-disable(?:-next-line|-line)?(?:\s+([\s\S]*))?$/;
 const TARGET_RULE = /\b(?:om-)?playwright\//;
 
 const rule = {
