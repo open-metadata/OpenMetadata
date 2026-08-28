@@ -163,6 +163,7 @@ jobs:
           path: ${{ env.UI_WORKING_DIRECTORY }}
           files_ignore: |
             src/generated/**
+            src/jsons/**
           files: |
             src/**/*.{ts,tsx,js,jsx,json}
 

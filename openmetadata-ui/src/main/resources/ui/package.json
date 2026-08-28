@@ -24,7 +24,7 @@
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
     "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters json-summary",
-    "build-check": "yarn run js-antlr && yarn run parse-schema",
+    "build-check": "yarn run js-antlr",
     "commit-check": "yarn run pretty && yarn run build",
     "license-header-check": "license-check-and-add check -f .licenseheaderrc.json",
     "license-header-fix": "license-check-and-add add -f .licenseheaderrc.json -r $(date +%Y)",

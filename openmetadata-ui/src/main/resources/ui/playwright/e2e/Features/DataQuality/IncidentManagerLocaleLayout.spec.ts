@@ -13,11 +13,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Issue #30522 — Russian composes the "No Severity" placeholder as
- * "Критичность инцидента отсутствует" (218px of rendered text against 67px in
- * English). The chip is nowrap, so its intrinsic width was the Severity column's
- * floor: the chip reached 258px, the column 306px, and the Assignee column was
- * pushed off screen.
+ * Issue #30522 — a long Russian "No Severity" placeholder made the nowrap chip
+ * the Severity column's intrinsic-width floor and pushed the Assignee column
+ * off screen. The Russian translation is now generic, but its rendered text
+ * still exceeds the label's budget after the pill padding and edit chevron are
+ * accounted for, so it remains a real truncation case for the column bound.
  *
  * These assertions are geometric on purpose. Asserting a truncation class name
  * would pass just as happily with the layout still broken.
@@ -31,7 +31,7 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const RU_LOCALE = 'ru-RU';
 const EN_LOCALE = 'en-US';
-const RU_NO_SEVERITY = 'Критичность инцидента отсутствует';
+const RU_NO_SEVERITY = 'Серьёзность отсутствует';
 const VIEWPORT = { width: 1440, height: 900 };
 const INCIDENT_LIST_URL =
   '**/api/v1/dataQuality/testCases/testCaseIncidentStatus**';

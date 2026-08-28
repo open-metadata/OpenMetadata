@@ -1,0 +1,263 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CassandraConnection",
+  "description": "Cassandra Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.CassandraConnection",
+  "definitions": {
+    "cassandraType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Cassandra"
+      ],
+      "default": "Cassandra"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Cassandra",
+      "type": "string",
+      "enum": [
+        "Cassandra"
+      ]
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Cassandra. This user should have privileges to read all the metadata in Cassandra.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Basic Auth",
+          "description": "Common Database Connection Config",
+          "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
+          "type": "object",
+          "properties": {
+            "password": {
+              "title": "Password",
+              "description": "Password to connect to source.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Cloud Config",
+          "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+          "javaType": "org.openmetadata.schema.services.connections.database.cassandra.CloudConfig",
+          "type": "object",
+          "properties": {
+            "cloudConfig": {
+              "title": "DataStax Astra DB Configuration",
+              "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+              "type": "object",
+              "properties": {
+                "connectTimeout": {
+                  "title": "Connect Timeout",
+                  "description": "Timeout in seconds for establishing new connections to Cassandra.",
+                  "type": "integer"
+                },
+                "requestTimeout": {
+                  "title": "Request Timeout",
+                  "description": "Timeout in seconds for individual Cassandra requests.",
+                  "type": "integer"
+                },
+                "token": {
+                  "title": "Token",
+                  "description": "The Astra DB application token used for authentication.",
+                  "type": "string"
+                },
+                "secureConnectBundle": {
+                  "title": "Secure Connect Bundle",
+                  "description": "File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Cassandra service when using the `cassandra` connection scheme. Only host when using the `cassandra+srv` scheme.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "sslMode": {
+      "title": "SSL Mode",
+      "description": "SSL Mode to connect to database.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLMode",
+      "enum": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ],
+      "default": "disable"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "Client SSL configuration",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}
