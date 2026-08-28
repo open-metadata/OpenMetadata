@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
@@ -30,7 +31,7 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -87,7 +88,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
+            <Owner owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])} />
           ),
         },
       ];

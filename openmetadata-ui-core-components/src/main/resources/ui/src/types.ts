@@ -80,3 +80,15 @@ export interface DynamicPalettes {
   warning?: ColorPalette;
   error?: ColorPalette;
 }
+
+export type OwnerKind = 'user' | 'team';
+
+export type AvatarSize = 16 | 18 | 20 | 24 | 32 | 40 | 48 | 56 | 64;
+
+export interface OwnerRef {
+  id: string;
+  name?: string;
+  displayName?: string;
+  type: OwnerKind;
+  href?: string;
+}

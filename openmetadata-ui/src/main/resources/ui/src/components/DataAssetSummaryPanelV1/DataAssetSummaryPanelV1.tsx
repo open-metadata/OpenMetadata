@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -32,6 +33,7 @@ import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -51,8 +53,8 @@ import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSe
 import LineageSection from '../common/LineageSection/LineageSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
-import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
 import {
@@ -557,16 +559,21 @@ export const DataAssetSummaryPanelV1 = ({
                 onLineageClick={onLineageClick}
               />
             )}
-            <div>
-              <OwnersSection
-                entityId={dataAsset.id}
-                entityType={entityType}
+            <div key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+              <Owner
                 hasPermission={editOwnerPermission}
-                key={`owners-${dataAsset.id}-${
-                  (dataAsset.owners as EntityReference[])?.length || 0
-                }`}
-                owners={dataAsset.owners as EntityReference[]}
-                onOwnerUpdate={onOwnerUpdate}
+                owners={toOwnerRefs(
+                  (dataAsset.owners as EntityReference[]) ?? []
+                )}
+                selectorContent={
+                  editOwnerPermission ? (
+                    <UserTeamSelectableList
+                      hasPermission={Boolean(editOwnerPermission)}
+                      owner={dataAsset.owners as EntityReference[]}
+                      onUpdate={onOwnerUpdate}
+                    />
+                  ) : undefined
+                }
               />
             </div>
             <div>
@@ -643,16 +650,21 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
-            <div>
-              <OwnersSection
-                entityId={dataAsset.id}
-                entityType={entityType}
+            <div key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+              <Owner
                 hasPermission={editOwnerPermission}
-                key={`owners-${dataAsset.id}-${
-                  (dataAsset.owners as EntityReference[])?.length || 0
-                }`}
-                owners={dataAsset.owners as EntityReference[]}
-                onOwnerUpdate={onOwnerUpdate}
+                owners={toOwnerRefs(
+                  (dataAsset.owners as EntityReference[]) ?? []
+                )}
+                selectorContent={
+                  editOwnerPermission ? (
+                    <UserTeamSelectableList
+                      hasPermission={Boolean(editOwnerPermission)}
+                      owner={dataAsset.owners as EntityReference[]}
+                      onUpdate={onOwnerUpdate}
+                    />
+                  ) : undefined
+                }
               />
             </div>
             <div>
@@ -691,16 +703,21 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
-            <div>
-              <OwnersSection
-                entityId={dataAsset.id}
-                entityType={entityType}
+            <div key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+              <Owner
                 hasPermission={editOwnerPermission}
-                key={`owners-${dataAsset.id}-${
-                  (dataAsset.owners as EntityReference[])?.length || 0
-                }`}
-                owners={dataAsset.owners as EntityReference[]}
-                onOwnerUpdate={onOwnerUpdate}
+                owners={toOwnerRefs(
+                  (dataAsset.owners as EntityReference[]) ?? []
+                )}
+                selectorContent={
+                  editOwnerPermission ? (
+                    <UserTeamSelectableList
+                      hasPermission={Boolean(editOwnerPermission)}
+                      owner={dataAsset.owners as EntityReference[]}
+                      onUpdate={onOwnerUpdate}
+                    />
+                  ) : undefined
+                }
               />
             </div>
             <div>
@@ -785,16 +802,21 @@ export const DataAssetSummaryPanelV1 = ({
               onLinkClick={onLinkClick}
             />
             {dataAsset.owners && (
-              <div>
-                <OwnersSection
-                  entityId={dataAsset.id}
-                  entityType={entityType}
+              <div key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+                <Owner
                   hasPermission={editOwnerPermission}
-                  key={`owners-${dataAsset.id}-${
-                    (dataAsset.owners as EntityReference[])?.length || 0
-                  }`}
-                  owners={dataAsset.owners as EntityReference[]}
-                  onOwnerUpdate={onOwnerUpdate}
+                  owners={toOwnerRefs(
+                    (dataAsset.owners as EntityReference[]) ?? []
+                  )}
+                  selectorContent={
+                    editOwnerPermission ? (
+                      <UserTeamSelectableList
+                        hasPermission={Boolean(editOwnerPermission)}
+                        owner={dataAsset.owners as EntityReference[]}
+                        onUpdate={onOwnerUpdate}
+                      />
+                    ) : undefined
+                  }
                 />
               </div>
             )}

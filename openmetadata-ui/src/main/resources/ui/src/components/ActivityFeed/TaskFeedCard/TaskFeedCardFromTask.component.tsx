@@ -57,8 +57,9 @@ import {
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import { Owner } from '@openmetadata/ui-core-components';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -382,9 +383,9 @@ const TaskFeedCardFromTask = ({
                   className={`flex items-center gap-2 text-grey-muted ${
                     commentsCount > 0 ? 'task-card-assignee' : ''
                   }`}>
-                  <OwnerLabel
+                  <Owner
                     isCompactView={false}
-                    owners={task.assignees}
+                    owners={toOwnerRefs(task.assignees ?? [])}
                     showLabel={false}
                   />
                 </Col>

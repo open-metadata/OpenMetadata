@@ -46,8 +46,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { Owner } from '@openmetadata/ui-core-components';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -107,9 +108,9 @@ const MyDataWidgetInternal = ({
       extraInfo.push({
         key: 'Owner',
         value: (
-          <OwnerLabel
+          <Owner
             isCompactView={false}
-            owners={(item.owners as EntityReference[]) ?? []}
+            owners={toOwnerRefs((item.owners as EntityReference[]) ?? [])}
             showLabel={false}
           />
         ),

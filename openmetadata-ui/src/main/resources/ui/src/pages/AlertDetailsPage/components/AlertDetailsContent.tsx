@@ -17,10 +17,12 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { Owner } from '@openmetadata/ui-core-components';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -95,10 +97,16 @@ function AlertDetailsContent({
                     {ownerLoading ? (
                       <Skeleton.Button active className="extra-info-skeleton" />
                     ) : (
-                      <OwnerLabel
+                      <Owner
                         hasPermission={editOwnersPermission}
-                        owners={alertDetails?.owners}
-                        onUpdate={onOwnerUpdate}
+                        owners={toOwnerRefs(alertDetails?.owners ?? [])}
+                        selectorContent={
+                          <UserTeamSelectableList
+                            hasPermission={Boolean(editOwnersPermission)}
+                            owner={alertDetails?.owners}
+                            onUpdate={onOwnerUpdate}
+                          />
+                        }
                       />
                     )}
                     {extraInfo}

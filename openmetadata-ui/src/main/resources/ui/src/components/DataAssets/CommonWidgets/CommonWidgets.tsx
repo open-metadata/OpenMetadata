@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
 import { lazy, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -41,6 +43,7 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
@@ -59,6 +62,11 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -137,13 +145,13 @@ const DomainLabelV2 = withSuspenseFallback(
   WIDGET_FALLBACK
 );
 
-const OwnerLabelV2 = withSuspenseFallback(
+const UserTeamSelectableList = withSuspenseFallback(
   lazy(() =>
-    import('../OwnerLabelV2/OwnerLabelV2').then((m) => ({
-      default: m.OwnerLabelV2,
-    }))
+    import('../../common/UserTeamSelectableList/UserTeamSelectableList.component').then(
+      (m) => ({ default: m.UserTeamSelectableList })
+    )
   ),
-  WIDGET_FALLBACK
+  null
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -300,6 +308,7 @@ export const CommonWidgets = ({
 
   const {
     editDataProductPermission,
+    editOwnerPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
@@ -308,6 +317,8 @@ export const CommonWidgets = ({
   } = useMemo(
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
+      editOwnerPermission:
+        (permissions.EditOwners || permissions.EditAll) && !deleted,
       editTagsPermission:
         (permissions.EditTags || permissions.EditAll) && !deleted,
       editDescriptionPermission:
@@ -492,6 +503,59 @@ export const CommonWidgets = ({
     isDescriptionExpanded,
   ]);
 
+  const ownerWidget = useMemo(() => {
+    const handleOwnerUpdate = async (updatedOwners?: EntityReference[]) => {
+      await onUpdate({ ...data, owners: updatedOwners });
+    };
+
+    return (
+      <WidgetCard
+        dataTestId="owner-widget"
+        headerExtra={
+          !isVersionView && editOwnerPermission ? (
+            <UserTeamSelectableList
+              hasPermission={Boolean(editOwnerPermission)}
+              listHeight={200}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
+              owner={owners}
+              onUpdate={handleOwnerUpdate}>
+              {isEmpty(owners) ? (
+                <WidgetPlusButton
+                  data-testid="add-owner"
+                  title={t('label.add-entity', {
+                    entity: t('label.owner-plural'),
+                  })}
+                />
+              ) : (
+                <WidgetEditButton
+                  data-testid="edit-owner"
+                  title={t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })}
+                />
+              )}
+            </UserTeamSelectableList>
+          ) : null
+        }
+        isExpandDisabled={isEmpty(owners)}
+        title={t('label.owner-plural')}>
+        <Owner owners={toOwnerRefs(owners ?? [])} />
+      </WidgetCard>
+    );
+  }, [
+    data,
+    owners,
+    onUpdate,
+    permissions,
+    isVersionView,
+    editOwnerPermission,
+    entityRules,
+    t,
+  ]);
+
   const widget = useMemo(() => {
     if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
       return descriptionWidget;
@@ -514,7 +578,7 @@ export const CommonWidgets = ({
         />
       );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
-      return <OwnerLabelV2 />;
+      return ownerWidget;
     } else if (
       widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
     ) {
@@ -552,6 +616,7 @@ export const CommonWidgets = ({
     glossaryWidget,
     tagsWidget,
     dataProductsWidget,
+    ownerWidget,
   ]);
 
   return (

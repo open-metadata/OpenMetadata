@@ -26,7 +26,8 @@ import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { Owner } from '@openmetadata/ui-core-components';
+import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -113,10 +114,10 @@ const TableQueryRightPanel = ({
                   </Space>
                 ),
               }}>
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={query.owners}
+                owners={toOwnerRefs(query.owners)}
                 showLabel={false}
               />
             </ExpandableCard>

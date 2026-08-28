@@ -16,6 +16,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
   EmptyPlaceholder,
+  Owner,
   TableCard,
 } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
@@ -53,7 +54,6 @@ import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-u
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -100,6 +100,7 @@ import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditU
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
@@ -1037,9 +1038,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
-              owners={reviewers}
+              owners={toOwnerRefs(reviewers)}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}

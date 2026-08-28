@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Divider, Space, Typography } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
@@ -40,6 +41,7 @@ import {
 import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
+import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { isValidJSONString } from './StringUtils';
 
 const BulkImportVersionSummary = withSuspenseFallback(
@@ -47,14 +49,6 @@ const BulkImportVersionSummary = withSuspenseFallback(
     import(
       '../components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component'
     ).then((m) => ({ default: m.BulkImportVersionSummary }))
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
   )
 );
 
@@ -322,7 +316,9 @@ export const getOwnerVersionLabel = (
     );
 
     if (!isEmpty(owners)) {
-      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
+      return (
+        <Owner ownerDisplayName={ownerDisplayName} owners={toOwnerRefs(owners)} />
+      );
     }
   }
 
@@ -340,9 +336,9 @@ export const getOwnerVersionLabel = (
     });
 
     return (
-      <OwnerLabel
+      <Owner
         ownerDisplayName={ownerDisplayName}
-        owners={defaultItems}
+        owners={toOwnerRefs(defaultItems)}
         {...(ownerField === TabSpecificField.OWNERS
           ? {
               isCompactView: false,

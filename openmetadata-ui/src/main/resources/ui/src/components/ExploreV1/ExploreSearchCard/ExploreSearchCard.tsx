@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
+import { Breadcrumbs, Card, Owner } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
@@ -46,8 +46,8 @@ import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -388,10 +388,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         columnDetails.push({
           key: 'Owner',
           value: (
-            <OwnerLabel
+            <Owner
               avatarSize={18}
               isCompactView={false}
-              owners={columnSource?.owners ?? []}
+              owners={toOwnerRefs(columnSource?.owners ?? [])}
               showLabel={false}
             />
           ),
@@ -435,10 +435,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel
+            <Owner
               avatarSize={18}
               isCompactView={false}
-              owners={(source?.owners as EntityReference[]) ?? []}
+              owners={toOwnerRefs((source?.owners as EntityReference[]) ?? [])}
               showLabel={false}
             />
           ),

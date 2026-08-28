@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Owner } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
 import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
@@ -42,12 +42,15 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import {
   getClassificationExtraDropdownContent,
   getTagsTableColumn,
@@ -70,9 +73,14 @@ import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/Mana
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import UserTeamSelectableList from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
@@ -119,6 +127,7 @@ const ClassificationDetails = forwardRef(
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
+    const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -671,10 +680,52 @@ const ClassificationDetails = forwardRef(
                     showDomainHeading
                     hasPermission={editDomainPermission}
                   />
-                  <OwnerLabelV2
+                  <WidgetCard
                     dataTestId="classification-owner-name"
-                    hasPermission={editOwnerPermission}
-                  />
+                    headerExtra={
+                      !isVersionView && editOwnerPermission ? (
+                        <UserTeamSelectableList
+                          hasPermission={Boolean(editOwnerPermission)}
+                          listHeight={200}
+                          multiple={{
+                            user: entityRules.canAddMultipleUserOwners,
+                            team: entityRules.canAddMultipleTeamOwner,
+                          }}
+                          owner={currentClassification.owners}
+                          onUpdate={async (
+                            updatedOwners?: EntityReference[]
+                          ) => {
+                            handleUpdateClassification?.({
+                              ...currentClassification,
+                              owners: updatedOwners,
+                            });
+                          }}>
+                          {isEmpty(currentClassification.owners) ? (
+                            <WidgetPlusButton
+                              data-testid="add-owner"
+                              title={t('label.add-entity', {
+                                entity: t('label.owner-plural'),
+                              })}
+                            />
+                          ) : (
+                            <WidgetEditButton
+                              data-testid="edit-owner"
+                              title={t('label.edit-entity', {
+                                entity: t('label.owner-plural'),
+                              })}
+                            />
+                          )}
+                        </UserTeamSelectableList>
+                      ) : null
+                    }
+                    isExpandDisabled={isEmpty(currentClassification.owners)}
+                    title={t('label.owner-plural')}>
+                    <Owner
+                      owners={toOwnerRefs(
+                        currentClassification.owners ?? []
+                      )}
+                    />
+                  </WidgetCard>
                   {tagClassBase.getClassificationReviewerWidget()}
                 </div>
               </Col>

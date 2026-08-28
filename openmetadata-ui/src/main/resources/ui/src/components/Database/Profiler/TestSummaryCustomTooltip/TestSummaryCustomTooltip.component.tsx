@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { Card, Divider } from 'antd';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
@@ -30,7 +30,7 @@ import {
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import './test-summary-custom-tooltip.less';
 
 const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
@@ -220,7 +220,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 as="span"
                 className="font-medium"
                 data-testid="assignee">
-                <OwnerLabel owners={incidentAssignees} />
+                <Owner owners={toOwnerRefs(incidentAssignees)} />
               </Typography>
             </li>
           )}

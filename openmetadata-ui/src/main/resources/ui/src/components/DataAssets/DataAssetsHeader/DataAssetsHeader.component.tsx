@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -36,8 +37,9 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
+import UserTeamSelectableList from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
@@ -939,19 +941,25 @@ export const DataAssetsHeader = ({
 
           {showDomain && <HeaderDotSeparator />}
 
-          <OwnerLabel
-            showDashPlaceholder
+          <Owner
             avatarSize={24}
             className="header-owner-heading"
             hasPermission={editOwnerPermission}
             isCompactView={false}
             maxVisibleOwners={3}
-            multiple={{
-              user: entityRules.canAddMultipleUserOwners,
-              team: entityRules.canAddMultipleTeamOwner,
-            }}
-            owners={dataAsset?.owners}
-            onUpdate={onOwnerUpdate}
+            owners={toOwnerRefs(dataAsset?.owners)}
+            showDashPlaceholder
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(editOwnerPermission)}
+                multiple={{
+                  user: entityRules.canAddMultipleUserOwners,
+                  team: entityRules.canAddMultipleTeamOwner,
+                }}
+                owner={dataAsset?.owners}
+                onUpdate={onOwnerUpdate}
+              />
+            }
           />
 
           <HeaderDotSeparator />

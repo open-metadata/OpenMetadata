@@ -33,8 +33,9 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
+import { Owner } from '@openmetadata/ui-core-components';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import './add-glossary.less';
@@ -315,7 +316,7 @@ const AddGlossary = ({
                   {getField(ownerField)}
                   {Boolean(ownersList.length) && (
                     <Space wrap data-testid="owner-container" size={[8, 8]}>
-                      <OwnerLabel owners={ownersList} />
+                      <Owner owners={toOwnerRefs(ownersList)} />
                     </Space>
                   )}
                 </div>
@@ -323,7 +324,7 @@ const AddGlossary = ({
                   {getField(reviewersField)}
                   {Boolean(reviewersList.length) && (
                     <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-                      <OwnerLabel owners={reviewersList} />
+                      <Owner owners={toOwnerRefs(reviewersList)} />
                     </Space>
                   )}
                 </div>

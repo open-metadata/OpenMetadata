@@ -10,20 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../generated/tests/testCase';
+import type { OwnerRef } from '@openmetadata/ui-core-components';
+import type { EntityReference } from '../../generated/entity/type';
 
-export interface NoOwnerFoundProps {
-  showDashPlaceholder?: boolean;
-  isCompactView: boolean;
-  placeHolder?: string;
-  showLabel?: boolean;
-  owners: EntityReference[];
-  hasPermission?: boolean;
-  onUpdate?: (owners?: EntityReference[]) => void;
-  multiple: {
-    user: boolean;
-    team: boolean;
-  };
-  tooltipText?: string;
-  className?: string;
-}
+export const toOwnerRef = (ref: EntityReference): OwnerRef => ({
+  id: ref.id,
+  name: ref.name,
+  displayName: ref.displayName,
+  type: (ref.type ?? 'user') as OwnerRef['type'],
+  href: ref.href,
+});
+
+export const toOwnerRefs = (refs?: EntityReference[]): OwnerRef[] =>
+  (refs ?? []).map(toOwnerRef);

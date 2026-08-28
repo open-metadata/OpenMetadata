@@ -19,6 +19,7 @@ import {
   Card,
   Dot,
   Dropdown,
+  Owner,
   Skeleton,
   Tabs,
   Tooltip,
@@ -73,10 +74,10 @@ import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -393,11 +394,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
         {owners.length > 0 ? (
           <div className="article-detail-owner-label">
-            <OwnerLabel
+            <Owner
               hasPermission={false}
               isCompactView={false}
-              multiple={{ user: true, team: true }}
-              owners={owners}
+              owners={toOwnerRefs(owners)}
               showLabel={false}
             />
           </div>
@@ -445,11 +445,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               </TooltipTrigger>
             </Tooltip>
             <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                multiple={{ user: true, team: true }}
-                owners={editors}
+                owners={toOwnerRefs(editors)}
                 showLabel={false}
               />
             </div>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Owner, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -25,14 +25,13 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageNodeUtils';
+import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
-import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -274,21 +273,17 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       {BULLET_SEPARATOR}
                     </span>
                     {item.entity.owners && item.entity.owners.length > 0 ? (
-                      <OwnerLabel
+                      <Owner
                         avatarSize={16}
                         className="item-owner-label-text"
                         isCompactView={false}
-                        owners={item.entity.owners}
+                        owners={toOwnerRefs(item.entity.owners)}
                         showLabel={false}
                       />
                     ) : (
-                      <NoOwnerFound
-                        isCompactView
-                        showLabel
+                      <Owner
                         className="item-owner-label-text"
-                        multiple={{ user: false, team: false }}
                         owners={[]}
-                        showDashPlaceholder={false}
                       />
                     )}
                   </div>

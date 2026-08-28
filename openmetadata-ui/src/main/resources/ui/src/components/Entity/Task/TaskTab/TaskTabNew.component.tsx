@@ -148,9 +148,10 @@ import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskComme
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { Owner } from '@openmetadata/ui-core-components';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -1614,11 +1615,11 @@ export const TaskTabNew = ({
                     )}
                   </div>
                 ) : (
-                  <OwnerLabel
+                  <Owner
                     isAssignee
                     hasPermission={shouldEditAssignee}
                     isCompactView={false}
-                    owners={task?.assignees}
+                    owners={toOwnerRefs(task?.assignees)}
                     showLabel={false}
                     onEditClick={handleEditClick}
                   />

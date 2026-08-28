@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Box, Owner, Typography } from '@openmetadata/ui-core-components';
 import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
@@ -20,13 +20,13 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
+import { toOwnerRefs } from '../../../../../utils/Owner/ownerConversionUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
 } from '../../../../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
 
 type TagSize = 'sm' | 'lg';
@@ -106,10 +106,10 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
   );
 
 export const renderDomainOwnersCell = (entity: OwnedEntity): ReactNode => (
-  <OwnerLabel
+  <Owner
     isCompactView={false}
     maxVisibleOwners={4}
-    owners={entity.owners}
+    owners={toOwnerRefs(entity.owners ?? [])}
     showLabel={false}
   />
 );

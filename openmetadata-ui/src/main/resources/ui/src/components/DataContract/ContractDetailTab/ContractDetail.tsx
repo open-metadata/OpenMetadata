@@ -19,6 +19,7 @@ import {
   Card,
   Divider,
   Dropdown,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -67,12 +68,12 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
@@ -452,10 +453,10 @@ const ContractDetail: React.FC<{
                     {`${t('label.created-by')} : `}
                   </Typography>
 
-                  <OwnerLabel
-                    owners={[
+                  <Owner
+                    owners={toOwnerRefs([
                       { name: contract.createdBy, type: 'user', id: '' },
-                    ]}
+                    ])}
                   />
                 </Box>
 
@@ -524,11 +525,11 @@ const ContractDetail: React.FC<{
                 {`${t('label.owner-plural')} : `}
               </Typography>
 
-              <OwnerLabel
+              <Owner
                 avatarSize={24}
                 isCompactView={false}
                 maxVisibleOwners={5}
-                owners={contract.owners}
+                owners={toOwnerRefs(contract.owners ?? [])}
                 showLabel={false}
               />
             </Box>

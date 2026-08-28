@@ -19,6 +19,7 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -36,7 +37,8 @@ import ManageButton from '../../components/common/EntityPageInfos/ManageButton/M
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
@@ -430,19 +432,25 @@ const TestSuiteDetailsPage = () => {
               onUpdate={handleDomainUpdate}
             />
             <HeaderDotSeparator />
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               avatarSize={24}
               className="header-owner-heading"
               hasPermission={Boolean(permissions.hasEditOwnerPermission)}
               isCompactView={false}
               maxVisibleOwners={3}
-              multiple={{
-                user: canAddMultipleUserOwners,
-                team: canAddMultipleTeamOwner,
-              }}
-              owners={testOwners}
-              onUpdate={onUpdateOwner}
+              owners={toOwnerRefs(testOwners)}
+              selectorContent={
+                <UserTeamSelectableList
+                  hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                  multiple={{
+                    user: canAddMultipleUserOwners,
+                    team: canAddMultipleTeamOwner,
+                  }}
+                  owner={testOwners}
+                  onUpdate={onUpdateOwner}
+                />
+              }
             />
           </div>
         </Box>

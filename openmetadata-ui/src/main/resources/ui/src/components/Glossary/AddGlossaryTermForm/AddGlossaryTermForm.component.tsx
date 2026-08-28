@@ -41,12 +41,13 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { Owner } from '@openmetadata/ui-core-components';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 import GlossaryTermIntakeFields, {
   GlossaryTermIntakeFieldsHandle,
@@ -623,7 +624,7 @@ const AddGlossaryTermForm = ({
 
           {Boolean(ownersList.length) && (
             <Space wrap data-testid="owner-container" size={[8, 8]}>
-              <OwnerLabel owners={ownersList} />
+              <Owner owners={toOwnerRefs(ownersList)} />
             </Space>
           )}
         </div>
@@ -631,7 +632,7 @@ const AddGlossaryTermForm = ({
           {getField(reviewersField)}
           {Boolean(reviewersList.length) && (
             <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-              <OwnerLabel owners={reviewersList} />
+              <Owner owners={toOwnerRefs(reviewersList)} />
             </Space>
           )}
         </div>

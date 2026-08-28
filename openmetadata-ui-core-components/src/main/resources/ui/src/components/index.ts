@@ -163,3 +163,9 @@ export * from './foundations/typography';
 
 // Other components
 export * from './checkbox-icons';
+
+// Owner
+export * from './application/owner/owner';
+export * from './application/owner/owner-chip';
+export * from './application/owner/owner-avatar-stack';
+export type { OwnerProps, OwnerChipProps, OwnerAvatarStackProps } from './application/owner/owner.types';

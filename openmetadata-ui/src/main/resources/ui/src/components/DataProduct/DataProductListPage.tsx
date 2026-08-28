@@ -17,6 +17,7 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
+  Owner,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -39,6 +40,7 @@ import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
   getClassificationTags,
@@ -63,7 +65,6 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
@@ -210,10 +211,10 @@ const DataProductListPage = ({
         }
         case 'owners':
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.owners}
+              owners={toOwnerRefs(entity.owners ?? [])}
               showLabel={false}
             />
           );
@@ -252,10 +253,10 @@ const DataProductListPage = ({
           );
         case 'experts':
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.experts}
+              owners={toOwnerRefs(entity.experts ?? [])}
               showLabel={false}
             />
           );

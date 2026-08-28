@@ -13,6 +13,7 @@
 import {
   Box,
   EmptyPlaceholder,
+  Owner,
   Skeleton,
   Table,
   Tooltip,
@@ -41,7 +42,8 @@ import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import {
   ProfilerTabPath,
@@ -103,23 +105,25 @@ const IncidentManagerTable = ({
 
     return (
       <div data-testid="assignee">
-        <OwnerLabel
+        <Owner
           isCompactView
           className="m-0"
           hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
-          multiple={{
-            user: false,
-            team: false,
-          }}
-          owners={value?.assignee ? [value.assignee] : []}
+          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),
           })}
-          tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
-          })}
-          onUpdate={(assignees) =>
-            record && handleAssigneeUpdate(record, assignees)
+          selectorContent={
+            <UserTeamSelectableList
+              hasPermission={Boolean(
+                hasPermission?.EditAll && !tableDetails?.deleted
+              )}
+              multiple={{ user: false, team: false }}
+              owner={value?.assignee ? [value.assignee] : []}
+              onUpdate={(assignees) =>
+                record && handleAssigneeUpdate(record, assignees)
+              }
+            />
           }
         />
       </div>

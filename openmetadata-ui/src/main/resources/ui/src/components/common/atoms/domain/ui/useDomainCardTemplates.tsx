@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Grid,
+  Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
@@ -23,8 +24,8 @@ import { DataProduct } from '../../../../../generated/entity/domains/dataProduct
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
+import { toOwnerRefs } from '../../../../../utils/Owner/ownerConversionUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import {
   CARD_NAME_CLIP_CLASS,
   CLIPPED_NAME_CLASS,
@@ -140,10 +141,10 @@ export const useDomainCardTemplates = () => {
                 <Typography size="text-xs">
                   {t('label.expert-plural')}
                 </Typography>
-                <OwnerLabel
+                <Owner
                   isCompactView={false}
                   maxVisibleOwners={4}
-                  owners={entity.experts}
+                  owners={toOwnerRefs(entity.experts ?? [])}
                   showLabel={false}
                 />
               </Box>
