@@ -247,6 +247,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
                 {t('label.threshold-plural')}
               </Typography>
               {(config.thresholds ?? []).map((threshold, index) => (
+                // eslint-disable-next-line react/no-array-index-key -- index-addressed form array, no stable id
                 <Card className="m-b-sm" key={index} size="sm">
                   <Card.Header
                     extra={

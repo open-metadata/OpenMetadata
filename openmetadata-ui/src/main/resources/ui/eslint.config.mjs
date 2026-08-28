@@ -27,6 +27,7 @@ import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
   // Base recommended configs
@@ -354,11 +355,14 @@ export default [
       'sonarjs/no-invariant-returns': 'warn', // 0 in sample
 
       // React correctness and re-render cost — the enforceable slice of
-      // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 93 across 59 files
-      'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
-      'react/no-unstable-nested-components': 'warn', // 25 across 23 files
-      'react/no-danger': 'warn', // 0 in sample
+      // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
+      // stable keys, hoisted components, memoized context values; documented
+      // disables only where no real fix exists (static never-reordered lists,
+      // dangerouslySetInnerHTML on sanitized content). Promoted to error.
+      'react/no-array-index-key': 'error',
+      'react/jsx-no-constructed-context-values': 'error',
+      'react/no-unstable-nested-components': 'error',
+      'react/no-danger': 'error',
       // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
       // removed / narrowed where safe, documented disables where the value is
       // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
@@ -448,9 +452,15 @@ export default [
   // Playwright tests
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
+    // The local plugin lives under playwright/ but is a linter, not a test:
+    // applying rules like no-positional-locator to its own source is
+    // meaningless, and its RuleTester fixtures deliberately contain the exact
+    // anti-patterns those rules look for.
+    ignores: ['**/playwright/eslint-rules/**'],
     plugins: {
       'openmetadata-playwright': openMetadataPlaywright,
       playwright,
+      'om-playwright': omPlaywright,
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
@@ -512,6 +522,12 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+      'playwright/missing-playwright-await': 'error',
+      'playwright/valid-expect': 'error',
+      'playwright/no-element-handle': 'error',
+      'playwright/no-eval': 'error',
+      'playwright/prefer-web-first-assertions': 'error',
+      'playwright/no-useless-await': 'error',
 
       // A facet aggregation wait must name the value it is waiting for, not just
       // the endpoint or field: a dropdown fires one aggregation when it opens and
@@ -521,17 +537,49 @@ export default [
       // playwright/utils/searchAggregation.ts.
       'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
 
-      // Playwright rules — aspirational (warn): existing violations to fix over time
-      'playwright/missing-playwright-await': 'warn',
-      'playwright/valid-expect': 'warn',
-      'playwright/no-wait-for-timeout': 'warn',
-      'playwright/no-force-option': 'warn',
-      'playwright/no-element-handle': 'warn',
-      'playwright/no-eval': 'warn',
-      'playwright/no-skipped-test': 'warn',
-      'playwright/prefer-web-first-assertions': 'warn',
-      'playwright/no-useless-await': 'warn',
-      'playwright/no-wait-for-selector': 'warn',
+      // Playwright rules — promoted to error behind the suppressions ratchet
+      // (see eslint-suppressions.json): existing violations are snapshotted,
+      // new ones fail lint.
+      'playwright/no-wait-for-timeout': 'error',
+      'playwright/no-force-option': 'error',
+      'playwright/no-skipped-test': 'error',
+      'playwright/no-wait-for-selector': 'error',
+
+      // Local OpenMetadata Playwright rules.
+      'om-playwright/no-awaited-wait-for-response': 'error',
+      'om-playwright/no-blanket-test-slow': 'error',
+      'om-playwright/no-positional-locator': 'error',
+      'om-playwright/justified-rule-disable': 'error',
+    },
+  },
+
+  // Custom rules that only make sense on e2e spec files
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    plugins: {
+      'om-playwright': omPlaywright,
+    },
+    rules: {
+      'om-playwright/require-assertion-per-test': 'error',
+    },
+  },
+
+  // Local ESLint plugin (playwright/eslint-rules/**): plain ESM, matching the
+  // repo's other rule plugins in eslint-rules/. Excluded from the Playwright
+  // test rules above, and needs the Node globals its RuleTester and node:test
+  // usage rely on.
+  //
+  // scripts/*.mjs is build-time tooling that runs under Node directly. It had
+  // no config block, so `process`/`console` were undefined there — an error
+  // only reachable when a scripts/ file lands in a changed-file lint, which the
+  // merge queue guarantees and a PR event does not. The .js tooling alongside
+  // it is CommonJS and needs a different fix; left alone deliberately.
+  {
+    files: ['playwright/eslint-rules/**/*.mjs', 'scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
 
