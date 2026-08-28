@@ -5,6 +5,7 @@ Test dbt
 import json
 import uuid
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import TestCase
@@ -67,8 +68,74 @@ from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.tag_utils import get_tag_labels
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
+
+DBT_TEST_UNIQUE_ID = "test.jaffle_shop.not_null_orders_order_id.cf6c17daed"
+DBT_TEST_TABLE_FQN = "snowflake.jaffle_shop.public.orders"
+
+
+def _run_result_payload(status, message, completed_at, unique_id=DBT_TEST_UNIQUE_ID, failures=None):
+    """
+    Build a run_results.json payload shaped like a real dbt artifact, including
+    the ``failures`` key that dbt emits but OpenMetadata strips before parsing.
+
+    ``completed_at=None`` drops the timing block, which is how a result with no
+    usable ``execute`` timestamp reaches the timestamp fallback path.
+    """
+    timing = (
+        [
+            {
+                "name": "compile",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+            {
+                "name": "execute",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+        ]
+        if completed_at
+        else []
+    )
+    return {
+        "metadata": {
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+            "dbt_version": "1.11.0",
+            "generated_at": completed_at or "2026-07-24T09:00:00.000000Z",
+            "invocation_id": str(uuid.uuid4()),
+            "env": {},
+        },
+        "results": [
+            {
+                "status": status,
+                "timing": timing,
+                "thread_id": "Thread-1",
+                "execution_time": 0.42,
+                "adapter_response": {},
+                "message": message,
+                "failures": failures,
+                "unique_id": unique_id,
+            }
+        ],
+        "elapsed_time": 1.5,
+        "args": {"which": "test"},
+    }
+
+
+def _parse_run_results_like_production(payload):
+    """
+    Run a raw run_results.json payload through the exact pre-processing the
+    connector applies (``remove_run_result_non_required_keys``) before parsing,
+    so tests see the same attributes production code sees.
+    """
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
+
+    DbtServiceSource.remove_run_result_non_required_keys(MagicMock(spec=DbtServiceSource), run_results=[payload])
+    return parse_run_results(payload)
+
 
 mock_dbt_config = {
     "source": {
@@ -3115,6 +3182,108 @@ class TestGetLatestResult(TestCase):
         self.assertIs(got, new_result)
 
 
+class TestGetLatestResultPrefersExecutedResults:
+    """
+    Regression coverage for the second half of issue #29824.
+
+    A project that keeps both a ``dbt test`` artifact and a later
+    ``dbt docs generate`` artifact has the same test unique_id in both files.
+    Picking purely by ``execute.completed_at`` hands back the compile-only stub
+    from the docs run, and the real pass/fail result is discarded before
+    add_dbt_test_result() ever sees it.
+    """
+
+    @staticmethod
+    def _dbt_objects(*results_specs):
+        run_results = [
+            _parse_run_results_like_production(
+                _run_result_payload(status=status, message=message, completed_at=completed_at)
+            )
+            for status, message, completed_at in results_specs
+        ]
+        return DbtObjects(dbt_manifest=None, dbt_run_results=run_results)
+
+    def test_executed_result_wins_over_later_compile_only_stub(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "pass"
+
+    def test_executed_result_wins_when_stub_is_listed_first(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T07:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_still_wins_among_executed_results(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_stub_is_still_returned_when_nothing_was_executed(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.timing[1].completed_at == datetime.fromisoformat("2026-07-24T09:00:00+00:00")
+
+    def test_no_match_returns_none(self):
+        dbt_objects = self._dbt_objects(("pass", None, "2026-07-24T07:00:00.000000Z"))
+
+        assert DbtSource._get_latest_result(dbt_objects, "test.jaffle_shop.does_not_exist") is None
+
+    def test_executed_result_wins_when_no_timestamp_is_usable(self):
+        """
+        With no ``execute`` timing to rank by, selection falls back to the first
+        candidate. That fallback must run over executed results only, otherwise a
+        stub listed first still wins.
+        """
+        dbt_objects = self._dbt_objects(
+            ("success", None, None),
+            ("fail", "Got 3 results, configured to fail if != 0", None),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_result_survives_end_to_end_through_add_dbt_test_result(self):
+        """
+        The user-visible symptom: with a later docs-generate artifact present,
+        no test case result reaches OpenMetadata at all.
+        """
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        source = TestAddDbtTestResultNullMessage._make_source()
+        source.add_dbt_test_result(TestAddDbtTestResultNullMessage._make_dbt_test(selected))
+
+        kwargs = TestAddDbtTestResultNullMessage._sent_call(source)
+        assert kwargs["test_results"].testCaseStatus == TestCaseStatus.Success
+        assert kwargs["test_results"].timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 7, 0, 0), milliseconds=True
+        )
+
+
 class TestGetBlobsGroupedByDir(TestCase):
     """
     Test cases for get_blobs_grouped_by_dir to verify streaming support,
@@ -3776,6 +3945,115 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
         source.metadata.add_test_case_results.assert_called_once()
         test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
         self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
+
+
+class TestAddDbtTestResultNullMessage:
+    """
+    Regression coverage for issue #29824.
+
+    dbt only fills ``message`` on failure/warn for many adapters, so a genuine
+    executed data test is reported as ``status="pass", message=null``. The
+    compiled-only guard added by #26812 keyed off ``message`` alone and so
+    dropped those real results, which is why dbt test results stopped showing
+    up after the 1.13.0 upgrade.
+    """
+
+    @staticmethod
+    def _make_source():
+        source = MagicMock(spec=DbtSource)
+        # add_dbt_test_result only dispatches; the compiled-only guard and the
+        # result building live in the builders, so they have to be the real
+        # implementations or the mock would answer for the behaviour under test.
+        for name in (
+            "add_dbt_test_result",
+            "_build_run_result_test_case_result",
+            "_build_freshness_test_case_result",
+            "_resolve_dbt_test_timestamp",
+        ):
+            setattr(source, name, getattr(DbtSource, name).__get__(source, DbtSource))
+        for name in ("_map_dbt_test_status", "_get_freshness_result_details"):
+            setattr(source, name, getattr(DbtSource, name))
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.context = MagicMock()
+        source.context.get.return_value = SimpleNamespace(run_results_generate_time=None)
+        return source
+
+    @staticmethod
+    def _sent_call(source):
+        """
+        add_dbt_test_result swallows every exception into status.failed(), so an
+        unhandled error would otherwise look identical to a deliberate skip.
+        """
+        assert source.status.failed.call_args_list == [], source.status.failed.call_args_list
+        calls = source.metadata.add_test_case_results.call_args_list
+        assert len(calls) == 1, "expected exactly one test case result sent to OpenMetadata"
+        return calls[0].kwargs
+
+    @staticmethod
+    def _make_dbt_test(run_result):
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: SimpleNamespace(
+                name="not_null_orders_order_id",
+                column_name="order_id",
+                test_metadata=SimpleNamespace(
+                    name="not_null",
+                    kwargs={"column_name": "order_id", "model": "ref('orders')"},
+                ),
+            ),
+            DbtCommonEnum.RESULTS.value: run_result,
+            DbtCommonEnum.UPSTREAM.value: [DBT_TEST_TABLE_FQN],
+            DbtCommonEnum.UPSTREAM_BY_NAME.value: {"orders": DBT_TEST_TABLE_FQN},
+        }
+
+    def _ingest(self, status, message):
+        payload = _run_result_payload(status=status, message=message, completed_at="2026-07-24T09:00:00.000000Z")
+        run_result = _parse_run_results_like_production(payload).results[0]
+        source = self._make_source()
+        source.add_dbt_test_result(self._make_dbt_test(run_result))
+        return source
+
+    def test_failures_key_is_stripped_before_parsing(self):
+        """
+        `failures` is not in REQUIRED_RESULTS_KEYS, so it cannot be used to tell
+        an executed test from a compiled-only stub: `status` is the only signal left.
+        """
+        payload = _run_result_payload(
+            status="pass", message=None, completed_at="2026-07-24T09:00:00.000000Z", failures=0
+        )
+        run_result = _parse_run_results_like_production(payload).results[0]
+
+        assert getattr(run_result, "failures", None) is None
+        assert run_result.status.value == "pass"
+
+    def test_passing_test_with_null_message_is_ingested(self):
+        kwargs = self._sent_call(self._ingest(status="pass", message=None))
+
+        test_case_result = kwargs["test_results"]
+        assert kwargs["test_case_fqn"] == f"{DBT_TEST_TABLE_FQN}.order_id.not_null_orders_order_id"
+        assert test_case_result.testCaseStatus == TestCaseStatus.Success
+        assert test_case_result.result is None
+        assert [value.value for value in test_case_result.testResultValue] == ["1"]
+        assert test_case_result.timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 9, 0, 0), milliseconds=True
+        )
+
+    def test_compiled_only_success_with_null_message_is_still_skipped(self):
+        source = self._ingest(status="success", message=None)
+
+        source.metadata.add_test_case_results.assert_not_called()
+        assert source.status.failed.call_args_list == []
+
+    def test_failing_test_with_null_message_is_ingested(self):
+        test_case_result = self._sent_call(self._ingest(status="fail", message=None))["test_results"]
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert [value.value for value in test_case_result.testResultValue] == ["0"]
+
+    def test_warning_test_with_null_message_is_ingested(self):
+        test_case_result = self._sent_call(self._ingest(status="warn", message=None))["test_results"]
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
 
 
 class TestRemoveManifestNonRequiredKeys(TestCase):

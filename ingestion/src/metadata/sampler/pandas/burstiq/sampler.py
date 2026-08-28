@@ -17,7 +17,7 @@ so that PandasProfilerInterface can be used without any BurstIQ-specific
 profiler code.
 """
 
-from typing import TYPE_CHECKING, Callable, Optional, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -156,7 +156,7 @@ class BurstIQSampler(DatalakeSampler):
         ``is_scalar`` guard skips list/dict cells, where ``pd.isna`` returns an
         array and would raise on truthiness."""
 
-        def to_null(value):
+        def to_null(value: Any):
             return None if pd.api.types.is_scalar(value) and pd.isna(value) else self._truncate_cell(value)
 
         return [[to_null(value) for value in row] for row in data_frame.dropna(how="all").values.tolist()]
