@@ -34,6 +34,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -95,6 +96,7 @@ import {
   updateTreeData,
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 
@@ -178,6 +180,16 @@ const KnowledgePagesHierarchy = forwardRef<
     const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
     const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
     const nodeChildrenOffsetRef = useRef<Map<string, number>>(new Map());
+
+    // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+    // component receives as a prop. Every old raw read here is a single-key EditAll/Delete/
+    // Create read (no OR-of-two-fields, no explicit-deny-wins case) and none referenced a
+    // `deleted` field (there's no single "deleted" entity at this hierarchy level) — so these
+    // are pure identical mappings onto the named flags, no `deleted` argument.
+    const { canEditAll, canDelete, canCreate } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
@@ -612,7 +624,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const handleItemMove = useCallback(
       ({ sourceKey, targetKey, dropPosition }: TreeItemMoveEvent) => {
-        if (!permissions.EditAll) {
+        if (!canEditAll) {
           return;
         }
 
@@ -649,7 +661,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         setMovedPage({ sourceNode, sourceNodeParent, targetNode });
       },
-      [knowledgePageHierarchy, permissions.EditAll]
+      [knowledgePageHierarchy, canEditAll]
     );
 
     const handleScroll: UIEventHandler<HTMLElement> = useCallback(
@@ -712,7 +724,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Box>
         );
 
-        const deleteButton = permissions.Delete ? (
+        const deleteButton = canDelete ? (
           <ButtonUtility
             className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
             color="tertiary"
@@ -764,7 +776,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Tree.Item>
         );
       },
-      [activeKey, onQuickLinkClick, permissions.Delete, handleDeletePage, t]
+      [activeKey, onQuickLinkClick, canDelete, handleDeletePage, t]
     );
 
     useImperativeHandle(ref, () => ({
@@ -835,7 +847,7 @@ const KnowledgePagesHierarchy = forwardRef<
         role="region"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
-          if (!permissions.EditAll) {
+          if (!canEditAll) {
             return;
           }
           const sourceKey = e.dataTransfer.getData('text/plain');
@@ -918,7 +930,7 @@ const KnowledgePagesHierarchy = forwardRef<
             {isHierarchyEmpty && (
               <CreateErrorPlaceHolder
                 className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
-                permission={permissions.Create}
+                permission={canCreate}
                 placeholderText={t('message.no-articles-listed')}
                 size={SIZE.MEDIUM}
               />
@@ -941,7 +953,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 }}
                 onItemMove={handleItemMove}
                 onItemRootDrop={(sourceKey) => {
-                  if (!permissions.EditAll) {
+                  if (!canEditAll) {
                     return;
                   }
                   const { page: sourceNode, parent: sourceNodeParent } =
