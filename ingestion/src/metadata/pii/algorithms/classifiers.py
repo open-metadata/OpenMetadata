@@ -55,9 +55,7 @@ from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
 # mixed-case input.  The NER second-pass union is restricted to these to avoid
 # false positives from title-casing status-enum values ("ACTIVE" → "Active")
 # which pattern recognisers never flag but spaCy NER might mis-classify as PERSON.
-_NER_BASED_TAGS: frozenset[PIITag] = frozenset(
-    {PIITag.PERSON, PIITag.LOCATION, PIITag.NRP}
-)
+_NER_BASED_TAGS: frozenset[PIITag] = frozenset({PIITag.PERSON, PIITag.LOCATION, PIITag.NRP})
 
 T = TypeVar("T", bound=Hashable)
 
