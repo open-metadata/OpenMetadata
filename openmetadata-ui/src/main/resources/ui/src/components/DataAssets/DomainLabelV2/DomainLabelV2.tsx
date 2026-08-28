@@ -26,6 +26,7 @@ import {
 } from '../../../utils/Assets/AssetsUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
@@ -168,9 +169,15 @@ export const DomainLabelV2 = <
     return null;
   }, [activeDomain, domainLabel]);
 
+  // Named-flag derivation (Task 8 sweep): raw EditAll-only read, deleted-gated exactly as
+  // before — identical mapping onto `canEditAll`.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions, data?.deleted),
+    [permissions, data?.deleted]
+  );
   const hasPermission = useMemo(() => {
-    return props?.hasPermission ?? (permissions?.EditAll && !data?.deleted);
-  }, [permissions?.EditAll, data?.deleted, props?.hasPermission]);
+    return props?.hasPermission ?? canEditAll;
+  }, [canEditAll, props?.hasPermission]);
 
   const selectableList = useMemo(() => {
     if (!hasPermission) {
