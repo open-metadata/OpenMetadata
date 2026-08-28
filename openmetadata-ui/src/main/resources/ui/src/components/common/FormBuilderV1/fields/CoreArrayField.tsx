@@ -164,7 +164,7 @@ const CoreArrayField = (props: FieldProps) => {
         <Button
           className="tw:ml-auto tw:rounded tw:p-0 tw:hover:bg-transparent"
           color="tertiary"
-          icon={Copy01}
+          iconLeading={Copy01}
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
           }
