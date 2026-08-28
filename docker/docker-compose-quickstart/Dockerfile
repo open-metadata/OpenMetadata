@@ -35,6 +35,16 @@ RUN mkdir -p /opt/openmetadata && \
     printf '#!/busybox/sh\nexec /busybox/sh "$@"\n' > /shim/bin/bash && \
     chmod 755 /shim/bin/bash
 
+# Temurin rather than the runtime's own distro, even though that puts the
+# builder on a newer glibc (Ubuntu 26.04 / 2.43) than the runtime (debian 13 /
+# 2.41). What matters is not the builder image's glibc but what the JDK binaries
+# jlink copies were linked against: Adoptium builds those for portability, so the
+# output requires at most GLIBC_2.17. Building the same runtime from
+# debian:13-slim + openjdk-21-jdk-headless raises that floor to GLIBC_2.38 for no
+# size win (96 MB vs 100 MB before pruning), which would pin the image to
+# trixie-era bases and break on any rollback to debian 12. Temurin is also the
+# distribution actions/setup-java pins across this repo's CI.
+#
 # ALL-MODULE-PATH on purpose: the app reaches deep into the JDK at runtime
 # (dropwizard yaml -> java.beans, postgresql -> java.sql + java.naming), and a
 # pruned module only fails on the code path that needed it.
