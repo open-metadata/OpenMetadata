@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
@@ -358,7 +359,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         """clean datatype of column fetched from superset"""
         return datatype.replace("()", "")
 
-    def parse_array_data_type(self, col_parse: dict) -> Optional[str]:  # noqa: UP045
+    def parse_array_data_type(self, col_parse: dict) -> DataType | None:
         """
         Set arrayDataType to UNKNOWN for Snowflake table array columns
         to prevent validation error requiring non-null arrayDataType
@@ -397,19 +398,23 @@ class SupersetSourceMixin(DashboardServiceSource):
                 col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     field.type
                 )
+                if not isinstance(col_parse, dict):
+                    logger.warning(f"Unexpected datatype parse result for column {field.column_name}: {col_parse!r}")
+                    continue
                 description = field.description or ""
                 if field.expression:
                     formula_text = f"**Formula:** `{field.expression}`"
                     description = f"{description}\n\n{formula_text}" if description else formula_text
+                data_length = col_parse.get("dataLength", 0)
                 parsed_fields = Column(
                     dataTypeDisplay=field.type,
-                    dataType=col_parse["dataType"],
+                    dataType=DataType(col_parse["dataType"]),
                     arrayDataType=self.parse_array_data_type(col_parse),
                     children=self.parse_row_data_type(col_parse),
                     name=ColumnName(truncate_column_name(field.column_name or str(field.id))),
                     displayName=field.column_name,
-                    description=description or None,
-                    dataLength=int(col_parse.get("dataLength", 0)),
+                    description=Markdown(description) if description else None,
+                    dataLength=data_length if isinstance(data_length, int) else 0,
                 )
                 datasource_columns.append(parsed_fields)
             except Exception as exc:
