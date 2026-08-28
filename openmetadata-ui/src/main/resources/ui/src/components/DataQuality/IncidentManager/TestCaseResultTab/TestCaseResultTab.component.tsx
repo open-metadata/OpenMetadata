@@ -38,6 +38,7 @@ import {
   TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
   getTestDefinitionById,
@@ -103,6 +104,7 @@ const TestCaseResultTab = () => {
   } = useTestCaseStore();
   const { version } = useParams<{ version: string }>();
   const isVersionPage = !isUndefined(version);
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
@@ -637,6 +639,9 @@ const TestCaseResultTab = () => {
                 activeDomains={testCaseData?.domains ?? []}
                 dataProducts={testCaseData?.dataProducts ?? []}
                 hasPermission={!isVersionPage && (hasEditPermission ?? false)}
+                requireDomainForDataProduct={
+                  !isRulesLoaded || entityRules.requireDomainForDataProduct
+                }
                 onSave={handleDataProductsSave}
               />
             </div>
