@@ -20,6 +20,16 @@ import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.c
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
+import {
+  FilterPatternValue,
+  getNestedSchema,
+  getSchemaProperty,
+  getString,
+  isFilterPatternValue,
+  isRenderableValue,
+  isSchemaObject,
+  RenderableValue,
+} from './ServiceConnectionDetailsSchemaUtils';
 
 type KeyValuesProps = {
   obj: Record<string, unknown>;
@@ -27,170 +37,6 @@ type KeyValuesProps = {
   schema: Record<string, unknown>;
   serviceCategory: string;
   schemaContext?: Record<string, unknown>;
-};
-
-type SchemaObject = Record<string, unknown>;
-type RenderableValue = string | number | boolean | unknown[] | undefined;
-
-const isSchemaObject = (value: unknown): value is SchemaObject =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const getSchemaObject = (value: unknown): SchemaObject | undefined =>
-  isSchemaObject(value) ? value : undefined;
-
-const getString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
-
-const isRenderableValue = (value: unknown): value is RenderableValue => {
-  if (value === undefined || Array.isArray(value)) {
-    return true;
-  }
-
-  const valueType = typeof value;
-
-  return (
-    valueType === 'string' || valueType === 'number' || valueType === 'boolean'
-  );
-};
-
-const isFilterPatternValue = (
-  value: SchemaObject
-): value is { includes: string[]; excludes: string[] } =>
-  Array.isArray(value.includes) &&
-  value.includes.every((item) => typeof item === 'string') &&
-  Array.isArray(value.excludes) &&
-  value.excludes.every((item) => typeof item === 'string');
-
-const getJsonPointerValue = (
-  schemaObject: SchemaObject,
-  reference: string
-): unknown => {
-  if (reference === '#') {
-    return schemaObject;
-  }
-
-  if (!reference.startsWith('#/')) {
-    return undefined;
-  }
-
-  return reference
-    .slice(2)
-    .split('/')
-    .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'))
-    .reduce<unknown>((current, part) => {
-      if (isSchemaObject(current)) {
-        return current[part];
-      }
-
-      if (Array.isArray(current)) {
-        const index = Number(part);
-
-        return Number.isInteger(index) ? current[index] : undefined;
-      }
-
-      return undefined;
-    }, schemaObject);
-};
-
-const resolveSchemaReference = (
-  schemaObject: unknown,
-  referenceScopes: SchemaObject[]
-): SchemaObject | undefined => {
-  if (!isSchemaObject(schemaObject)) {
-    return undefined;
-  }
-
-  let resolvedSchema = schemaObject;
-  const visitedReferences = new Set<string>();
-
-  while (true) {
-    const reference = getString(resolvedSchema.$ref);
-
-    if (!reference || visitedReferences.has(reference)) {
-      return resolvedSchema;
-    }
-
-    visitedReferences.add(reference);
-
-    const referencedSchema = referenceScopes
-      .map((scope) => getJsonPointerValue(scope, reference))
-      .find(isSchemaObject);
-
-    if (!referencedSchema) {
-      return resolvedSchema;
-    }
-
-    const schemaWithReferenceRemoved = { ...resolvedSchema };
-    delete schemaWithReferenceRemoved.$ref;
-    resolvedSchema = {
-      ...referencedSchema,
-      ...schemaWithReferenceRemoved,
-    };
-  }
-};
-
-const getSchemaObjects = (value: unknown): SchemaObject[] =>
-  Array.isArray(value) ? value.filter(isSchemaObject) : [];
-
-const matchesOneOfSchema = (
-  schemaObject: SchemaObject,
-  value: SchemaObject
-): boolean => {
-  const properties = getSchemaObject(schemaObject.properties);
-
-  if (!properties) {
-    return false;
-  }
-
-  return Object.entries(properties).some(([key, property]) => {
-    if (!(key in value)) {
-      return false;
-    }
-
-    const propertySchema = getSchemaObject(property);
-
-    if (!propertySchema) {
-      return false;
-    }
-
-    if ('const' in propertySchema) {
-      return propertySchema.const === value[key];
-    }
-
-    const enumValues = propertySchema.enum;
-
-    return (
-      Array.isArray(enumValues) &&
-      enumValues.length === 1 &&
-      enumValues[0] === value[key]
-    );
-  });
-};
-
-const getMatchingOneOfSchema = (
-  value: unknown,
-  oneOf: SchemaObject[],
-  referenceScopes: SchemaObject[]
-): SchemaObject | undefined => {
-  const valueObject = getSchemaObject(value);
-
-  if (!valueObject) {
-    return undefined;
-  }
-
-  const resolvedSchemas = oneOf
-    .map((schemaObject) =>
-      resolveSchemaReference(schemaObject, referenceScopes)
-    )
-    .filter((schemaObject): schemaObject is SchemaObject =>
-      Boolean(schemaObject)
-    );
-
-  return (
-    resolvedSchemas.find((schemaObject) =>
-      matchesOneOfSchema(schemaObject, valueObject)
-    ) ?? (resolvedSchemas.length === 1 ? resolvedSchemas[0] : undefined)
-  );
 };
 
 // Renders a basic input field with label and optional tooltip
@@ -246,7 +92,7 @@ const renderInputField = (
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: { includes: string[]; excludes: string[] },
+  value: FilterPatternValue,
   description?: string,
   title?: string
 ) => {
@@ -272,7 +118,7 @@ const renderFilterPattern = (
         </Col>
         <Col className="filter-config" span={16}>
           {Object.entries(value).map(([key, value]) => {
-            return isEmpty(value) ? null : (
+            return isEmpty(value) || !Array.isArray(value) ? null : (
               <div
                 className="w-full flex flex-col"
                 key={`${key}-${JSON.stringify(value)}`}>
@@ -280,7 +126,7 @@ const renderFilterPattern = (
                   key
                 )}:`}</Typography.Text>
                 <Typography.Text className="value">
-                  {(value as string[]).join(', ')}
+                  {value.join(', ')}
                 </Typography.Text>
               </div>
             );
@@ -309,10 +155,12 @@ export const getKeyValues = ({
 
       // Handle non-object and array values
       if (!isSchemaObject(value)) {
-        const schemaProperty = resolveSchemaReference(
-          schemaPropertyObject[key],
-          [schemaContext, schema]
-        );
+        const schemaProperty = getSchemaProperty({
+          key,
+          schema,
+          schemaContext,
+          schemaPropertyObject,
+        });
 
         if (!isRenderableValue(value)) {
           return null;
@@ -340,10 +188,12 @@ export const getKeyValues = ({
         ) &&
         isFilterPatternValue(value)
       ) {
-        const schemaProperty = resolveSchemaReference(
-          schemaPropertyObject[key],
-          [schemaContext, schema]
-        );
+        const schemaProperty = getSchemaProperty({
+          key,
+          schema,
+          schemaContext,
+          schemaPropertyObject,
+        });
 
         return renderFilterPattern(
           key,
@@ -385,51 +235,29 @@ export const getKeyValues = ({
         }
       }
 
-      const schemaProperty = resolveSchemaReference(schemaPropertyObject[key], [
-        schemaContext,
+      const schemaProperty = getSchemaProperty({
+        key,
         schema,
-      ]);
-      const childOneOf = getSchemaObjects(schemaProperty?.oneOf);
+        schemaContext,
+        schemaPropertyObject,
+      });
+      const nestedSchema = getNestedSchema({
+        schema,
+        schemaContext,
+        schemaProperty,
+        value,
+      });
 
-      if (childOneOf.length > 0) {
-        const selectedOneOfSchema = getMatchingOneOfSchema(value, childOneOf, [
-          schemaContext,
-          schemaProperty ?? {},
-          schema,
-        ]);
-        const selectedProperties = getSchemaObject(
-          selectedOneOfSchema?.properties
-        );
-
-        return selectedProperties
-          ? getKeyValues({
-              obj: value,
-              schemaPropertyObject: selectedProperties,
-              schema,
-              serviceCategory,
-              schemaContext: selectedOneOfSchema,
-            })
-          : null;
-      }
-
-      const childProperties = getSchemaObject(schemaProperty?.properties);
-
-      if (childProperties) {
-        return getKeyValues({
-          obj: value,
-          schemaPropertyObject: childProperties,
-          schema,
-          serviceCategory,
-          schemaContext: schemaProperty,
-        });
+      if (!nestedSchema) {
+        return null;
       }
 
       return getKeyValues({
         obj: value,
-        schemaPropertyObject: {},
+        schemaPropertyObject: nestedSchema.schemaPropertyObject,
         schema,
         serviceCategory,
-        schemaContext,
+        schemaContext: nestedSchema.schemaContext,
       });
     });
   } catch {

@@ -71,6 +71,13 @@ const schema = {
         },
       },
     },
+    topicFilterPattern: {
+      type: 'object',
+      properties: {
+        includes: { type: 'array', items: { type: 'string' } },
+        excludes: { type: 'array', items: { type: 'string' } },
+      },
+    },
   },
 };
 
@@ -135,5 +142,21 @@ describe('getKeyValues', () => {
     expect(screen.getByDisplayValue(value)).toBeInTheDocument();
     expect(screen.queryByText('privateKey:')).not.toBeInTheDocument();
     expect(screen.queryByText('audience:')).not.toBeInTheDocument();
+  });
+
+  it('renders a filter pattern when only includes is present', () => {
+    render(
+      <>
+        {getKeyValues({
+          obj: { topicFilterPattern: { includes: ['topic_.*'] } },
+          schemaPropertyObject: schema.properties,
+          schema,
+          serviceCategory: ServiceCategory.MESSAGING_SERVICES,
+        })}
+      </>
+    );
+
+    expect(screen.getByText('Includes:')).toBeInTheDocument();
+    expect(screen.getByText('topic_.*')).toBeInTheDocument();
   });
 });
