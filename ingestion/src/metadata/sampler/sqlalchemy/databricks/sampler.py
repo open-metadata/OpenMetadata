@@ -56,7 +56,7 @@ class DatabricksSamplerInterface(SQASampler):
         """Keep nested field access valid across sampling CTEs."""
         if column is not None and "`.`" in str(column.name):
             parent_name = str(column.name).split("`.`", maxsplit=1)[0].removeprefix("`")
-            column = cast("Column", selectable.c[parent_name])
+            column = cast("Column", selectable.c[parent_name.lower()])
 
         return super()._base_sample_query(selectable, column, label=label)
 
