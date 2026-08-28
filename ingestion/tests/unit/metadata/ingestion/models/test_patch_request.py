@@ -366,6 +366,52 @@ def test_build_patch_allows_nested_column_metadata_override():
     assert nested_column["description"] == "Current email"
 
 
+def test_build_patch_preserves_children_when_struct_children_are_omitted():
+    class TableModel(BaseModel):
+        columns: list[Column]
+
+    source = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                dataTypeDisplay="struct<email:string>",
+                children=[
+                    Column(
+                        name="email",
+                        dataType=DataType.STRING,
+                        description=Markdown("Historical email"),
+                    )
+                ],
+            )
+        ]
+    )
+    destination = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                dataTypeDisplay="struct",
+            )
+        ]
+    )
+
+    patch = build_patch(
+        source=source,
+        destination=destination,
+        restrict_update_fields=["description", "tags"],
+        array_entity_fields=["columns"],
+    )
+
+    assert patch is not None
+    columns_operation = next(
+        operation for operation in patch.patch if operation["path"] == "/columns"
+    )
+    nested_column = columns_operation["value"][0]["children"][0]
+    assert nested_column["name"] == "email"
+    assert nested_column["description"] == "Historical email"
+
+
 def test_build_patch_drops_nested_children_when_column_becomes_scalar():
     class TableModel(BaseModel):
         columns: list[Column]

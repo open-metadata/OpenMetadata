@@ -602,7 +602,7 @@ def _should_update_restricted_field(
 
 def _attribute_has_structured_children(attribute) -> bool:
     return any(
-        model_str(getattr(attribute, field, None)) == "STRUCT"
+        getattr(getattr(attribute, field, None), "value", None) == "STRUCT"
         for field in ("dataType", "arrayDataType")
     )
 
@@ -689,7 +689,7 @@ def _sort_array_entity_fields(
                 destination_attributes=destination_attributes,
                 source_attributes=source_attributes,
                 restrict_set=restrict_set,
-                override_metadata=override_metadata,
+                override_metadata=bool(override_metadata),
             )
             setattr(destination, field, updated_attributes)
 
