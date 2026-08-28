@@ -184,20 +184,42 @@ jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
+// `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
+// drawer open through the *widget* path — the live path for a deleted entity, since
+// ManageButton's `onAnnouncementClick` is independently gated on `!deleted` (see
+// DataAssetsHeader.component.tsx's inline comment on the AnnouncementDrawer conversion).
 jest.mock(
   '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
     jest
       .fn()
-      .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
+      .mockImplementation(
+        ({ onViewAll }: { onViewAll?: () => void }) => (
+          <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+            AnnouncementsWidgetV3Body.component
+          </button>
+        )
+      )
 );
 jest.mock('../../../rest/announcementsAPI', () => ({
   getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
 }));
+// Captures the `createPermission` prop directly instead of rendering an opaque div — needed
+// to assert the DataAssetsHeader conversion's `canEditAll` (deleted-gated) wiring for the
+// approved deleted-gating behavior change (Task 8 Batch 2 review, Finding 1).
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
+    jest
+      .fn()
+      .mockImplementation(
+        ({ createPermission }: { createPermission?: boolean }) => (
+          <div
+            data-create-permission={String(Boolean(createPermission))}
+            data-testid="announcement-drawer"
+          />
+        )
+      )
 );
 
 jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
@@ -923,6 +945,61 @@ describe('DataAssetsHeader component', () => {
     expect(
       screen.queryByTestId('request-data-access-button')
     ).not.toBeInTheDocument();
+  });
+
+  // Task 8 Batch 2 review, Finding 1: regression coverage for the approved deleted-gating
+  // behavior change on AnnouncementDrawer.createPermission (was raw `permissions?.EditAll`,
+  // now `canEditAll`, which is `false` once `deleted` is true). Driven through the
+  // AnnouncementsWidgetV3Body "view all" click rather than ManageButton — that's the live
+  // reachable path for a *deleted* entity, since ManageButton's own `onAnnouncementClick`
+  // menu item is independently gated on `!deleted` and would never surface the drawer for a
+  // deleted entity in the first place.
+  describe('AnnouncementDrawer.createPermission wiring', () => {
+    it('denies createPermission for a soft-deleted entity reached via the AnnouncementsWidgetV3Body view-all click, even with EditAll granted', async () => {
+      (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'announcement-1' }],
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId('announcements-widget-view-all')
+      );
+
+      expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'false'
+      );
+    });
+
+    it('grants createPermission when EditAll is granted and the entity is not deleted', async () => {
+      (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'announcement-1' }],
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: false }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId('announcements-widget-view-all')
+      );
+
+      expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'true'
+      );
+    });
   });
 
   describe('dataContractLatestResultButton', () => {
