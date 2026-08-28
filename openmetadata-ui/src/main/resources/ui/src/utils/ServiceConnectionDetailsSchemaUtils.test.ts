@@ -36,6 +36,23 @@ const credentialPathSchema = {
   },
 };
 
+const tokenAuthSchema = {
+  type: 'object',
+  required: ['token'],
+  properties: {
+    token: { type: 'string', format: 'password' },
+  },
+};
+
+const basicAuthSchema = {
+  type: 'object',
+  required: ['username', 'password'],
+  properties: {
+    username: { type: 'string' },
+    password: { type: 'string', format: 'password' },
+  },
+};
+
 const schema = {
   definitions: {
     credentialPath: credentialPathSchema,
@@ -121,5 +138,15 @@ describe('ServiceConnectionDetailsSchemaUtils', () => {
     expect(isFilterPatternValue({ includes: ['table_.*'] })).toBe(true);
     expect(isFilterPatternValue({ excludes: ['tmp_.*'] })).toBe(true);
     expect(isFilterPatternValue({})).toBe(false);
+  });
+
+  it('selects non-discriminated branches by their required value shape', () => {
+    expect(
+      getMatchingOneOfSchema(
+        { token: 'token-value' },
+        [basicAuthSchema, tokenAuthSchema],
+        []
+      )
+    ).toEqual(tokenAuthSchema);
   });
 });

@@ -129,39 +129,123 @@ export const resolveSchemaReference = (
 export const getSchemaObjects = (value: unknown): SchemaObject[] =>
   Array.isArray(value) ? value.filter(isSchemaObject) : [];
 
-const matchesOneOfSchema = (
-  schemaObject: SchemaObject,
-  value: SchemaObject
-): boolean => {
+type SchemaDiscriminator = {
+  key: string;
+  value: unknown;
+};
+
+const getSchemaDiscriminators = (
+  schemaObject: SchemaObject
+): SchemaDiscriminator[] => {
   const properties = getSchemaObject(schemaObject.properties);
 
   if (!properties) {
-    return false;
+    return [];
   }
 
-  return Object.entries(properties).some(([key, property]) => {
-    if (!(key in value)) {
-      return false;
-    }
-
+  return Object.entries(properties).flatMap(([key, property]) => {
     const propertySchema = getSchemaObject(property);
 
     if (!propertySchema) {
-      return false;
+      return [];
     }
 
-    if ('const' in propertySchema) {
-      return propertySchema.const === value[key];
+    if (Object.prototype.hasOwnProperty.call(propertySchema, 'const')) {
+      return [{ key, value: propertySchema.const }];
     }
 
     const enumValues = propertySchema.enum;
 
-    return (
-      Array.isArray(enumValues) &&
-      enumValues.length === 1 &&
-      enumValues[0] === value[key]
-    );
+    return Array.isArray(enumValues) && enumValues.length === 1
+      ? [{ key, value: enumValues[0] }]
+      : [];
   });
+};
+
+const matchesSchemaDiscriminator = (
+  schemaObject: SchemaObject,
+  value: SchemaObject
+): boolean => {
+  return getSchemaDiscriminators(schemaObject).some(
+    ({ key, value: expectedValue }) =>
+      key in value && expectedValue === value[key]
+  );
+};
+
+const getStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+
+const getSchemaMatchScore = (
+  schemaObject: SchemaObject,
+  value: SchemaObject,
+  referenceScopes: SchemaObject[],
+  depth = 0
+): number | undefined => {
+  const requiredProperties = getStringArray(schemaObject.required);
+
+  if (requiredProperties.some((key) => !(key in value))) {
+    return undefined;
+  }
+
+  if (depth > 5) {
+    return requiredProperties.length;
+  }
+
+  const properties = getSchemaObject(schemaObject.properties);
+
+  if (!properties) {
+    return requiredProperties.length;
+  }
+
+  return Object.entries(value).reduce((score, [key, nestedValue]) => {
+    const propertySchema = getSchemaObject(properties[key]);
+
+    if (!propertySchema) {
+      return score;
+    }
+
+    const resolvedPropertySchema =
+      resolveSchemaReference(propertySchema, [
+        schemaObject,
+        ...referenceScopes,
+      ]) ?? propertySchema;
+    const nestedScore = isSchemaObject(nestedValue)
+      ? getSchemaMatchScore(
+          resolvedPropertySchema,
+          nestedValue,
+          [resolvedPropertySchema, ...referenceScopes],
+          depth + 1
+        ) ?? 0
+      : 0;
+
+    return score + 1 + nestedScore;
+  }, requiredProperties.length);
+};
+
+const getStructurallyMatchingSchema = (
+  value: SchemaObject,
+  schemas: SchemaObject[],
+  referenceScopes: SchemaObject[]
+): SchemaObject | undefined => {
+  const scoredSchemas = schemas
+    .map((schemaObject) => ({
+      schemaObject,
+      score: getSchemaMatchScore(schemaObject, value, referenceScopes),
+    }))
+    .filter(
+      (item): item is { schemaObject: SchemaObject; score: number } =>
+        item.score !== undefined
+    );
+  const highestScore = Math.max(...scoredSchemas.map(({ score }) => score), 0);
+  const matchingSchemas = scoredSchemas.filter(
+    ({ score }) => score === highestScore
+  );
+
+  return highestScore > 0 && matchingSchemas.length === 1
+    ? matchingSchemas[0].schemaObject
+    : undefined;
 };
 
 export const getMatchingOneOfSchema = (
@@ -183,10 +267,20 @@ export const getMatchingOneOfSchema = (
       Boolean(schemaObject)
     );
 
-  return (
-    resolvedSchemas.find((schemaObject) =>
-      matchesOneOfSchema(schemaObject, valueObject)
-    ) ?? (resolvedSchemas.length === 1 ? resolvedSchemas[0] : undefined)
+  const hasDiscriminator = resolvedSchemas.some(
+    (schemaObject) => getSchemaDiscriminators(schemaObject).length > 0
+  );
+
+  if (hasDiscriminator) {
+    return resolvedSchemas.find((schemaObject) =>
+      matchesSchemaDiscriminator(schemaObject, valueObject)
+    );
+  }
+
+  return getStructurallyMatchingSchema(
+    valueObject,
+    resolvedSchemas,
+    referenceScopes
   );
 };
 
