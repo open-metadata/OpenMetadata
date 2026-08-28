@@ -141,6 +141,34 @@ describe('testAPI tests', () => {
         );
       });
 
+      it('should forward request cancellation to the search request', async () => {
+        const mockGet = jest
+          .fn()
+          .mockResolvedValue({ data: mockPagingResponse });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getListTestCaseBySearch } = require('./testAPI');
+        const controller = new AbortController();
+
+        await getListTestCaseBySearch(
+          { testSuiteId: 'suite-id' },
+          { signal: controller.signal }
+        );
+
+        expect(mockGet).toHaveBeenCalledWith(
+          '/dataQuality/testCases/search/list',
+          {
+            params: { testSuiteId: 'suite-id' },
+            signal: controller.signal,
+          }
+        );
+      });
+
       it('should handle API errors', async () => {
         const error = new Error('API Error');
         const mockGet = jest.fn().mockRejectedValue(error);
@@ -955,6 +983,36 @@ describe('testAPI tests', () => {
         expect(mockGet).toHaveBeenCalledWith(expect.any(String), {
           params: { includeRelations: 'owners:all' },
         });
+      });
+
+      it('should forward request cancellation to the suite request', async () => {
+        const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getTestSuiteByName } = require('./testAPI');
+        const controller = new AbortController();
+
+        await getTestSuiteByName(
+          'test.suite.name',
+          { fields: ['owners'] },
+          { signal: controller.signal }
+        );
+
+        expect(mockGet).toHaveBeenCalledWith(
+          expect.stringContaining('/dataQuality/testSuites/name/'),
+          {
+            params: {
+              fields: ['owners'],
+              includeRelations: 'owners:non-deleted,experts:non-deleted',
+            },
+            signal: controller.signal,
+          }
+        );
       });
 
       it('should encode FQN with special characters', async () => {

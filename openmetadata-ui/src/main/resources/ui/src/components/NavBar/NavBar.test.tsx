@@ -76,6 +76,11 @@ jest.mock('../../utils/FqnUtils', () => ({
 jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
+  isLandingPagePath: jest
+    .fn()
+    .mockImplementation(
+      (pathname: string) => pathname === '/' || pathname === '/my-data'
+    ),
 }));
 jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
@@ -255,6 +260,18 @@ describe('Test NavBar Component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should hide global search bar and domain dropdown on the root landing route', () => {
+    mockUseCustomLocation.pathname = '/';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
+  });
+
   it('should hide global search bar and domain dropdown on customize-page route', async () => {
     mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
     mockUseCustomLocation.search = 'search';
@@ -296,7 +313,9 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     jest.resetModules();
     jest.clearAllMocks();
     global.Date.now = jest.fn();
-    mockUseCustomLocation.pathname = '/';
+    // A non-landing route: these tests await the global search bar as their
+    // "NavBar has rendered" signal, and it is hidden on the landing page.
+    mockUseCustomLocation.pathname = '/explore';
   });
 
   afterEach(() => {

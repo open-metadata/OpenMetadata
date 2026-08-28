@@ -163,6 +163,7 @@ jobs:
           path: ${{ env.UI_WORKING_DIRECTORY }}
           files_ignore: |
             src/generated/**
+            src/jsons/**
           files: |
             src/**/*.{ts,tsx,js,jsx,json}
 
@@ -275,8 +276,18 @@ jobs:
           path: ${{ env.UI_WORKING_DIRECTORY }}
           files_ignore: |
             playwright/test-data/**
+          # Note sits outside `files` — it is a block scalar, every line a glob.
+          # The step also runs the rule-table drift check, so its inputs trigger it.
           files: |
-            playwright/**/*.{ts,tsx,js,jsx}
+            playwright/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}
+            playwright/**/*.md
+            playwright/eslint-rules/**
+            playwright.config.ts
+            eslint.config.mjs
+            eslint-suppressions.json
+            eslint-rules/**
+            scripts/generate-playwright-rule-table.mjs
+            package.json
 
       - name: ESLint + Prettier + Organise Imports (playwright)
         id: lint_playwright
@@ -290,9 +301,76 @@ jobs:
             echo "No added or modified files to process."
             exit 0
           fi
-          yarn organize-imports:cli $CHANGED_FILES
-          yarn lint:base --fix $CHANGED_FILES
-          yarn pretty:base --write $CHANGED_FILES
+
+          # Catches empty-rule-list disables and inline `/* eslint <rule>: 0 */`
+          # config, both of which silence the guardrails and neither of which
+          # justified-rule-disable can self-police (ESLint applies inline config
+          # before rules run, and filters a rule's own reports on lines its own
+          # disable covers). Runs before --fix so it judges what was written.
+          # A path filter, not --exclude-dir: that matches a basename at any depth.
+          MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?[[:space:]]*(\*/|--|$)|eslint-disable.*om-playwright/justified-rule-disable|/\*[[:space:]]*eslint[[:space:]][^*]*(om-)?playwright/[a-z-]+[[:space:]]*:' \
+               playwright/ --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+               | grep -v '^playwright/eslint-rules/' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "$MATCHES"
+            echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$MATCHES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Non-pruning variant: --prune-suppressions rewrites the file and exits 0,
+          # so a fixed violation would never fail CI and the baseline never ratchets.
+          #
+          # Real violations and stale entries both exit non-zero, so they are split:
+          # violations land in errorCount on stdout, the stale notice only on stderr.
+          # A stale entry is main drifting under us, not a defect in this PR, so it
+          # warns; errorCount is what fails. Never key off the exit code alone -- it
+          # is 2 even when a real violation is also present, which would swallow it.
+          yarn lint:playwright -f json > /tmp/pw-lint.json 2> /tmp/pw-lint.err || true
+          ERRORS=$(node -e "
+            const fs=require('fs');
+            const m=/(\[[\s\S]*\])/.exec(fs.readFileSync('/tmp/pw-lint.json','utf8'));
+            const d=m?JSON.parse(m[1]):[];
+            console.log(d.reduce((n,f)=>n+f.errorCount,0));
+          ")
+          if grep -q 'suppressions left that do not occur anymore' /tmp/pw-lint.err; then
+            echo "::warning::Stale suppression entries -- main fixed violations under this branch. Run 'yarn lint:playwright:suppressions' and commit the pruned baseline."
+          fi
+          if { [ "$ERRORS" -eq 0 ] && \
+               yarn test:eslint-rules && \
+               node scripts/generate-playwright-rule-table.mjs --check; } > /tmp/pw-guardrails.out 2>&1; then
+            RESULT=0
+          else
+            RESULT=$?
+            [ "$ERRORS" -eq 0 ] || sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-lint.json | grep -E '"ruleId"' | head -20 >> /tmp/pw-guardrails.out
+          fi
+          if [ "$RESULT" -ne 0 ]; then
+            cat /tmp/pw-guardrails.out
+            # `|| true`: a grep matching nothing exits 1 under `bash -eo pipefail`.
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30) || true
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # organize-imports aborts on any file outside the TS project, so a .json
+          # kills the step — and the merge queue always lists eslint-suppressions.json.
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx)$/ { printf "%s ", $0 }')
+
+          # Return codes are captured rather than left to `bash -e`: organize-imports
+          # and prettier disagree permanently, so files are dirty between these lines.
+          # Aborting here would skip the cleanup below and leave that dirt for the
+          # next step's `git status` gate -- which is how a lint failure once turned
+          # the unrelated i18n job red.
+          RC=0
+          if [ -n "$TS_FILES" ]; then
+            yarn organize-imports:cli $TS_FILES || RC=$?
+          fi
+          yarn lint:base --fix $CHANGED_FILES || RC=$?
+          yarn pretty:base --write $CHANGED_FILES || RC=$?
           if [ -n "$(git status --porcelain)" ]; then
             FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
@@ -302,6 +380,7 @@ jobs:
             git clean -fd
             exit 1
           fi
+          [ "$RC" -eq 0 ] || exit 1
 
       - name: Install Core Components Yarn Packages
         working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
@@ -451,8 +530,8 @@ jobs:
                 files:   ${{ toJSON(needs.checkstyle.outputs.app_docs_changed_files) }} || '',
               },
               {
-                name:    'Playwright - ESLint + Prettier + Organise Imports',
-                reason:  'One or more Playwright test files have linting or formatting issues.',
+                name:    'Playwright - Guardrails + ESLint + Prettier + Organise Imports',
+                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.mjs --check`.',
                 result:  '${{ needs.checkstyle.outputs.lint_playwright_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_changed_files) }} || '',
               },
