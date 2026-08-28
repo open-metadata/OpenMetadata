@@ -1,0 +1,78 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+A table is never cached as its own upstream.
+
+`system.access.table_lineage` records table access rather than derivation, so a
+streaming or CDC write legitimately names its target table as its own source.
+Those rows must not reach the lineage map, or the table ends up in its own
+upstream set and is later emitted as an edge pointing at itself.
+"""
+
+from collections import defaultdict
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+from metadata.ingestion.source.database.unitycatalog.lineage import (
+    UnitycatalogLineageSource,
+)
+
+CATALOG, SCHEMA = "analytics", "sales"
+EVENT_LOG = f"{CATALOG}.{SCHEMA}.orders_event_log"
+SNAPSHOT = f"{CATALOG}.{SCHEMA}.orders_snapshot"
+
+
+def _row(source_table: str, target_table: str) -> SimpleNamespace:
+    return SimpleNamespace(source_table_full_name=source_table, target_table_full_name=target_table)
+
+
+def _source(rows):
+    """The real caching method, with only the SQL connection stubbed."""
+    with patch.object(UnitycatalogLineageSource, "__init__", lambda s: None):
+        source = UnitycatalogLineageSource()
+
+    source.table_lineage_map = defaultdict(set)
+    source.source_config = MagicMock()
+    source.source_config.queryLogDuration = 1
+
+    connection = MagicMock()
+    connection.execute.return_value = rows
+    engine = MagicMock()
+    engine.connect.return_value.__enter__ = MagicMock(return_value=connection)
+    engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    source.engine = engine
+    return source
+
+
+class TestSelfReferencingLineageCache:
+    def test_a_self_referencing_row_is_not_cached(self):
+        source = _source([_row(EVENT_LOG, EVENT_LOG)])
+        source._cache_lineage()
+        assert EVENT_LOG not in source.table_lineage_map.get(EVENT_LOG, set())
+        assert sum(len(v) for v in source.table_lineage_map.values()) == 0
+
+    def test_a_normal_row_is_still_cached(self):
+        source = _source([_row(EVENT_LOG, SNAPSHOT)])
+        source._cache_lineage()
+        assert source.table_lineage_map[SNAPSHOT] == {EVENT_LOG}
+
+    def test_only_the_self_reference_is_dropped(self):
+        """The guard must not suppress real upstreams of the same table."""
+        source = _source(
+            [
+                _row(EVENT_LOG, SNAPSHOT),
+                _row(SNAPSHOT, SNAPSHOT),
+                _row(EVENT_LOG, EVENT_LOG),
+            ]
+        )
+        source._cache_lineage()
+        assert source.table_lineage_map[SNAPSHOT] == {EVENT_LOG}
+        assert source.table_lineage_map.get(EVENT_LOG, set()) == set()
