@@ -362,7 +362,6 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
-    validateGroupTeams(user.getTeams());
     assignTeams(user, user.getTeams());
     assignDefaultPersona(user, user.getDefaultPersona());
     assignPersonas(user, user.getPersonas());
