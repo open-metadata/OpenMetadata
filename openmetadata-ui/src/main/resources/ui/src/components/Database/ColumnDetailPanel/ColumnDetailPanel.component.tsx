@@ -39,6 +39,7 @@ import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQu
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
@@ -124,27 +125,40 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     'downstream'
   );
 
-  const hasEditPermission = useMemo(
-    () => ({
-      tags: (permissions.EditTags || permissions.EditAll) && !deleted,
-      glossaryTerms:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
-      description:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
-      viewAllPermission: permissions.ViewAll,
-      customProperties:
-        (permissions.EditCustomFields || permissions.EditAll) && !deleted,
-      displayName:
-        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
-    }),
+  // Named-flag derivation (Task 8): `permissions` is the raw OperationPermission read off
+  // useGenericContext(). Every field below was a raw `(EditX || EditAll) && !deleted` /
+  // `ViewAll || ViewX` OR — replacing with the prioritized named flag is a documented
+  // explicit-deny-wins fix (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditX: false` (or `ViewX: false`) now wins over a bare `EditAll`/`ViewAll: true` grant,
+  // where the old raw OR granted regardless.
+  const {
+    canEditTags,
+    canEditGlossaryTerms,
+    canEditDescription,
+    canEditCustomFields,
+    canEditDisplayName,
+    canViewCustomFields,
+    canViewTests,
+  } = useMemo(
+    () => getDerivedPermissionFlags(permissions, deleted),
     [permissions, deleted]
   );
 
-  const hasViewPermission = useMemo(
+  const hasEditPermission = useMemo(
     () => ({
-      customProperties: permissions.ViewAll || permissions.ViewCustomFields,
+      tags: canEditTags,
+      glossaryTerms: canEditGlossaryTerms,
+      description: canEditDescription,
+      customProperties: canEditCustomFields,
+      displayName: canEditDisplayName,
     }),
-    [permissions]
+    [
+      canEditTags,
+      canEditGlossaryTerms,
+      canEditDescription,
+      canEditCustomFields,
+      canEditDisplayName,
+    ]
   );
 
   const flattenedColumns = useMemo(
@@ -595,10 +609,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
     };
 
-    if (hasViewPermission.customProperties) {
+    if (canViewCustomFields) {
       fetchEntityTypeDetail();
     }
-  }, [hasViewPermission.customProperties]);
+  }, [canViewCustomFields]);
 
   useEffect(() => {
     if (localToast.open) {
@@ -621,14 +635,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [fetchColumnDetails]);
 
   useEffect(() => {
-    if (
-      isOpen &&
-      entityType === EntityType.TABLE &&
-      (permissions.ViewTests || permissions.ViewAll)
-    ) {
+    if (isOpen && entityType === EntityType.TABLE && canViewTests) {
       fetchTestCases();
     }
-  }, [isOpen, fetchTestCases, permissions.ViewTests, permissions.ViewAll]);
+  }, [isOpen, fetchTestCases, entityType, canViewTests]);
 
   useEffect(() => {
     if (isOpen && activeColumn) {
@@ -766,9 +776,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
-          viewCustomPropertiesPermission={
-            hasViewPermission?.customProperties ?? false
-          }
+          viewCustomPropertiesPermission={canViewCustomFields}
           onExtensionUpdate={handleExtensionUpdate}
         />
       </div>
@@ -923,7 +931,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           <DataQualityTab
             isColumnDetailPanel
             entityFQN={activeColumn.fullyQualifiedName || ''}
-            hasViewTests={permissions.ViewTests || permissions.ViewAll}
+            hasViewTests={canViewTests}
           />
         );
       case EntityRightPanelTab.LINEAGE:
