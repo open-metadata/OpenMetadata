@@ -569,6 +569,51 @@ def _should_update_restricted_field(source_value, dest_value, override_metadata:
     return override_metadata
 
 
+def _merge_nested_columns(
+    source_children: Optional[List],
+    dest_children: Optional[List],
+    restrict_set: set,
+    override_metadata: Optional[bool] = False,  # noqa: UP045
+):
+    """Recursively merge nested column metadata from source to destination.
+
+    When a column has children (nested/struct columns), the merge must
+    preserve user-editable metadata (description, tags, etc.) from the
+    source unless override_metadata is explicitly set.  This mirrors the
+    behaviour of _sort_array_entity_fields for top-level columns.
+    """
+    if not dest_children:
+        return dest_children
+    if not source_children:
+        return dest_children
+
+    source_child_dict = {_get_attribute_name(attr): attr for attr in source_children}
+    merged = []
+    for dest_child in dest_children:
+        source_child = source_child_dict.get(_get_attribute_name(dest_child))
+        if source_child:
+            update_dict = {}
+            for k, v in dest_child.__dict__.items():
+                if k not in dest_child.model_fields_set:
+                    continue
+                if k in restrict_set:
+                    src_val = getattr(source_child, k, None)
+                    if not _should_update_restricted_field(src_val, v, override_metadata):
+                        continue
+                if k == "children":
+                    v = _merge_nested_columns(
+                        getattr(source_child, "children", None),
+                        v,
+                        restrict_set,
+                        override_metadata,
+                    )
+                update_dict[k] = v
+            merged.append(source_child.model_copy(update=update_dict))
+        else:
+            merged.append(dest_child)
+    return merged
+
+
 def _sort_array_entity_fields(
     source: T,
     destination: T,
@@ -606,6 +651,13 @@ def _sort_array_entity_fields(
                             src_val = getattr(source_attr, k, None)
                             if not _should_update_restricted_field(src_val, v, override_metadata):
                                 continue
+                        if k == "children":
+                            v = _merge_nested_columns(
+                                getattr(source_attr, "children", None),
+                                v,
+                                restrict_set,
+                                override_metadata,
+                            )
                         update_dict[k] = v
                     updated_attributes.append(source_attr.model_copy(update=update_dict))
                 else:
