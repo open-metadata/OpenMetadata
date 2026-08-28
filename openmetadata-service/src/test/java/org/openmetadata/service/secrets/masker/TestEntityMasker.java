@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -95,18 +96,19 @@ abstract class TestEntityMasker {
 
   @Test
   void testPubSubConnectionMasker() {
-    PubSubConnection pubSubConnection = new PubSubConnection().withGcpConfig(buildGcpCredentials());
+    Map<String, Object> connectionConfig =
+        JsonUtils.getMap(new PubSubConnection().withGcpConfig(buildGcpCredentials()));
     PubSubConnection masked =
         (PubSubConnection)
             EntityMaskerFactory.createEntityMasker()
-                .maskServiceConnectionConfig(pubSubConnection, "PubSub", ServiceType.MESSAGING);
+                .maskServiceConnectionConfig(connectionConfig, "PubSub", ServiceType.MESSAGING);
     assertNotNull(masked);
     assertEquals(getPrivateKeyFromGcsConfig(masked.getGcpConfig()), getMaskedPassword());
     PubSubConnection unmasked =
         (PubSubConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(
-                    masked, pubSubConnection, "PubSub", ServiceType.MESSAGING);
+                    masked, connectionConfig, "PubSub", ServiceType.MESSAGING);
     assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getGcpConfig()));
   }
 
