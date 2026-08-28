@@ -185,12 +185,12 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
           writeResponse(
               response, jsonMapper.writeValueAsString(jsonrpcResponse), acceptsJson, acceptsSse);
-        } catch (McpError e) {
-          McpSchema.JSONRPCResponse.JSONRPCError error = e.getJsonRpcError();
-          if (error != null && error.code() == McpSchema.ErrorCodes.METHOD_NOT_FOUND) {
+        } catch (Exception e) {
+          McpSchema.JSONRPCResponse.JSONRPCError unknownMethod = unknownMethodError(e);
+          if (unknownMethod != null) {
             McpSchema.JSONRPCResponse errorResponse =
                 new McpSchema.JSONRPCResponse(
-                    McpSchema.JSONRPC_VERSION, jsonrpcRequest.id(), null, error);
+                    McpSchema.JSONRPC_VERSION, jsonrpcRequest.id(), null, unknownMethod);
             writeResponse(
                 response, jsonMapper.writeValueAsString(errorResponse), acceptsJson, acceptsSse);
           } else {
@@ -203,15 +203,6 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                     .message("Failed to handle request")
                     .build());
           }
-        } catch (Exception e) {
-          logger.error("Failed to handle request", e);
-          responseError(
-              response,
-              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-              jsonrpcRequest.id(),
-              McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-                  .message("Failed to handle request")
-                  .build());
         }
       } else if (message instanceof McpSchema.JSONRPCNotification jsonrpcNotification) {
         if (McpSchema.METHOD_NOTIFICATION_INITIALIZED.equals(jsonrpcNotification.method())) {
@@ -262,6 +253,20 @@ public class HttpServletStatelessServerTransport extends HttpServlet
               .message("Internal server error")
               .build());
     }
+  }
+
+  /**
+   * The SDK relays a handler's own failure inside a JSON-RPC response, so the only error that
+   * escapes {@code handleRequest} is METHOD_NOT_FOUND for a method it has no handler for. That is a
+   * client mistake, not a server fault: return the -32601 envelope at HTTP 200 instead of a 500.
+   */
+  private static McpSchema.JSONRPCResponse.JSONRPCError unknownMethodError(Exception e) {
+    if (!(e instanceof McpError mcpError)) {
+      return null;
+    }
+    McpSchema.JSONRPCResponse.JSONRPCError error = mcpError.getJsonRpcError();
+    boolean unknownMethod = error != null && error.code() == McpSchema.ErrorCodes.METHOD_NOT_FOUND;
+    return unknownMethod ? error : null;
   }
 
   static void writeResponse(
