@@ -40,7 +40,7 @@ const FormWrapper = ({
     <HookForm form={form} onSubmit={jest.fn()}>
       <FormField control={form.control} name="cron">
         {({ field }) => (
-        <ScheduleInterval
+          <ScheduleInterval
             defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
             entity="test"
             value={field.value || undefined}
@@ -161,7 +161,7 @@ describe('ScheduleInterval react-hook-form wiring', () => {
   it('emits onChange(undefined) when the on demand card is clicked', () => {
     const handleChange = jest.fn();
     render(
-          <ScheduleInterval
+      <ScheduleInterval
         defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
         entity="test"
         value={DEFAULT_SCHEDULE_CRON_DAILY}
