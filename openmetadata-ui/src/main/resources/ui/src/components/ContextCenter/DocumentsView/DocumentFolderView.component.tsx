@@ -358,7 +358,6 @@ const DocumentFolderView = (
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton
                   height="32px"
-                  // eslint-disable-next-line react/no-array-index-key
                   key={i}
                   variant="rounded"
                   width="100%"
@@ -471,7 +470,6 @@ const DocumentFolderView = (
                             {Array.from({ length: 2 }).map((_, i) => (
                               <Skeleton
                                 height="20px"
-                                // eslint-disable-next-line react/no-array-index-key
                                 key={i}
                                 variant="rounded"
                                 width="100%"

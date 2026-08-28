@@ -26,8 +26,8 @@ import {
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import {
   clickOutside,
