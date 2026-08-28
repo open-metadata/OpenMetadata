@@ -13,38 +13,25 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
-import { get, isEmpty, isNull, isObject, startCase } from 'lodash';
+import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
 import { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
-import {
-  getNestedSchema,
-  getSchemaProperty,
-  getString,
-  isFilterPatternValue,
-  isRenderableValue,
-  isSchemaObject,
-} from './platform/services/serviceConnectionDetailsSchema.utils';
-import type {
-  FilterPatternValue,
-  RenderableValue,
-} from './platform/services/serviceConnectionDetailsSchema.utils';
 
 type KeyValuesProps = {
   obj: Record<string, unknown>;
   schemaPropertyObject: Record<string, unknown>;
   schema: Record<string, unknown>;
   serviceCategory: string;
-  schemaContext?: Record<string, unknown>;
 };
 
 // Renders a basic input field with label and optional tooltip
 const renderInputField = (
   key: string,
-  value: RenderableValue,
+  value: string,
   description?: string,
   format?: string,
   title?: string
@@ -65,7 +52,7 @@ const renderInputField = (
         </Space>
       </Col>
       <Col span={16}>
-        {Array.isArray(value) ? (
+        {isArray(value) ? (
           <Select
             allowClear={false}
             bordered={false}
@@ -83,7 +70,7 @@ const renderInputField = (
             className="w-full border-none"
             data-testid="input-field"
             type={format === 'password' ? 'password' : 'text'}
-            value={typeof value === 'boolean' ? String(value) : value}
+            value={value}
           />
         )}
       </Col>
@@ -94,7 +81,7 @@ const renderInputField = (
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: FilterPatternValue,
+  value: { includes: string[]; excludes: string[] },
   description?: string,
   title?: string
 ) => {
@@ -120,7 +107,7 @@ const renderFilterPattern = (
         </Col>
         <Col className="filter-config" span={16}>
           {Object.entries(value).map(([key, value]) => {
-            return isEmpty(value) || !Array.isArray(value) ? null : (
+            return isEmpty(value) ? null : (
               <div
                 className="w-full flex flex-col"
                 key={`${key}-${JSON.stringify(value)}`}>
@@ -128,7 +115,7 @@ const renderFilterPattern = (
                   key
                 )}:`}</Typography.Text>
                 <Typography.Text className="value">
-                  {value.join(', ')}
+                  {(value as string[]).join(', ')}
                 </Typography.Text>
               </div>
             );
@@ -144,7 +131,6 @@ export const getKeyValues = ({
   schemaPropertyObject,
   schema,
   serviceCategory,
-  schemaContext = schema,
 }: KeyValuesProps): ReactNode => {
   try {
     return Object.keys(obj).map((key) => {
@@ -156,25 +142,10 @@ export const getKeyValues = ({
       }
 
       // Handle non-object and array values
-      if (!isSchemaObject(value)) {
-        const schemaProperty = getSchemaProperty({
-          key,
-          schema,
-          schemaContext,
-          schemaPropertyObject,
-        });
+      if (!isObject(value) || isArray(value)) {
+        const { description, format, title } = schemaPropertyObject[key] ?? {};
 
-        if (!isRenderableValue(value)) {
-          return null;
-        }
-
-        return renderInputField(
-          key,
-          value,
-          getString(schemaProperty?.description),
-          getString(schemaProperty?.format),
-          getString(schemaProperty?.title)
-        );
+        return renderInputField(key, value, description, format, title);
       }
 
       const serviceType = serviceCategory.slice(0, -1);
@@ -187,22 +158,11 @@ export const getKeyValues = ({
       if (
         filterPatternFields.includes(
           key as ServiceConnectionFilterPatternFields
-        ) &&
-        isFilterPatternValue(value)
+        )
       ) {
-        const schemaProperty = getSchemaProperty({
-          key,
-          schema,
-          schemaContext,
-          schemaPropertyObject,
-        });
+        const { description, title } = schemaPropertyObject[key] ?? {};
 
-        return renderFilterPattern(
-          key,
-          value,
-          getString(schemaProperty?.description),
-          getString(schemaProperty?.title)
-        );
+        return renderFilterPattern(key, value, description, title);
       }
 
       // Handle special service configurations
@@ -237,29 +197,12 @@ export const getKeyValues = ({
         }
       }
 
-      const schemaProperty = getSchemaProperty({
-        key,
-        schema,
-        schemaContext,
-        schemaPropertyObject,
-      });
-      const nestedSchema = getNestedSchema({
-        schema,
-        schemaContext,
-        schemaProperty,
-        value,
-      });
-
-      if (!nestedSchema) {
-        return null;
-      }
-
+      // Default object handling
       return getKeyValues({
         obj: value,
-        schemaPropertyObject: nestedSchema.schemaPropertyObject,
+        schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
         schema,
         serviceCategory,
-        schemaContext: nestedSchema.schemaContext,
       });
     });
   } catch {

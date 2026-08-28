@@ -28,6 +28,7 @@ import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.messaging.SaslMechanismType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -90,6 +91,23 @@ abstract class TestEntityMasker {
                 .unmaskServiceConnectionConfig(
                     masked, bigQueryConnection, "BigQuery", ServiceType.DATABASE);
     assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getCredentials()));
+  }
+
+  @Test
+  void testPubSubConnectionMasker() {
+    PubSubConnection pubSubConnection = new PubSubConnection().withGcpConfig(buildGcpCredentials());
+    PubSubConnection masked =
+        (PubSubConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(pubSubConnection, "PubSub", ServiceType.MESSAGING);
+    assertNotNull(masked);
+    assertEquals(getPrivateKeyFromGcsConfig(masked.getGcpConfig()), getMaskedPassword());
+    PubSubConnection unmasked =
+        (PubSubConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, pubSubConnection, "PubSub", ServiceType.MESSAGING);
+    assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getGcpConfig()));
   }
 
   @Test
